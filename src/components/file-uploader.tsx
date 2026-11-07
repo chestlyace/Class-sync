@@ -108,9 +108,24 @@ export function FileUploader({
   onBusyChange?: (busy: boolean) => void
 }) {
   const t = useTranslations('assignments.files')
+  const maxMb = Math.round(MAX_FILE_BYTES / (1024 * 1024))
   const locale = useLocale()
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploads, setUploads] = useState<UploadState[]>([])
+  /** One polite status line for screen readers: started, added, failed, removed. */
+  const [announcement, setAnnouncement] = useState('')
+  // Leaving the page cancels uploads still sending bytes, and nothing updates state afterwards.
+  const mountedRef = useRef(true)
+  const controllersRef = useRef(new Set<AbortController>())
+  useEffect(() => {
+    mountedRef.current = true
+    const controllers = controllersRef.current
+    return () => {
+      mountedRef.current = false
+      for (const controller of controllers) controller.abort()
+      controllers.clear()
+    }
+  }, [])
   // Several uploads finish independently: each adds to the latest list, not the one it started with.
   const valueRef = useRef(value)
   useEffect(() => {
@@ -135,14 +150,15 @@ export function FileUploader({
   const remaining = Math.max(0, max - value.length - inFlight)
 
   function update(key: string, patch: Partial<UploadState>) {
+    if (!mountedRef.current) return
     setUploads((list) => list.map((u) => (u.key === key ? { ...u, ...patch } : u)))
   }
 
-  async function sendBytes(file: File, mimeType: string, target: UploadTarget, key: string) {
+  async function sendBytes(file: File, mimeType: string, target: UploadTarget, key: string, signal: AbortSignal) {
     if (target.kind === 'local') {
       let response: Response
       try {
-        response = await fetch(target.url, { method: 'PUT', body: file, headers: { 'Content-Type': mimeType } })
+        response = await fetch(target.url, { method: 'PUT', body: file, headers: { 'Content-Type': mimeType }, signal })
       } catch {
         throw new UploadFailed('upload')
       }
@@ -158,6 +174,7 @@ export function FileUploader({
         access: 'private',
         handleUploadUrl: target.handleUploadUrl,
         contentType: mimeType,
+        abortSignal: signal,
         onUploadProgress: ({ percentage }) => update(key, { progress: Math.round(percentage) }),
       })
     } catch {
@@ -166,6 +183,8 @@ export function FileUploader({
   }
 
   async function uploadOne(original: File, key: string) {
+    const controller = new AbortController()
+    controllersRef.current.add(controller)
     try {
       const file = await compressImage(original)
       const mimeType = mimeTypeOf(file)
@@ -176,15 +195,22 @@ export function FileUploader({
       if (!requested.ok) throw new UploadFailed(errorKeyOf(requested))
       const { fileId, target } = requested.data
       update(key, { progress: target.kind === 'blob' ? 0 : null })
-      await sendBytes(file, mimeType, target, key)
+      await sendBytes(file, mimeType, target, key, controller.signal)
 
       update(key, { progress: null })
       const confirmed = await confirmUploadAction(fileId)
+      if (!mountedRef.current) return
       if (!confirmed.ok) throw new UploadFailed(errorKeyOf(confirmed))
       setUploads((list) => list.filter((u) => u.key !== key))
       commit([...valueRef.current.filter((f) => f.id !== confirmed.data.id), confirmed.data])
+      setAnnouncement(t('announce.added', { name: original.name }))
     } catch (err) {
-      update(key, { error: err instanceof UploadFailed ? err.key : 'upload', progress: null })
+      if (!mountedRef.current) return
+      const reason = err instanceof UploadFailed ? err.key : 'upload'
+      update(key, { error: reason, progress: null })
+      setAnnouncement(t('announce.failed', { name: original.name, reason: t(`errors.${reason}`, { max, maxMb }) }))
+    } finally {
+      controllersRef.current.delete(controller)
     }
   }
 
@@ -202,21 +228,27 @@ export function FileUploader({
       error: 'count',
     }))
     setUploads((list) => [...list, ...started, ...refused])
+    if (accepted.length === 1) setAnnouncement(t('announce.uploading', { name: accepted[0].name }))
+    else if (accepted.length > 1) setAnnouncement(t('announce.uploadingMany', { count: accepted.length }))
+    else setAnnouncement(t('errors.count', { max, maxMb }))
     accepted.forEach((file, i) => void uploadOne(file, started[i].key))
   }
 
   function remove(id: string) {
+    const removed = valueRef.current.find((f) => f.id === id)
     commit(valueRef.current.filter((f) => f.id !== id))
+    if (removed) setAnnouncement(t('announce.removed', { name: removed.name }))
   }
 
   function dismiss(key: string) {
     setUploads((list) => list.filter((u) => u.key !== key))
   }
 
-  const maxMb = Math.round(MAX_FILE_BYTES / (1024 * 1024))
-
   return (
     <div className="flex flex-col gap-3">
+      <p role="status" className="sr-only">
+        {announcement}
+      </p>
       {value.length > 0 && (
         <ul className="flex flex-col divide-y rounded-2xl border">
           {value.map((f) => (
@@ -250,7 +282,7 @@ export function FileUploader({
       )}
 
       {uploads.length > 0 && (
-        <ul className="flex flex-col gap-2" aria-live="polite">
+        <ul className="flex flex-col gap-2">
           {uploads.map((u) => (
             <li
               key={u.key}
@@ -272,13 +304,13 @@ export function FileUploader({
                     <X aria-hidden="true" />
                   </Button>
                 ) : (
-                  <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                  <span aria-hidden="true" className="shrink-0 font-mono text-xs text-muted-foreground">
                     {u.progress === null ? t('uploading') : `${u.progress} %`}
                   </span>
                 )}
               </div>
               {u.error ? (
-                <p role="alert" className="text-sm text-destructive">
+                <p className="text-sm text-destructive">
                   {t(`errors.${u.error}`, { max, maxMb })}
                 </p>
               ) : (

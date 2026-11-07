@@ -9,6 +9,7 @@ import { useCreateBlockNote } from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/shadcn'
 import { useMemo } from 'react'
 import type { Locale } from '@/i18n/locale'
+import { filterRichText } from '@/lib/rich-text-content'
 
 // Ruling B3: no in-editor uploads. The media blocks (which upload or embed files by URL) are left
 // out of the schema, so the slash menu, toolbar and paste handling never offer them; files go
@@ -24,27 +25,18 @@ type RichTextBlock = PartialBlock<
   typeof richTextSchema.styleSchema
 >
 
-const knownTypes = new Set<string>(Object.keys(richTextSchema.blockSchema))
+const schemaNames = {
+  blocks: new Set(Object.keys(richTextSchema.blockSchema)),
+  inline: new Set(Object.keys(richTextSchema.inlineContentSchema)),
+  styles: new Set(Object.keys(richTextSchema.styleSchema)),
+}
 
 /**
- * The stored document as BlockNote initial content: blocks of a type this schema doesn't know are
- * dropped (BlockNote throws on them). Undefined for an empty or invalid value (a blank editor).
+ * The stored document as BlockNote initial content, without the blocks, inline items and style
+ * keys this schema doesn't know (BlockNote throws on them). Undefined gives a blank editor.
  */
 function toInitialContent(value: unknown): RichTextBlock[] | undefined {
-  function keep(blocks: unknown[]): RichTextBlock[] {
-    const out: RichTextBlock[] = []
-    for (const raw of blocks) {
-      if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) continue
-      const block = raw as { type?: unknown; children?: unknown }
-      if (typeof block.type !== 'string' || !knownTypes.has(block.type)) continue
-      const children = Array.isArray(block.children) ? keep(block.children) : undefined
-      out.push({ ...(block as RichTextBlock), ...(children ? { children } : {}) })
-    }
-    return out
-  }
-  if (!Array.isArray(value)) return undefined
-  const content = keep(value)
-  return content.length > 0 ? content : undefined
+  return filterRichText(value, schemaNames) as RichTextBlock[] | undefined
 }
 
 function dictionaryFor(locale: Locale) {

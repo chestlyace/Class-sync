@@ -1,7 +1,7 @@
 'use client'
 
 import { Check, Save, Send, Trash2, Unlock } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useActionState } from 'react'
 import { isInvalidField } from '@/components/action-error'
 import { ConfirmAction } from '@/components/confirm-action'
@@ -10,6 +10,7 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui
 import { Input } from '@/components/ui/input'
 import type { ActionResult } from '@/lib/action-result'
 import { submitWith } from '@/lib/form-submit'
+import { formatDecimal } from '@/lib/number-format'
 import { MARK_STEP } from '@/server/assignments/rules'
 import {
   deleteDraftAssignmentAction,
@@ -98,6 +99,8 @@ export function GradeForm({
   feedback: string | null
 }) {
   const t = useTranslations('assignments.lecturer.grade')
+  const locale = useLocale()
+  const max = formatDecimal(maxMark, locale)
   const [state, dispatch, pending] = useActionState(
     (prev: ActionResult<null> | null, data: FormData) => gradeSubmissionAction(submissionId, prev, data),
     null,
@@ -125,10 +128,10 @@ export function GradeForm({
               className="w-32 font-mono"
             />
             <span aria-hidden="true" className="font-mono text-muted-foreground">
-              / {maxMark}
+              / {max}
             </span>
           </div>
-          <FieldDescription id="grade-mark-hint">{t('markHint', { max: maxMark, step: MARK_STEP })}</FieldDescription>
+          <FieldDescription id="grade-mark-hint">{t('markHint', { max, step: formatDecimal(MARK_STEP, locale) })}</FieldDescription>
         </Field>
         <Field data-invalid={invalid('feedback')}>
           <FieldLabel htmlFor="grade-feedback">{t('feedback')}</FieldLabel>

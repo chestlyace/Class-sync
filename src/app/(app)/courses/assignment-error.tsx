@@ -1,9 +1,10 @@
 'use client'
 
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { ActionError } from '@/components/action-error'
 import { FieldError } from '@/components/ui/field'
 import type { ActionResult } from '@/lib/action-result'
+import { formatDecimal } from '@/lib/number-format'
 import { MAX_FILES } from '@/server/assignments/rules'
 
 /** CONFLICT reasons the assignment and file services send. */
@@ -64,17 +65,19 @@ function messageKeys(state: Extract<ActionResult<unknown>, { ok: false }>): Mess
  */
 export function AssignmentError({ state, maxMark }: { state: ActionResult<unknown> | null; maxMark?: number }) {
   const t = useTranslations('assignments.lecturer.errors')
+  const locale = useLocale()
   if (!state || state.ok) return null
+  const values = { max: MAX_FILES, maxMark: formatDecimal(maxMark ?? 0, locale) }
   const keys = messageKeys(state)
   if (keys.length === 0) return <ActionError state={state} />
   return (
     <FieldError>
       {keys.length === 1 ? (
-        t(keys[0], { max: MAX_FILES, maxMark: maxMark ?? 0 })
+        t(keys[0], values)
       ) : (
         <ul className="ml-4 flex list-disc flex-col gap-1">
           {keys.map((key) => (
-            <li key={key}>{t(key, { max: MAX_FILES, maxMark: maxMark ?? 0 })}</li>
+            <li key={key}>{t(key, values)}</li>
           ))}
         </ul>
       )}

@@ -7,6 +7,7 @@ import { RichTextView } from '@/components/rich-text-view'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
+import { displayKind } from '@/lib/file-display'
 import { formatFileSize } from '@/lib/file-size'
 import {
   getSubmissionForLecturer,
@@ -94,14 +95,14 @@ export default async function SubmissionPage({
               key={f.id}
               file={f}
               locale={locale}
-              linkText={f.mimeType === 'application/pdf' || f.mimeType.startsWith('image/') ? t('openTab') : t('download')}
-              linkLabel={t('open', { name: f.name })}
+              linkText={displayKind(f.mimeType) === 'download' ? t('download') : t('openTab')}
+              linkLabel={displayKind(f.mimeType) === 'download' ? t('downloadLabel', { name: f.name }) : t('open', { name: f.name })}
             />
           ))}
         </section>
       )}
 
-      {!text && files.length === 0 && <p className="text-muted-foreground">{t('nothing')}</p>}
+      {(!text || isRichTextEmpty(text)) && files.length === 0 && <p className="text-muted-foreground">{t('nothing')}</p>}
 
       <section aria-labelledby="submission-grade" className="flex flex-col gap-4">
         <SectionHeading id="submission-grade">{t('grade')}</SectionHeading>
@@ -138,7 +139,7 @@ export default async function SubmissionPage({
   )
 }
 
-/** PDFs and images shown inline (served by /api/files with access checks); Word as a download. */
+/** PDFs and JPEG/PNG/WebP shown inline (served by /api/files with access checks); Word and HEIC as downloads. */
 function SubmittedFile({
   file,
   locale,
@@ -151,12 +152,11 @@ function SubmittedFile({
   linkLabel: string
 }) {
   const src = `/api/files/${encodeURIComponent(file.id)}`
-  const isPdf = file.mimeType === 'application/pdf'
-  const isImage = file.mimeType.startsWith('image/')
+  const kind = displayKind(file.mimeType)
   return (
     <figure className="flex flex-col gap-2">
-      {isPdf && <iframe src={src} title={file.name} className="h-[70vh] min-h-96 w-full rounded-2xl border bg-muted" />}
-      {isImage && (
+      {kind === 'pdf' && <iframe src={src} title={file.name} className="h-[70vh] min-h-96 w-full rounded-2xl border bg-muted" />}
+      {kind === 'image' && (
         // eslint-disable-next-line @next/next/no-img-element -- private file behind an access-checked route
         <img src={src} alt={file.name} className="max-h-[80vh] w-auto max-w-full rounded-2xl border object-contain" />
       )}
