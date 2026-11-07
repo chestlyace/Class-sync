@@ -112,7 +112,12 @@ export function OpenWindowButton({
 
 export type OverrideValue = 'auto' | 'present' | 'partial' | 'absent'
 
-/** The lecturer's verdict for one student: Auto (computed) or a fixed status. Saves on change. */
+/**
+ * The lecturer's verdict for one student: Auto (computed) or a fixed status. Saves on change.
+ * The select stays mounted and enabled while saving, so keyboard focus survives: arrowing through
+ * a closed select fires `change` per step on Windows, and each step is saved in order (server
+ * actions run one at a time per client).
+ */
 export function OverrideSelect({
   sessionId,
   studentId,
@@ -126,8 +131,16 @@ export function OverrideSelect({
 }) {
   const t = useTranslations('attendance.lecturer.override')
   const [selected, setSelected] = useState<OverrideValue>(value)
+  const [syncedValue, setSyncedValue] = useState<OverrideValue>(value)
   const [state, setState] = useState<ActionResult<unknown> | null>(null)
   const [pending, startTransition] = useTransition()
+
+  // Follow the server's value when it changes (revalidation, another tab), but not while my own
+  // saves are in flight: an earlier save's refresh must not undo the option chosen since.
+  if (!pending && value !== syncedValue) {
+    setSyncedValue(value)
+    setSelected(value)
+  }
 
   function onChange(next: OverrideValue) {
     const previous = selected
@@ -144,7 +157,7 @@ export function OverrideSelect({
       <NativeSelect
         aria-label={t('label', { name })}
         value={selected}
-        disabled={pending}
+        aria-busy={pending}
         onChange={(e) => onChange(e.target.value as OverrideValue)}
         className="h-9"
       >
