@@ -225,6 +225,32 @@
       "cta": "Confirmer mon e-mail",
       "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :",
       "ignore": "Si vous n'avez pas créé de compte Clasync, vous pouvez ignorer cet e-mail."
+    },
+    "assignmentPublished": {
+      "subject": "Nouveau devoir dans {course} : {assignment}",
+      "preview": "Le devoir « {assignment} » vient d'être publié dans {course}",
+      "greeting": "Bonjour {name},",
+      "body": "Un nouveau devoir, « {assignment} », a été publié dans {course}.",
+      "due": "À rendre le {date} à {time}.",
+      "cta": "Voir le devoir",
+      "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :"
+    },
+    "assignmentReminder": {
+      "subject": "Rappel : « {assignment} » ({course}) est bientôt à rendre",
+      "preview": "« {assignment} » ({course}) est à rendre le {date} à {time}",
+      "greeting": "Bonjour {name},",
+      "body": "Petit rappel : le devoir « {assignment} » de {course} est bientôt à rendre.",
+      "due": "Date limite : le {date} à {time}.",
+      "cta": "Ouvrir le devoir",
+      "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :"
+    },
+    "gradesReleased": {
+      "subject": "Vos notes pour « {assignment} » ({course}) sont disponibles",
+      "preview": "Les notes de « {assignment} » ({course}) ont été publiées",
+      "greeting": "Bonjour {name},",
+      "body": "Votre enseignant a publié les notes du devoir « {assignment} » dans {course}.",
+      "cta": "Voir ma note",
+      "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :"
     }
   },
   "landing": {

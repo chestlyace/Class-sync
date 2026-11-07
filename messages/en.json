@@ -225,6 +225,32 @@
       "cta": "Verify my email",
       "fallback": "If the button doesn't work, copy and paste this link into your browser:",
       "ignore": "If you didn't create a Clasync account, you can safely ignore this email."
+    },
+    "assignmentPublished": {
+      "subject": "New assignment in {course}: {assignment}",
+      "preview": "{assignment} has just been published in {course}",
+      "greeting": "Hello {name},",
+      "body": "A new assignment, {assignment}, has been published in {course}.",
+      "due": "Due {date} at {time}.",
+      "cta": "View assignment",
+      "fallback": "If the button doesn't work, copy and paste this link into your browser:"
+    },
+    "assignmentReminder": {
+      "subject": "Reminder: {assignment} in {course} is due soon",
+      "preview": "{assignment} in {course} is due {date} at {time}",
+      "greeting": "Hello {name},",
+      "body": "A quick reminder that {assignment} in {course} is due soon.",
+      "due": "Deadline: {date} at {time}.",
+      "cta": "Open assignment",
+      "fallback": "If the button doesn't work, copy and paste this link into your browser:"
+    },
+    "gradesReleased": {
+      "subject": "Your grades for {assignment} in {course} are available",
+      "preview": "Your grades for {assignment} in {course} have been released",
+      "greeting": "Hello {name},",
+      "body": "Your lecturer has released the grades for {assignment} in {course}.",
+      "cta": "See my grade",
+      "fallback": "If the button doesn't work, copy and paste this link into your browser:"
     }
   },
   "landing": {

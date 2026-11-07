@@ -1,0 +1,77 @@
+import type { ReactElement } from 'react'
+import { Resend } from 'resend'
+import type { Locale } from '@/server/core/context'
+
+export type Notification = { to: string; locale: Locale; subject: string; react: ReactElement }
+
+type BatchPayload = Array<{ from: string; to: string; subject: string; react: ReactElement }>
+
+/** The slice of the Resend client this module uses, so tests can substitute it. */
+export type NotifyClient = {
+  batch: { send(payload: BatchPayload): Promise<{ error: { message: string } | null }> }
+}
+
+const DEFAULT_FROM = 'Clasync <onboarding@resend.dev>'
+const BATCH_SIZE = 100
+
+let clientFactory: ((apiKey: string) => NotifyClient) | null = null
+
+/** Replaces the Resend client in tests. Pass null to restore the real one. */
+export function setResendClientFactoryForTests(factory: ((apiKey: string) => NotifyClient) | null): void {
+  clientFactory = factory
+}
+
+function createClient(apiKey: string): NotifyClient {
+  if (clientFactory) return clientFactory(apiKey)
+  return new Resend(apiKey) as unknown as NotifyClient
+}
+
+async function sendChunk(client: NotifyClient, payload: BatchPayload): Promise<boolean> {
+  try {
+    const { error } = await client.batch.send(payload)
+    if (!error) return true
+    console.error('[notify] batch failed', { size: payload.length, message: error.message })
+  } catch (error) {
+    console.error('[notify] batch threw', { size: payload.length, error })
+  }
+  return false
+}
+
+/**
+ * Best-effort notification delivery through Resend's batch API (100 emails per call, one retry
+ * per failed chunk). It never throws, in any environment: a missing key or a provider outage must
+ * not fail the action that triggered the notification. Without RESEND_API_KEY nothing is sent and
+ * a single warning with the count (never the addresses) is logged.
+ */
+export async function sendNotifications(
+  items: Notification[],
+): Promise<{ sent: number; skipped: number; failed: number }> {
+  const result = { sent: 0, skipped: 0, failed: 0 }
+  if (items.length === 0) return result
+
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    console.warn(`[notify] RESEND_API_KEY is not set: ${items.length} notification email(s) not sent`)
+    result.skipped = items.length
+    return result
+  }
+
+  let client: NotifyClient
+  try {
+    client = createClient(apiKey)
+  } catch (error) {
+    console.error('[notify] could not create the email client', error)
+    result.failed = items.length
+    return result
+  }
+
+  const from = process.env.EMAIL_FROM || DEFAULT_FROM
+  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+    const chunk = items.slice(i, i + BATCH_SIZE)
+    const payload: BatchPayload = chunk.map((n) => ({ from, to: n.to, subject: n.subject, react: n.react }))
+    const ok = (await sendChunk(client, payload)) || (await sendChunk(client, payload))
+    if (ok) result.sent += chunk.length
+    else result.failed += chunk.length
+  }
+  return result
+}

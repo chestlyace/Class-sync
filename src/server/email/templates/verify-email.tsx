@@ -17,12 +17,26 @@ import fr from '../../../../messages/fr.json'
 
 const allMessages = { en, fr } as const
 
-function emailTranslator(locale: Locale) {
+export function emailTranslator(locale: Locale) {
   return createTranslator({ locale, messages: allMessages[locale], namespace: 'email' })
 }
 
-export function emailSubject(kind: 'verify', locale: Locale): string {
-  return emailTranslator(locale)(`${kind}.subject`)
+export type NotificationKind = 'assignmentPublished' | 'assignmentReminder' | 'gradesReleased'
+
+export function emailSubject(kind: 'verify', locale: Locale): string
+export function emailSubject(
+  kind: NotificationKind,
+  locale: Locale,
+  vars: { courseTitle: string; assignmentTitle: string },
+): string
+export function emailSubject(
+  kind: 'verify' | NotificationKind,
+  locale: Locale,
+  vars?: { courseTitle: string; assignmentTitle: string },
+): string {
+  const t = emailTranslator(locale)
+  if (kind === 'verify') return t('verify.subject')
+  return t(`${kind}.subject`, { course: vars?.courseTitle ?? '', assignment: vars?.assignmentTitle ?? '' })
 }
 
 export function VerifyEmail({ name, url, locale }: { name: string; url: string; locale: Locale }) {
