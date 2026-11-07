@@ -19,19 +19,34 @@ describe('contentDisposition', () => {
 })
 
 describe('fileResponse', () => {
-  it('sets the safety headers', () => {
-    const res = fileResponse(
-      { info: { id: 'f', name: 'a.pdf', mimeType: 'application/pdf', sizeBytes: 3 }, stream: new ReadableStream(), inline: true },
-    )
+  const pdf = { id: 'f', name: 'a.pdf', mimeType: 'application/pdf', sizeBytes: 3 }
+
+  it('sets the safety headers; PDFs get no sandbox CSP (it blocks the browser PDF viewer)', () => {
+    const res = fileResponse({ info: pdf, stream: new ReadableStream(), inline: true, confirmed: true })
     expect(res.status).toBe(200)
-    expect(Object.fromEntries(res.headers)).toMatchObject({
+    const headers = Object.fromEntries(res.headers)
+    expect(headers).toMatchObject({
       'content-type': 'application/pdf',
       'content-length': '3',
       'content-disposition': `inline; filename="a.pdf"; filename*=UTF-8''a.pdf`,
       'cache-control': 'private, no-store',
       'x-content-type-options': 'nosniff',
-      'content-security-policy': 'sandbox',
+      'cross-origin-resource-policy': 'same-origin',
     })
+    expect(headers['content-security-policy']).toBeUndefined()
+  })
+
+  it('images and Word files are sandboxed', () => {
+    for (const mimeType of ['image/png', 'application/msword']) {
+      const res = fileResponse({ info: { ...pdf, mimeType }, stream: new ReadableStream(), inline: true, confirmed: true })
+      expect(res.headers.get('content-security-policy'), mimeType).toBe('sandbox')
+      expect(res.headers.get('x-content-type-options')).toBe('nosniff')
+    }
+  })
+
+  it('omits Content-Length for an unconfirmed file', () => {
+    const res = fileResponse({ info: pdf, stream: new ReadableStream(), inline: true, confirmed: false })
+    expect(res.headers.get('content-length')).toBeNull()
   })
 })
 
