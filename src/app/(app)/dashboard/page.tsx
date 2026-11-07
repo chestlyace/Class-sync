@@ -11,6 +11,7 @@ import { isVerificationPending } from '@/server/core/guards'
 import { listLecturerCourses, listStudentCourses, type CourseSummary } from '@/server/courses/service'
 import { toOpenCheckInView } from '../check-in/view'
 import { loadPage } from '../load-page'
+import { orEmptyOnError } from './fallback'
 import { groupDashboard } from './group'
 import { OpenCheckIns } from './open-check-ins'
 
@@ -40,7 +41,8 @@ export default async function DashboardPage() {
     const [classes, courses, openCheckIns] = await Promise.all([
       listMyClasses(ctx),
       isLecturer ? listLecturerCourses(ctx) : listStudentCourses(ctx),
-      isLecturer ? [] : listOpenCheckIns(ctx),
+      // A failing check-in list must not take the whole dashboard down: show it without.
+      isLecturer ? [] : orEmptyOnError('open check-ins', () => listOpenCheckIns(ctx)),
     ])
     return { classes, courses, openCheckIns: openCheckIns.map(toOpenCheckInView) }
   })
