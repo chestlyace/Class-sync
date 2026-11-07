@@ -52,7 +52,7 @@ test('classes, joining and courses, end to end', async ({
     await test.step('lecturer A signs up (French) and lands on a French dashboard', async () => {
       await a.goto('/sign-up')
       await expect(a.getByRole('heading', { name: 'Créez votre compte' })).toBeVisible()
-      await expect(a.getByRole('combobox', { name: FR.language })).toContainText('Français')
+      await expect(a.getByRole('group', { name: FR.language }).getByRole('radio', { name: 'Français' })).toBeChecked()
       await signUp(a, { name: 'Ada Lovelace', email: emailOf('a'), role: 'lecturer' }, FR)
       await expect(a.getByRole('heading', { name: 'Bonjour, Ada' })).toBeVisible()
       await expect(a.locator('html')).toHaveAttribute('lang', 'fr')
