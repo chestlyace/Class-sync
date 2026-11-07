@@ -1,4 +1,5 @@
-import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
+import { EN, expectNoHorizontalScroll, FR, signUp, userPages } from './helpers'
 
 /**
  * Smoke test for the foundations: sign-up, school, shared class with join codes, courses,
@@ -7,51 +8,6 @@ import { expect, test, type Browser, type BrowserContext, type Page } from '@pla
  *
  * Lecturer A works in French, lecturer B and the student in English.
  */
-
-const PASSWORD = 'correct-horse-battery-9'
-
-type Role = 'lecturer' | 'student'
-
-/** Only the strings the scenario types or asserts, in the language each user works in. */
-const FR = {
-  name: 'Nom complet',
-  email: 'Adresse e-mail',
-  password: 'Mot de passe',
-  language: 'Langue',
-  submit: 'Créer mon compte',
-  role: { lecturer: 'Je suis enseignant', student: 'Je suis étudiant' },
-} as const
-const EN = {
-  name: 'Full name',
-  email: 'Email address',
-  password: 'Password',
-  language: 'Language',
-  submit: 'Create account',
-  role: { lecturer: "I'm a lecturer", student: "I'm a student" },
-} as const
-
-/** A page must never scroll sideways, at 360 px least of all. */
-async function expectNoHorizontalScroll(page: Page) {
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  )
-  expect(overflow, 'horizontal overflow in px').toBeLessThanOrEqual(0)
-}
-
-async function signUp(
-  page: Page,
-  user: { name: string; email: string; role: Role },
-  text: typeof FR | typeof EN,
-) {
-  await page.goto('/sign-up')
-  await page.getByLabel(text.name, { exact: true }).fill(user.name)
-  await page.getByLabel(text.email, { exact: true }).fill(user.email)
-  await page.getByLabel(text.password, { exact: true }).fill(PASSWORD)
-  await page.getByLabel(text.role[user.role], { exact: true }).check()
-  await expectNoHorizontalScroll(page)
-  await page.getByRole('button', { name: text.submit, exact: true }).click()
-  await expect(page).toHaveURL(/\/dashboard$/)
-}
 
 test('classes, joining and courses, end to end', async ({
   browser,
@@ -62,7 +18,7 @@ test('classes, joining and courses, end to end', async ({
   hasTouch,
   deviceScaleFactor,
 }, testInfo) => {
-  // Sign-ups are rate-limited to 30 per minute per IP; the whole run signs up 6 users, so no waiting.
+  // Sign-ups are rate-limited to 30 per minute per IP; the whole e2e run signs up 12 users, so no waiting.
   // Unique per run and project: emails, the school name (a duplicate school is a CONFLICT).
   const run = `${Date.now().toString(36)}-${testInfo.project.name}`
   const emailOf = (who: string) => `e2e-${run}-${who}@example.test`
@@ -71,24 +27,18 @@ test('classes, joining and courses, end to end', async ({
   const courseB = 'Networks'
 
   // Every user is a separate browser context (own cookies) with the project's device settings.
-  const contexts: BrowserContext[] = []
-  async function newUserPage(browserArg: Browser, extra: Parameters<Browser['newContext']>[0]): Promise<Page> {
-    const context = await browserArg.newContext({
-      baseURL,
-      viewport,
-      userAgent,
-      isMobile,
-      hasTouch,
-      deviceScaleFactor,
-      ...extra,
-    })
-    contexts.push(context)
-    return context.newPage()
-  }
+  const { newUserPage: newPage, closeAll } = userPages(browser, {
+    baseURL,
+    viewport,
+    userAgent,
+    isMobile,
+    hasTouch,
+    deviceScaleFactor,
+  })
 
   try {
     // ---- 1. Lecturer A signs up in French, creates school, class and course -----------------
-    const a = await newUserPage(browser, {
+    const a = await newPage({
       locale: 'fr-FR',
       permissions: ['geolocation', 'clipboard-read', 'clipboard-write'],
       geolocation: { latitude: 4.0511, longitude: 9.7679 },
@@ -167,7 +117,7 @@ test('classes, joining and courses, end to end', async ({
     })
 
     // ---- 2. Lecturer B joins with the lecturer code and adds a course ----------------------
-    const b = await newUserPage(browser, { locale: 'en-US' })
+    const b = await newPage({ locale: 'en-US' })
     await test.step('lecturer B signs up and joins with the lecturer code', async () => {
       await signUp(b, { name: 'Bernard Tabi', email: emailOf('b'), role: 'lecturer' }, EN)
       await expect(b.getByRole('heading', { name: 'Hello, Bernard' })).toBeVisible()
@@ -191,7 +141,7 @@ test('classes, joining and courses, end to end', async ({
     })
 
     // ---- 3. Student joins: lowercase code with a space, matricule "ict 001" ---------------
-    const s = await newUserPage(browser, { locale: 'en-US' })
+    const s = await newPage({ locale: 'en-US' })
     await test.step('student signs up and joins with a sloppy code and matricule', async () => {
       await signUp(s, { name: 'Sam Student', email: emailOf('s'), role: 'student' }, EN)
       await expect(s.getByRole('heading', { name: 'Hello, Sam' })).toBeVisible()
@@ -245,6 +195,6 @@ test('classes, joining and courses, end to end', async ({
       await expect(b.getByRole('heading', { name: courseA })).toHaveCount(0)
     })
   } finally {
-    await Promise.all(contexts.map((c) => c.close()))
+    await closeAll()
   }
 })
