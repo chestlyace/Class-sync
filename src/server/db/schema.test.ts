@@ -2,7 +2,19 @@ import { sql } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { createTestDb } from '@/test/db'
 import { makeUser } from '@/test/factories'
-import { class_, classStudent, course, courseRosterAdjustment, school, user } from './schema'
+import {
+  attendanceCheckIn,
+  attendanceCodeFailure,
+  attendanceOverride,
+  attendanceSession,
+  attendanceWindow,
+  class_,
+  classStudent,
+  course,
+  courseRosterAdjustment,
+  school,
+  user,
+} from './schema'
 
 async function seedClass(db: Awaited<ReturnType<typeof createTestDb>>) {
   const owner = await makeUser(db)
@@ -22,6 +34,29 @@ async function seedClass(db: Awaited<ReturnType<typeof createTestDb>>) {
     })
     .returning()
   return { owner, school: s, cls: c }
+}
+
+/** The SQLSTATE of a failed query (drizzle wraps the driver error, which sits on `cause`). */
+async function sqlState(p: Promise<unknown>): Promise<string | undefined> {
+  try {
+    await p
+  } catch (e) {
+    return (e as { cause?: { code?: string } }).cause?.code
+  }
+  return undefined
+}
+
+async function seedSession(db: Awaited<ReturnType<typeof createTestDb>>) {
+  const { owner, cls } = await seedClass(db)
+  const [c] = await db
+    .insert(course)
+    .values({ classId: cls.id, lecturerId: owner.id, title: 'Maths', semester: 1 })
+    .returning()
+  const [session] = await db
+    .insert(attendanceSession)
+    .values({ courseId: c.id, createdBy: owner.id })
+    .returning()
+  return { owner, cls, course: c, session }
 }
 
 describe('schema', () => {
@@ -139,5 +174,78 @@ describe('schema', () => {
     await db
       .insert(courseRosterAdjustment)
       .values({ courseId: c.id, studentId: st.id, kind: 'include', createdBy: owner.id })
+  })
+
+  it('allows one start and one end window per session, not two starts', async () => {
+    const db = await createTestDb()
+    const { owner, session } = await seedSession(db)
+    const base = { sessionId: session.id, secret: 's3cret', openedBy: owner.id }
+    await db.insert(attendanceWindow).values({ ...base, kind: 'start' })
+    await db.insert(attendanceWindow).values({ ...base, kind: 'end' })
+    expect(await sqlState(db.insert(attendanceWindow).values({ ...base, kind: 'start' }))).toBe('23505')
+  })
+
+  it('rejects a window kind other than start/end', async () => {
+    const db = await createTestDb()
+    const { owner, session } = await seedSession(db)
+    expect(
+      await sqlState(
+        db.execute(
+          sql`insert into attendance_window (id, session_id, kind, secret, opened_by) values ('w1', ${session.id}, 'middle', 'x', ${owner.id})`,
+        ),
+      ),
+    ).toBe('23514')
+  })
+
+  it('rejects an override status other than present/partial/absent', async () => {
+    const db = await createTestDb()
+    const { owner, session } = await seedSession(db)
+    const st = await makeUser(db, { role: 'student' })
+    expect(
+      await sqlState(
+        db.execute(
+          sql`insert into attendance_override (session_id, student_id, status, set_by) values (${session.id}, ${st.id}, 'late', ${owner.id})`,
+        ),
+      ),
+    ).toBe('23514')
+    await db
+      .insert(attendanceOverride)
+      .values({ sessionId: session.id, studentId: st.id, status: 'partial', setBy: owner.id })
+  })
+
+  it('deleting a session removes its windows, check-ins, overrides and code failures', async () => {
+    const db = await createTestDb()
+    const { owner, session } = await seedSession(db)
+    const st = await makeUser(db, { role: 'student' })
+    const [w] = await db
+      .insert(attendanceWindow)
+      .values({ sessionId: session.id, kind: 'start', secret: 's', openedBy: owner.id })
+      .returning()
+    await db.insert(attendanceCheckIn).values({ windowId: w.id, studentId: st.id, latitude: 4.05, longitude: 9.7, accuracyM: 12 })
+    await db.insert(attendanceCodeFailure).values({ windowId: w.id, studentId: st.id, failures: 2 })
+    await db
+      .insert(attendanceOverride)
+      .values({ sessionId: session.id, studentId: st.id, status: 'present', setBy: owner.id })
+    await db.delete(attendanceSession)
+    expect(await db.select().from(attendanceWindow)).toHaveLength(0)
+    expect(await db.select().from(attendanceCheckIn)).toHaveLength(0)
+    expect(await db.select().from(attendanceOverride)).toHaveLength(0)
+    expect(await db.select().from(attendanceCodeFailure)).toHaveLength(0)
+  })
+
+  it('has the attendance lookup indexes', async () => {
+    const db = await createTestDb()
+    const res = await db.execute(sql`select indexdef from pg_indexes where schemaname = 'public'`)
+    const defs = (res as unknown as { rows: { indexdef: string }[] }).rows.map((r) => r.indexdef.replace(/"/g, ''))
+    for (const [table, column] of [
+      ['attendance_session', 'course_id'],
+      ['attendance_window', 'session_id'],
+      ['attendance_check_in', 'student_id'],
+    ]) {
+      expect(
+        defs.some((d) => d.includes(` ON public.${table} USING btree (${column})`)),
+        `${table}(${column})`,
+      ).toBe(true)
+    }
   })
 })

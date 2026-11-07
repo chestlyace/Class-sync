@@ -1,4 +1,4 @@
-import { ArrowRight, RotateCcw, UserMinus } from 'lucide-react'
+import { ArrowRight, ClipboardCheck, RotateCcw, UserMinus } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
@@ -10,6 +10,7 @@ import { getCourse, getCourseRoster, type CourseSummary } from '@/server/courses
 import { loadPage } from '../../load-page'
 import { IncludeSearch } from '../include-search'
 import { RosterButton } from '../roster-button'
+import { MyAttendance } from './my-attendance'
 
 type CourseRosterEntry = RosterEntry & { source: 'class' | 'included' }
 
@@ -31,6 +32,7 @@ export async function generateMetadata() {
 export default async function CoursePage({ params }: PageProps<'/courses/[courseId]'>) {
   const { courseId } = await params
   const t = await getTranslations('courses.page')
+  const tAttendance = await getTranslations('attendance.lecturer')
   const view = await loadPage<CourseView>(async (ctx) => {
     const course = await getCourse(ctx, courseId) // FORBIDDEN unless owner or rostered student
     if (ctx.user.role !== 'lecturer') return { role: 'student', course }
@@ -51,21 +53,33 @@ export default async function CoursePage({ params }: PageProps<'/courses/[course
         description={`${course.className} · ${course.schoolName} · ${t('semester', { n: course.semester })}`}
         actions={
           view.data.role === 'lecturer' ? (
-            <Link
-              href={`/classes/${encodeURIComponent(course.classId)}`}
-              className={buttonVariants({ variant: 'outline' })}
-            >
-              {t('openClass')}
-              <ArrowRight aria-hidden="true" data-icon="inline-end" />
-            </Link>
+            <>
+              <Link
+                href={`/courses/${encodeURIComponent(course.id)}/attendance`}
+                className={buttonVariants({ variant: 'default' })}
+              >
+                <ClipboardCheck aria-hidden="true" data-icon="inline-start" />
+                {tAttendance('courseLink')}
+              </Link>
+              <Link
+                href={`/classes/${encodeURIComponent(course.classId)}`}
+                className={buttonVariants({ variant: 'outline' })}
+              >
+                {t('openClass')}
+                <ArrowRight aria-hidden="true" data-icon="inline-end" />
+              </Link>
+            </>
           ) : undefined
         }
       />
       {view.data.role === 'student' ? (
-        <Panel className="flex flex-col gap-2">
-          <Eyebrow>{t('lecturer', { name: course.lecturerName })}</Eyebrow>
-          <p className="text-muted-foreground">{t('studentNext')}</p>
-        </Panel>
+        <>
+          <Panel className="flex flex-col gap-2">
+            <Eyebrow>{t('lecturer', { name: course.lecturerName })}</Eyebrow>
+            <p className="text-muted-foreground">{t('studentNext')}</p>
+          </Panel>
+          <MyAttendance courseId={course.id} />
+        </>
       ) : (
         <LecturerRoster
           courseId={course.id}

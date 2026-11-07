@@ -95,3 +95,19 @@ Verification is **on by default**: new accounts must confirm their email before 
 - Set `AUTH_REQUIRE_EMAIL_VERIFICATION=false` until Resend's sending domain is verified. Users can then work without confirming their email.
 - Set `RESEND_API_KEY` (and optionally `EMAIL_FROM`) to send email. Without a key, local development logs the recipient, the subject and the verification link instead of sending.
 - In production (`NODE_ENV=production`), sending without `RESEND_API_KEY` throws instead of silently dropping the email. Turn verification off, or set the key.
+
+## Time zone
+
+Session dates and check-in closing times are shown in one school time zone, set with `APP_TIME_ZONE`.
+It defaults to `Africa/Douala` and must be a valid IANA zone name (e.g. `Africa/Lagos`, `Europe/Paris`); an invalid name makes the attendance screens fail to render.
+Attendance rules themselves (15-minute check-ins, a session is over 12 hours after it starts) don't depend on it.
+
+## Deploying
+
+Run the migrations against the production database **before** deploying code that needs new tables or columns:
+
+```bash
+DATABASE_URL=<production connection string> npm run db:migrate
+```
+
+The new code fails on a database without its tables. Keep migrations additive (new tables, columns, indexes) so the version still running keeps working on the migrated database; a migration that drops or renames something needs a deploy in two steps.

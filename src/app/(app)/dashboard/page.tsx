@@ -4,12 +4,16 @@ import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
 import { PageHeader, Panel, SectionHeading } from '@/components/page-header'
 import { buttonVariants } from '@/components/ui/button'
+import { listOpenCheckIns } from '@/server/attendance/check-in'
 import { getSessionUser } from '@/server/auth/session'
 import { listMyClasses, type ClassSummary } from '@/server/classes/service'
 import { isVerificationPending } from '@/server/core/guards'
 import { listLecturerCourses, listStudentCourses, type CourseSummary } from '@/server/courses/service'
+import { toOpenCheckInView } from '../check-in/view'
 import { loadPage } from '../load-page'
+import { orEmptyOnError } from './fallback'
 import { groupDashboard } from './group'
+import { OpenCheckIns } from './open-check-ins'
 
 export async function generateMetadata() {
   const t = await getTranslations('dashboard')
@@ -34,11 +38,13 @@ export default async function DashboardPage() {
   if (pending) return header
 
   const data = await loadPage(async (ctx) => {
-    const [classes, courses] = await Promise.all([
+    const [classes, courses, openCheckIns] = await Promise.all([
       listMyClasses(ctx),
       isLecturer ? listLecturerCourses(ctx) : listStudentCourses(ctx),
+      // A failing check-in list must not take the whole dashboard down: show it without.
+      isLecturer ? [] : orEmptyOnError('open check-ins', () => listOpenCheckIns(ctx)),
     ])
-    return { classes, courses }
+    return { classes, courses, openCheckIns: openCheckIns.map(toOpenCheckInView) }
   })
   if (!data.ok) return <ErrorState code={data.code} />
   const { schools, otherCourses } = groupDashboard(data.data.classes, data.data.courses)
@@ -58,6 +64,7 @@ export default async function DashboardPage() {
   return (
     <>
       {header}
+      {!isLecturer && <OpenCheckIns initial={data.data.openCheckIns} />}
       {schools.map((group) => (
         <section key={group.schoolId} aria-labelledby={`school-${group.schoolId}`} className="flex flex-col gap-7">
           <SectionHeading id={`school-${group.schoolId}`}>{group.schoolName}</SectionHeading>
