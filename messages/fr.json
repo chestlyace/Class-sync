@@ -286,5 +286,95 @@
     "submitting": "Inscription…",
     "notFound": "Aucune classe ne correspond à ce code. Vérifiez-le et réessayez.",
     "matriculeTaken": "Ce matricule est déjà utilisé dans cette classe."
+  },
+  "attendance": {
+    "lecturer": {
+      "courseLink": "Présences",
+      "eyebrow": "Présences",
+      "gridTitle": "Présences",
+      "newSession": "Nouvelle séance",
+      "newSessionHint": "Démarrez une séance au début du cours, puis ouvrez l'appel de début.",
+      "requireCampus": "Exiger la présence sur le campus",
+      "requireCampusHint": "Les étudiants partagent leur position et doivent se trouver sur le campus de l'école.",
+      "noCampusHint": "Ajoutez la position du campus de l'école pour utiliser cette option.",
+      "createSession": "Démarrer la séance",
+      "creating": "Démarrage…",
+      "sessionsTitle": "Séances",
+      "sessionCount": "{count, plural, one {# séance} other {# séances}}",
+      "noSessions": "Aucune séance pour l'instant.",
+      "noStudents": "Aucun étudiant dans ce cours pour l'instant.",
+      "gridCaption": "Présences par étudiant et par séance",
+      "student": "Étudiant",
+      "totals": "Totaux",
+      "openSessionLabel": "Ouvrir la séance du {date}",
+      "overriddenLabel": "fixé par vous",
+      "legend": "P présent · ½ partiel · A absent · — rien à évaluer pour l'instant · N/I pas encore inscrit. Le crayon signale un statut que vous avez fixé vous-même.",
+      "status": {
+        "present": "Présent",
+        "partial": "Partiel",
+        "absent": "Absent",
+        "not_enrolled": "Pas encore inscrit",
+        "none": "Rien à évaluer pour l'instant"
+      },
+      "statusShort": {
+        "present": "P",
+        "partial": "½",
+        "absent": "A",
+        "not_enrolled": "N/I",
+        "none": "—"
+      },
+      "allSessions": "Toutes les séances",
+      "campusRequired": "Présence sur le campus exigée",
+      "campusNotRequired": "Position non exigée",
+      "checkInTitle": "Appel",
+      "openStart": "Ouvrir l'appel de début",
+      "openEnd": "Ouvrir l'appel de fin",
+      "opening": "Ouverture…",
+      "windowState": {
+        "notOpened": "Pas encore ouvert",
+        "open": "Ouvert",
+        "closed": "Fermé à {time}"
+      },
+      "kind": {
+        "start": "Appel de début",
+        "end": "Appel de fin"
+      },
+      "alreadyUsed": "Déjà ouvert pour cette séance.",
+      "otherOpenHere": "Fermez d'abord l'appel en cours.",
+      "live": {
+        "codeLabel": "Code de présence",
+        "nextCode": "Nouveau code dans {seconds} s",
+        "count": "{count} / {total} ont pointé",
+        "closesAt": "Se ferme à {time}",
+        "close": "Fermer l'appel",
+        "closing": "Fermeture…",
+        "present": "Projeter",
+        "exitHint": "Appuyez sur Échap pour quitter le plein écran",
+        "reconnecting": "Connexion perdue. Nouvelle tentative…"
+      },
+      "studentsTitle": "Étudiants",
+      "start": "Début",
+      "end": "Fin",
+      "statusTitle": "Statut",
+      "checked": "a pointé",
+      "notChecked": "n'a pas pointé",
+      "notOpened": "pas ouvert",
+      "override": {
+        "label": "Présence de {name}",
+        "auto": "Auto",
+        "present": "Présent",
+        "partial": "Partiel",
+        "absent": "Absent"
+      },
+      "deleteSession": "Supprimer la séance",
+      "deleteTitle": "Supprimer cette séance ?",
+      "deleteBody": "Ses pointages et les statuts que vous avez fixés sont aussi supprimés. Cette action est irréversible.",
+      "deleteConfirm": "Supprimer la séance",
+      "errors": {
+        "alreadyOpened": "Cet appel a déjà été ouvert pour cette séance.",
+        "anotherOpen": "Un autre appel de ce cours est ouvert. Fermez-le d'abord.",
+        "noCampusLocation": "L'école n'a pas encore de position de campus : vous ne pouvez pas exiger la présence sur place."
+      }
+    }
   }
 }

@@ -286,5 +286,95 @@
     "submitting": "Joining…",
     "notFound": "No class matches this code. Check it and try again.",
     "matriculeTaken": "This matricule is already used in this class."
+  },
+  "attendance": {
+    "lecturer": {
+      "courseLink": "Attendance",
+      "eyebrow": "Attendance",
+      "gridTitle": "Attendance",
+      "newSession": "New session",
+      "newSessionHint": "Start a session when class begins, then open the start check-in.",
+      "requireCampus": "Require students on campus",
+      "requireCampusHint": "Students share their location and must be within the school's campus.",
+      "noCampusHint": "Add the school's campus location to use this.",
+      "createSession": "Start session",
+      "creating": "Starting…",
+      "sessionsTitle": "Sessions",
+      "sessionCount": "{count, plural, one {# session} other {# sessions}}",
+      "noSessions": "No sessions yet.",
+      "noStudents": "No students on this course yet.",
+      "gridCaption": "Attendance by student and session",
+      "student": "Student",
+      "totals": "Totals",
+      "openSessionLabel": "Open the session of {date}",
+      "overriddenLabel": "set by you",
+      "legend": "P present · ½ partial · A absent · — nothing to judge yet · N/E not enrolled yet. The pencil marks a status you set by hand.",
+      "status": {
+        "present": "Present",
+        "partial": "Partial",
+        "absent": "Absent",
+        "not_enrolled": "Not enrolled yet",
+        "none": "Nothing to judge yet"
+      },
+      "statusShort": {
+        "present": "P",
+        "partial": "½",
+        "absent": "A",
+        "not_enrolled": "N/E",
+        "none": "—"
+      },
+      "allSessions": "All sessions",
+      "campusRequired": "On campus required",
+      "campusNotRequired": "Location not required",
+      "checkInTitle": "Check-in",
+      "openStart": "Open start check-in",
+      "openEnd": "Open end check-in",
+      "opening": "Opening…",
+      "windowState": {
+        "notOpened": "Not opened yet",
+        "open": "Open now",
+        "closed": "Closed at {time}"
+      },
+      "kind": {
+        "start": "Start check-in",
+        "end": "End check-in"
+      },
+      "alreadyUsed": "Already opened for this session.",
+      "otherOpenHere": "Close the open check-in first.",
+      "live": {
+        "codeLabel": "Attendance code",
+        "nextCode": "New code in {seconds} s",
+        "count": "{count} / {total} checked in",
+        "closesAt": "Closes at {time}",
+        "close": "Close check-in",
+        "closing": "Closing…",
+        "present": "Present",
+        "exitHint": "Press Esc to leave full screen",
+        "reconnecting": "Connection lost. Retrying…"
+      },
+      "studentsTitle": "Students",
+      "start": "Start",
+      "end": "End",
+      "statusTitle": "Status",
+      "checked": "checked in",
+      "notChecked": "not checked in",
+      "notOpened": "not opened",
+      "override": {
+        "label": "Attendance of {name}",
+        "auto": "Auto",
+        "present": "Present",
+        "partial": "Partial",
+        "absent": "Absent"
+      },
+      "deleteSession": "Delete session",
+      "deleteTitle": "Delete this session?",
+      "deleteBody": "Its check-ins and the statuses you set are deleted too. This can't be undone.",
+      "deleteConfirm": "Delete session",
+      "errors": {
+        "alreadyOpened": "This check-in was already opened for this session.",
+        "anotherOpen": "Another check-in of this course is open. Close it first.",
+        "noCampusLocation": "The school has no campus location yet, so you can't require students on campus."
+      }
+    }
   }
 }
