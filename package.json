@@ -13,8 +13,12 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@blocknote/core": "^0.57.0",
+    "@blocknote/react": "^0.57.0",
+    "@blocknote/shadcn": "^0.57.0",
     "@react-email/components": "^1.0.12",
     "@react-email/render": "^2.2.0",
+    "@vercel/blob": "^2.8.2",
     "@vercel/functions": "^3.11.0",
     "better-auth": "^1.7.18",
     "class-variance-authority": "^0.7.1",
