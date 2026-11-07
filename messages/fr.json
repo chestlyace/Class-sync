@@ -647,5 +647,28 @@
       "checkMark": "{label} : {state}",
       "statusOverridden": "{status} (fixé par vous)"
     }
+  },
+  "assignments": {
+    "files": {
+      "add": "Ajouter des fichiers",
+      "hint": "PDF, Word ou images, {maxMb} Mo maximum chacun, {max} fichiers au plus.",
+      "remove": "Retirer {name}",
+      "dismiss": "Masquer le message concernant {name}",
+      "uploading": "Envoi…",
+      "progressLabel": "Envoi de {name}",
+      "errors": {
+        "type": "Uniquement des PDF, des documents Word (.doc, .docx) et des images (JPEG, PNG, WebP, HEIC).",
+        "size": "Ce fichier dépasse {maxMb} Mo.",
+        "mismatch": "L'envoi n'est pas arrivé en entier. Réessayez.",
+        "count": "Vous pouvez ajouter {max} fichiers au plus.",
+        "files": "Ce fichier ne peut pas être utilisé ici.",
+        "name": "Ce nom de fichier n'est pas accepté. Renommez le fichier, puis réessayez.",
+        "closed": "Les rendus sont fermés.",
+        "too_many_pending": "Trop d'envois inachevés. Patientez un instant, puis réessayez.",
+        "forbidden": "Vous ne pouvez pas envoyer de fichiers ici.",
+        "session": "Votre session a expiré. Reconnectez-vous, puis réessayez.",
+        "upload": "L'envoi a échoué. Vérifiez votre connexion et réessayez."
+      }
+    }
   }
 }

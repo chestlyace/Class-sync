@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+/* The BlockNote shadcn UI ships Tailwind class names in its JS; generate them too. */
+@source "../../node_modules/@blocknote/shadcn/dist";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -130,4 +132,14 @@
   html {
     @apply font-sans;
   }
+}
+/* Rich text (BlockNote): Clasync's font; a narrower gutter for the block handles on phones. */
+.clasync-rich-text .bn-container {
+  --bn-font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+.clasync-rich-text .bn-editor {
+  padding-inline: 2.75rem 1rem;
+}
+.clasync-rich-text-view .bn-editor {
+  padding-inline: 0;
 }

@@ -647,5 +647,28 @@
       "checkMark": "{label}: {state}",
       "statusOverridden": "{status} (set by you)"
     }
+  },
+  "assignments": {
+    "files": {
+      "add": "Add files",
+      "hint": "PDF, Word or images, up to {maxMb} MB each, {max} files at most.",
+      "remove": "Remove {name}",
+      "dismiss": "Dismiss the message about {name}",
+      "uploading": "Uploading…",
+      "progressLabel": "Uploading {name}",
+      "errors": {
+        "type": "Only PDF, Word documents (.doc, .docx) and images (JPEG, PNG, WebP, HEIC).",
+        "size": "This file is larger than {maxMb} MB.",
+        "mismatch": "The upload didn't arrive complete. Try again.",
+        "count": "You can add at most {max} files.",
+        "files": "This file can't be used here.",
+        "name": "This file name can't be used. Rename the file and try again.",
+        "closed": "Submissions are closed.",
+        "too_many_pending": "Too many unfinished uploads. Wait a moment, then try again.",
+        "forbidden": "You can't upload files here.",
+        "session": "Your session has expired. Sign in again, then retry.",
+        "upload": "The upload failed. Check your connection and try again."
+      }
+    }
   }
 }
