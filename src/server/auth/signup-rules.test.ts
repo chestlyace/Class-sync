@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assertValidSignup } from './signup-rules'
+import { assertValidSignup, assertValidUserUpdate } from './signup-rules'
 
 describe('assertValidSignup', () => {
   it('rejects roles other than lecturer and student', () => {
@@ -29,5 +29,27 @@ describe('assertValidSignup', () => {
       role: 'lecturer',
       locale: 'fr',
     })
+  })
+})
+
+describe('assertValidUserUpdate', () => {
+  it('rejects any update containing role', () => {
+    expect(() => assertValidUserUpdate({ role: 'lecturer' })).toThrow(
+      expect.objectContaining({ code: 'VALIDATION' }),
+    )
+    expect(() => assertValidUserUpdate({ role: undefined })).toThrow(
+      expect.objectContaining({ code: 'VALIDATION' }),
+    )
+  })
+
+  it('validates locale', () => {
+    expect(() => assertValidUserUpdate({ locale: 'xx' })).toThrow(
+      expect.objectContaining({ code: 'VALIDATION' }),
+    )
+    expect(() => assertValidUserUpdate({ locale: 'fr' })).not.toThrow()
+  })
+
+  it('allows unrelated updates', () => {
+    expect(() => assertValidUserUpdate({ name: 'Ada', emailVerified: true })).not.toThrow()
   })
 })

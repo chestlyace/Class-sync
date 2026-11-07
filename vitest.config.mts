@@ -5,6 +5,9 @@ export default defineConfig({
   resolve: { tsconfigPaths: true },
   test: {
     environment: 'node',
+    // Each PGlite database boots and migrates in-process; parallel files can exceed 5s.
+    testTimeout: 30000,
+    hookTimeout: 30000,
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
   },
 })

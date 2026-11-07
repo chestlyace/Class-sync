@@ -18,3 +18,13 @@ export function assertValidSignup(input: { role: unknown; locale: unknown }): {
   }
   return { role: input.role, locale: input.locale }
 }
+
+/** Rejects user updates that change the role (sign-up only) or set an unsupported locale. */
+export function assertValidUserUpdate(data: Record<string, unknown>): void {
+  if ('role' in data) {
+    throw new AppError('VALIDATION', 'Role cannot be changed after sign-up')
+  }
+  if ('locale' in data && !isLocale(data.locale)) {
+    throw new AppError('VALIDATION', 'Locale must be "en" or "fr"')
+  }
+}
