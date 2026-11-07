@@ -19,6 +19,7 @@ type CourseView =
       course: CourseSummary
       roster: CourseRosterEntry[]
       excluded: RosterEntry[]
+      classHasStudents: boolean
     }
   | { role: 'student'; course: CourseSummary }
 
@@ -37,7 +38,7 @@ export default async function CoursePage({ params }: PageProps<'/courses/[course
     const onRoster = new Set(roster.map((s) => s.studentId))
     // In the class but not on the roster: excluded from this course.
     const excluded = classRoster.filter((s) => !onRoster.has(s.studentId))
-    return { role: 'lecturer', course, roster, excluded }
+    return { role: 'lecturer', course, roster, excluded, classHasStudents: classRoster.length > 0 }
   })
   if (!view.ok) return <ErrorState code={view.code} />
   const { course } = view.data
@@ -70,6 +71,7 @@ export default async function CoursePage({ params }: PageProps<'/courses/[course
           courseId={course.id}
           roster={view.data.roster}
           excluded={view.data.excluded}
+          classHasStudents={view.data.classHasStudents}
         />
       )}
     </>
@@ -93,10 +95,12 @@ async function LecturerRoster({
   courseId,
   roster,
   excluded,
+  classHasStudents,
 }: {
   courseId: string
   roster: CourseRosterEntry[]
   excluded: RosterEntry[]
+  classHasStudents: boolean
 }) {
   const t = await getTranslations('courses.page')
   return (
@@ -162,10 +166,17 @@ async function LecturerRoster({
 
       <section aria-labelledby="course-include" className="flex flex-col gap-4">
         <SectionHeading id="course-include">{t('includeTitle')}</SectionHeading>
-        <p className="text-sm text-muted-foreground">{t('includeHint')}</p>
-        <Panel>
-          <IncludeSearch courseId={courseId} />
-        </Panel>
+        {classHasStudents ? (
+          <>
+            <p className="text-sm text-muted-foreground">{t('includeHint')}</p>
+            <Panel>
+              <IncludeSearch courseId={courseId} />
+            </Panel>
+          </>
+        ) : (
+          // The search stays closed while the class is empty (the service returns nothing).
+          <p className="text-sm text-muted-foreground">{t('includeNeedsClass')}</p>
+        )}
       </section>
     </>
   )

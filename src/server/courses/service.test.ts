@@ -305,9 +305,13 @@ describe('courses service', () => {
     expect(roster.map((r) => r.matricule)).toEqual(['UB1', 'UB2', 'UB3'])
   })
   describe('searchSchoolStudentsForCourse', () => {
-    /** setup() plus a colleague's own class at the same school, and a class at another school. */
+    /**
+     * setup() plus one active student in the course's own class (search is closed while that class
+     * is empty), a colleague's own class at the same school, and a class at another school.
+     */
     async function searchSetup() {
       const base = await setup()
+      await enroll(await studentCtx({ name: 'Anchor Member' }), base.cls.studentCode!, 'ANC1')
       const colleagueClass = await createClass(base.colleague, {
         schoolId: base.sch.id,
         name: 'Maths L3',
@@ -381,17 +385,53 @@ describe('courses service', () => {
       expect(await searchSchoolStudentsForCourse(lecturer, algo.id, '__')).toEqual([])
     })
 
-    it('caps results at 20, ordered by name then matricule', async () => {
+    it('caps results at 10, ordered by name then matricule', async () => {
       const { lecturer, algo, colleagueClass } = await searchSetup()
-      for (let i = 25; i >= 1; i--) {
+      for (let i = 15; i >= 1; i--) {
         const n = String(i).padStart(2, '0')
         await enroll(await studentCtx({ name: `Capped ${n}` }), colleagueClass.studentCode!, `CAP${n}`)
       }
       const result = await searchSchoolStudentsForCourse(lecturer, algo.id, 'capped')
-      expect(result).toHaveLength(20)
+      expect(result).toHaveLength(10)
       expect(result.map((r) => r.matricule)).toEqual(
-        Array.from({ length: 20 }, (_, i) => `CAP${String(i + 1).padStart(2, '0')}`),
+        Array.from({ length: 10 }, (_, i) => `CAP${String(i + 1).padStart(2, '0')}`),
       )
+    })
+
+    it("returns nothing while the course's own class has no active student", async () => {
+      const { lecturer, sch, algo, cls, colleagueClass } = await searchSetup()
+      const zoe = await studentCtx({ name: 'Zoe Candidate' })
+      await enroll(zoe, colleagueClass.studentCode!, 'MA21X07')
+      expect(await searchSchoolStudentsForCourse(lecturer, algo.id, 'zoe')).toHaveLength(1)
+
+      // A course in an empty class at the same school: no search at all.
+      const emptyClass = await createClass(lecturer, { schoolId: sch.id, name: 'CS L1', academicYear: '2026/27' })
+      const emptyCourse = await createCourse(lecturer, { classId: emptyClass.id, title: 'Intro', semester: 1 })
+      expect(await searchSchoolStudentsForCourse(lecturer, emptyCourse.id, 'zoe')).toEqual([])
+      expect(await searchSchoolStudentsForCourse(lecturer, emptyCourse.id, 'MA21X07')).toEqual([])
+
+      // Removed students do not count: once the class's only student is removed, search closes.
+      const [anchor] = (await getCourseRoster(lecturer, algo.id)).filter((r) => r.source === 'class')
+      await removeStudentFromClass(lecturer, cls.id, anchor.studentId)
+      expect(await searchSchoolStudentsForCourse(lecturer, algo.id, 'zoe')).toEqual([])
+    })
+
+    it('matches names from 3 characters, matricules from 2', async () => {
+      const { lecturer, algo, colleagueClass } = await searchSetup()
+      const zoe = await studentCtx({ name: 'Zoe Nkemelu' })
+      await enroll(zoe, colleagueClass.studentCode!, 'ZO77')
+      const other = await studentCtx({ name: 'Paul Zoeller' })
+      await enroll(other, colleagueClass.studentCode!, 'PZ1')
+      // "zo" is in both names but only in Zoe's matricule: a 2-character query never matches names.
+      expect((await searchSchoolStudentsForCourse(lecturer, algo.id, 'zo')).map((r) => r.name)).toEqual(['Zoe Nkemelu'])
+      expect((await searchSchoolStudentsForCourse(lecturer, algo.id, ' zo ')).map((r) => r.name)).toEqual([
+        'Zoe Nkemelu',
+      ])
+      expect((await searchSchoolStudentsForCourse(lecturer, algo.id, 'nk')).map((r) => r.name)).toEqual([])
+      expect((await searchSchoolStudentsForCourse(lecturer, algo.id, 'zoe')).map((r) => r.name)).toEqual([
+        'Paul Zoeller',
+        'Zoe Nkemelu',
+      ])
     })
 
     it('is owner-only: a colleague, a student and an unknown course are FORBIDDEN', async () => {

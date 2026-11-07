@@ -194,7 +194,8 @@
       "includeSearchLabel": "Nom ou matricule",
       "includeSearchPlaceholder": "ex. Ngono ou UB21S009",
       "includeSearching": "Recherche…",
-      "includeTooShort": "Saisissez au moins 2 caractères.",
+      "includeTooShort": "Saisissez au moins 2 caractères d'un matricule, ou 3 d'un nom.",
+      "includeNeedsClass": "Dès que des étudiants auront rejoint cette classe, vous pourrez ajouter ici des étudiants des autres classes de l'établissement.",
       "includeNoMatches": "Aucun étudiant de l'établissement ne correspond à « {query} ».",
       "includeResults": "Étudiants correspondants"
     }

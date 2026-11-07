@@ -26,8 +26,10 @@ export { isOnRoster as isOnCourseRoster }
 /** A student who could be included in a course. No email: they may be outside my own classes. */
 export type IncludeCandidate = { studentId: string; name: string; matricule: string }
 
-const STUDENT_SEARCH_MIN = 2
-const STUDENT_SEARCH_LIMIT = 20
+// Ruling R16: the school-wide student search must not become a directory of the school.
+const STUDENT_SEARCH_MIN = 2 // matricules match from 2 characters
+const STUDENT_SEARCH_NAME_MIN = 3 // names only from 3, so "jo" can't list every John and Joseph
+const STUDENT_SEARCH_LIMIT = 10
 
 const createCourseSchema = z.object({
   classId: z.string().min(1),
@@ -202,6 +204,15 @@ async function isActiveInClass(db: Db, classId: string, studentId: string): Prom
   return row !== undefined
 }
 
+async function classHasActiveStudent(db: Db, classId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ userId: classStudent.userId })
+    .from(classStudent)
+    .where(and(eq(classStudent.classId, classId), eq(classStudent.status, 'active')))
+    .limit(1)
+  return row !== undefined
+}
+
 async function isActiveAtSchool(db: Db, schoolId: string, studentId: string): Promise<boolean> {
   const [row] = await db
     .select({ userId: classStudent.userId })
@@ -263,9 +274,12 @@ export async function setRosterAdjustment(
 /**
  * Students the course owner could include: active in any class at the course's school, not in
  * the course's own class (they are managed with exclude/restore) and not already included.
- * Matches name or any of their matricules at the school, case-insensitively; at least 2
- * characters. Each student appears once, with their most recent matricule at the school (the
- * same pick as the roster query).
+ * Matches any of their matricules at the school from 2 characters, and their name from 3,
+ * case-insensitively; at most 10 results. Each student appears once, with their most recent
+ * matricule at the school (the same pick as the roster query).
+ *
+ * Closed (always []) while the course's own class has no active student: a lecturer cannot open
+ * an empty class at a school just to browse its students (Ruling R16).
  */
 export async function searchSchoolStudentsForCourse(
   ctx: Ctx,
@@ -275,6 +289,7 @@ export async function searchSchoolStudentsForCourse(
   const owned = await requireCourseOwner(ctx, courseId)
   const q = query.trim()
   if (q.length < STUDENT_SEARCH_MIN) return []
+  if (!(await classHasActiveStudent(ctx.db, owned.classId))) return []
   const pattern = containsPattern(q)
 
   // One row per student active at the school: their most recent membership there.
@@ -309,7 +324,7 @@ export async function searchSchoolStudentsForCourse(
     .where(
       and(
         eq(user.role, 'student'),
-        or(ilike(user.name, pattern), matriculeMatches),
+        q.length >= STUDENT_SEARCH_NAME_MIN ? or(ilike(user.name, pattern), matriculeMatches) : matriculeMatches,
         sql`not ${inCourseClass}`,
         sql`not ${alreadyIncluded}`,
       ),
