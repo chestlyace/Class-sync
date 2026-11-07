@@ -34,6 +34,11 @@ describe('extensionsFor', () => {
     expect(extensionsFor('image/jpeg')).toEqual(expect.arrayContaining(['jpg', 'jpeg']))
     expect(extensionsFor('video/mp4')).toEqual([])
   })
+  it('ignores inherited object properties', () => {
+    for (const k of ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf']) {
+      expect(extensionsFor(k), k).toEqual([])
+    }
+  })
 })
 
 describe('isAllowedFile', () => {
@@ -43,6 +48,15 @@ describe('isAllowedFile', () => {
     expect(isAllowedFile('notes.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 5)).toBe('ok')
     expect(isAllowedFile('old.doc', 'application/msword', 5)).toBe('ok')
     expect(isAllowedFile('a.b.jpeg', 'IMAGE/JPEG', 5)).toBe('ok')
+  })
+  it('treats a declared type that is an object property name as unsupported', () => {
+    for (const k of ['constructor', '__proto__', 'toString']) {
+      expect(isAllowedFile('a.pdf', k, 5), k).toBe('type')
+    }
+  })
+  it('judges by the last extension, case-insensitively', () => {
+    expect(isAllowedFile('a.pdf.exe', 'application/pdf', 1)).toBe('type')
+    expect(isAllowedFile('ESSAY.PDF', 'application/pdf', 1)).toBe('ok')
   })
   it('rejects a mismatched extension or unsupported type', () => {
     expect(isAllowedFile('virus.exe', 'application/pdf', 1_000)).toBe('type')
@@ -69,6 +83,8 @@ describe('isValidMark', () => {
   })
   it('rejects off-step, out-of-range and non-finite marks', () => {
     expect(isValidMark(17.3, 20)).toBe(false)
+    expect(isValidMark(0.3, 20)).toBe(false)
+    expect(isValidMark(0.1 + 0.2, 20)).toBe(false)
     expect(isValidMark(20.3, 20)).toBe(false)
     expect(isValidMark(21, 20)).toBe(false)
     expect(isValidMark(-1, 20)).toBe(false)
