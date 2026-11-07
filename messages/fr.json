@@ -808,6 +808,68 @@
         "session": "Votre session a expiré. Reconnectez-vous, puis réessayez.",
         "upload": "L'envoi a échoué. Vérifiez votre connexion et réessayez."
       }
+    },
+    "student": {
+      "eyebrow": "Devoir",
+      "taughtBy": "Avec {name}",
+      "backToCourse": "Retour au cours",
+      "due": "À rendre le",
+      "maxMark": "Note maximale",
+      "handIn": "Rendu",
+      "mode": {
+        "files": "Envoyer des fichiers",
+        "text": "Rédiger la réponse",
+        "both": "Rédiger une réponse, envoyer des fichiers, ou les deux"
+      },
+      "lateNote": "La date limite est passée. Un travail rendu maintenant est marqué en retard.",
+      "closedNote": "Les rendus sont fermés. La date limite est passée et ce devoir n'accepte plus de travail.",
+      "instructions": "Consignes",
+      "noInstructions": "Aucune consigne.",
+      "openFile": "Ouvrir {name}",
+      "grade": "Note",
+      "feedback": "Commentaire",
+      "noFeedback": "Aucun commentaire n'a été ajouté.",
+      "yourWork": "Votre travail",
+      "answer": "Votre réponse",
+      "answerHint": "Conservée sur cet appareil pendant la saisie, jusqu'à l'envoi.",
+      "files": "Fichiers",
+      "restored": "Votre réponse non envoyée a été restaurée.",
+      "discard": "Abandonner",
+      "submit": "Rendre",
+      "replace": "Remplacer le rendu",
+      "submitting": "Envoi…",
+      "waitForUploads": "Attendez la fin des envois.",
+      "submittedAt": "Rendu à {time}",
+      "submittedOn": "Rendu {date}",
+      "late": "En retard",
+      "replaceGradedNote": "Votre travail est noté. Le rendre à nouveau le remplace et efface la note.",
+      "nothingHandedIn": "Vous n'avez rien rendu.",
+      "myAssignments": "Mes devoirs",
+      "noAssignments": "Aucun devoir pour l'instant.",
+      "dueThisWeek": "À rendre cette semaine",
+      "dueOn": "À rendre le {date}",
+      "wasDue": "Date limite passée : {date}",
+      "gradedMark": "Noté · {mark} / {max}",
+      "state": {
+        "todo": "À faire",
+        "submitted": "Rendu",
+        "late": "En retard",
+        "graded": "Noté",
+        "closed": "Fermé"
+      },
+      "errors": {
+        "files_required": "Ajoutez au moins un fichier avant de rendre.",
+        "text_required": "Rédigez votre réponse avant de rendre.",
+        "files_not_allowed": "Ce devoir n'accepte qu'une réponse rédigée. Retirez les fichiers, puis rendez.",
+        "empty": "Rédigez une réponse ou ajoutez un fichier avant de rendre.",
+        "files": "Certains fichiers ne sont plus disponibles. Retirez-les et envoyez-les à nouveau.",
+        "count": "Vous pouvez rendre {max} fichiers au plus.",
+        "fileIds": "La liste des fichiers n'a pas pu être lue. Rechargez la page et réessayez.",
+        "text": "Votre réponse est trop longue ou n'a pas pu être lue.",
+        "closed": "Les rendus sont fermés pour ce devoir.",
+        "too_many_pending": "Trop d'envois inachevés. Patientez un instant, puis réessayez.",
+        "forbidden": "Vous n'êtes pas sur la liste de ce cours, vous ne pouvez donc pas rendre de travail ici."
+      }
     }
   }
 }

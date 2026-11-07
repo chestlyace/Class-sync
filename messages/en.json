@@ -808,6 +808,68 @@
         "session": "Your session has expired. Sign in again, then retry.",
         "upload": "The upload failed. Check your connection and try again."
       }
+    },
+    "student": {
+      "eyebrow": "Assignment",
+      "taughtBy": "With {name}",
+      "backToCourse": "Back to the course",
+      "due": "Due",
+      "maxMark": "Max mark",
+      "handIn": "Hand in",
+      "mode": {
+        "files": "Upload files",
+        "text": "Type your answer",
+        "both": "Type an answer, upload files, or both"
+      },
+      "lateNote": "The due date has passed. Work handed in now is marked late.",
+      "closedNote": "Submissions are closed. The due date has passed and this assignment no longer accepts work.",
+      "instructions": "Instructions",
+      "noInstructions": "No instructions.",
+      "openFile": "Open {name}",
+      "grade": "Grade",
+      "feedback": "Feedback",
+      "noFeedback": "No feedback was added.",
+      "yourWork": "Your work",
+      "answer": "Your answer",
+      "answerHint": "Kept on this device as you type, until you submit.",
+      "files": "Files",
+      "restored": "Restored your unsent answer.",
+      "discard": "Discard",
+      "submit": "Submit",
+      "replace": "Replace submission",
+      "submitting": "Submitting…",
+      "waitForUploads": "Wait for the uploads to finish.",
+      "submittedAt": "Submitted at {time}",
+      "submittedOn": "Submitted {date}",
+      "late": "Late",
+      "replaceGradedNote": "Your work is graded. Submitting again replaces it and removes the grade.",
+      "nothingHandedIn": "You didn't hand anything in.",
+      "myAssignments": "My assignments",
+      "noAssignments": "No assignments yet.",
+      "dueThisWeek": "Due this week",
+      "dueOn": "Due {date}",
+      "wasDue": "Was due {date}",
+      "gradedMark": "Graded · {mark} / {max}",
+      "state": {
+        "todo": "To do",
+        "submitted": "Submitted",
+        "late": "Late",
+        "graded": "Graded",
+        "closed": "Closed"
+      },
+      "errors": {
+        "files_required": "Add at least one file before submitting.",
+        "text_required": "Type your answer before submitting.",
+        "files_not_allowed": "This assignment takes a typed answer only. Remove the files, then submit.",
+        "empty": "Type an answer or add a file before submitting.",
+        "files": "Some files are no longer available. Remove them and upload them again.",
+        "count": "You can hand in at most {max} files.",
+        "fileIds": "The file list couldn't be read. Reload the page and try again.",
+        "text": "Your answer is too long or couldn't be read.",
+        "closed": "Submissions are closed for this assignment.",
+        "too_many_pending": "Too many unfinished uploads. Wait a moment, then try again.",
+        "forbidden": "You're not on this course's list, so you can't hand in work here."
+      }
     }
   }
 }
