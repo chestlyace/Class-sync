@@ -191,7 +191,7 @@
       "includeHint": "Recherchez parmi les étudiants de l'établissement par nom ou matricule. Les étudiants de cette classe se gèrent dans la liste ci-dessus.",
       "include": "Ajouter",
       "includeLabel": "Ajouter {name} à ce cours",
-      "studentNext": "Les présences et les devoirs de ce cours apparaîtront ici.",
+      "studentNext": "Les devoirs de ce cours apparaîtront ici.",
       "includeSearchLabel": "Nom ou matricule",
       "includeSearchPlaceholder": "ex. Ngono ou UB21S009",
       "includeSearching": "Recherche…",
@@ -286,5 +286,47 @@
     "submitting": "Inscription…",
     "notFound": "Aucune classe ne correspond à ce code. Vérifiez-le et réessayez.",
     "matriculeTaken": "Ce matricule est déjà utilisé dans cette classe."
+  },
+  "attendance": {
+    "student": {
+      "nav": "Pointer",
+      "title": "Pointer",
+      "description": "Saisissez le code que votre enseignant affiche à l'écran.",
+      "emptyTitle": "Aucun pointage ouvert pour le moment",
+      "emptyBody": "Quand votre enseignant ouvre un pointage, il apparaît ici. Cette page se met à jour toute seule.",
+      "kindStart": "Début",
+      "kindEnd": "Fin",
+      "closesAt": "Ferme à {time}",
+      "codeLabel": "Code affiché à l'écran",
+      "codeHint": "6 lettres et chiffres. Il change toutes les minutes.",
+      "codeRequired": "Saisissez le code affiché à l'écran.",
+      "locationExplain": "Ce cours vérifie que vous êtes sur le campus. Quand vous appuierez sur Pointer, votre navigateur demandera votre position ; elle ne sert qu'à cette vérification.",
+      "locating": "Localisation en cours…",
+      "submit": "Pointer",
+      "submitting": "Pointage…",
+      "checkedIn": "Pointé",
+      "alreadyCheckedIn": "Vous avez déjà pointé",
+      "forbidden": "Vous n'êtes pas sur la liste de ce cours, vous ne pouvez donc pas pointer ici.",
+      "emailUnverified": "Vérifiez votre adresse e-mail avant de pointer.",
+      "refusal": {
+        "closed": "Ce pointage est fermé.",
+        "too_many_attempts": "Trop de codes erronés pour ce pointage. Demandez à votre enseignant de vous marquer présent.",
+        "wrong_code": "Ce code n'est pas le bon. Il change toutes les minutes : saisissez celui affiché à l'écran maintenant.",
+        "location_required": "Ce pointage a besoin de votre position. Autorisez la localisation pour ce site dans votre navigateur, puis réessayez.",
+        "location_imprecise": "Votre position n'est pas assez précise. Activez les services de localisation ou rapprochez-vous d'une fenêtre, puis réessayez.",
+        "off_campus": "Vous ne semblez pas être sur le campus. Le pointage ne fonctionne que depuis l'établissement."
+      },
+      "bannerTitle": "Pointage ouvert : {courses}",
+      "myAttendance": "Mes présences",
+      "sessions": "Séances",
+      "noSessions": "Aucune présence n'a encore été relevée pour ce cours.",
+      "status": {
+        "present": "Présent",
+        "partial": "Partiel",
+        "absent": "Absent",
+        "not_enrolled": "Pas encore inscrit au cours",
+        "none": "Pas encore relevée"
+      }
+    }
   }
 }

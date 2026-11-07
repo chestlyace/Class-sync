@@ -191,7 +191,7 @@
       "includeHint": "Search the school's students by name or matricule. Students of this class are managed in the roster above.",
       "include": "Add",
       "includeLabel": "Add {name} to this course",
-      "studentNext": "Attendance and assignments for this course will appear here.",
+      "studentNext": "Assignments for this course will appear here.",
       "includeSearchLabel": "Name or matricule",
       "includeSearchPlaceholder": "e.g. Ngono or UB21S009",
       "includeSearching": "Searching…",
@@ -286,5 +286,47 @@
     "submitting": "Joining…",
     "notFound": "No class matches this code. Check it and try again.",
     "matriculeTaken": "This matricule is already used in this class."
+  },
+  "attendance": {
+    "student": {
+      "nav": "Check in",
+      "title": "Check in",
+      "description": "Enter the code your lecturer shows on the screen.",
+      "emptyTitle": "No check-in open right now",
+      "emptyBody": "When your lecturer opens a check-in, it appears here. This page updates by itself.",
+      "kindStart": "Start",
+      "kindEnd": "End",
+      "closesAt": "Closes at {time}",
+      "codeLabel": "Code on the screen",
+      "codeHint": "6 letters and digits. It changes every minute.",
+      "codeRequired": "Enter the code shown on the screen.",
+      "locationExplain": "This class checks that you're on campus. When you tap Check in, your browser will ask for your location; it is only used for this check.",
+      "locating": "Getting your location…",
+      "submit": "Check in",
+      "submitting": "Checking in…",
+      "checkedIn": "Checked in",
+      "alreadyCheckedIn": "You're already checked in",
+      "forbidden": "You're not on this course's list, so you can't check in here.",
+      "emailUnverified": "Verify your email address before checking in.",
+      "refusal": {
+        "closed": "This check-in has closed.",
+        "too_many_attempts": "Too many wrong codes for this check-in. Ask your lecturer to mark you present.",
+        "wrong_code": "That code isn't right. It changes every minute, so enter the one on the screen now.",
+        "location_required": "This check-in needs your location. Allow location access for this site in your browser, then try again.",
+        "location_imprecise": "Your location isn't precise enough. Turn on location services or move near a window, then try again.",
+        "off_campus": "You don't seem to be on campus. Check-in only works from the school."
+      },
+      "bannerTitle": "Check-in open: {courses}",
+      "myAttendance": "My attendance",
+      "sessions": "Sessions",
+      "noSessions": "No attendance has been taken for this course yet.",
+      "status": {
+        "present": "Present",
+        "partial": "Partial",
+        "absent": "Absent",
+        "not_enrolled": "Not on the course yet",
+        "none": "Not taken yet"
+      }
+    }
   }
 }

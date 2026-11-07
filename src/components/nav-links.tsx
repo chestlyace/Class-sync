@@ -1,6 +1,6 @@
 'use client'
 
-import { KeyRound, LayoutGrid, Plus, type LucideIcon } from 'lucide-react'
+import { ClipboardCheck, KeyRound, LayoutGrid, Plus, type LucideIcon } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -11,11 +11,13 @@ type Item = { href: string; label: string; icon: LucideIcon }
 
 function useItems(role: Role): Item[] {
   const t = useTranslations('nav')
+  const tAttendance = useTranslations('attendance.student')
   const items: Item[] = [
     { href: '/dashboard', label: t('dashboard'), icon: LayoutGrid },
     { href: '/join', label: t('join'), icon: KeyRound },
   ]
   if (role === 'lecturer') items.push({ href: '/classes/new', label: t('newClass'), icon: Plus })
+  if (role === 'student') items.push({ href: '/check-in', label: tAttendance('nav'), icon: ClipboardCheck })
   return items
 }
 
