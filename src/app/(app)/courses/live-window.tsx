@@ -3,7 +3,7 @@
 import { Maximize2, Square } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from 'react'
 import { ErrorCodeMessage } from '@/components/action-error'
 import { Button } from '@/components/ui/button'
 import { FieldError } from '@/components/ui/field'
@@ -15,6 +15,32 @@ import { AttendanceError } from './attendance-controls'
 import { formatSessionDate } from './attendance-format'
 
 type Snapshot = { view: LiveWindowView; receivedAt: number }
+
+const subscribeNever = () => () => {}
+
+/** Whether this browser lets the page go full screen (false on iPhone Safari, in some iframes). */
+function useFullscreenEnabled(): boolean {
+  return useSyncExternalStore(
+    subscribeNever,
+    () => document.fullscreenEnabled === true,
+    () => false, // server render: no button until the browser says it can
+  )
+}
+
+const COARSE_POINTER = '(pointer: coarse)'
+
+/** A touch screen as the main pointer: there is no Esc key to mention. */
+function useTouchScreen(): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const query = window.matchMedia(COARSE_POINTER)
+      query.addEventListener('change', onChange)
+      return () => query.removeEventListener('change', onChange)
+    },
+    () => window.matchMedia(COARSE_POINTER).matches,
+    () => false,
+  )
+}
 
 type PollProblem = { kind: 'network' } | { kind: 'error'; result: Extract<ActionResult<unknown>, { ok: false }> }
 
@@ -33,6 +59,8 @@ export function LiveWindow({ initial, timeZone }: { initial: LiveWindowView; tim
   const [now, setNow] = useState(() => Date.now())
   const [problem, setProblem] = useState<PollProblem | null>(null)
   const [fullscreen, setFullscreen] = useState(false)
+  const canFullscreen = useFullscreenEnabled()
+  const touchScreen = useTouchScreen()
   const [closeState, setCloseState] = useState<ActionResult<unknown> | null>(null)
   const [closing, startClosing] = useTransition()
   const { view } = snapshot
@@ -137,7 +165,8 @@ export function LiveWindow({ initial, timeZone }: { initial: LiveWindowView; tim
             : 'font-display text-[min(18vw,9rem)] leading-none tracking-[0.12em]'
         }
       >
-        {view.code ?? '——————'}
+        {/* No code (closing): a placeholder kept out of the live region's announcements. */}
+        {view.code ?? <span aria-hidden="true">——————</span>}
       </p>
 
       <div className="flex flex-col items-center gap-1">
@@ -163,13 +192,17 @@ export function LiveWindow({ initial, timeZone }: { initial: LiveWindowView; tim
       )}
 
       {fullscreen ? (
-        <p className="font-mono text-xs tracking-[0.1em] text-muted-foreground uppercase">{t('live.exitHint')}</p>
+        !touchScreen && (
+          <p className="font-mono text-xs tracking-[0.1em] text-muted-foreground uppercase">{t('live.exitHint')}</p>
+        )
       ) : (
         <div className="flex flex-wrap justify-center gap-2.5">
-          <Button type="button" variant="outline" onClick={present}>
-            <Maximize2 aria-hidden="true" data-icon="inline-start" />
-            {t('live.present')}
-          </Button>
+          {canFullscreen && (
+            <Button type="button" variant="outline" onClick={present}>
+              <Maximize2 aria-hidden="true" data-icon="inline-start" />
+              {t('live.present')}
+            </Button>
+          )}
           <Button type="button" variant="destructive" disabled={closing || !open} onClick={close}>
             <Square aria-hidden="true" data-icon="inline-start" />
             {closing ? t('live.closing') : t('live.close')}

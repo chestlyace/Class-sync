@@ -388,7 +388,7 @@
         "closesAt": "Closes at {time}",
         "close": "Close check-in",
         "closing": "Closing…",
-        "present": "Present",
+        "present": "Full screen",
         "exitHint": "Press Esc to leave full screen",
         "reconnecting": "Connection lost. Retrying…"
       },
