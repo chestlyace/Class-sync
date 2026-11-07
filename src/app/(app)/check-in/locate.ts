@@ -28,3 +28,39 @@ export function locate(geolocation: Geolocation | undefined): Promise<Position |
     )
   })
 }
+
+export type Locator = {
+  /** Starts the position request early (e.g. when the code input gets focus), once. */
+  warm(): void
+  /**
+   * The position to send with a check-in. Reuses the early request: waits for it while it is
+   * pending, and reuses its fix. When it already ended without a position (denied, ignored,
+   * timed out) before this submit, asks once more: the student may have allowed it since.
+   */
+  position(): Promise<Position | null>
+}
+
+/** Starts the location fix while the student types the code, so the code doesn't expire meanwhile. */
+export function createLocator(getGeolocation: () => Geolocation | undefined): Locator {
+  let attempt: { promise: Promise<Position | null>; settled: boolean; value: Position | null } | null = null
+
+  function start() {
+    const current = { promise: locate(getGeolocation()), settled: false, value: null as Position | null }
+    current.promise.then((value) => {
+      current.settled = true
+      current.value = value
+    })
+    attempt = current
+    return current
+  }
+
+  return {
+    warm() {
+      if (!attempt) start()
+    },
+    position() {
+      if (!attempt || (attempt.settled && attempt.value === null)) return start().promise
+      return attempt.promise
+    },
+  }
+}

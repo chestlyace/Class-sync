@@ -300,7 +300,7 @@
       "codeLabel": "Code on the screen",
       "codeHint": "6 letters and digits. It changes every minute.",
       "codeRequired": "Enter the code shown on the screen.",
-      "locationExplain": "This class checks that you're on campus. When you tap Check in, your browser will ask for your location; it is only used for this check.",
+      "locationExplain": "This class checks that you're on campus. When you start entering the code, your browser will ask for your location; it is only used for this check.",
       "locating": "Getting your location…",
       "submit": "Check in",
       "submitting": "Checking in…",

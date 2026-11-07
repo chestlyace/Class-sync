@@ -300,7 +300,7 @@
       "codeLabel": "Code affiché à l'écran",
       "codeHint": "6 lettres et chiffres. Il change toutes les minutes.",
       "codeRequired": "Saisissez le code affiché à l'écran.",
-      "locationExplain": "Ce cours vérifie que vous êtes sur le campus. Quand vous appuierez sur Pointer, votre navigateur demandera votre position ; elle ne sert qu'à cette vérification.",
+      "locationExplain": "Ce cours vérifie que vous êtes sur le campus. Quand vous commencerez à saisir le code, votre navigateur demandera votre position ; elle ne sert qu'à cette vérification.",
       "locating": "Localisation en cours…",
       "submit": "Pointer",
       "submitting": "Pointage…",
