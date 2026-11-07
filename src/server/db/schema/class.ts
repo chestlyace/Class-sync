@@ -21,7 +21,7 @@ export const class_ = pgTable('class', {
   createdBy: text('created_by')
     .notNull()
     .references(() => user.id),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
 export const classLecturer = pgTable(
@@ -48,7 +48,7 @@ export const classStudent = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
     matricule: text('matricule').notNull(),
     status: text('status', { enum: CLASS_STUDENT_STATUSES }).notNull().default('active'),
-    joinedAt: timestamp('joined_at').notNull().defaultNow(),
+    joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     primaryKey({ columns: [t.classId, t.userId] }),

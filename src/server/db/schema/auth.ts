@@ -1,18 +1,26 @@
-import { boolean, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
+import { boolean, check, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
 
 // Better Auth core tables (hand-written to match its documented Drizzle pg schema),
 // plus the app-specific `role` and `locale` additional fields on `user`.
-export const user = pgTable('user', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  email: text('email').notNull().unique(),
-  emailVerified: boolean('email_verified').notNull().default(false),
-  image: text('image'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  role: text('role').notNull(),
-  locale: text('locale').notNull().default('en'),
-})
+export const user = pgTable(
+  'user',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    email: text('email').notNull().unique(),
+    emailVerified: boolean('email_verified').notNull().default(false),
+    image: text('image'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    role: text('role').notNull(),
+    locale: text('locale').notNull().default('en'),
+  },
+  (t) => [
+    check('user_role_check', sql`${t.role} in ('lecturer', 'student')`),
+    check('user_locale_check', sql`${t.locale} in ('en', 'fr')`),
+  ],
+)
 
 export const session = pgTable('session', {
   id: text('id').primaryKey(),

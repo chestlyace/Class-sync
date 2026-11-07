@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { createTestDb } from '@/test/db'
 import { makeUser } from '@/test/factories'
-import { class_, classStudent, course, courseRosterAdjustment, school } from './schema'
+import { class_, classStudent, course, courseRosterAdjustment, school, user } from './schema'
 
 async function seedClass(db: Awaited<ReturnType<typeof createTestDb>>) {
   const owner = await makeUser(db)
@@ -28,6 +28,27 @@ describe('schema', () => {
   it('migrations apply to a fresh database', async () => {
     const db = await createTestDb()
     expect(await db.select().from(school)).toEqual([])
+  })
+
+  it('rejects a user with an unknown role or locale', async () => {
+    const db = await createTestDb()
+    const row = { id: 'u-check', name: 'N', email: 'check@example.com', role: 'student', locale: 'en' }
+    await expect(db.insert(user).values({ ...row, role: 'admin' })).rejects.toThrow()
+    await expect(db.insert(user).values({ ...row, locale: 'de' })).rejects.toThrow()
+    await db.insert(user).values(row)
+  })
+
+  it('stores app timestamps with time zone', async () => {
+    const db = await createTestDb()
+    const res = await db.execute(sql`
+      select table_name, column_name, data_type from information_schema.columns
+      where table_schema = 'public'
+        and (table_name, column_name) in (
+          ('school','created_at'), ('class','created_at'), ('class_student','joined_at'),
+          ('course','created_at'), ('course_roster_adjustment','created_at'))`)
+    const rows = (res as unknown as { rows: { data_type: string }[] }).rows
+    expect(rows).toHaveLength(5)
+    for (const r of rows) expect(r.data_type).toBe('timestamp with time zone')
   })
 
   it('rejects two schools with the same name_key and town_key', async () => {

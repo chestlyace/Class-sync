@@ -21,7 +21,7 @@ export const course = pgTable(
     title: text('title').notNull(),
     code: text('code'),
     semester: smallint('semester').notNull(),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [check('course_semester_check', sql`${t.semester} between 1 and 3`)],
 )
@@ -39,7 +39,7 @@ export const courseRosterAdjustment = pgTable(
     createdBy: text('created_by')
       .notNull()
       .references(() => user.id),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     primaryKey({ columns: [t.courseId, t.studentId] }),

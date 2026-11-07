@@ -18,7 +18,7 @@ export const school = pgTable(
     createdBy: text('created_by')
       .notNull()
       .references(() => user.id),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [unique('school_name_key_town_key_unique').on(t.nameKey, t.townKey)],
 )
