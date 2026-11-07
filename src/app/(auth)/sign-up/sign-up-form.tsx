@@ -22,13 +22,19 @@ export function SignUpForm({ defaultLocale }: { defaultLocale: Locale }) {
   const tCommon = useTranslations('common')
   const tRoot = useTranslations()
   const router = useRouter()
-  const [role, setRole] = useState<'lecturer' | 'student'>('student')
+  // No default: the role is permanent, so it must be an explicit choice.
+  const [role, setRole] = useState<'lecturer' | 'student' | null>(null)
+  const [roleError, setRoleError] = useState(false)
   const [locale, setLocale] = useState<Locale>(defaultLocale)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (role === null) {
+      setRoleError(true)
+      return
+    }
     const form = new FormData(event.currentTarget)
     const email = String(form.get('email') ?? '')
     setPending(true)
@@ -82,7 +88,7 @@ export function SignUpForm({ defaultLocale }: { defaultLocale: Locale }) {
           />
           <FieldDescription>{t('passwordHint')}</FieldDescription>
         </Field>
-        <FieldSet>
+        <FieldSet aria-describedby="role-hint" aria-invalid={roleError || undefined}>
           <FieldLegend variant="label">{t('role')}</FieldLegend>
           <div className="flex flex-col gap-2">
             {(['lecturer', 'student'] as const).map((value) => (
@@ -95,13 +101,18 @@ export function SignUpForm({ defaultLocale }: { defaultLocale: Locale }) {
                   name="role"
                   value={value}
                   checked={role === value}
-                  onChange={() => setRole(value)}
+                  onChange={() => {
+                    setRole(value)
+                    setRoleError(false)
+                  }}
                   className="size-4 accent-primary"
                 />
                 {value === 'lecturer' ? t('roleLecturer') : t('roleStudent')}
               </label>
             ))}
           </div>
+          <FieldDescription id="role-hint">{t('roleHint')}</FieldDescription>
+          {roleError && <FieldError>{t('roleRequired')}</FieldError>}
         </FieldSet>
         <Field>
           <FieldLabel htmlFor="language">{t('language')}</FieldLabel>

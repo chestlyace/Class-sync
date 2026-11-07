@@ -9,7 +9,11 @@
     "save": "Enregistrer",
     "cancel": "Annuler",
     "back": "Retour",
-    "genericError": "Une erreur est survenue. Veuillez réessayer."
+    "genericError": "Une erreur est survenue. Veuillez réessayer.",
+    "close": "Fermer",
+    "copy": "Copier",
+    "copied": "Copié",
+    "optional": "Facultatif"
   },
   "auth": {
     "signUp": {
@@ -25,7 +29,9 @@
       "language": "Langue",
       "submit": "Créer mon compte",
       "submitting": "Création du compte…",
-      "haveAccount": "Vous avez déjà un compte ?"
+      "haveAccount": "Vous avez déjà un compte ?",
+      "roleRequired": "Indiquez si vous êtes enseignant ou étudiant.",
+      "roleHint": "Ce choix ne pourra pas être modifié."
     },
     "signIn": {
       "title": "Content de vous revoir",
@@ -59,16 +65,135 @@
     "courses": "Cours",
     "signIn": "Connexion",
     "signUp": "Inscription",
-    "signOut": "Déconnexion"
+    "signOut": "Déconnexion",
+    "dashboard": "Tableau de bord",
+    "join": "Rejoindre",
+    "newClass": "Nouvelle classe",
+    "main": "Navigation principale",
+    "account": "Connecté en tant que {name}"
   },
   "schools": {
-    "title": "Établissements"
+    "title": "Établissements",
+    "new": {
+      "title": "Trouvez votre établissement",
+      "description": "Cherchez d'abord : votre établissement est peut-être déjà sur Clasync.",
+      "searchLabel": "Rechercher par nom d'établissement",
+      "searchPlaceholder": "ex. Institut supérieur",
+      "searching": "Recherche…",
+      "noMatches": "Aucun établissement ne correspond à « {query} ».",
+      "results": "Établissements correspondants",
+      "choose": "Choisir",
+      "chooseLabel": "Créer une classe à {name}",
+      "addSchool": "Introuvable ? Ajoutez un nouvel établissement",
+      "createTitle": "Ajouter un établissement",
+      "createDescription": "Seulement s'il n'apparaît pas dans la recherche.",
+      "name": "Nom de l'établissement",
+      "town": "Ville",
+      "location": "Emplacement",
+      "locationHint": "Facultatif. Utilisez-le sur place : Clasync pourra vérifier que les étudiants sont bien présents.",
+      "useLocation": "Utiliser ma position actuelle",
+      "locating": "Localisation en cours…",
+      "locationSet": "Position enregistrée : {lat}, {lng}",
+      "clearLocation": "Effacer la position",
+      "locationDenied": "L'accès à la position a été refusé. Vous pouvez ajouter l'établissement sans elle.",
+      "locationUnavailable": "Votre position n'a pas pu être obtenue. Vous pouvez ajouter l'établissement sans elle.",
+      "locationUnsupported": "Ce navigateur ne peut pas partager sa position.",
+      "submit": "Ajouter l'établissement",
+      "submitting": "Ajout…",
+      "conflict": "Cet établissement existe déjà.",
+      "useExisting": "Utiliser l'établissement existant"
+    }
   },
   "classes": {
-    "title": "Classes"
+    "title": "Classes",
+    "new": {
+      "title": "Nouvelle classe",
+      "description": "Une classe est partagée : vos collègues la rejoignent avec le code enseignant et y ajoutent leurs propres cours.",
+      "pickSchool": "Choisissez d'abord l'établissement.",
+      "school": "Établissement",
+      "changeSchool": "Changer d'établissement",
+      "name": "Nom de la classe",
+      "namePlaceholder": "ex. BTS 2 Génie logiciel",
+      "academicYear": "Année académique",
+      "academicYearHint": "Au format 2026/27.",
+      "submit": "Créer la classe",
+      "submitting": "Création…"
+    },
+    "page": {
+      "eyebrow": "Classe",
+      "studentCode": "Code étudiant",
+      "studentCodeHint": "Les étudiants rejoignent la classe avec ce code et leur matricule.",
+      "lecturerCode": "Code enseignant",
+      "lecturerCodeHint": "Vos collègues rejoignent la classe avec ce code pour y ajouter leurs cours.",
+      "copyStudentCode": "Copier le code étudiant",
+      "copyLecturerCode": "Copier le code enseignant",
+      "regenerate": "Régénérer",
+      "regenerateStudentLabel": "Régénérer le code étudiant",
+      "regenerateLecturerLabel": "Régénérer le code enseignant",
+      "regenerateStudentTitle": "Régénérer le code étudiant ?",
+      "regenerateLecturerTitle": "Régénérer le code enseignant ?",
+      "regenerateBody": "Le code actuel cesse immédiatement de fonctionner. Les personnes déjà inscrites restent dans la classe.",
+      "regenerateConfirm": "Régénérer le code",
+      "roster": "Étudiants",
+      "rosterEmpty": "Aucun étudiant pour l'instant. Partagez le code étudiant pour qu'ils puissent rejoindre la classe.",
+      "name": "Nom",
+      "matricule": "Matricule",
+      "email": "E-mail",
+      "remove": "Retirer",
+      "removeLabel": "Retirer {name} de la classe",
+      "removeTitle": "Retirer {name} ?",
+      "removeBody": "Cet étudiant perd l'accès à tous les cours de cette classe.",
+      "removeConfirm": "Retirer l'étudiant",
+      "rejoinNote": "Un étudiant retiré peut revenir avec le code étudiant actuel, sauf si vous le régénérez.",
+      "courses": "Vos cours dans cette classe",
+      "coursesEmpty": "Vous n'avez encore aucun cours dans cette classe.",
+      "addCourse": "Ajouter un cours",
+      "studentCourses": "Cours de cette classe",
+      "studentCoursesEmpty": "Aucun cours dans cette classe pour l'instant.",
+      "myMatricule": "Votre matricule"
+    }
   },
   "courses": {
-    "title": "Cours"
+    "title": "Cours",
+    "new": {
+      "title": "Nouveau cours",
+      "description": "Tous les étudiants actifs de la classe sont inscrits au cours. Vous pourrez ajuster la liste ensuite.",
+      "class": "Classe",
+      "chooseClass": "Choisissez une classe",
+      "noClasses": "Créez ou rejoignez d'abord une classe.",
+      "courseTitle": "Intitulé du cours",
+      "courseTitlePlaceholder": "ex. Bases de données",
+      "code": "Code du cours",
+      "codePlaceholder": "ex. INF 214",
+      "semester": "Semestre",
+      "semesterOption": "Semestre {n}",
+      "submit": "Créer le cours",
+      "submitting": "Création…"
+    },
+    "page": {
+      "eyebrow": "Cours",
+      "semester": "Semestre {n}",
+      "lecturer": "Enseignant : {name}",
+      "openClass": "Ouvrir la classe",
+      "roster": "Liste des étudiants",
+      "rosterCount": "{count, plural, one {# étudiant} other {# étudiants}}",
+      "rosterEmpty": "Aucun étudiant inscrit à ce cours pour l'instant.",
+      "fromClass": "Classe",
+      "included": "Ajouté",
+      "exclude": "Exclure",
+      "excludeLabel": "Exclure {name} de ce cours",
+      "removeInclude": "Retirer",
+      "removeIncludeLabel": "Retirer {name} de ce cours",
+      "excludedTitle": "Exclus de ce cours",
+      "excludedHint": "Ils restent dans la classe mais ne suivent pas ce cours.",
+      "restore": "Réintégrer",
+      "restoreLabel": "Réintégrer {name} dans ce cours",
+      "includeTitle": "Ajouter des étudiants de vos autres classes",
+      "includeHint": "Étudiants de vos autres classes dans cet établissement qui suivent aussi ce cours.",
+      "include": "Ajouter",
+      "includeLabel": "Ajouter {name} à ce cours",
+      "studentNext": "Les présences et les devoirs de ce cours apparaîtront ici."
+    }
   },
   "errors": {
     "UNAUTHENTICATED": "Veuillez vous connecter pour continuer.",
@@ -88,5 +213,60 @@
       "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :",
       "ignore": "Si vous n'avez pas créé de compte Clasync, vous pouvez ignorer cet e-mail."
     }
+  },
+  "landing": {
+    "eyebrow": "Pour les enseignants et les étudiants",
+    "title": "Vos classes, en phase",
+    "body": "Les enseignants créent une classe une seule fois et partagent un code. Les étudiants la rejoignent avec leur matricule et voient tous les cours de leur classe.",
+    "lecturerTitle": "Enseignants",
+    "lecturerBody": "Trouvez ou ajoutez votre établissement, ouvrez une classe partagée et ajoutez-y vos cours.",
+    "studentTitle": "Étudiants",
+    "studentBody": "Rejoignez votre classe une seule fois avec son code et votre matricule. Tous les cours de la classe apparaissent d'eux-mêmes."
+  },
+  "verifyBanner": {
+    "title": "Vérifiez votre adresse e-mail",
+    "body": "Ouvrez le lien envoyé à {email} pour pouvoir créer et rejoindre des classes.",
+    "resend": "Renvoyer l'e-mail de vérification",
+    "sending": "Envoi…",
+    "sent": "Envoyé. Consultez votre boîte mail.",
+    "failed": "L'e-mail n'a pas pu être envoyé. Veuillez réessayer."
+  },
+  "errorPage": {
+    "title": "Impossible d'ouvrir cette page",
+    "backToDashboard": "Retour au tableau de bord"
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "greeting": "Bonjour, {name}",
+    "lecturerEyebrow": "Enseignant",
+    "studentEyebrow": "Étudiant",
+    "newSchool": "Nouvel établissement",
+    "newClass": "Nouvelle classe",
+    "newCourse": "Nouveau cours",
+    "joinAsLecturer": "Rejoindre une classe comme enseignant",
+    "joinClass": "Rejoindre une classe",
+    "lecturerEmptyTitle": "Aucune classe pour l'instant",
+    "lecturerEmptyBody": "Créez une classe dans votre établissement, ou rejoignez celle d'un collègue avec son code enseignant.",
+    "studentEmptyTitle": "Aucun cours pour l'instant",
+    "studentEmptyBody": "Demandez le code de la classe à votre enseignant, puis rejoignez-la avec votre matricule.",
+    "classMeta": "{year} · {count, plural, one {# étudiant} other {# étudiants}}",
+    "addCourse": "Ajouter un cours à cette classe",
+    "openClass": "Ouvrir la classe",
+    "noCourses": "Aucun cours dans cette classe pour l'instant.",
+    "semester": "Semestre {n}",
+    "taughtBy": "Avec {name}"
+  },
+  "join": {
+    "title": "Rejoindre une classe",
+    "lecturerDescription": "Saisissez le code enseignant transmis par un collègue. Vous pourrez ensuite ajouter vos propres cours à la classe.",
+    "studentDescription": "Saisissez le code donné par votre enseignant et votre matricule. Une seule fois par classe suffit.",
+    "code": "Code de la classe",
+    "codeHint": "6 lettres et chiffres.",
+    "matricule": "Matricule",
+    "matriculeHint": "Tel qu'il figure sur votre carte d'étudiant.",
+    "submit": "Rejoindre la classe",
+    "submitting": "Inscription…",
+    "notFound": "Aucune classe ne correspond à ce code. Vérifiez-le et réessayez.",
+    "matriculeTaken": "Ce matricule est déjà utilisé dans cette classe."
   }
 }

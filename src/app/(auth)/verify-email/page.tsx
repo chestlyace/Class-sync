@@ -18,7 +18,7 @@ export default async function VerifyEmailPage({
   return (
     <>
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
+        <h1 className="font-display text-5xl leading-[0.95] tracking-[0.01em]">{t('title')}</h1>
         <p className="text-sm text-muted-foreground">
           {address ? t('description', { email: address }) : t('descriptionNoEmail')}
         </p>

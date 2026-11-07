@@ -9,7 +9,11 @@
     "save": "Save",
     "cancel": "Cancel",
     "back": "Back",
-    "genericError": "Something went wrong. Please try again."
+    "genericError": "Something went wrong. Please try again.",
+    "close": "Close",
+    "copy": "Copy",
+    "copied": "Copied",
+    "optional": "Optional"
   },
   "auth": {
     "signUp": {
@@ -25,7 +29,9 @@
       "language": "Language",
       "submit": "Create account",
       "submitting": "Creating account…",
-      "haveAccount": "Already have an account?"
+      "haveAccount": "Already have an account?",
+      "roleRequired": "Choose whether you are a lecturer or a student.",
+      "roleHint": "You can't change this later."
     },
     "signIn": {
       "title": "Welcome back",
@@ -59,16 +65,135 @@
     "courses": "Courses",
     "signIn": "Sign in",
     "signUp": "Sign up",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "dashboard": "Dashboard",
+    "join": "Join",
+    "newClass": "New class",
+    "main": "Main navigation",
+    "account": "Signed in as {name}"
   },
   "schools": {
-    "title": "Schools"
+    "title": "Schools",
+    "new": {
+      "title": "Find your school",
+      "description": "Search first: your school may already be on Clasync.",
+      "searchLabel": "Search by school name",
+      "searchPlaceholder": "e.g. Higher Institute",
+      "searching": "Searching…",
+      "noMatches": "No school matches “{query}”.",
+      "results": "Matching schools",
+      "choose": "Choose",
+      "chooseLabel": "Create a class at {name}",
+      "addSchool": "Can't find it? Add a new school",
+      "createTitle": "Add a new school",
+      "createDescription": "Only if it isn't in the search results.",
+      "name": "School name",
+      "town": "Town",
+      "location": "Location",
+      "locationHint": "Optional. Use it while you are at the school: it lets Clasync check that students are on site.",
+      "useLocation": "Use my current location",
+      "locating": "Getting your location…",
+      "locationSet": "Location set: {lat}, {lng}",
+      "clearLocation": "Clear location",
+      "locationDenied": "Location access was denied. You can add the school without it.",
+      "locationUnavailable": "We couldn't get your location. You can add the school without it.",
+      "locationUnsupported": "This browser can't share its location.",
+      "submit": "Add school",
+      "submitting": "Adding…",
+      "conflict": "This school already exists.",
+      "useExisting": "Use the existing school"
+    }
   },
   "classes": {
-    "title": "Classes"
+    "title": "Classes",
+    "new": {
+      "title": "New class",
+      "description": "A class is shared: colleagues join it with the lecturer code and add their own courses.",
+      "pickSchool": "First, choose the school.",
+      "school": "School",
+      "changeSchool": "Change school",
+      "name": "Class name",
+      "namePlaceholder": "e.g. HND 2 Software Engineering",
+      "academicYear": "Academic year",
+      "academicYearHint": "Written like 2026/27.",
+      "submit": "Create class",
+      "submitting": "Creating…"
+    },
+    "page": {
+      "eyebrow": "Class",
+      "studentCode": "Student code",
+      "studentCodeHint": "Students join with this code and their matricule.",
+      "lecturerCode": "Lecturer code",
+      "lecturerCodeHint": "Colleagues join with this code to add their own courses.",
+      "copyStudentCode": "Copy the student code",
+      "copyLecturerCode": "Copy the lecturer code",
+      "regenerate": "Regenerate",
+      "regenerateStudentLabel": "Regenerate the student code",
+      "regenerateLecturerLabel": "Regenerate the lecturer code",
+      "regenerateStudentTitle": "Regenerate the student code?",
+      "regenerateLecturerTitle": "Regenerate the lecturer code?",
+      "regenerateBody": "The current code stops working at once. Everyone who already joined stays in the class.",
+      "regenerateConfirm": "Regenerate code",
+      "roster": "Students",
+      "rosterEmpty": "No students yet. Share the student code so they can join.",
+      "name": "Name",
+      "matricule": "Matricule",
+      "email": "Email",
+      "remove": "Remove",
+      "removeLabel": "Remove {name} from the class",
+      "removeTitle": "Remove {name}?",
+      "removeBody": "They lose access to every course of this class.",
+      "removeConfirm": "Remove student",
+      "rejoinNote": "A removed student can rejoin with the current student code unless you regenerate it.",
+      "courses": "Your courses in this class",
+      "coursesEmpty": "You have no course in this class yet.",
+      "addCourse": "Add a course",
+      "studentCourses": "Courses in this class",
+      "studentCoursesEmpty": "No courses in this class yet.",
+      "myMatricule": "Your matricule"
+    }
   },
   "courses": {
-    "title": "Courses"
+    "title": "Courses",
+    "new": {
+      "title": "New course",
+      "description": "Every active student of the class is on the course roster. You can adjust it afterwards.",
+      "class": "Class",
+      "chooseClass": "Choose a class",
+      "noClasses": "Create or join a class first.",
+      "courseTitle": "Course title",
+      "courseTitlePlaceholder": "e.g. Database Systems",
+      "code": "Course code",
+      "codePlaceholder": "e.g. SWE 214",
+      "semester": "Semester",
+      "semesterOption": "Semester {n}",
+      "submit": "Create course",
+      "submitting": "Creating…"
+    },
+    "page": {
+      "eyebrow": "Course",
+      "semester": "Semester {n}",
+      "lecturer": "Lecturer: {name}",
+      "openClass": "Open class",
+      "roster": "Roster",
+      "rosterCount": "{count, plural, one {# student} other {# students}}",
+      "rosterEmpty": "No students on this course yet.",
+      "fromClass": "Class",
+      "included": "Added",
+      "exclude": "Exclude",
+      "excludeLabel": "Exclude {name} from this course",
+      "removeInclude": "Remove",
+      "removeIncludeLabel": "Remove {name} from this course",
+      "excludedTitle": "Excluded from this course",
+      "excludedHint": "They stay in the class but don't take this course.",
+      "restore": "Restore",
+      "restoreLabel": "Put {name} back on this course",
+      "includeTitle": "Add students from your other classes",
+      "includeHint": "Students of your other classes at this school who also take this course.",
+      "include": "Add",
+      "includeLabel": "Add {name} to this course",
+      "studentNext": "Attendance and assignments for this course will appear here."
+    }
   },
   "errors": {
     "UNAUTHENTICATED": "Please sign in to continue.",
@@ -88,5 +213,60 @@
       "fallback": "If the button doesn't work, copy and paste this link into your browser:",
       "ignore": "If you didn't create a Clasync account, you can safely ignore this email."
     }
+  },
+  "landing": {
+    "eyebrow": "For lecturers and students",
+    "title": "Your classes, in sync",
+    "body": "Lecturers set up a class once and share a code. Students join with their matricule and see every course of their class.",
+    "lecturerTitle": "Lecturers",
+    "lecturerBody": "Find or add your school, open a shared class and add your courses to it.",
+    "studentTitle": "Students",
+    "studentBody": "Join your class once with its code and your matricule. Every course of the class shows up on its own."
+  },
+  "verifyBanner": {
+    "title": "Verify your email address",
+    "body": "Open the link we sent to {email} to start creating and joining classes.",
+    "resend": "Resend verification email",
+    "sending": "Sending…",
+    "sent": "Sent. Check your inbox.",
+    "failed": "We couldn't send the email. Please try again."
+  },
+  "errorPage": {
+    "title": "Can't open this page",
+    "backToDashboard": "Back to the dashboard"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "greeting": "Hello, {name}",
+    "lecturerEyebrow": "Lecturer",
+    "studentEyebrow": "Student",
+    "newSchool": "New school",
+    "newClass": "New class",
+    "newCourse": "New course",
+    "joinAsLecturer": "Join a class as lecturer",
+    "joinClass": "Join a class",
+    "lecturerEmptyTitle": "No classes yet",
+    "lecturerEmptyBody": "Create a class at your school, or join a colleague's class with their lecturer code.",
+    "studentEmptyTitle": "No courses yet",
+    "studentEmptyBody": "Ask your lecturer for the class code, then join with your matricule.",
+    "classMeta": "{year} · {count, plural, one {# student} other {# students}}",
+    "addCourse": "Add a course to this class",
+    "openClass": "Open class",
+    "noCourses": "No courses in this class yet.",
+    "semester": "Semester {n}",
+    "taughtBy": "With {name}"
+  },
+  "join": {
+    "title": "Join a class",
+    "lecturerDescription": "Enter the lecturer code a colleague shared with you. You can then add your own courses to the class.",
+    "studentDescription": "Enter the code your lecturer gave you and your matricule. You only do this once per class.",
+    "code": "Class code",
+    "codeHint": "6 letters and digits.",
+    "matricule": "Matricule",
+    "matriculeHint": "As written on your student card.",
+    "submit": "Join class",
+    "submitting": "Joining…",
+    "notFound": "No class matches this code. Check it and try again.",
+    "matriculeTaken": "This matricule is already used in this class."
   }
 }

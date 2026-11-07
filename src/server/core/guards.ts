@@ -1,9 +1,14 @@
 import { config } from './config'
-import type { Ctx, Role } from './context'
+import type { Ctx, Role, SessionUser } from './context'
 import { AppError } from './errors'
 
+/** True while the user still has to verify their email before creating or joining anything. */
+export function isVerificationPending(user: SessionUser): boolean {
+  return config.requireEmailVerification && !user.emailVerified
+}
+
 export function requireVerified(ctx: Ctx): void {
-  if (config.requireEmailVerification && !ctx.user.emailVerified) {
+  if (isVerificationPending(ctx.user)) {
     throw new AppError('EMAIL_UNVERIFIED', 'Email address is not verified')
   }
 }

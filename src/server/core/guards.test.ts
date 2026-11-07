@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { config, setConfigForTests } from './config'
-import { requireRole, requireVerified } from './guards'
+import { isVerificationPending, requireRole, requireVerified } from './guards'
 import type { Ctx, SessionUser } from './context'
 import type { Db } from '../db'
 
@@ -36,6 +36,14 @@ describe('guards', () => {
   it('requireVerified allows unverified user when verification is switched off', () => {
     setConfigForTests({ requireEmailVerification: false })
     expect(() => requireVerified(ctx({ emailVerified: false }))).not.toThrow()
+  })
+
+  it('isVerificationPending is true only for an unverified user while verification is required', () => {
+    setConfigForTests({ requireEmailVerification: true })
+    expect(isVerificationPending(ctx({ emailVerified: false }).user)).toBe(true)
+    expect(isVerificationPending(ctx().user)).toBe(false)
+    setConfigForTests({ requireEmailVerification: false })
+    expect(isVerificationPending(ctx({ emailVerified: false }).user)).toBe(false)
   })
 
   it('requireRole throws FORBIDDEN when a student calls a lecturer action', () => {
