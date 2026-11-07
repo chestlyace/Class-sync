@@ -1,0 +1,92 @@
+{
+  "common": {
+    "appName": "Clasync",
+    "tagline": "Classes, courses and students, in one place.",
+    "language": "Language",
+    "english": "English",
+    "french": "Français",
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "back": "Back",
+    "genericError": "Something went wrong. Please try again."
+  },
+  "auth": {
+    "signUp": {
+      "title": "Create your account",
+      "description": "Join Clasync as a lecturer or a student.",
+      "name": "Full name",
+      "email": "Email address",
+      "password": "Password",
+      "passwordHint": "At least 8 characters.",
+      "role": "I am…",
+      "roleLecturer": "I'm a lecturer",
+      "roleStudent": "I'm a student",
+      "language": "Language",
+      "submit": "Create account",
+      "submitting": "Creating account…",
+      "haveAccount": "Already have an account?"
+    },
+    "signIn": {
+      "title": "Welcome back",
+      "description": "Sign in to continue to Clasync.",
+      "email": "Email address",
+      "password": "Password",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "noAccount": "New to Clasync?"
+    },
+    "verify": {
+      "title": "Check your inbox",
+      "description": "We sent a verification link to {email}. Open it to activate your account.",
+      "descriptionNoEmail": "We sent you a verification link. Open it to activate your account.",
+      "hint": "Can't find it? Check your spam folder.",
+      "backToSignIn": "Back to sign in"
+    },
+    "errors": {
+      "invalidCredentials": "Incorrect email or password.",
+      "userExists": "An account with this email already exists.",
+      "passwordTooShort": "Your password is too short (minimum 8 characters).",
+      "passwordTooLong": "Your password is too long.",
+      "invalidEmail": "Please enter a valid email address.",
+      "emailNotVerified": "Please verify your email address before signing in."
+    }
+  },
+  "nav": {
+    "home": "Home",
+    "schools": "Schools",
+    "classes": "Classes",
+    "courses": "Courses",
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "signOut": "Sign out"
+  },
+  "schools": {
+    "title": "Schools"
+  },
+  "classes": {
+    "title": "Classes"
+  },
+  "courses": {
+    "title": "Courses"
+  },
+  "errors": {
+    "UNAUTHENTICATED": "Please sign in to continue.",
+    "EMAIL_UNVERIFIED": "Please verify your email address to continue.",
+    "FORBIDDEN": "You don't have permission to do that.",
+    "NOT_FOUND": "We couldn't find what you were looking for.",
+    "VALIDATION": "Some of the information you entered isn't valid.",
+    "CONFLICT": "This conflicts with something that already exists."
+  },
+  "email": {
+    "verify": {
+      "subject": "Verify your Clasync email address",
+      "preview": "Confirm your email address to activate your Clasync account",
+      "greeting": "Hello {name},",
+      "body": "Thanks for joining Clasync. Please confirm your email address to activate your account.",
+      "cta": "Verify my email",
+      "fallback": "If the button doesn't work, copy and paste this link into your browser:",
+      "ignore": "If you didn't create a Clasync account, you can safely ignore this email."
+    }
+  }
+}

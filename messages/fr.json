@@ -1,0 +1,92 @@
+{
+  "common": {
+    "appName": "Clasync",
+    "tagline": "Vos classes, cours et étudiants, au même endroit.",
+    "language": "Langue",
+    "english": "English",
+    "french": "Français",
+    "loading": "Chargement…",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "back": "Retour",
+    "genericError": "Une erreur est survenue. Veuillez réessayer."
+  },
+  "auth": {
+    "signUp": {
+      "title": "Créez votre compte",
+      "description": "Rejoignez Clasync en tant qu'enseignant ou étudiant.",
+      "name": "Nom complet",
+      "email": "Adresse e-mail",
+      "password": "Mot de passe",
+      "passwordHint": "Au moins 8 caractères.",
+      "role": "Je suis…",
+      "roleLecturer": "Je suis enseignant",
+      "roleStudent": "Je suis étudiant",
+      "language": "Langue",
+      "submit": "Créer mon compte",
+      "submitting": "Création du compte…",
+      "haveAccount": "Vous avez déjà un compte ?"
+    },
+    "signIn": {
+      "title": "Content de vous revoir",
+      "description": "Connectez-vous pour accéder à Clasync.",
+      "email": "Adresse e-mail",
+      "password": "Mot de passe",
+      "submit": "Se connecter",
+      "submitting": "Connexion…",
+      "noAccount": "Nouveau sur Clasync ?"
+    },
+    "verify": {
+      "title": "Vérifiez votre boîte mail",
+      "description": "Nous avons envoyé un lien de vérification à {email}. Ouvrez-le pour activer votre compte.",
+      "descriptionNoEmail": "Nous vous avons envoyé un lien de vérification. Ouvrez-le pour activer votre compte.",
+      "hint": "Vous ne le trouvez pas ? Regardez dans vos courriers indésirables.",
+      "backToSignIn": "Retour à la connexion"
+    },
+    "errors": {
+      "invalidCredentials": "Adresse e-mail ou mot de passe incorrect.",
+      "userExists": "Un compte existe déjà avec cette adresse e-mail.",
+      "passwordTooShort": "Votre mot de passe est trop court (8 caractères minimum).",
+      "passwordTooLong": "Votre mot de passe est trop long.",
+      "invalidEmail": "Veuillez saisir une adresse e-mail valide.",
+      "emailNotVerified": "Veuillez vérifier votre adresse e-mail avant de vous connecter."
+    }
+  },
+  "nav": {
+    "home": "Accueil",
+    "schools": "Établissements",
+    "classes": "Classes",
+    "courses": "Cours",
+    "signIn": "Connexion",
+    "signUp": "Inscription",
+    "signOut": "Déconnexion"
+  },
+  "schools": {
+    "title": "Établissements"
+  },
+  "classes": {
+    "title": "Classes"
+  },
+  "courses": {
+    "title": "Cours"
+  },
+  "errors": {
+    "UNAUTHENTICATED": "Veuillez vous connecter pour continuer.",
+    "EMAIL_UNVERIFIED": "Veuillez vérifier votre adresse e-mail pour continuer.",
+    "FORBIDDEN": "Vous n'avez pas l'autorisation d'effectuer cette action.",
+    "NOT_FOUND": "Nous n'avons pas trouvé ce que vous cherchez.",
+    "VALIDATION": "Certaines informations saisies ne sont pas valides.",
+    "CONFLICT": "Cette action entre en conflit avec un élément existant."
+  },
+  "email": {
+    "verify": {
+      "subject": "Confirmez votre adresse e-mail Clasync",
+      "preview": "Confirmez votre adresse e-mail pour activer votre compte Clasync",
+      "greeting": "Bonjour {name},",
+      "body": "Merci de rejoindre Clasync. Veuillez confirmer votre adresse e-mail pour activer votre compte.",
+      "cta": "Confirmer mon e-mail",
+      "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :",
+      "ignore": "Si vous n'avez pas créé de compte Clasync, vous pouvez ignorer cet e-mail."
+    }
+  }
+}
