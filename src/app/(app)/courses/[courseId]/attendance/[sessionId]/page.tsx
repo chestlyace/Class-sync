@@ -56,6 +56,8 @@ export default async function AttendanceSessionPage({
     if (anyOpen) return t('otherOpenHere')
     return undefined
   }
+  const describeCheck = (label: string, opened: boolean, checked: boolean) =>
+    t('checkMark', { label, state: !opened ? t('notOpened') : checked ? t('checked') : t('notChecked') })
   const windowStateText = (w: WindowState | undefined) =>
     !w ? t('windowState.notOpened') : w.open ? t('windowState.open') : t('windowState.closed', { time: time(w.closesAt) })
 
@@ -118,13 +120,13 @@ export default async function AttendanceSessionPage({
                       label={t('start')}
                       opened={windowOf('start') !== undefined}
                       checked={student.checkedStart}
-                      text={{ checked: t('checked'), notChecked: t('notChecked'), notOpened: t('notOpened') }}
+                      describe={describeCheck}
                     />
                     <CheckMark
                       label={t('end')}
                       opened={windowOf('end') !== undefined}
                       checked={student.checkedEnd}
-                      text={{ checked: t('checked'), notChecked: t('notChecked'), notOpened: t('notOpened') }}
+                      describe={describeCheck}
                     />
                     <span className="inline-flex w-28 items-center gap-1 font-medium">
                       {t(`status.${statusKey}`)}
@@ -175,17 +177,18 @@ function CheckMark({
   label,
   opened,
   checked,
-  text,
+  describe,
 }: {
   label: string
   opened: boolean
   checked: boolean
-  text: { checked: string; notChecked: string; notOpened: string }
+  /** "Start: checked in" (in French "Début : a pointé"). */
+  describe: (label: string, opened: boolean, checked: boolean) => string
 }) {
-  const state = !opened ? text.notOpened : checked ? text.checked : text.notChecked
+  const description = describe(label, opened, checked)
   const Icon = !opened ? Minus : checked ? Check : X
   return (
-    <span title={`${label}: ${state}`} className="inline-flex items-center gap-1">
+    <span title={description} className="inline-flex items-center gap-1">
       <span aria-hidden="true" className="font-mono text-xs tracking-[0.04em] text-muted-foreground uppercase">
         {label}
       </span>
@@ -195,9 +198,7 @@ function CheckMark({
           !opened ? 'size-4 text-muted-foreground' : checked ? 'size-4 text-foreground' : 'size-4 text-destructive'
         }
       />
-      <span className="sr-only">
-        {label}: {state}
-      </span>
+      <span className="sr-only">{description}</span>
     </span>
   )
 }

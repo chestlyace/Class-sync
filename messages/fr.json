@@ -416,7 +416,9 @@
         "noCampusLocation": "L'école n'a pas encore de position de campus : vous ne pouvez pas exiger la présence sur place.",
         "sessionOver": "Cette séance est terminée : elle a commencé il y a plus de {hours} heures. Démarrez une nouvelle séance."
       },
-      "sessionOver": "Cette séance est terminée : elle a commencé il y a plus de {hours} heures. Démarrez une nouvelle séance pour faire l'appel."
+      "sessionOver": "Cette séance est terminée : elle a commencé il y a plus de {hours} heures. Démarrez une nouvelle séance pour faire l'appel.",
+      "checkMark": "{label} : {state}",
+      "statusOverridden": "{status} (fixé par vous)"
     }
   }
 }

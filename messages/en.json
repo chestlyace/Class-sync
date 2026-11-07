@@ -416,7 +416,9 @@
         "noCampusLocation": "The school has no campus location yet, so you can't require students on campus.",
         "sessionOver": "This session is over: it started more than {hours} hours ago. Start a new session."
       },
-      "sessionOver": "This session is over: it started more than {hours} hours ago. Start a new session to take attendance."
+      "sessionOver": "This session is over: it started more than {hours} hours ago. Start a new session to take attendance.",
+      "checkMark": "{label}: {state}",
+      "statusOverridden": "{status} (set by you)"
     }
   }
 }

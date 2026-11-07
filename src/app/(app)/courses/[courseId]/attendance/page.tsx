@@ -125,8 +125,11 @@ export default async function AttendanceGridPage({ params }: PageProps<'/courses
                             status={row.statuses[s.id] ?? null}
                             overridden={row.overridden[s.id] ?? false}
                             short={(key) => t(`statusShort.${key}`)}
-                            full={(key) => t(`status.${key}`)}
-                            overriddenLabel={t('overriddenLabel')}
+                            full={(key, overridden) =>
+                              overridden
+                                ? t('statusOverridden', { status: t(`status.${key}`) })
+                                : t(`status.${key}`)
+                            }
                           />
                         </TableCell>
                       ))}
@@ -154,16 +157,15 @@ function StatusMark({
   overridden,
   short,
   full,
-  overriddenLabel,
 }: {
   status: AttendanceStatus | null
   overridden: boolean
   short: (key: StatusKey) => string
-  full: (key: StatusKey) => string
-  overriddenLabel: string
+  /** The full word, saying when the lecturer set it by hand. */
+  full: (key: StatusKey, overridden: boolean) => string
 }) {
   const key: StatusKey = status ?? 'none'
-  const label = overridden ? `${full(key)} (${overriddenLabel})` : full(key)
+  const label = full(key, overridden)
   return (
     <span title={label} className="inline-flex items-center gap-1">
       <span aria-hidden="true" className={status === 'absent' ? 'font-semibold text-destructive' : 'font-semibold'}>
