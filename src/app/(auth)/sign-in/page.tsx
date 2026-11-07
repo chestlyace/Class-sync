@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
+import { redirectIfSignedIn } from '../redirect-if-signed-in'
 import { SignInForm } from './sign-in-form'
 
 export async function generateMetadata() {
@@ -8,6 +9,7 @@ export async function generateMetadata() {
 }
 
 export default async function SignInPage() {
+  await redirectIfSignedIn()
   const t = await getTranslations('auth.signIn')
   return (
     <>

@@ -241,6 +241,17 @@
     "title": "Impossible d'ouvrir cette page",
     "backToDashboard": "Retour au tableau de bord"
   },
+  "errorBoundary": {
+    "title": "Une erreur est survenue",
+    "body": "Cette page n'a pas pu se charger. Réessayez ou revenez au tableau de bord.",
+    "retry": "Réessayer"
+  },
+  "notFound": {
+    "title": "Page introuvable",
+    "body": "Cette page n'existe pas ou a été déplacée.",
+    "backHome": "Retour à l'accueil",
+    "backToDashboard": "Retour au tableau de bord"
+  },
   "dashboard": {
     "title": "Tableau de bord",
     "greeting": "Bonjour, {name}",

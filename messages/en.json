@@ -241,6 +241,17 @@
     "title": "Can't open this page",
     "backToDashboard": "Back to the dashboard"
   },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "body": "This page couldn't load. Try again, or go back to the dashboard.",
+    "retry": "Try again"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "This page doesn't exist, or it has moved.",
+    "backHome": "Back to the home page",
+    "backToDashboard": "Back to the dashboard"
+  },
   "dashboard": {
     "title": "Dashboard",
     "greeting": "Hello, {name}",

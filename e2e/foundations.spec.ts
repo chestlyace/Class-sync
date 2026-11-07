@@ -218,6 +218,17 @@ test('classes, joining and courses, end to end', async ({
       await expectNoHorizontalScroll(s)
     })
 
+    await test.step('a signed-in student is sent from sign-in to the dashboard; unknown pages 404', async () => {
+      await s.goto('/sign-in')
+      await expect(s).toHaveURL(/\/dashboard$/)
+      await s.goto('/sign-up')
+      await expect(s).toHaveURL(/\/dashboard$/)
+      const res = await s.goto('/no-such-page')
+      expect(res?.status()).toBe(404)
+      await expect(s.getByRole('heading', { name: 'Page not found' })).toBeVisible()
+      await expectNoHorizontalScroll(s)
+    })
+
     // ---- 5. Rosters and access --------------------------------------------------------------
     await test.step("lecturer A's course roster shows the student with the normalised matricule", async () => {
       await a.goto(courseAUrl)

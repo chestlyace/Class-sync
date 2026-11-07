@@ -4,6 +4,7 @@ import { ArrowRight, Search } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
+import { ErrorCodeMessage } from '@/components/action-error'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import type { School } from '@/server/schools/service'
@@ -15,7 +16,7 @@ type SearchState =
   | { status: 'idle' }
   | { status: 'searching' }
   | { status: 'done'; query: string; schools: School[] }
-  | { status: 'error'; message: string }
+  | { status: 'error'; message: React.ReactNode }
 
 /** Search-first school picker: each match links to "new class" at that school. */
 export function SchoolSearch() {
@@ -45,7 +46,7 @@ export function SchoolSearch() {
         setState(
           result.ok
             ? { status: 'done', query: q, schools: result.data }
-            : { status: 'error', message: tRoot(`errors.${result.code}`) },
+            : { status: 'error', message: <ErrorCodeMessage code={result.code} /> },
         )
       } catch {
         if (request === latest.current) setState({ status: 'error', message: tRoot('common.genericError') })

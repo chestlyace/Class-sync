@@ -3,6 +3,7 @@
 import { Search, UserPlus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useRef, useState } from 'react'
+import { ErrorCodeMessage } from '@/components/action-error'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import type { IncludeCandidate } from '@/server/courses/service'
@@ -18,7 +19,7 @@ type SearchState =
   | { status: 'tooShort' }
   | { status: 'searching' }
   | { status: 'done'; query: string; students: IncludeCandidate[] }
-  | { status: 'error'; message: string }
+  | { status: 'error'; message: React.ReactNode }
 
 /** Debounced name/matricule search among the school's students, each result with an "Add" button. */
 export function IncludeSearch({ courseId }: { courseId: string }) {
@@ -46,7 +47,7 @@ export function IncludeSearch({ courseId }: { courseId: string }) {
         setState(
           result.ok
             ? { status: 'done', query: q, students: result.data }
-            : { status: 'error', message: tRoot(`errors.${result.code}`) },
+            : { status: 'error', message: <ErrorCodeMessage code={result.code} /> },
         )
       } catch {
         if (request === latest.current) setState({ status: 'error', message: tRoot('common.genericError') })

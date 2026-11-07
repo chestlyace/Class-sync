@@ -1,6 +1,7 @@
 import { getLocale, getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { isLocale } from '@/i18n/locale'
+import { redirectIfSignedIn } from '../redirect-if-signed-in'
 import { SignUpForm } from './sign-up-form'
 
 export async function generateMetadata() {
@@ -9,6 +10,7 @@ export async function generateMetadata() {
 }
 
 export default async function SignUpPage() {
+  await redirectIfSignedIn()
   const t = await getTranslations('auth.signUp')
   const locale = await getLocale()
   return (
