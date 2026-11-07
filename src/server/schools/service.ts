@@ -5,6 +5,7 @@ import type { Ctx } from '@/server/core/context'
 import { requireRole, requireVerified } from '@/server/core/guards'
 import { class_, classLecturer, school } from '@/server/db/schema'
 import { isUniqueViolation } from '@/server/lib/db-errors'
+import { containsPattern } from '@/server/lib/like'
 import { normalizeKey } from '@/server/lib/normalize'
 
 export type School = {
@@ -68,11 +69,6 @@ function toSchool(row: typeof school.$inferSelect): School {
   }
 }
 
-/** Escape LIKE wildcards (and the escape character itself) so user input matches literally. */
-function escapeLike(s: string): string {
-  return s.replace(/[\\%_]/g, '\\$&')
-}
-
 export async function searchSchools(ctx: Ctx, query: string): Promise<School[]> {
   requireVerified(ctx)
   const q = query.trim()
@@ -80,7 +76,7 @@ export async function searchSchools(ctx: Ctx, query: string): Promise<School[]> 
   const rows = await ctx.db
     .select()
     .from(school)
-    .where(ilike(school.name, `%${escapeLike(q)}%`))
+    .where(ilike(school.name, containsPattern(q)))
     .orderBy(asc(school.nameKey), asc(school.id)) // nameKey: collation-independent, case-insensitive order
     .limit(SEARCH_LIMIT)
   return rows.map(toSchool)

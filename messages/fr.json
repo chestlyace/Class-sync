@@ -186,11 +186,17 @@
       "excludedHint": "Ils restent dans la classe mais ne suivent pas ce cours.",
       "restore": "Réintégrer",
       "restoreLabel": "Réintégrer {name} dans ce cours",
-      "includeTitle": "Ajouter des étudiants de vos autres classes",
-      "includeHint": "Étudiants de vos autres classes dans cet établissement qui suivent aussi ce cours.",
+      "includeTitle": "Ajouter un étudiant de l'établissement",
+      "includeHint": "Recherchez parmi les étudiants de l'établissement par nom ou matricule. Les étudiants de cette classe se gèrent dans la liste ci-dessus.",
       "include": "Ajouter",
       "includeLabel": "Ajouter {name} à ce cours",
-      "studentNext": "Les présences et les devoirs de ce cours apparaîtront ici."
+      "studentNext": "Les présences et les devoirs de ce cours apparaîtront ici.",
+      "includeSearchLabel": "Nom ou matricule",
+      "includeSearchPlaceholder": "ex. Ngono ou UB21S009",
+      "includeSearching": "Recherche…",
+      "includeTooShort": "Saisissez au moins 2 caractères.",
+      "includeNoMatches": "Aucun étudiant de l'établissement ne correspond à « {query} ».",
+      "includeResults": "Étudiants correspondants"
     }
   },
   "errors": {

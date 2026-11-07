@@ -6,7 +6,14 @@ import { toActionResult, type ActionResult } from '@/lib/action-result'
 import { formString } from '@/lib/form-data'
 import { getCtx } from '@/server/auth/session'
 import { AppError } from '@/server/core/errors'
-import { createCourse, setRosterAdjustment } from '@/server/courses/service'
+import {
+  createCourse,
+  searchSchoolStudentsForCourse,
+  setRosterAdjustment,
+  type IncludeCandidate,
+} from '@/server/courses/service'
+
+const MAX_STUDENT_QUERY_LENGTH = 100
 
 function invalid(field: string): never {
   throw new AppError('VALIDATION', 'Invalid input', { fields: [field] })
@@ -51,5 +58,17 @@ export async function setRosterAdjustmentAction(
     await setRosterAdjustment(await getCtx(), courseId, formString(data, 'studentId'), kind)
     revalidatePath(`/courses/${courseId}`)
     return null
+  })
+}
+
+/** Name/matricule search among the school's students, to include one in my course. */
+export async function searchIncludeCandidatesAction(
+  courseId: string,
+  query: string,
+): Promise<ActionResult<IncludeCandidate[]>> {
+  return toActionResult(async () => {
+    if (typeof courseId !== 'string') invalid('courseId')
+    if (typeof query !== 'string' || query.length > MAX_STUDENT_QUERY_LENGTH) invalid('query')
+    return searchSchoolStudentsForCourse(await getCtx(), courseId, query)
   })
 }

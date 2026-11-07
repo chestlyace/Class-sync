@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { AppError } from '@/server/core/errors'
 import type { Ctx } from '@/server/core/context'
@@ -6,6 +6,7 @@ import { requireRole } from '@/server/core/guards'
 import type { Db } from '@/server/db'
 import { class_, classStudent, course, courseRosterAdjustment, school, user } from '@/server/db/schema'
 import { isClassLecturer, type RosterEntry } from '@/server/classes/service'
+import { containsPattern } from '@/server/lib/like'
 import { courseRosterQuery, isOnCourseRoster as isOnRoster, rosteredCourseIds } from './roster'
 
 export type CourseSummary = {
@@ -21,6 +22,12 @@ export type CourseSummary = {
 }
 
 export { isOnRoster as isOnCourseRoster }
+
+/** A student who could be included in a course. No email: they may be outside my own classes. */
+export type IncludeCandidate = { studentId: string; name: string; matricule: string }
+
+const STUDENT_SEARCH_MIN = 2
+const STUDENT_SEARCH_LIMIT = 20
 
 const createCourseSchema = z.object({
   classId: z.string().min(1),
@@ -251,4 +258,62 @@ export async function setRosterAdjustment(
       target: [courseRosterAdjustment.courseId, courseRosterAdjustment.studentId],
       set: { kind, createdBy: ctx.user.id, createdAt: sql`now()` },
     })
+}
+
+/**
+ * Students the course owner could include: active in any class at the course's school, not in
+ * the course's own class (they are managed with exclude/restore) and not already included.
+ * Matches name or any of their matricules at the school, case-insensitively; at least 2
+ * characters. Each student appears once, with their most recent matricule at the school (the
+ * same pick as the roster query).
+ */
+export async function searchSchoolStudentsForCourse(
+  ctx: Ctx,
+  courseId: string,
+  query: string,
+): Promise<IncludeCandidate[]> {
+  const owned = await requireCourseOwner(ctx, courseId)
+  const q = query.trim()
+  if (q.length < STUDENT_SEARCH_MIN) return []
+  const pattern = containsPattern(q)
+
+  // One row per student active at the school: their most recent membership there.
+  const membership = ctx.db
+    .selectDistinctOn([classStudent.userId], { studentId: classStudent.userId, matricule: classStudent.matricule })
+    .from(classStudent)
+    .innerJoin(class_, eq(class_.id, classStudent.classId))
+    .where(and(eq(class_.schoolId, owned.schoolId), eq(classStudent.status, 'active')))
+    .orderBy(classStudent.userId, desc(classStudent.joinedAt), asc(classStudent.classId))
+    .as('membership')
+
+  const matriculeMatches = sql`exists (
+    select 1 from ${classStudent} as m
+    inner join ${class_} as mc on mc.id = m.class_id
+    where m.user_id = ${user.id} and m.status = 'active' and mc.school_id = ${owned.schoolId}
+      and m.matricule ilike ${pattern}
+  )`
+  const inCourseClass = sql`exists (
+    select 1 from ${classStudent} as own
+    where own.class_id = ${owned.classId} and own.user_id = ${user.id} and own.status = 'active'
+  )`
+  // Every candidate is active at the school, so an include row means "already on the roster".
+  const alreadyIncluded = sql`exists (
+    select 1 from ${courseRosterAdjustment} as adj
+    where adj.course_id = ${courseId} and adj.student_id = ${user.id} and adj.kind = 'include'
+  )`
+
+  return ctx.db
+    .select({ studentId: user.id, name: user.name, matricule: membership.matricule })
+    .from(membership)
+    .innerJoin(user, eq(user.id, membership.studentId))
+    .where(
+      and(
+        eq(user.role, 'student'),
+        or(ilike(user.name, pattern), matriculeMatches),
+        sql`not ${inCourseClass}`,
+        sql`not ${alreadyIncluded}`,
+      ),
+    )
+    .orderBy(asc(sql`lower(${user.name})`), asc(membership.matricule), asc(user.id))
+    .limit(STUDENT_SEARCH_LIMIT)
 }

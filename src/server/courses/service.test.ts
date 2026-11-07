@@ -15,6 +15,7 @@ import {
   listLecturerCourses,
   listStudentCourses,
   requireCourseOwner,
+  searchSchoolStudentsForCourse,
   setRosterAdjustment,
 } from './service'
 
@@ -302,5 +303,108 @@ describe('courses service', () => {
     }
     const roster = await getCourseRoster(lecturer, algo.id)
     expect(roster.map((r) => r.matricule)).toEqual(['UB1', 'UB2', 'UB3'])
+  })
+  describe('searchSchoolStudentsForCourse', () => {
+    /** setup() plus a colleague's own class at the same school, and a class at another school. */
+    async function searchSetup() {
+      const base = await setup()
+      const colleagueClass = await createClass(base.colleague, {
+        schoolId: base.sch.id,
+        name: 'Maths L3',
+        academicYear: '2026/27',
+      })
+      const otherSchool = await createSchool(base.colleague, { name: 'Other University', town: 'Douala' })
+      const otherSchoolClass = await createClass(base.colleague, {
+        schoolId: otherSchool.id,
+        name: 'Law L1',
+        academicYear: '2026/27',
+      })
+      return { ...base, colleagueClass, otherSchoolClass }
+    }
+
+    it("finds a student of a colleague's class at the same school, by name or matricule, without email", async () => {
+      const { lecturer, algo, colleagueClass } = await searchSetup()
+      const zoe = await studentCtx({ name: 'Zoé Nkemelu' })
+      await enroll(zoe, colleagueClass.studentCode!, 'ma21x07')
+      const expected = [{ studentId: zoe.user.id, name: 'Zoé Nkemelu', matricule: 'MA21X07' }]
+      expect(await searchSchoolStudentsForCourse(lecturer, algo.id, '  nkem ')).toEqual(expected)
+      expect(await searchSchoolStudentsForCourse(lecturer, algo.id, 'a21x')).toEqual(expected)
+      const [found] = await searchSchoolStudentsForCourse(lecturer, algo.id, 'zoé')
+      expect(Object.keys(found).sort()).toEqual(['matricule', 'name', 'studentId'])
+    })
+
+    it('ignores students of another school and students removed from their class', async () => {
+      const { lecturer, colleague, algo, colleagueClass, otherSchoolClass } = await searchSetup()
+      const elsewhere = await studentCtx({ name: 'Zoe Elsewhere' })
+      await enroll(elsewhere, otherSchoolClass.studentCode!, 'OU1')
+      const removed = await studentCtx({ name: 'Zoe Removed' })
+      await enroll(removed, colleagueClass.studentCode!, 'RM1')
+      await removeStudentFromClass(colleague, colleagueClass.id, removed.user.id)
+      expect(await searchSchoolStudentsForCourse(lecturer, algo.id, 'zoe')).toEqual([])
+    })
+
+    it('leaves out students already on the roster and members of the course class', async () => {
+      const { lecturer, algo, cls, colleagueClass } = await searchSetup()
+      const member = await studentCtx({ name: 'Zoe Member' })
+      await enroll(member, cls.studentCode!, 'IN1')
+      const excludedMember = await studentCtx({ name: 'Zoe Excluded' })
+      await enroll(excludedMember, cls.studentCode!, 'IN2')
+      await setRosterAdjustment(lecturer, algo.id, excludedMember.user.id, 'exclude')
+      const included = await studentCtx({ name: 'Zoe Included' })
+      await enroll(included, colleagueClass.studentCode!, 'MA1')
+      await setRosterAdjustment(lecturer, algo.id, included.user.id, 'include')
+      const candidate = await studentCtx({ name: 'Zoe Candidate' })
+      await enroll(candidate, colleagueClass.studentCode!, 'MA2')
+      const result = await searchSchoolStudentsForCourse(lecturer, algo.id, 'zoe')
+      expect(result.map((r) => r.name)).toEqual(['Zoe Candidate'])
+    })
+
+    it('lists a student once, with the most recent matricule at the school', async () => {
+      const { lecturer, colleague, sch, algo } = await searchSetup()
+      const older = await createClass(colleague, { schoolId: sch.id, name: 'Maths L1', academicYear: '2025/26' })
+      const newer = await createClass(colleague, { schoolId: sch.id, name: 'Maths L2', academicYear: '2026/27' })
+      const zoe = await studentCtx({ name: 'Zoe Twice' })
+      await enroll(zoe, older.studentCode!, 'OLD1')
+      await enroll(zoe, newer.studentCode!, 'NEW1')
+      expect(await searchSchoolStudentsForCourse(lecturer, algo.id, 'twice')).toEqual([
+        { studentId: zoe.user.id, name: 'Zoe Twice', matricule: 'NEW1' },
+      ])
+      // An older matricule still finds the student.
+      expect(await searchSchoolStudentsForCourse(lecturer, algo.id, 'old1')).toHaveLength(1)
+    })
+
+    it('needs at least 2 characters and treats LIKE wildcards literally', async () => {
+      const { lecturer, algo, colleagueClass } = await searchSetup()
+      await enroll(await studentCtx({ name: 'Zoe Short' }), colleagueClass.studentCode!, 'SH1')
+      expect(await searchSchoolStudentsForCourse(lecturer, algo.id, ' z ')).toEqual([])
+      expect(await searchSchoolStudentsForCourse(lecturer, algo.id, '%%')).toEqual([])
+      expect(await searchSchoolStudentsForCourse(lecturer, algo.id, '__')).toEqual([])
+    })
+
+    it('caps results at 20, ordered by name then matricule', async () => {
+      const { lecturer, algo, colleagueClass } = await searchSetup()
+      for (let i = 25; i >= 1; i--) {
+        const n = String(i).padStart(2, '0')
+        await enroll(await studentCtx({ name: `Capped ${n}` }), colleagueClass.studentCode!, `CAP${n}`)
+      }
+      const result = await searchSchoolStudentsForCourse(lecturer, algo.id, 'capped')
+      expect(result).toHaveLength(20)
+      expect(result.map((r) => r.matricule)).toEqual(
+        Array.from({ length: 20 }, (_, i) => `CAP${String(i + 1).padStart(2, '0')}`),
+      )
+    })
+
+    it('is owner-only: a colleague, a student and an unknown course are FORBIDDEN', async () => {
+      const { lecturer, colleague, algo, cls } = await searchSetup()
+      const student = await studentCtx()
+      await enroll(student, cls.studentCode!, 'ST1')
+      for (const ctx of [colleague, student]) {
+        await expect(searchSchoolStudentsForCourse(ctx, algo.id, 'zoe')).rejects.toMatchObject({ code: 'FORBIDDEN' })
+        await expect(searchSchoolStudentsForCourse(ctx, algo.id, 'z')).rejects.toMatchObject({ code: 'FORBIDDEN' })
+      }
+      await expect(searchSchoolStudentsForCourse(lecturer, 'no-such-course', 'zoe')).rejects.toMatchObject({
+        code: 'FORBIDDEN',
+      })
+    })
   })
 })

@@ -186,11 +186,17 @@
       "excludedHint": "They stay in the class but don't take this course.",
       "restore": "Restore",
       "restoreLabel": "Put {name} back on this course",
-      "includeTitle": "Add students from your other classes",
-      "includeHint": "Students of your other classes at this school who also take this course.",
+      "includeTitle": "Add a student from this school",
+      "includeHint": "Search the school's students by name or matricule. Students of this class are managed in the roster above.",
       "include": "Add",
       "includeLabel": "Add {name} to this course",
-      "studentNext": "Attendance and assignments for this course will appear here."
+      "studentNext": "Attendance and assignments for this course will appear here.",
+      "includeSearchLabel": "Name or matricule",
+      "includeSearchPlaceholder": "e.g. Ngono or UB21S009",
+      "includeSearching": "Searching…",
+      "includeTooShort": "Type at least 2 characters.",
+      "includeNoMatches": "No student at this school matches “{query}”.",
+      "includeResults": "Matching students"
     }
   },
   "errors": {

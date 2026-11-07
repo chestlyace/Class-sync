@@ -14,6 +14,7 @@ export function RosterButton({
   ariaLabel,
   icon,
   variant = 'outline',
+  onSuccess,
 }: {
   courseId: string
   studentId: string
@@ -22,8 +23,16 @@ export function RosterButton({
   ariaLabel: string
   icon?: React.ReactNode
   variant?: 'outline' | 'default'
+  onSuccess?: () => void
 }) {
-  const [state, dispatch, pending] = useActionState(setRosterAdjustmentAction, null)
+  const [state, dispatch, pending] = useActionState(
+    async (prev: Awaited<ReturnType<typeof setRosterAdjustmentAction>> | null, data: FormData) => {
+      const result = await setRosterAdjustmentAction(prev, data)
+      if (result.ok) onSuccess?.()
+      return result
+    },
+    null,
+  )
   return (
     <form action={dispatch} className="flex flex-col items-end gap-1">
       <input type="hidden" name="courseId" value={courseId} />
