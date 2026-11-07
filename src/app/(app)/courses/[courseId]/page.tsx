@@ -10,6 +10,7 @@ import { getCourse, getCourseRoster, type CourseSummary } from '@/server/courses
 import { loadPage } from '../../load-page'
 import { IncludeSearch } from '../include-search'
 import { RosterButton } from '../roster-button'
+import { MyAssignments } from './my-assignments'
 import { MyAttendance } from './my-attendance'
 
 type CourseRosterEntry = RosterEntry & { source: 'class' | 'included' }
@@ -86,6 +87,7 @@ export default async function CoursePage({ params }: PageProps<'/courses/[course
             <Eyebrow>{t('lecturer', { name: course.lecturerName })}</Eyebrow>
             <p className="text-muted-foreground">{t('studentNext')}</p>
           </Panel>
+          <MyAssignments courseId={course.id} />
           <MyAttendance courseId={course.id} />
         </>
       ) : (

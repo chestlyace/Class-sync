@@ -5,6 +5,7 @@ import { ErrorState } from '@/components/error-state'
 import { Eyebrow, PageHeader, Panel, SectionHeading } from '@/components/page-header'
 import { buttonVariants } from '@/components/ui/button'
 import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
+import { listMyAssignments } from '@/server/assignments/student'
 import { cn } from '@/lib/utils'
 import { listOpenCheckIns } from '@/server/attendance/check-in'
 import { getAttendanceGrid } from '@/server/attendance/reports'
@@ -20,6 +21,7 @@ import { loadPage } from '../load-page'
 import { lastSessionFigure, pickLikelyNow, type LastSession } from './attendance-summary'
 import { orEmptyOnError } from './fallback'
 import { groupDashboard } from './group'
+import { DueSoon } from './due-soon'
 import { OpenCheckIns } from './open-check-ins'
 
 export async function generateMetadata() {
@@ -61,11 +63,12 @@ export default async function DashboardPage() {
   if (pending) return header
 
   const data = await loadPage(async (ctx) => {
-    const [classes, courses, openCheckIns] = await Promise.all([
+    const [classes, courses, openCheckIns, dueSoon] = await Promise.all([
       listMyClasses(ctx),
       isLecturer ? listLecturerCourses(ctx) : listStudentCourses(ctx),
       // A failing check-in list must not take the whole dashboard down: show it without.
       isLecturer ? [] : orEmptyOnError('open check-ins', () => listOpenCheckIns(ctx)),
+      isLecturer ? [] : orEmptyOnError('assignments due soon', () => listMyAssignments(ctx, { dueWithinDays: 7 })),
     ])
     // Lecturers see last session's turnout per course. If it fails, the cards simply show none.
     const grids = isLecturer
@@ -73,7 +76,7 @@ export default async function DashboardPage() {
           Promise.all(courses.map(async (c) => ({ courseId: c.id, ...(await getAttendanceGrid(ctx, c.id)) }))),
         )
       : []
-    return { classes, courses, openCheckIns: openCheckIns.map(toOpenCheckInView), grids }
+    return { classes, courses, openCheckIns: openCheckIns.map(toOpenCheckInView), grids, dueSoon }
   })
   if (!data.ok) return <ErrorState code={data.code} />
   const { classes, courses, grids } = data.data
@@ -102,6 +105,7 @@ export default async function DashboardPage() {
     <>
       {header}
       {!isLecturer && <OpenCheckIns initial={data.data.openCheckIns} />}
+      {!isLecturer && <DueSoon items={data.data.dueSoon} locale={locale} now={now} />}
       {likely && likelyCourse && (
         <LikelyNow
           course={likelyCourse}
