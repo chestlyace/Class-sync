@@ -1,3 +1,4 @@
+import { attachDatabasePool } from '@vercel/functions'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import type { PgDatabase } from 'drizzle-orm/pg-core'
 import { Pool } from 'pg'
@@ -13,7 +14,12 @@ const globalForDb = globalThis as typeof globalThis & { __clasyncDb?: Db }
 function create(): Db {
   const connectionString = process.env.DATABASE_URL
   if (!connectionString) throw new Error('DATABASE_URL is not set')
-  const pool = new Pool({ connectionString })
+  // Small pool: on Vercel Fluid Compute one instance serves many requests concurrently, and many
+  // instances share the database's connection limit.
+  const pool = new Pool({ connectionString, max: 5 })
+  // Lets Fluid Compute keep the instance alive until idle clients are released, so suspended
+  // instances don't leak connections. A no-op outside Vercel.
+  attachDatabasePool(pool)
   // Without a listener, an error on an idle client (e.g. the server restarting)
   // is emitted as an unhandled 'error' event and crashes the process.
   pool.on('error', (err) => {
