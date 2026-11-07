@@ -1,4 +1,4 @@
-import { ArrowRight, RotateCcw, UserMinus } from 'lucide-react'
+import { ArrowRight, ClipboardCheck, RotateCcw, UserMinus } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
@@ -32,6 +32,7 @@ export async function generateMetadata() {
 export default async function CoursePage({ params }: PageProps<'/courses/[courseId]'>) {
   const { courseId } = await params
   const t = await getTranslations('courses.page')
+  const tAttendance = await getTranslations('attendance.lecturer')
   const view = await loadPage<CourseView>(async (ctx) => {
     const course = await getCourse(ctx, courseId) // FORBIDDEN unless owner or rostered student
     if (ctx.user.role !== 'lecturer') return { role: 'student', course }
@@ -52,13 +53,22 @@ export default async function CoursePage({ params }: PageProps<'/courses/[course
         description={`${course.className} · ${course.schoolName} · ${t('semester', { n: course.semester })}`}
         actions={
           view.data.role === 'lecturer' ? (
-            <Link
-              href={`/classes/${encodeURIComponent(course.classId)}`}
-              className={buttonVariants({ variant: 'outline' })}
-            >
-              {t('openClass')}
-              <ArrowRight aria-hidden="true" data-icon="inline-end" />
-            </Link>
+            <>
+              <Link
+                href={`/courses/${encodeURIComponent(course.id)}/attendance`}
+                className={buttonVariants({ variant: 'default' })}
+              >
+                <ClipboardCheck aria-hidden="true" data-icon="inline-start" />
+                {tAttendance('courseLink')}
+              </Link>
+              <Link
+                href={`/classes/${encodeURIComponent(course.classId)}`}
+                className={buttonVariants({ variant: 'outline' })}
+              >
+                {t('openClass')}
+                <ArrowRight aria-hidden="true" data-icon="inline-end" />
+              </Link>
+            </>
           ) : undefined
         }
       />
