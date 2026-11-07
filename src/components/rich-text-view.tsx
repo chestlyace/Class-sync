@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import type { Locale } from '@/i18n/locale'
+import { RichTextBoundary } from './rich-text-boundary'
 
 function ViewSkeleton() {
   return (
@@ -20,5 +21,9 @@ const View = dynamic(() => import('./rich-text-blocknote').then((m) => m.BlockNo
 
 /** A stored rich-text document (BlockNote JSON), read-only. Client-only, like the editor. */
 export function RichTextView({ value, locale }: { value: unknown; locale: Locale }) {
-  return <View value={value} locale={locale} />
+  return (
+    <RichTextBoundary value={value}>
+      <View value={value} locale={locale} />
+    </RichTextBoundary>
+  )
 }

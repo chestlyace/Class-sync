@@ -12,7 +12,8 @@
     "genericError": "Une erreur est survenue. Veuillez réessayer.",
     "close": "Fermer",
     "copied": "Copié",
-    "optional": "Facultatif"
+    "optional": "Facultatif",
+    "richTextUnavailable": "Ce texte ne peut pas être affiché avec sa mise en forme. Voici son texte brut."
   },
   "auth": {
     "aside": "Pour les enseignants qui ont plusieurs classes, et pour leurs étudiants.",
@@ -725,7 +726,7 @@
         "releaseUngraded": "{count, plural, one {# rendu n'est pas encore noté ; sa note s'affichera dès que vous l'aurez noté.} other {# rendus ne sont pas encore notés ; leurs notes s'afficheront dès que vous les aurez notés.}}",
         "releaseConfirm": "Publier les notes",
         "releasedOn": "Notes publiées le {date}. Les notes que vous modifiez maintenant sont visibles tout de suite par les étudiants.",
-        "gradedCount": "{graded} rendus notés sur {total}.",
+        "gradedCount": "{graded, plural, one {# rendu noté sur {total}.} other {# rendus notés sur {total}.}}",
         "instructions": "Consignes",
         "noInstructions": "Aucune consigne.",
         "openFile": "Ouvrir {name}",
@@ -754,7 +755,8 @@
         "grade": "Note",
         "navLabel": "Autres rendus",
         "previous": "Précédent",
-        "next": "Suivant"
+        "next": "Suivant",
+        "downloadLabel": "Télécharger {name}"
       },
       "grade": {
         "mark": "Note",
@@ -807,6 +809,13 @@
         "forbidden": "Vous ne pouvez pas envoyer de fichiers ici.",
         "session": "Votre session a expiré. Reconnectez-vous, puis réessayez.",
         "upload": "L'envoi a échoué. Vérifiez votre connexion et réessayez."
+      },
+      "announce": {
+        "uploading": "Envoi de {name}…",
+        "uploadingMany": "Envoi de {count} fichiers…",
+        "added": "{name} ajouté.",
+        "failed": "Échec pour {name} : {reason}",
+        "removed": "{name} retiré."
       }
     }
   }

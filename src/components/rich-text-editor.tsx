@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import type { RichTextEditorProps } from './rich-text-blocknote'
+import { RichTextBoundary } from './rich-text-boundary'
 
 export type { RichTextEditorProps }
 
@@ -21,5 +22,9 @@ const Editor = dynamic(() => import('./rich-text-blocknote').then((m) => m.Block
  * through <FileUploader>.
  */
 export function RichTextEditor(props: RichTextEditorProps) {
-  return <Editor {...props} />
+  return (
+    <RichTextBoundary value={props.value}>
+      <Editor {...props} />
+    </RichTextBoundary>
+  )
 }

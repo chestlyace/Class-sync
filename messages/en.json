@@ -12,7 +12,8 @@
     "genericError": "Something went wrong. Please try again.",
     "close": "Close",
     "copied": "Copied",
-    "optional": "Optional"
+    "optional": "Optional",
+    "richTextUnavailable": "This text can't be displayed with its formatting. Here is its plain text."
   },
   "auth": {
     "aside": "For lecturers who teach several classes, and for the students in them.",
@@ -725,7 +726,7 @@
         "releaseUngraded": "{count, plural, one {# submission isn't graded yet; its mark will show as soon as you grade it.} other {# submissions aren't graded yet; their marks will show as soon as you grade them.}}",
         "releaseConfirm": "Release grades",
         "releasedOn": "Grades released {date}. Marks you change now are visible to students right away.",
-        "gradedCount": "{graded} of {total} submissions graded.",
+        "gradedCount": "{graded, plural, one {# of {total} submissions graded.} other {# of {total} submissions graded.}}",
         "instructions": "Instructions",
         "noInstructions": "No instructions.",
         "openFile": "Open {name}",
@@ -754,7 +755,8 @@
         "grade": "Grade",
         "navLabel": "Other submissions",
         "previous": "Previous",
-        "next": "Next"
+        "next": "Next",
+        "downloadLabel": "Download {name}"
       },
       "grade": {
         "mark": "Mark",
@@ -807,6 +809,13 @@
         "forbidden": "You can't upload files here.",
         "session": "Your session has expired. Sign in again, then retry.",
         "upload": "The upload failed. Check your connection and try again."
+      },
+      "announce": {
+        "uploading": "Uploading {name}…",
+        "uploadingMany": "Uploading {count} files…",
+        "added": "{name} added.",
+        "failed": "{name} failed: {reason}",
+        "removed": "{name} removed."
       }
     }
   }
