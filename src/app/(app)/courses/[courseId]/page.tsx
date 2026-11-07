@@ -1,0 +1,207 @@
+import { ArrowRight, RotateCcw, UserMinus, UserPlus } from 'lucide-react'
+import { getTranslations } from 'next-intl/server'
+import Link from 'next/link'
+import { ErrorState } from '@/components/error-state'
+import { Eyebrow, PageHeader, Panel, SectionHeading } from '@/components/page-header'
+import { Badge } from '@/components/ui/badge'
+import { buttonVariants } from '@/components/ui/button'
+import { getClassRoster, listMyClasses, type RosterEntry } from '@/server/classes/service'
+import type { Ctx } from '@/server/core/context'
+import { getCourse, getCourseRoster, type CourseSummary } from '@/server/courses/service'
+import { loadPage } from '../../load-page'
+import { RosterButton } from '../roster-button'
+
+type CourseRosterEntry = RosterEntry & { source: 'class' | 'included' }
+
+type CourseView =
+  | {
+      role: 'lecturer'
+      course: CourseSummary
+      roster: CourseRosterEntry[]
+      excluded: RosterEntry[]
+      candidates: RosterEntry[]
+    }
+  | { role: 'student'; course: CourseSummary }
+
+/**
+ * Students who could be added to the course: active in another of MY classes at the same school
+ * (a lecturer only sees students of classes they teach), not already on the roster.
+ */
+async function includeCandidates(ctx: Ctx, course: CourseSummary, taken: Set<string>): Promise<RosterEntry[]> {
+  const others = (await listMyClasses(ctx)).filter((c) => c.schoolId === course.schoolId && c.id !== course.classId)
+  const rosters = await Promise.all(others.map((c) => getClassRoster(ctx, c.id)))
+  const seen = new Set(taken)
+  const result: RosterEntry[] = []
+  for (const student of rosters.flat()) {
+    if (seen.has(student.studentId)) continue
+    seen.add(student.studentId)
+    result.push(student)
+  }
+  return result.sort((a, b) => a.name.localeCompare(b.name))
+}
+
+export async function generateMetadata() {
+  const t = await getTranslations('courses.page')
+  return { title: t('eyebrow') }
+}
+
+export default async function CoursePage({ params }: PageProps<'/courses/[courseId]'>) {
+  const { courseId } = await params
+  const t = await getTranslations('courses.page')
+  const view = await loadPage<CourseView>(async (ctx) => {
+    const course = await getCourse(ctx, courseId) // FORBIDDEN unless owner or rostered student
+    if (ctx.user.role !== 'lecturer') return { role: 'student', course }
+    const [roster, classRoster] = await Promise.all([getCourseRoster(ctx, courseId), getClassRoster(ctx, course.classId)])
+    const onRoster = new Set(roster.map((s) => s.studentId))
+    // In the class but not on the roster: excluded from this course.
+    const excluded = classRoster.filter((s) => !onRoster.has(s.studentId))
+    const taken = new Set([...onRoster, ...classRoster.map((s) => s.studentId)])
+    return { role: 'lecturer', course, roster, excluded, candidates: await includeCandidates(ctx, course, taken) }
+  })
+  if (!view.ok) return <ErrorState code={view.code} />
+  const { course } = view.data
+
+  return (
+    <>
+      <PageHeader
+        eyebrow={course.code ? `${t('eyebrow')} · ${course.code}` : t('eyebrow')}
+        title={course.title}
+        description={`${course.className} · ${course.schoolName} · ${t('semester', { n: course.semester })}`}
+        actions={
+          view.data.role === 'lecturer' ? (
+            <Link
+              href={`/classes/${encodeURIComponent(course.classId)}`}
+              className={buttonVariants({ variant: 'outline' })}
+            >
+              {t('openClass')}
+              <ArrowRight aria-hidden="true" data-icon="inline-end" />
+            </Link>
+          ) : undefined
+        }
+      />
+      {view.data.role === 'student' ? (
+        <Panel className="flex flex-col gap-2">
+          <Eyebrow>{t('lecturer', { name: course.lecturerName })}</Eyebrow>
+          <p className="text-muted-foreground">{t('studentNext')}</p>
+        </Panel>
+      ) : (
+        <LecturerRoster
+          courseId={course.id}
+          roster={view.data.roster}
+          excluded={view.data.excluded}
+          candidates={view.data.candidates}
+        />
+      )}
+    </>
+  )
+}
+
+function StudentRow({ student, children }: { student: RosterEntry; children: React.ReactNode }) {
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-5">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate font-medium">{student.name}</span>
+        <span className="truncate text-sm text-muted-foreground">{student.email}</span>
+      </div>
+      <span className="font-mono text-sm tracking-[0.04em]">{student.matricule}</span>
+      <div className="flex items-center gap-2">{children}</div>
+    </li>
+  )
+}
+
+async function LecturerRoster({
+  courseId,
+  roster,
+  excluded,
+  candidates,
+}: {
+  courseId: string
+  roster: CourseRosterEntry[]
+  excluded: RosterEntry[]
+  candidates: RosterEntry[]
+}) {
+  const t = await getTranslations('courses.page')
+  return (
+    <>
+      <section aria-labelledby="course-roster" className="flex flex-col gap-4">
+        <SectionHeading id="course-roster">
+          {t('roster')} · {t('rosterCount', { count: roster.length })}
+        </SectionHeading>
+        {roster.length === 0 ? (
+          <p className="text-muted-foreground">{t('rosterEmpty')}</p>
+        ) : (
+          <ul className="flex flex-col divide-y rounded-3xl border">
+            {roster.map((student) => (
+              <StudentRow key={student.studentId} student={student}>
+                <Badge variant={student.source === 'class' ? 'secondary' : 'outline'}>
+                  {student.source === 'class' ? t('fromClass') : t('included')}
+                </Badge>
+                {student.source === 'class' ? (
+                  <RosterButton
+                    courseId={courseId}
+                    studentId={student.studentId}
+                    kind="exclude"
+                    label={t('exclude')}
+                    ariaLabel={t('excludeLabel', { name: student.name })}
+                    icon={<UserMinus aria-hidden="true" data-icon="inline-start" />}
+                  />
+                ) : (
+                  <RosterButton
+                    courseId={courseId}
+                    studentId={student.studentId}
+                    kind="clear"
+                    label={t('removeInclude')}
+                    ariaLabel={t('removeIncludeLabel', { name: student.name })}
+                    icon={<UserMinus aria-hidden="true" data-icon="inline-start" />}
+                  />
+                )}
+              </StudentRow>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {excluded.length > 0 && (
+        <section aria-labelledby="course-excluded" className="flex flex-col gap-4">
+          <SectionHeading id="course-excluded">{t('excludedTitle')}</SectionHeading>
+          <p className="text-sm text-muted-foreground">{t('excludedHint')}</p>
+          <ul className="flex flex-col divide-y rounded-3xl border">
+            {excluded.map((student) => (
+              <StudentRow key={student.studentId} student={student}>
+                <RosterButton
+                  courseId={courseId}
+                  studentId={student.studentId}
+                  kind="clear"
+                  label={t('restore')}
+                  ariaLabel={t('restoreLabel', { name: student.name })}
+                  icon={<RotateCcw aria-hidden="true" data-icon="inline-start" />}
+                />
+              </StudentRow>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {candidates.length > 0 && (
+        <section aria-labelledby="course-include" className="flex flex-col gap-4">
+          <SectionHeading id="course-include">{t('includeTitle')}</SectionHeading>
+          <p className="text-sm text-muted-foreground">{t('includeHint')}</p>
+          <ul className="flex flex-col divide-y rounded-3xl border">
+            {candidates.map((student) => (
+              <StudentRow key={student.studentId} student={student}>
+                <RosterButton
+                  courseId={courseId}
+                  studentId={student.studentId}
+                  kind="include"
+                  label={t('include')}
+                  ariaLabel={t('includeLabel', { name: student.name })}
+                  icon={<UserPlus aria-hidden="true" data-icon="inline-start" />}
+                />
+              </StudentRow>
+            ))}
+          </ul>
+        </section>
+      )}
+    </>
+  )
+}
