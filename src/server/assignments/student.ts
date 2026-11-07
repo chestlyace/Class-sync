@@ -5,27 +5,20 @@ import { AppError } from '@/server/core/errors'
 import { requireRole } from '@/server/core/guards'
 import { isOnCourseRoster, rosteredCourseIds } from '@/server/courses/roster'
 import type { Db } from '@/server/db'
-import { assignment, assignmentAttachment, course, file, submission, submissionFile } from '@/server/db/schema'
+import { assignment, course, submission, submissionFile } from '@/server/db/schema'
 import { assertConfirmedFilesOwnedBy, type FileInfo } from '@/server/files/service'
+import {
+  type AssignmentDetail,
+  type AssignmentRow,
+  loadAssignmentRow,
+  loadAttachmentsByAssignment,
+  loadSubmissionFiles,
+  toAssignmentDetail,
+} from './queries'
 import { isRichTextEmpty, sanitizeRichText, type Block } from './rich-text'
 import { canSubmit, isLate } from './rules'
 
-// TODO(merge): same fields as Task 4's AssignmentDetail in queries.ts; unify there.
-export type AssignmentDetail = {
-  id: string
-  courseId: string
-  title: string
-  instructions: Block[]
-  dueAt: Date
-  maxMark: number
-  weight: number
-  submissionMode: 'files' | 'text' | 'both'
-  latePolicy: 'accept' | 'close'
-  status: 'draft' | 'published'
-  publishedAt: Date | null
-  gradesReleasedAt: Date | null
-  attachments: FileInfo[]
-}
+export type { AssignmentDetail }
 
 export type StudentAssignmentState = 'todo' | 'submitted' | 'late' | 'graded' | 'closed'
 
@@ -63,57 +56,9 @@ function invalid(details: Record<string, unknown>): never {
   throw new AppError('VALIDATION', 'Invalid submission', details)
 }
 
-// ---------------------------------------------------------------------------------------------
-// Loaders (private; Task 4's queries.ts has the shared ones — deduped at merge)
-// ---------------------------------------------------------------------------------------------
-
-async function loadAssignmentRow(db: Db, assignmentId: string) {
-  if (typeof assignmentId !== 'string' || assignmentId.length === 0 || assignmentId.length > 100) return undefined
-  const [row] = await db.select().from(assignment).where(eq(assignment.id, assignmentId))
-  return row
-}
-
-type AssignmentRow = NonNullable<Awaited<ReturnType<typeof loadAssignmentRow>>>
-
-async function loadAttachments(db: Db, assignmentId: string): Promise<FileInfo[]> {
-  return db
-    .select({ id: file.id, name: file.name, mimeType: file.mimeType, sizeBytes: file.sizeBytes })
-    .from(assignmentAttachment)
-    .innerJoin(file, eq(file.id, assignmentAttachment.fileId))
-    .where(eq(assignmentAttachment.assignmentId, assignmentId))
-    .orderBy(asc(assignmentAttachment.position))
-}
-
-async function loadSubmissionFiles(db: Db, submissionId: string): Promise<FileInfo[]> {
-  return db
-    .select({ id: file.id, name: file.name, mimeType: file.mimeType, sizeBytes: file.sizeBytes })
-    .from(submissionFile)
-    .innerJoin(file, eq(file.id, submissionFile.fileId))
-    .where(eq(submissionFile.submissionId, submissionId))
-    .orderBy(asc(submissionFile.position))
-}
-
 /** Stored rich text was sanitised on write; anything that is not a block list reads as empty. */
 function asBlocks(value: unknown): Block[] {
   return Array.isArray(value) ? (value as Block[]) : []
-}
-
-function toDetail(row: AssignmentRow, attachments: FileInfo[]): AssignmentDetail {
-  return {
-    id: row.id,
-    courseId: row.courseId,
-    title: row.title,
-    instructions: asBlocks(row.instructions),
-    dueAt: row.dueAt,
-    maxMark: row.maxMark,
-    weight: row.weight,
-    submissionMode: row.submissionMode,
-    latePolicy: row.latePolicy,
-    status: row.status,
-    publishedAt: row.publishedAt,
-    gradesReleasedAt: row.gradesReleasedAt,
-    attachments,
-  }
 }
 
 /**
@@ -122,6 +67,8 @@ function toDetail(row: AssignmentRow, attachments: FileInfo[]): AssignmentDetail
  */
 async function requireVisibleAssignment(ctx: Ctx, assignmentId: string): Promise<AssignmentRow> {
   requireRole(ctx, 'student')
+  // Ids are short; anything longer cannot exist, so it never reaches the database.
+  if (typeof assignmentId !== 'string' || assignmentId.length > 100) forbidden()
   const row = await loadAssignmentRow(ctx.db, assignmentId)
   if (!row || row.status !== 'published' || !(await isOnCourseRoster(ctx.db, row.courseId, ctx.user.id))) {
     forbidden()
@@ -232,12 +179,13 @@ export async function getAssignmentForStudent(
   assignmentId: string,
 ): Promise<{ assignment: AssignmentDetail; mySubmission: MySubmission | null; canSubmit: 'ok' | 'closed' }> {
   const row = await requireVisibleAssignment(ctx, assignmentId)
-  const attachments = await loadAttachments(ctx.db, row.id)
-
-  const [mine] = await ctx.db
-    .select()
-    .from(submission)
-    .where(and(eq(submission.assignmentId, row.id), eq(submission.studentId, ctx.user.id)))
+  const [attachments, [mine]] = await Promise.all([
+    loadAttachmentsByAssignment(ctx.db, [row.id]),
+    ctx.db
+      .select()
+      .from(submission)
+      .where(and(eq(submission.assignmentId, row.id), eq(submission.studentId, ctx.user.id))),
+  ])
   let mySubmission: MySubmission | null = null
   if (mine) {
     const released = row.gradesReleasedAt !== null
@@ -253,10 +201,49 @@ export async function getAssignmentForStudent(
 
   const verdict = canSubmit({ status: row.status, latePolicy: row.latePolicy, dueAt: row.dueAt, now: now() })
   return {
-    assignment: toDetail(row, attachments),
+    assignment: toAssignmentDetail(row, attachments.get(row.id) ?? []),
     mySubmission,
     canSubmit: verdict === 'closed' ? 'closed' : 'ok',
   }
+}
+
+/** The typed answer: absent, invalid, or sanitised blocks (null when it has no content). */
+type ParsedText = { kind: 'absent' } | { kind: 'invalid' } | { kind: 'ok'; blocks: Block[] | null }
+
+function parseText(value: unknown): ParsedText {
+  if (value === null || value === undefined) return { kind: 'absent' }
+  const clean = sanitizeRichText(value)
+  if (!clean) return { kind: 'invalid' }
+  return { kind: 'ok', blocks: isRichTextEmpty(clean) ? null : clean }
+}
+
+/**
+ * The deadline and submission mode rules against one assignment row (see submitAssignment).
+ * Returns the text to store (none in `files` mode) and whether the work is late.
+ */
+function checkSubmission(
+  row: AssignmentRow,
+  text: ParsedText,
+  fileIds: string[],
+  at: Date,
+): { storedText: Block[] | null; late: boolean } {
+  const verdict = canSubmit({ status: row.status, latePolicy: row.latePolicy, dueAt: row.dueAt, now: at })
+  if (verdict === 'not_published') forbidden()
+  if (verdict === 'closed') throw new AppError('CONFLICT', 'Submissions are closed', { reason: 'closed' })
+
+  let storedText: Block[] | null = null
+  if (row.submissionMode !== 'files') {
+    if (text.kind === 'invalid') invalid({ fields: ['text'] })
+    if (text.kind === 'ok') storedText = text.blocks
+  }
+
+  if (row.submissionMode === 'files' && fileIds.length === 0) invalid({ reason: 'files_required' })
+  if (row.submissionMode === 'text') {
+    if (!storedText) invalid({ reason: 'text_required' })
+    if (fileIds.length > 0) invalid({ reason: 'files_not_allowed' })
+  }
+  if (row.submissionMode === 'both' && !storedText && fileIds.length === 0) invalid({ reason: 'empty' })
+  return { storedText, late: isLate(at, row.dueAt) }
 }
 
 /**
@@ -275,37 +262,37 @@ export async function submitAssignment(
 ): Promise<{ submittedAt: Date; isLate: boolean }> {
   const row = await requireVisibleAssignment(ctx, assignmentId)
   const at = now()
-  const verdict = canSubmit({ status: row.status, latePolicy: row.latePolicy, dueAt: row.dueAt, now: at })
-  if (verdict === 'closed') throw new AppError('CONFLICT', 'Submissions are closed', { reason: 'closed' })
-
   const fileIds = input?.fileIds
   if (!Array.isArray(fileIds)) invalid({ fields: ['fileIds'] })
+  const text = parseText(input.text)
 
-  let text: Block[] | null = null
-  if (row.submissionMode !== 'files' && input.text !== null && input.text !== undefined) {
-    const clean = sanitizeRichText(input.text)
-    if (!clean) invalid({ fields: ['text'] })
-    text = isRichTextEmpty(clean) ? null : clean
-  }
-
-  if (row.submissionMode === 'files' && fileIds.length === 0) invalid({ reason: 'files_required' })
-  if (row.submissionMode === 'text') {
-    if (!text) invalid({ reason: 'text_required' })
-    if (fileIds.length > 0) invalid({ reason: 'files_not_allowed' })
-  }
-  if (row.submissionMode === 'both' && !text && fileIds.length === 0) invalid({ reason: 'empty' })
-
+  // Fail fast on the unlocked row; the transaction below repeats the checks on the locked one.
+  checkSubmission(row, text, fileIds, at)
   await assertSubmissionFiles(ctx.db, fileIds, ctx.user.id, row.id)
 
-  const late = isLate(at, row.dueAt)
-  await ctx.db.transaction(async (tx) => {
+  return ctx.db.transaction(async (tx) => {
+    // FOR SHARE: a lecturer's concurrent edit (FOR UPDATE on this row) waits for this submission, or
+    // this waits for the edit and is validated against its result — never against a stale mode,
+    // deadline or late policy.
+    const [locked] = await tx.select().from(assignment).where(eq(assignment.id, row.id)).for('share')
+    if (!locked || locked.status !== 'published') forbidden()
+    const { storedText, late } = checkSubmission(locked, text, fileIds, at)
+
     // The unique (assignment, student) key makes a concurrent double submit update one row.
     const [saved] = await tx
       .insert(submission)
-      .values({ assignmentId: row.id, studentId: ctx.user.id, text, submittedAt: at, isLate: late })
+      .values({ assignmentId: row.id, studentId: ctx.user.id, text: storedText, submittedAt: at, isLate: late })
       .onConflictDoUpdate({
         target: [submission.assignmentId, submission.studentId],
-        set: { text, submittedAt: at, isLate: late, mark: null, feedback: null, gradedAt: null, gradedBy: null },
+        set: {
+          text: storedText,
+          submittedAt: at,
+          isLate: late,
+          mark: null,
+          feedback: null,
+          gradedAt: null,
+          gradedBy: null,
+        },
       })
       .returning({ id: submission.id })
     await tx.delete(submissionFile).where(eq(submissionFile.submissionId, saved.id))
@@ -314,6 +301,6 @@ export async function submitAssignment(
         .insert(submissionFile)
         .values(fileIds.map((fileId, position) => ({ submissionId: saved.id, fileId, position })))
     }
+    return { submittedAt: at, isLate: late }
   })
-  return { submittedAt: at, isLate: late }
 }

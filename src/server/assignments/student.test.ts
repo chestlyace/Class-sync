@@ -372,6 +372,66 @@ describe('student assignment services', () => {
       expect(await submissionsOf(id)).toHaveLength(0)
     })
 
+    /** `ctx` whose db runs `change` just before the submit transaction starts (after the first checks). */
+    function racing(ctx: Ctx, change: () => Promise<unknown>): Ctx {
+      const racingDb = Object.create(db) as Db
+      racingDb.transaction = (async (...args: Parameters<Db['transaction']>) => {
+        await change()
+        return db.transaction(...args)
+      }) as Db['transaction']
+      return { ...ctx, db: racingDb }
+    }
+
+    it('validates against the assignment as locked inside the transaction', async () => {
+      const { lecturer, algo, alice } = await setup()
+      const id = await makeAssignment(algo.id, lecturer, { submissionMode: 'text' })
+      const toFiles = racing(alice, () =>
+        db.update(assignment).set({ submissionMode: 'files' }).where(eq(assignment.id, id)),
+      )
+      await expect(submitAssignment(toFiles, id, { text: para('x'), fileIds: [] })).rejects.toMatchObject({
+        code: 'VALIDATION',
+        details: { reason: 'files_required' },
+      })
+
+      const closing = await makeAssignment(algo.id, lecturer, { latePolicy: 'accept' })
+      const toClosed = racing(alice, () =>
+        db
+          .update(assignment)
+          .set({ latePolicy: 'close', dueAt: new Date(BASE.getTime() - HOUR) })
+          .where(eq(assignment.id, closing)),
+      )
+      await expect(submitAssignment(toClosed, closing, { text: para('x'), fileIds: [] })).rejects.toMatchObject({
+        code: 'CONFLICT',
+        details: { reason: 'closed' },
+      })
+      expect(await submissionsOf(id)).toHaveLength(0)
+      expect(await submissionsOf(closing)).toHaveLength(0)
+
+      // Moving the deadline into the past with `accept` flags the work late, by the locked row.
+      const moving = await makeAssignment(algo.id, lecturer)
+      const toPast = racing(alice, () =>
+        db.update(assignment).set({ dueAt: new Date(BASE.getTime() - HOUR) }).where(eq(assignment.id, moving)),
+      )
+      expect(await submitAssignment(toPast, moving, { text: para('x'), fileIds: [] })).toEqual({
+        submittedAt: BASE,
+        isLate: true,
+      })
+    })
+
+    it('refuses the student’s own confirmed file uploaded for another purpose (VALIDATION)', async () => {
+      const { lecturer, algo, alice } = await setup()
+      const id = await makeAssignment(algo.id, lecturer)
+      // Owned by Alice, confirmed, under this assignment's submission prefix: only the purpose is wrong.
+      const wrongPurpose = await makeFile(alice, id)
+      await db.update(file).set({ purpose: 'assignment' }).where(eq(file.id, wrongPurpose))
+
+      await expect(submitAssignment(alice, id, { text: para('x'), fileIds: [wrongPurpose] })).rejects.toMatchObject({
+        code: 'VALIDATION',
+        details: { reason: 'files' },
+      })
+      expect(await submissionsOf(id)).toHaveLength(0)
+    })
+
     it('hides the mark and feedback until grades are released', async () => {
       const { lecturer, algo, alice } = await setup()
       const id = await makeAssignment(algo.id, lecturer)
