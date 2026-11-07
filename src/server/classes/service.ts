@@ -32,7 +32,7 @@ export type RosterEntry = { studentId: string; name: string; email: string; matr
 const MAX_CODE_ATTEMPTS = 5
 const STUDENT_CODE_CONSTRAINT = 'class_student_code_unique'
 const LECTURER_CODE_CONSTRAINT = 'class_lecturer_code_unique'
-const MATRICULE_CONSTRAINT = 'class_student_class_matricule_unique'
+const MATRICULE_CONSTRAINT = 'class_student_active_matricule_unique'
 
 const createClassSchema = z.object({
   name: z.string().trim().min(2).max(120),

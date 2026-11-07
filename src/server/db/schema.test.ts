@@ -70,6 +70,45 @@ describe('schema', () => {
     ).rejects.toThrow()
   })
 
+  it('lets a removed row and an active row share a matricule, but never two active rows', async () => {
+    const db = await createTestDb()
+    const { cls } = await seedClass(db)
+    const a = await makeUser(db, { role: 'student' })
+    const b = await makeUser(db, { role: 'student' })
+    const c = await makeUser(db, { role: 'student' })
+    await db.insert(classStudent).values({ classId: cls.id, userId: a.id, matricule: 'M001', status: 'removed' })
+    await db.insert(classStudent).values({ classId: cls.id, userId: b.id, matricule: 'M001' })
+    await expect(
+      db.insert(classStudent).values({ classId: cls.id, userId: c.id, matricule: 'M001' }),
+    ).rejects.toThrow()
+  })
+
+  it('has the foreign-key and lookup indexes', async () => {
+    const db = await createTestDb()
+    const res = await db.execute(sql`
+      select tablename, indexdef from pg_indexes where schemaname = 'public'`)
+    const defs = (res as unknown as { rows: { tablename: string; indexdef: string }[] }).rows.map((r) =>
+      r.indexdef.replace(/"/g, ''),
+    )
+    const expected: [string, string][] = [
+      ['class_lecturer', 'user_id'],
+      ['class_student', 'user_id'],
+      ['class', 'school_id'],
+      ['course', 'lecturer_id'],
+      ['course', 'class_id'],
+      ['course_roster_adjustment', 'student_id'],
+      ['session', 'user_id'],
+      ['account', 'user_id'],
+      ['verification', 'identifier'],
+    ]
+    for (const [table, column] of expected) {
+      const found = defs.some((d) => d.includes(` ON public.${table} USING btree (${column})`))
+      expect(found, `${table}(${column})`).toBe(true)
+    }
+    const matricule = defs.find((d) => d.includes('class_student_active_matricule_unique'))
+    expect(matricule).toMatch(/CREATE UNIQUE INDEX .* \(class_id, matricule\) WHERE \(status = 'active'::text\)/)
+  })
+
   it('rejects an invalid class_student status', async () => {
     const db = await createTestDb()
     const { cls } = await seedClass(db)

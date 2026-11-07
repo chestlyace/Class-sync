@@ -223,13 +223,19 @@ describe('classes service', () => {
     await expect(joinClassAsStudent(b, cls2.studentCode!, 'UB1')).resolves.toEqual({ classId: cls2.id })
   })
 
-  it('a removed student keeps holding their matricule (rejoin by another student conflicts)', async () => {
+  it("a removed student's matricule can be used by another student", async () => {
     const { lecturer, cls } = await setup()
-    const a = await studentCtx()
-    const b = await studentCtx()
+    const a = await studentCtx({ name: 'Alice' })
+    const b = await studentCtx({ name: 'Bob' })
     await joinClassAsStudent(a, cls.studentCode!, 'UB1')
     await removeStudentFromClass(lecturer, cls.id, a.user.id)
-    await expect(joinClassAsStudent(b, cls.studentCode!, 'UB1')).rejects.toMatchObject({ code: 'CONFLICT' })
+    await expect(joinClassAsStudent(b, cls.studentCode!, 'ub1')).resolves.toEqual({ classId: cls.id })
+    expect((await getClassRoster(lecturer, cls.id)).map((r) => `${r.name}:${r.matricule}`)).toEqual(['Bob:UB1'])
+    // The removed student rejoining with that matricule now collides with the active holder.
+    await expect(joinClassAsStudent(a, cls.studentCode!, 'UB1')).rejects.toMatchObject({ code: 'CONFLICT' })
+    // ...but can rejoin with another one.
+    await expect(joinClassAsStudent(a, cls.studentCode!, 'UB9')).resolves.toEqual({ classId: cls.id })
+    expect(await getClassRoster(lecturer, cls.id)).toHaveLength(2)
   })
 
   it('rejoin with a matricule held by another student is CONFLICT and leaves the row removed', async () => {

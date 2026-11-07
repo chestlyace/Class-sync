@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { check, pgTable, primaryKey, smallint, text, timestamp } from 'drizzle-orm/pg-core'
+import { check, index, pgTable, primaryKey, smallint, text, timestamp } from 'drizzle-orm/pg-core'
 import { user } from './auth'
 import { class_ } from './class'
 
@@ -23,7 +23,11 @@ export const course = pgTable(
     semester: smallint('semester').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [check('course_semester_check', sql`${t.semester} between 1 and 3`)],
+  (t) => [
+    check('course_semester_check', sql`${t.semester} between 1 and 3`),
+    index('course_lecturer_id_idx').on(t.lecturerId),
+    index('course_class_id_idx').on(t.classId),
+  ],
 )
 
 export const courseRosterAdjustment = pgTable(
@@ -44,5 +48,6 @@ export const courseRosterAdjustment = pgTable(
   (t) => [
     primaryKey({ columns: [t.courseId, t.studentId] }),
     check('course_roster_adjustment_kind_check', sql`${t.kind} in ('include', 'exclude')`),
+    index('course_roster_adjustment_student_id_idx').on(t.studentId),
   ],
 )
