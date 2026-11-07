@@ -38,6 +38,19 @@ describe('schools service', () => {
     })
   })
 
+  it('creates a school with no coordinates (both absent)', async () => {
+    const ctx = await lecturerCtx()
+    const school = await createSchool(ctx, { name: 'UB', town: 'Buea' })
+    expect(school).toMatchObject({ latitude: null, longitude: null })
+  })
+
+  it('reports the missing coordinate field in VALIDATION details', async () => {
+    const ctx = await lecturerCtx()
+    await expect(
+      createSchool(ctx, { name: 'UB', town: 'Buea', latitude: 4.15 }),
+    ).rejects.toMatchObject({ code: 'VALIDATION', details: { fields: ['longitude'] } })
+  })
+
   it('stores optional location and radius', async () => {
     const ctx = await lecturerCtx()
     const school = await createSchool(ctx, {
@@ -93,6 +106,8 @@ describe('schools service', () => {
     ['radius too small', { name: 'UB', town: 'Buea', radiusM: 49 }],
     ['radius too large', { name: 'UB', town: 'Buea', radiusM: 5001 }],
     ['radius not an integer', { name: 'UB', town: 'Buea', radiusM: 100.5 }],
+    ['latitude without longitude', { name: 'UB', town: 'Buea', latitude: 4.15 }],
+    ['longitude without latitude', { name: 'UB', town: 'Buea', longitude: 9.29 }],
     ['latitude is NaN', { name: 'UB', town: 'Buea', latitude: NaN, longitude: 0 }],
   ])('rejects invalid input: %s', async (_label, input) => {
     const ctx = await lecturerCtx()

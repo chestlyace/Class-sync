@@ -24,13 +24,23 @@ const latitudeField = z.number().min(-90).max(90) // z.number() rejects NaN and 
 const longitudeField = z.number().min(-180).max(180)
 const radiusField = z.number().int().min(50).max(5000)
 
-const createSchoolSchema = z.object({
-  name: nameField,
-  town: nameField,
-  latitude: latitudeField.optional(),
-  longitude: longitudeField.optional(),
-  radiusM: radiusField.optional(),
-})
+const createSchoolSchema = z
+  .object({
+    name: nameField,
+    town: nameField,
+    latitude: latitudeField.optional(),
+    longitude: longitudeField.optional(),
+    radiusM: radiusField.optional(),
+  })
+  .superRefine((v, ctx) => {
+    // Coordinates are all-or-nothing: a half-set location would break geofence checks.
+    if (v.latitude !== undefined && v.longitude === undefined) {
+      ctx.addIssue({ code: 'custom', path: ['longitude'], message: 'longitude is required with latitude' })
+    }
+    if (v.longitude !== undefined && v.latitude === undefined) {
+      ctx.addIssue({ code: 'custom', path: ['latitude'], message: 'latitude is required with longitude' })
+    }
+  })
 
 const locationSchema = z.object({
   latitude: latitudeField,
