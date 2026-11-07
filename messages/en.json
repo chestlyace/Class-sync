@@ -420,7 +420,13 @@
     "semester": "Semester {n}",
     "taughtBy": "With {name}",
     "otherCourses": "Other courses",
-    "otherCoursesHint": "Courses you were added to outside your own classes."
+    "otherCoursesHint": "Courses you were added to outside your own classes.",
+    "likelyNow": "Likely now · last {weekday} you started this at {time}",
+    "likelyMeta": "{className} · {schoolName} · {count, plural, one {# student} other {# students}}",
+    "openCourse": "Open course",
+    "startCheckIn": "Start check-in",
+    "lastSession": "at the last session",
+    "noSessions": "No sessions yet"
   },
   "join": {
     "title": "Join a class",

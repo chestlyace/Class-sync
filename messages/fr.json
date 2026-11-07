@@ -420,7 +420,13 @@
     "semester": "Semestre {n}",
     "otherCourses": "Autres cours",
     "otherCoursesHint": "Cours auxquels vous avez été ajouté en dehors de vos classes.",
-    "taughtBy": "Avec {name}"
+    "taughtBy": "Avec {name}",
+    "likelyNow": "Sans doute maintenant · {weekday} dernier, vous l'avez commencé à {time}",
+    "likelyMeta": "{className} · {schoolName} · {count, plural, one {# étudiant} other {# étudiants}}",
+    "openCourse": "Ouvrir le cours",
+    "startCheckIn": "Lancer un pointage",
+    "lastSession": "à la dernière séance",
+    "noSessions": "Aucune séance pour l'instant"
   },
   "join": {
     "title": "Rejoindre une classe",
