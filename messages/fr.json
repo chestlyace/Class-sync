@@ -221,13 +221,155 @@
     }
   },
   "landing": {
-    "eyebrow": "Pour les enseignants et les étudiants",
-    "title": "Vos classes, en phase",
-    "body": "Les enseignants créent une classe une seule fois et partagent un code. Les étudiants la rejoignent avec leur matricule et voient tous les cours de leur classe.",
-    "lecturerTitle": "Enseignants",
-    "lecturerBody": "Trouvez ou ajoutez votre établissement, ouvrez une classe partagée et ajoutez-y vos cours.",
-    "studentTitle": "Étudiants",
-    "studentBody": "Rejoignez votre classe une seule fois avec son code et votre matricule. Tous les cours de la classe apparaissent d'eux-mêmes."
+    "nav": {
+      "sections": "Sections de la page",
+      "attendance": "Présences",
+      "assignments": "Devoirs",
+      "how": "Comment ça marche",
+      "getStarted": "Commencer"
+    },
+    "hero": {
+      "eyebrow": "Pour les enseignants et leurs étudiants · English & français",
+      "titleLead": "Présences, devoirs, notes.",
+      "titleTail": "Au même endroit.",
+      "body": "Clasync s'adresse aux enseignants qui ont plusieurs classes, parfois dans plusieurs établissements. Vous affichez un code au projecteur et les étudiants pointent depuis leur téléphone. Les devoirs, les copies rendues et les notes se trouvent au même endroit.",
+      "lecturerCta": "Commencer comme enseignant",
+      "studentCta": "Rejoindre comme étudiant"
+    },
+    "projector": {
+      "label": "Exemple : le code de pointage affiché au projecteur",
+      "course": "Bases de données · HND 2",
+      "checkIn": "Pointage de début de cours",
+      "enterCode": "Enter this code · Entrez ce code",
+      "checkedIn": "Présents"
+    },
+    "phone": {
+      "label": "Exemple : un étudiant qui pointe sur son téléphone",
+      "open": "Pointage ouvert",
+      "course": "Bases de données",
+      "checkIn": "Pointer",
+      "caption": "Sur le téléphone de l'étudiant."
+    },
+    "replaces": {
+      "title": "Ce que Clasync remplace",
+      "attendance": {
+        "label": "Présences",
+        "before": "Une feuille qui fait le tour de la salle, puis un comptage pour repérer les noms d'absents écrits par des camarades.",
+        "after": "Un code au projecteur qui change chaque minute, et un compteur à comparer avec la salle."
+      },
+      "assignments": {
+        "label": "Devoirs",
+        "before": "Un devoir donné à l'oral et oublié avant le cours suivant.",
+        "after": "Chaque devoir est écrit et envoyé par e-mail à chaque étudiant. Ceux qui n'ont rien rendu reçoivent un rappel la veille."
+      },
+      "marks": {
+        "label": "Notes",
+        "before": "Un fichier Excel par classe, mis à jour à la main.",
+        "after": "Les copies, les notes et les commentaires sont réunis. Les étudiants voient leur note quand vous la publiez."
+      }
+    },
+    "attendance": {
+      "kicker": "Présences",
+      "title": "Un code qui change chaque minute",
+      "body": "Vous affichez le code au projecteur et les étudiants le saisissent sur leur téléphone. Il change toutes les 60 secondes : pointer pour un camarade absent devient bien plus difficile qu'écrire son nom sur une feuille.",
+      "points": {
+        "twoCheckIns": "Deux pointages, en début et en fin de cours. Ceux qui font les deux sont marqués présents.",
+        "liveCount": "Un compteur en direct, à comparer avec le nombre de personnes dans la salle.",
+        "campus": "Si vous l'activez, il faut être sur le campus pour pointer.",
+        "corrections": "Vous pouvez corriger n'importe quelle présence à la main, et Clasync garde une trace de qui l'a modifiée."
+      },
+      "example": {
+        "label": "Exemple : l'historique des présences d'un cours",
+        "student": "Étudiant",
+        "rate": "Taux",
+        "present": "Présent",
+        "partial": "Partiel",
+        "absent": "Absent"
+      }
+    },
+    "assignments": {
+      "kicker": "Devoirs",
+      "title": "Des devoirs que personne n'oublie",
+      "body": "Chaque devoir part par e-mail. La veille de la date limite, Clasync relance les étudiants qui n'ont encore rien rendu.",
+      "points": {
+        "formats": "Les étudiants tapent leur réponse, envoient un fichier ou la photo d'une page manuscrite.",
+        "late": "Vous décidez si les retards sont acceptés. Si oui, vous voyez le retard de chaque copie.",
+        "release": "Vous corrigez une copie à la fois, puis vous publiez toutes les notes ensemble.",
+        "private": "Chaque étudiant ne voit que sa propre note."
+      },
+      "example": {
+        "label": "Exemple : les copies rendues pour un devoir",
+        "title": "Diagramme E-A d'une bibliothèque",
+        "meta": "À rendre jeu. 12 nov. · 28 / 41 rendus",
+        "graded": "Noté",
+        "late": "En retard",
+        "submitted": "Rendu",
+        "missing": "Manquant"
+      }
+    },
+    "fit": {
+      "title": "Pensé pour votre façon d'enseigner",
+      "schools": {
+        "title": "Plusieurs établissements, un seul compte",
+        "body": "Toutes vos classes sur un même tableau de bord, regroupées par établissement."
+      },
+      "shared": {
+        "title": "Une liste de classe partagée",
+        "body": "Les collègues qui ont la même classe partagent sa liste d'étudiants. Ils ne voient jamais vos présences ni vos notes."
+      },
+      "languages": {
+        "title": "Anglais et français",
+        "body": "Chacun choisit sa langue, et les e-mails qu'il reçoit suivent ce choix."
+      },
+      "data": {
+        "title": "Léger en données",
+        "body": "Rien à installer. Les photos sont réduites avant l'envoi, et une réponse commencée reste sur le téléphone si la connexion coupe."
+      }
+    },
+    "how": {
+      "title": "Prêt avant votre prochain cours",
+      "school": {
+        "title": "Ajoutez votre établissement et votre classe",
+        "body": "Cherchez d'abord votre établissement. Un collègue l'a peut-être déjà ajouté."
+      },
+      "code": {
+        "title": "Partagez le code étudiant",
+        "body": "Publiez-le dans le groupe WhatsApp de la classe. Chaque étudiant la rejoint une seule fois avec son matricule."
+      },
+      "checkIn": {
+        "title": "Lancez un pointage",
+        "body": "Affichez le code au projecteur et regardez le compteur monter."
+      }
+    },
+    "next": {
+      "kicker": "Bientôt",
+      "title": "Et ensuite",
+      "ca": {
+        "title": "Notes de contrôle continu",
+        "body": "Calculées à partir des présences, des devoirs et des tests."
+      },
+      "tests": {
+        "title": "Tests en classe",
+        "body": "Chronométrés, et ouverts seulement quand vous le décidez."
+      },
+      "notes": {
+        "title": "Cours et révisions",
+        "body": "Supports de cours et exercices d'entraînement, par thème."
+      },
+      "assistant": {
+        "title": "Votre propre assistant IA",
+        "body": "Connecté via MCP. Tout ce qu'il rédige attend votre validation."
+      }
+    },
+    "cta": {
+      "title": "Commencez avec votre prochain cours.",
+      "primary": "Créer votre compte",
+      "secondary": "Se connecter"
+    },
+    "footer": {
+      "copyright": "© {year} Clasync",
+      "madeBy": "Créé par Chestly Ace"
+    }
   },
   "verifyBanner": {
     "title": "Vérifiez votre adresse e-mail",

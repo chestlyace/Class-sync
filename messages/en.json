@@ -221,13 +221,155 @@
     }
   },
   "landing": {
-    "eyebrow": "For lecturers and students",
-    "title": "Your classes, in sync",
-    "body": "Lecturers set up a class once and share a code. Students join with their matricule and see every course of their class.",
-    "lecturerTitle": "Lecturers",
-    "lecturerBody": "Find or add your school, open a shared class and add your courses to it.",
-    "studentTitle": "Students",
-    "studentBody": "Join your class once with its code and your matricule. Every course of the class shows up on its own."
+    "nav": {
+      "sections": "Page sections",
+      "attendance": "Attendance",
+      "assignments": "Assignments",
+      "how": "How it works",
+      "getStarted": "Get started"
+    },
+    "hero": {
+      "eyebrow": "For lecturers and their students · English & français",
+      "titleLead": "Attendance, assignments, marks.",
+      "titleTail": "In one place.",
+      "body": "Clasync is for lecturers who teach several classes, sometimes at more than one school. You put a code on the projector and students check in from their phones. Assignments, submissions and marks live in the same place.",
+      "lecturerCta": "Start as a lecturer",
+      "studentCta": "Join as a student"
+    },
+    "projector": {
+      "label": "Example: the check-in code on a classroom projector",
+      "course": "Database Systems · HND 2",
+      "checkIn": "Start-of-class check-in",
+      "enterCode": "Enter this code · Entrez ce code",
+      "checkedIn": "Checked in"
+    },
+    "phone": {
+      "label": "Example: a student checking in on a phone",
+      "open": "Check-in open",
+      "course": "Database Systems",
+      "checkIn": "Check in",
+      "caption": "On the student's own phone."
+    },
+    "replaces": {
+      "title": "What it replaces",
+      "attendance": {
+        "label": "Attendance",
+        "before": "A sheet passed round the room, then a headcount to catch names written in for friends who stayed home.",
+        "after": "A code on the projector that changes every minute, and a count you can check against the room."
+      },
+      "assignments": {
+        "label": "Assignments",
+        "before": "Work given out loud and forgotten by the next class.",
+        "after": "Each assignment is written down and emailed to every student. Anyone who hasn't handed it in gets a reminder the day before."
+      },
+      "marks": {
+        "label": "Marks",
+        "before": "One Excel file per class, kept up to date by hand.",
+        "after": "Submissions, marks and comments sit together. Students see their mark when you release it."
+      }
+    },
+    "attendance": {
+      "kicker": "Attendance",
+      "title": "A code that changes every minute",
+      "body": "You put the code on the projector and students type it on their phones. It changes every 60 seconds, so checking in for a friend who isn't there is a lot harder than writing their name on a sheet.",
+      "points": {
+        "twoCheckIns": "Two check-ins, at the start and the end of class. Students who do both are marked present.",
+        "liveCount": "A live count you can compare with the heads in the room.",
+        "campus": "If you turn it on, students have to be on campus to check in.",
+        "corrections": "You can change any mark by hand, and Clasync notes who changed it."
+      },
+      "example": {
+        "label": "Example: attendance history for a course",
+        "student": "Student",
+        "rate": "Rate",
+        "present": "Present",
+        "partial": "Partial",
+        "absent": "Absent"
+      }
+    },
+    "assignments": {
+      "kicker": "Assignments",
+      "title": "Work nobody forgets",
+      "body": "Every assignment goes out by email. The day before it's due, Clasync reminds the students who haven't handed anything in.",
+      "points": {
+        "formats": "Students can type an answer, upload a file or send a photo of a handwritten page.",
+        "late": "You decide whether late work is accepted. If it is, you see how late each one was.",
+        "release": "You mark one submission at a time, then release all the grades together.",
+        "private": "Students only ever see their own mark."
+      },
+      "example": {
+        "label": "Example: submissions for one assignment",
+        "title": "ER diagram for a library",
+        "meta": "Due Thu 12 Nov · 28 / 41 handed in",
+        "graded": "Graded",
+        "late": "Late",
+        "submitted": "Submitted",
+        "missing": "Missing"
+      }
+    },
+    "fit": {
+      "title": "Built around how you teach",
+      "schools": {
+        "title": "Several schools, one account",
+        "body": "Every class you teach is on one dashboard, grouped by school."
+      },
+      "shared": {
+        "title": "One class list, shared",
+        "body": "Colleagues who teach the same class share its student list. They never see your attendance or your marks."
+      },
+      "languages": {
+        "title": "English and French",
+        "body": "Everyone picks their language, and the emails they get follow it."
+      },
+      "data": {
+        "title": "Light on data",
+        "body": "There's nothing to install. Photos are shrunk before they upload, and a half-written answer stays on the phone if the connection drops."
+      }
+    },
+    "how": {
+      "title": "Ready before your next class",
+      "school": {
+        "title": "Add your school and class",
+        "body": "Search for your school first. A colleague may have added it already."
+      },
+      "code": {
+        "title": "Share the student code",
+        "body": "Post it in the class WhatsApp group. Each student joins once with their matricule."
+      },
+      "checkIn": {
+        "title": "Start a check-in",
+        "body": "Put the code on the projector and watch the count go up."
+      }
+    },
+    "next": {
+      "kicker": "On the way",
+      "title": "What comes next",
+      "ca": {
+        "title": "CA marks",
+        "body": "Worked out from attendance, assignments and tests."
+      },
+      "tests": {
+        "title": "Tests in class",
+        "body": "Timed, and opened only when you say so."
+      },
+      "notes": {
+        "title": "Notes and revision",
+        "body": "Course material and practice questions, by topic."
+      },
+      "assistant": {
+        "title": "Your own AI assistant",
+        "body": "Connected over MCP. Anything it writes waits for your approval."
+      }
+    },
+    "cta": {
+      "title": "Start with your next class.",
+      "primary": "Create your account",
+      "secondary": "Sign in"
+    },
+    "footer": {
+      "copyright": "© {year} Clasync",
+      "madeBy": "Made by Chestly Ace"
+    }
   },
   "verifyBanner": {
     "title": "Verify your email address",

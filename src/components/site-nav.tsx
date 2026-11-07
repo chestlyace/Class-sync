@@ -12,8 +12,13 @@ function initials(name: string): string {
   return letters.map((p) => p[0]!.toUpperCase()).join('') || '?'
 }
 
-/** Floating pill nav with the EN/FR toggle; signed-in users also get the phone bottom nav. */
-export async function SiteNav({ user }: { user: SessionUser | null }) {
+type Section = { href: string; label: string }
+
+/**
+ * Floating pill nav with the EN/FR toggle; signed-in users also get the phone bottom nav.
+ * `sections` adds in-page links and a "Get started" button for signed-out visitors (landing page).
+ */
+export async function SiteNav({ user, sections }: { user: SessionUser | null; sections?: Section[] }) {
   const t = await getTranslations()
   return (
     <>
@@ -29,6 +34,23 @@ export async function SiteNav({ user }: { user: SessionUser | null }) {
             {t('common.appName')}
           </Link>
           {user && <TopNavLinks role={user.role} />}
+          {!user && sections && (
+            <ul
+              aria-label={t('landing.nav.sections')}
+              className="hidden items-center gap-1 font-mono text-xs font-medium tracking-[0.08em] uppercase lg:flex"
+            >
+              {sections.map(({ href, label }) => (
+                <li key={href}>
+                  <a
+                    href={href}
+                    className="inline-flex h-10 items-center rounded-full px-3.5 text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+                  >
+                    {label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
           <div className="flex items-center gap-1">
             <LanguageSwitcher />
             {user ? (
@@ -44,6 +66,15 @@ export async function SiteNav({ user }: { user: SessionUser | null }) {
                   <span className="sr-only">{t('nav.account', { name: user.name })}</span>
                 </span>
                 <SignOutButton />
+              </>
+            ) : sections ? (
+              <>
+                <Link href="/sign-in" className={buttonVariants({ variant: 'ghost', className: 'hidden sm:inline-flex' })}>
+                  {t('nav.signIn')}
+                </Link>
+                <Link href="/sign-up" className={buttonVariants({ className: 'bg-foreground text-background hover:bg-foreground/85' })}>
+                  {t('landing.nav.getStarted')}
+                </Link>
               </>
             ) : (
               <Link href="/sign-in" className={buttonVariants({ variant: 'outline' })}>
