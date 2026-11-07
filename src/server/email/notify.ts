@@ -21,6 +21,15 @@ export function setResendClientFactoryForTests(factory: ((apiKey: string) => Not
   clientFactory = factory
 }
 
+const RETRY_DELAY_MS = 750
+
+let wait: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/** Replaces the pause before a chunk's retry in tests. Pass null to restore the real timer. */
+export function setRetryWaitForTests(fn: ((ms: number) => Promise<void>) | null): void {
+  wait = fn ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)))
+}
+
 function createClient(apiKey: string): NotifyClient {
   if (clientFactory) return clientFactory(apiKey)
   return new Resend(apiKey) as unknown as NotifyClient
@@ -39,7 +48,7 @@ async function sendChunk(client: NotifyClient, payload: BatchPayload): Promise<b
 
 /**
  * Best-effort notification delivery through Resend's batch API (100 emails per call, one retry
- * per failed chunk). It never throws, in any environment: a missing key or a provider outage must
+ * per failed chunk after a short pause). It never throws, in any environment: a missing key or a provider outage must
  * not fail the action that triggered the notification. Without RESEND_API_KEY nothing is sent and
  * a single warning with the count (never the addresses) is logged.
  */
@@ -69,7 +78,11 @@ export async function sendNotifications(
   for (let i = 0; i < items.length; i += BATCH_SIZE) {
     const chunk = items.slice(i, i + BATCH_SIZE)
     const payload: BatchPayload = chunk.map((n) => ({ from, to: n.to, subject: n.subject, react: n.react }))
-    const ok = (await sendChunk(client, payload)) || (await sendChunk(client, payload))
+    let ok = await sendChunk(client, payload)
+    if (!ok) {
+      await wait(RETRY_DELAY_MS)
+      ok = await sendChunk(client, payload)
+    }
     if (ok) result.sent += chunk.length
     else result.failed += chunk.length
   }

@@ -21,6 +21,13 @@ export function emailTranslator(locale: Locale) {
   return createTranslator({ locale, messages: allMessages[locale], namespace: 'email' })
 }
 
+const SUBJECT_VAR_MAX = 150
+
+/** Titles are user input: keep them on one line (no header injection) and bounded in the subject. */
+function singleLine(value: string): string {
+  return value.replace(/\s+/g, ' ').trim().slice(0, SUBJECT_VAR_MAX)
+}
+
 export type NotificationKind = 'assignmentPublished' | 'assignmentReminder' | 'gradesReleased'
 
 export function emailSubject(kind: 'verify', locale: Locale): string
@@ -36,7 +43,10 @@ export function emailSubject(
 ): string {
   const t = emailTranslator(locale)
   if (kind === 'verify') return t('verify.subject')
-  return t(`${kind}.subject`, { course: vars?.courseTitle ?? '', assignment: vars?.assignmentTitle ?? '' })
+  return t(`${kind}.subject`, {
+    course: singleLine(vars?.courseTitle ?? ''),
+    assignment: singleLine(vars?.assignmentTitle ?? ''),
+  })
 }
 
 export function VerifyEmail({ name, url, locale }: { name: string; url: string; locale: Locale }) {
