@@ -297,7 +297,7 @@ describe('classes service', () => {
     await expect(removeStudentFromClass(lecturer, cls.id, student.user.id)).resolves.toBeUndefined()
   })
 
-  it('ClassSummary hides codes from students', async () => {
+  it('ClassSummary hides codes from students and gives them their own matricule', async () => {
     const { lecturer, cls } = await setup()
     const student = await studentCtx()
     await joinClassAsStudent(student, cls.studentCode!, 'UB1')
@@ -309,10 +309,12 @@ describe('classes service', () => {
       name: 'Computer Science L3',
       academicYear: '2026/27',
       studentCount: 1,
+      myMatricule: 'UB1',
     })
     expect('studentCode' in forStudent).toBe(false)
     expect('lecturerCode' in forStudent).toBe(false)
     const [forLecturer] = await listMyClasses(lecturer)
+    expect('myMatricule' in forLecturer).toBe(false)
     expect(forLecturer.studentCode).toBe(cls.studentCode)
     expect(forLecturer.lecturerCode).toBe(cls.lecturerCode)
   })

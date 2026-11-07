@@ -25,6 +25,8 @@ export type ClassSummary = {
   studentCode?: string
   /** Present only when the caller is a lecturer of the class. */
   lecturerCode?: string
+  /** Present only when the caller is a student of the class: the matricule they joined with. */
+  myMatricule?: string
 }
 
 export type RosterEntry = { studentId: string; name: string; email: string; matricule: string }
@@ -219,7 +221,7 @@ export async function listMyClasses(ctx: Ctx): Promise<ClassSummary[]> {
   requireRole(ctx, ctx.user.role)
 
   const selection = { cls: class_, schoolName: school.name }
-  const rows = isLecturer
+  const rows: { cls: typeof class_.$inferSelect; schoolName: string; matricule?: string }[] = isLecturer
     ? await ctx.db
         .select(selection)
         .from(classLecturer)
@@ -228,7 +230,7 @@ export async function listMyClasses(ctx: Ctx): Promise<ClassSummary[]> {
         .where(eq(classLecturer.userId, ctx.user.id))
         .orderBy(asc(school.name), asc(class_.name), asc(class_.id))
     : await ctx.db
-        .select(selection)
+        .select({ ...selection, matricule: classStudent.matricule })
         .from(classStudent)
         .innerJoin(class_, eq(class_.id, classStudent.classId))
         .innerJoin(school, eq(school.id, class_.schoolId))
@@ -251,14 +253,14 @@ export async function listMyClasses(ctx: Ctx): Promise<ClassSummary[]> {
     .groupBy(classStudent.classId)
   const countByClass = new Map(counts.map((c) => [c.classId, Number(c.n)]))
 
-  return rows.map(({ cls, schoolName }) => ({
+  return rows.map(({ cls, schoolName, matricule }) => ({
     id: cls.id,
     schoolId: cls.schoolId,
     schoolName,
     name: cls.name,
     academicYear: cls.academicYear,
     studentCount: countByClass.get(cls.id) ?? 0,
-    ...(isLecturer ? { studentCode: cls.studentCode, lecturerCode: cls.lecturerCode } : {}),
+    ...(isLecturer ? { studentCode: cls.studentCode, lecturerCode: cls.lecturerCode } : { myMatricule: matricule }),
   }))
 }
 

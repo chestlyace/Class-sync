@@ -76,7 +76,8 @@
     "join": "Rejoindre",
     "newClass": "Nouvelle classe",
     "main": "Navigation principale",
-    "account": "Connecté en tant que {name}"
+    "account": "Connecté en tant que {name}",
+    "settings": "Profil et paramètres"
   },
   "schools": {
     "title": "Établissements",
@@ -427,6 +428,52 @@
     "startCheckIn": "Lancer un pointage",
     "lastSession": "à la dernière séance",
     "noSessions": "Aucune séance pour l'instant"
+  },
+  "settings": {
+    "title": "Profil et paramètres",
+    "lecturer": "Enseignant",
+    "student": "Étudiant",
+    "account": {
+      "name": "Nom complet",
+      "editName": "Modifier le nom",
+      "save": "Enregistrer",
+      "nameRequired": "Saisissez votre nom.",
+      "verified": "E-mail vérifié",
+      "unverified": "E-mail pas encore vérifié"
+    },
+    "preferences": {
+      "title": "Préférences",
+      "language": "Langue",
+      "languageHint": "Pour l'application et tous les e-mails que Clasync vous envoie."
+    },
+    "schools": {
+      "title": "Où vous enseignez",
+      "add": "Ajouter un établissement",
+      "empty": "Vous n'avez pas encore de classe.",
+      "located": "Emplacement du campus défini · {radius} m",
+      "notLocated": "Pas encore d'emplacement : les pointages ici ne peuvent pas exiger d'être sur le campus.",
+      "useMyLocation": "Utiliser ma position actuelle",
+      "locating": "Recherche de votre position…",
+      "locationHint": "Faites-le quand vous êtes sur le campus.",
+      "locationDenied": "L'accès à la position a été refusé. Autorisez-le dans votre navigateur et réessayez.",
+      "locationUnavailable": "Votre position est introuvable. Réessayez dehors ou près d'une fenêtre."
+    },
+    "classes": {
+      "title": "Mes classes",
+      "join": "Rejoindre une autre classe",
+      "empty": "Vous n'avez encore rejoint aucune classe.",
+      "matricule": "Matricule {matricule}",
+      "matriculeHint": "Matricule incorrect ? Demandez à un enseignant de la classe de vous retirer, puis rejoignez-la avec le bon."
+    },
+    "password": {
+      "title": "Mot de passe",
+      "current": "Mot de passe actuel",
+      "new": "Nouveau mot de passe",
+      "hint": "Au moins 8 caractères. Vos autres appareils seront déconnectés.",
+      "submit": "Changer le mot de passe",
+      "saving": "Modification…",
+      "changed": "Mot de passe modifié."
+    }
   },
   "join": {
     "title": "Rejoindre une classe",

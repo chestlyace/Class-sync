@@ -58,13 +58,16 @@ export async function SiteNav({ user, sections }: { user: SessionUser | null; se
                 <span className="hidden max-w-40 truncate px-2 text-sm text-muted-foreground lg:inline">
                   {user.name}
                 </span>
-                <span
-                  title={t('nav.account', { name: user.name })}
-                  className="flex size-10 shrink-0 items-center justify-center rounded-full bg-foreground font-mono text-[13px] font-semibold text-background"
+                <Link
+                  href="/settings"
+                  title={t('nav.settings')}
+                  className="flex size-10 shrink-0 items-center justify-center rounded-full bg-foreground font-mono text-[13px] font-semibold text-background outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
                   <span aria-hidden="true">{initials(user.name)}</span>
-                  <span className="sr-only">{t('nav.account', { name: user.name })}</span>
-                </span>
+                  <span className="sr-only">
+                    {t('nav.account', { name: user.name })} · {t('nav.settings')}
+                  </span>
+                </Link>
                 <SignOutButton />
               </>
             ) : sections ? (

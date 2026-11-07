@@ -76,7 +76,8 @@
     "join": "Join",
     "newClass": "New class",
     "main": "Main navigation",
-    "account": "Signed in as {name}"
+    "account": "Signed in as {name}",
+    "settings": "Profile and settings"
   },
   "schools": {
     "title": "Schools",
@@ -427,6 +428,52 @@
     "startCheckIn": "Start check-in",
     "lastSession": "at the last session",
     "noSessions": "No sessions yet"
+  },
+  "settings": {
+    "title": "Profile and settings",
+    "lecturer": "Lecturer",
+    "student": "Student",
+    "account": {
+      "name": "Full name",
+      "editName": "Edit name",
+      "save": "Save",
+      "nameRequired": "Enter your name.",
+      "verified": "Email verified",
+      "unverified": "Email not verified yet"
+    },
+    "preferences": {
+      "title": "Preferences",
+      "language": "Language",
+      "languageHint": "For the app and every email Clasync sends you."
+    },
+    "schools": {
+      "title": "Where you teach",
+      "add": "Add a school",
+      "empty": "You don't teach a class yet.",
+      "located": "Campus location set · {radius} m",
+      "notLocated": "No campus location yet, so check-ins here can't ask students to be on campus.",
+      "useMyLocation": "Use my current location",
+      "locating": "Finding your location…",
+      "locationHint": "Do this while you're standing on campus.",
+      "locationDenied": "Location access was refused. Allow it in your browser and try again.",
+      "locationUnavailable": "Your location couldn't be found. Try again outside or near a window."
+    },
+    "classes": {
+      "title": "My classes",
+      "join": "Join another class",
+      "empty": "You haven't joined a class yet.",
+      "matricule": "Matricule {matricule}",
+      "matriculeHint": "Wrong matricule? Ask a lecturer of the class to remove you, then join again with the right one."
+    },
+    "password": {
+      "title": "Password",
+      "current": "Current password",
+      "new": "New password",
+      "hint": "At least 8 characters. Your other devices will be signed out.",
+      "submit": "Change password",
+      "saving": "Changing…",
+      "changed": "Password changed."
+    }
   },
   "join": {
     "title": "Join a class",
