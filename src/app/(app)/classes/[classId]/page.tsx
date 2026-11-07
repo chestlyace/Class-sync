@@ -1,5 +1,6 @@
 import { ArrowRight, Plus, RefreshCw, UserMinus } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
+import { headers } from 'next/headers'
 import Link from 'next/link'
 import { ConfirmAction } from '@/components/confirm-action'
 import { CopyButton } from '@/components/copy-button'
@@ -42,6 +43,11 @@ export default async function ClassPage({ params }: PageProps<'/classes/[classId
   })
   if (!view.ok) return <ErrorState code={view.code} />
   const { cls } = view.data
+  // The invite message links to /join on whatever address this page was opened from.
+  const requestHeaders = await headers()
+  const host = requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host')
+  const proto = requestHeaders.get('x-forwarded-proto') ?? 'https'
+  const joinUrl = host ? `${proto}://${host}/join` : '/join'
 
   return (
     <>
@@ -55,7 +61,7 @@ export default async function ClassPage({ params }: PageProps<'/classes/[classId
         }
       />
       {view.data.role === 'lecturer' ? (
-        <LecturerClass cls={cls} roster={view.data.roster} courses={view.data.courses} />
+        <LecturerClass cls={cls} roster={view.data.roster} courses={view.data.courses} joinUrl={joinUrl} />
       ) : (
         <CourseList
           heading={t('classes.page.studentCourses')}
@@ -71,10 +77,12 @@ async function LecturerClass({
   cls,
   roster,
   courses,
+  joinUrl,
 }: {
   cls: ClassSummary
   roster: RosterEntry[]
   courses: CourseSummary[]
+  joinUrl: string
 }) {
   const t = await getTranslations('classes.page')
   return (
@@ -84,6 +92,7 @@ async function LecturerClass({
           classId={cls.id}
           kind="student"
           code={cls.studentCode ?? ''}
+          invite={t('inviteMessage', { className: cls.name, url: joinUrl, code: cls.studentCode ?? '' })}
           label={t('studentCode')}
           hint={t('studentCodeHint')}
           copyLabel={t('copyStudentCode')}
@@ -126,7 +135,14 @@ async function LecturerClass({
         ) : (
           <>
             <p className="text-sm text-muted-foreground">{t('rejoinNote')}</p>
-            <ul className="flex flex-col divide-y rounded-3xl border">
+            <ul className="flex flex-col divide-y overflow-hidden rounded-3xl border bg-card">
+              <li
+                aria-hidden="true"
+                className="hidden items-center justify-between gap-4 bg-[#fafafa] px-5 py-3 font-mono text-[11px] font-semibold tracking-[0.1em] text-muted-foreground uppercase sm:flex"
+              >
+                <span>{t('name')}</span>
+                <span className="mr-auto pl-8">{t('matricule')}</span>
+              </li>
               {roster.map((student) => (
                 <li
                   key={student.studentId}
@@ -166,6 +182,7 @@ async function CodeCard({
   classId,
   kind,
   code,
+  invite,
   label,
   hint,
   copyLabel,
@@ -175,6 +192,8 @@ async function CodeCard({
   classId: string
   kind: 'student' | 'lecturer'
   code: string
+  /** Ready-to-paste message with the code and how to join (student code only). */
+  invite?: string
   label: string
   hint: string
   copyLabel: string
@@ -191,12 +210,13 @@ async function CodeCard({
       <p
         aria-labelledby={labelId}
         data-testid={`${kind}-code`}
-        className="font-mono text-4xl font-semibold tracking-[0.2em] break-all sm:text-5xl"
+        className="font-display text-7xl leading-[0.9] tracking-[0.1em] break-all sm:text-[76px]"
       >
         {code}
       </p>
       <p className="text-sm text-muted-foreground">{hint}</p>
       <div className="flex flex-wrap items-center gap-2">
+        {invite && <CopyButton value={invite} label={t('copyInviteLabel')} text={t('copyInvite')} />}
         <CopyButton value={code} label={copyLabel} />
         <ConfirmAction
           action={regenerateCodeAction}
@@ -238,12 +258,11 @@ async function CourseList({
                 href={`/courses/${encodeURIComponent(course.id)}`}
                 className="flex h-full flex-col gap-1 rounded-2xl border bg-card px-5 py-4 outline-none hover:border-input focus-visible:ring-3 focus-visible:ring-ring/50"
               >
-                {course.code && (
-                  <span className="font-mono text-xs tracking-[0.08em] text-muted-foreground">{course.code}</span>
-                )}
-                <span className="text-lg font-semibold">{course.title}</span>
-                <span className="mt-auto flex items-center justify-between gap-2 pt-2 text-sm text-muted-foreground">
-                  {t('semester', { n: course.semester })}
+                <span className="font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase">
+                  {[course.code, t('semester', { n: course.semester })].filter(Boolean).join(' · ')}
+                </span>
+                <span className="text-lg leading-snug font-semibold">{course.title}</span>
+                <span className="mt-auto flex justify-end pt-2 text-muted-foreground">
                   <ArrowRight aria-hidden="true" className="size-4" />
                 </span>
               </Link>
