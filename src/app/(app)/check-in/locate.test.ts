@@ -67,14 +67,45 @@ describe('createLocator', () => {
     await expect(position).resolves.toEqual({ latitude: 4.05, longitude: 9.7, accuracy: 20 })
   })
 
-  it('position() reuses a fix the early request already got', async () => {
+  it('the first position() reuses the warm-up fix; the next submit starts a new request', async () => {
     const geo = fakeGeolocation((success) => success(FIX))
     const locator = createLocator(() => geo)
     locator.warm()
     await vi.advanceTimersByTimeAsync(0)
     await expect(locator.position()).resolves.toEqual({ latitude: 4.05, longitude: 9.7, accuracy: 20 })
-    await expect(locator.position()).resolves.toEqual({ latitude: 4.05, longitude: 9.7, accuracy: 20 })
     expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1)
+
+    await expect(locator.position()).resolves.toEqual({ latitude: 4.05, longitude: 9.7, accuracy: 20 })
+    expect(geo.getCurrentPosition).toHaveBeenCalledTimes(2)
+  })
+
+  it('after a refusal (off campus), resubmitting sends the new position, not the cached one', async () => {
+    const fixes = [
+      { coords: { latitude: 4.1707, longitude: 9.241, accuracy: 20 } }, // 2 km away
+      { coords: { latitude: 4.1527, longitude: 9.241, accuracy: 15 } }, // walked onto campus
+    ]
+    let calls = 0
+    const geo = fakeGeolocation((success) => success(fixes[calls++]))
+    const locator = createLocator(() => geo)
+    locator.warm() // focus
+    // First submit: the server refuses it (off_campus); the form stays mounted.
+    await expect(locator.position()).resolves.toEqual({ latitude: 4.1707, longitude: 9.241, accuracy: 20 })
+    // Second submit after moving: a fresh request with the new position.
+    await expect(locator.position()).resolves.toEqual({ latitude: 4.1527, longitude: 9.241, accuracy: 15 })
+    expect(geo.getCurrentPosition).toHaveBeenCalledTimes(2)
+    // Every request asks for a fresh fix, never a cached one.
+    for (const call of vi.mocked(geo.getCurrentPosition).mock.calls) expect(call[2]).toMatchObject({ maximumAge: 0 })
+  })
+
+  it('focusing again after a submit warms up a fresh request that the next submit uses', async () => {
+    const geo = fakeGeolocation((success) => success(FIX))
+    const locator = createLocator(() => geo)
+    locator.warm()
+    await locator.position()
+    locator.warm() // the student taps the input to type the code again
+    expect(geo.getCurrentPosition).toHaveBeenCalledTimes(2)
+    await locator.position()
+    expect(geo.getCurrentPosition).toHaveBeenCalledTimes(2)
   })
 
   it('position() without warm() asks once', async () => {

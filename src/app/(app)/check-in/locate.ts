@@ -33,9 +33,11 @@ export type Locator = {
   /** Starts the position request early (e.g. when the code input gets focus), once. */
   warm(): void
   /**
-   * The position to send with a check-in. Reuses the early request: waits for it while it is
-   * pending, and reuses its fix. When it already ended without a position (denied, ignored,
-   * timed out) before this submit, asks once more: the student may have allowed it since.
+   * The position to send with one check-in attempt. Uses the early request: waits for it while
+   * it is pending, or takes the fix it already got. When it already ended without a position
+   * (denied, ignored, timed out) before this submit, asks once more: the student may have allowed
+   * it since. Each request serves ONE submit: the next submit (e.g. after an off_campus or
+   * location_imprecise refusal, once the student has moved) gets a fresh fix, never this one.
    */
   position(): Promise<Position | null>
 }
@@ -59,8 +61,9 @@ export function createLocator(getGeolocation: () => Geolocation | undefined): Lo
       if (!attempt) start()
     },
     position() {
-      if (!attempt || (attempt.settled && attempt.value === null)) return start().promise
-      return attempt.promise
+      const current = !attempt || (attempt.settled && attempt.value === null) ? start() : attempt
+      attempt = null // handed out: the next warm() or submit starts a new request
+      return current.promise
     },
   }
 }
