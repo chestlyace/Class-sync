@@ -19,9 +19,9 @@ import {
   submission,
   submissionFile,
 } from '@/server/db/schema'
-import { MAX_FILE_BYTES } from '@/server/assignments/rules'
+import { MAX_FILE_BYTES, MAX_FILES } from '@/server/assignments/rules'
 import { createClass, joinClassAsLecturer, joinClassAsStudent } from '@/server/classes/service'
-import { createCourse } from '@/server/courses/service'
+import { createCourse, setRosterAdjustment } from '@/server/courses/service'
 import { createSchool } from '@/server/schools/service'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
@@ -420,7 +420,7 @@ describe('files service', () => {
     const { lecturer, alice, bob, published } = await setup()
     const mine: string[] = []
     for (let i = 0; i < 11; i++) mine.push(await upload(alice, 'submission', published, new Uint8Array([i])))
-    const ok = (ids: string[]) => assertConfirmedFilesOwnedBy(db, ids, alice.user.id, 'submission')
+    const ok = (ids: string[]) => assertConfirmedFilesOwnedBy(db, ids, alice.user.id, 'submission', published)
 
     await expect(ok([])).resolves.toBeUndefined()
     await expect(ok(mine.slice(0, 10))).resolves.toBeUndefined()
@@ -434,10 +434,100 @@ describe('files service', () => {
     await expect(ok([mine[0], pending.fileId])).rejects.toMatchObject({ code: 'VALIDATION' })
 
     const lecturerFile = await upload(lecturer, 'assignment', published)
-    await expect(assertConfirmedFilesOwnedBy(db, [lecturerFile], lecturer.user.id, 'submission')).rejects.toMatchObject({
+    await expect(assertConfirmedFilesOwnedBy(db, [lecturerFile], lecturer.user.id, 'submission', published)).rejects.toMatchObject({
       code: 'VALIDATION',
     })
-    await expect(assertConfirmedFilesOwnedBy(db, [lecturerFile], lecturer.user.id, 'assignment')).resolves.toBeUndefined()
+    await expect(assertConfirmedFilesOwnedBy(db, [lecturerFile], lecturer.user.id, 'assignment', published)).resolves.toBeUndefined()
     await expect(ok(['no-such-file'])).rejects.toMatchObject({ code: 'VALIDATION' })
+  })
+
+  it('assertConfirmedFilesOwnedBy rejects a confirmed file uploaded for another assignment', async () => {
+    const { lecturer, alice, algo, published, draft } = await setup()
+    const other = await makeAssignment(algo.id, lecturer, { status: 'published' })
+    const forOther = await upload(alice, 'submission', other)
+    const forThis = await upload(alice, 'submission', published)
+    await expect(assertConfirmedFilesOwnedBy(db, [forThis], alice.user.id, 'submission', published)).resolves.toBeUndefined()
+    await expect(assertConfirmedFilesOwnedBy(db, [forThis, forOther], alice.user.id, 'submission', published)).rejects.toMatchObject({
+      code: 'VALIDATION',
+    })
+    const draftAttachment = await upload(lecturer, 'assignment', draft)
+    await expect(assertConfirmedFilesOwnedBy(db, [draftAttachment], lecturer.user.id, 'assignment', published)).rejects.toMatchObject({
+      code: 'VALIDATION',
+    })
+    await expect(assertConfirmedFilesOwnedBy(db, [draftAttachment], lecturer.user.id, 'assignment', draft)).resolves.toBeUndefined()
+    // A prefix is matched exactly: LIKE wildcards in the id match nothing.
+    await expect(assertConfirmedFilesOwnedBy(db, [forThis], alice.user.id, 'submission', '%')).rejects.toMatchObject({
+      code: 'VALIDATION',
+    })
+  })
+
+  it('download: a link only counts when the file was uploaded for that assignment (and student)', async () => {
+    const { lecturer, colleague, alice, bob, published, draft } = await setup()
+    // An attachment uploaded for the draft, linked into the published assignment: students can't read it.
+    const draftFile = await upload(lecturer, 'assignment', draft)
+    await attach(published, [draftFile])
+    await expect(getFileForDownload(alice, draftFile)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+
+    // Alice's file linked into Bob's submission: neither Bob nor the lecturer gains access.
+    const aliceFile = await upload(alice, 'submission', published)
+    await submit(bob, published, [aliceFile])
+    await expect(getFileForDownload(bob, aliceFile)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    await expect(getFileForDownload(lecturer, aliceFile)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+
+    // Alice's file for this course, linked into her submission in the colleague's course.
+    const [{ classId }] = await db.select({ classId: course.classId }).from(course)
+    const colleagueCourse = await createCourse(colleague, { classId, title: 'Networks', semester: 1 })
+    const theirs = await makeAssignment(colleagueCourse.id, colleague, { status: 'published' })
+    const aliceOther = await upload(alice, 'submission', published)
+    await submit(alice, theirs, [aliceOther])
+    await expect(getFileForDownload(colleague, aliceOther)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+  })
+
+  it('download: an excluded student cannot read a published attachment', async () => {
+    const { lecturer, alice, bob, algo, published } = await setup()
+    const fileId = await upload(lecturer, 'assignment', published)
+    await attach(published, [fileId])
+    await setRosterAdjustment(lecturer, algo.id, bob.user.id, 'exclude')
+    await expect(getFileForDownload(bob, fileId)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    expect((await getFileForDownload(alice, fileId)).info.id).toBe(fileId)
+  })
+
+  it('caps pending uploads: 2 × MAX_FILES unconfirmed in the last 24 h → CONFLICT too_many_pending', async () => {
+    const { alice, published } = await setup()
+    const at = new Date('2026-11-09T10:00:00Z')
+    setNowForTests(() => at)
+    const req = (n: number) =>
+      requestUpload(alice, { purpose: 'submission', assignmentId: published, name: `p${n}.pdf`, mimeType: PDF, size: 2 })
+    for (let i = 0; i < 2 * MAX_FILES - 1; i++) await req(i)
+    // A confirmed file and an old pending one don't count.
+    await db.insert(file).values({
+      ownerId: alice.user.id,
+      purpose: 'submission',
+      storageKey: `submissions/${published}/${alice.user.id}/old`,
+      name: 'old.pdf',
+      mimeType: PDF,
+      sizeBytes: 2,
+      createdAt: new Date(at.getTime() - DAY - 1000),
+    })
+    await upload(alice, 'submission', published)
+    await req(100)
+    await expect(req(101)).rejects.toMatchObject({ code: 'CONFLICT', details: { reason: 'too_many_pending' } })
+    // A day later the window has moved on.
+    setNowForTests(() => new Date(at.getTime() + DAY + 1000))
+    await expect(req(102)).resolves.toMatchObject({ fileId: expect.any(String) })
+  })
+
+  it('cleans display names: bidi and C1 controls go, lone surrogates become U+FFFD', async () => {
+    const { lecturer, draft } = await setup()
+    const nameOf = async (raw: string) => {
+      const { fileId } = await requestUpload(lecturer, { purpose: 'assignment', assignmentId: draft, name: raw, mimeType: PDF, size: 1 })
+      const [row] = await db.select({ name: file.name }).from(file).where(eq(file.id, fileId))
+      return row.name
+    }
+    expect(await nameOf('invoice\u202Efdp.exe\u202C.pdf')).toBe('invoicefdp.exe.pdf')
+    expect(await nameOf('a\u2066b\u2067c\u2068d\u2069e\u202Af\u202Bg\u202Dh.pdf')).toBe('abcdefgh.pdf')
+    expect(await nameOf('x\u0085y\u009Fz\u0080.pdf')).toBe('xyz.pdf')
+    expect(await nameOf('lone\uD800half.pdf')).toBe('lone\uFFFDhalf.pdf')
+    expect(await nameOf('ok \uD83D\uDCDA.pdf')).toBe('ok \uD83D\uDCDA.pdf')
   })
 })

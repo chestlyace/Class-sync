@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, isNull } from 'drizzle-orm'
+import { and, count, eq, gt, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { canSubmit, isAllowedFile, MAX_FILES } from '@/server/assignments/rules'
 import { now } from '@/server/core/clock'
@@ -23,6 +23,9 @@ export type FileInfo = { id: string; name: string; mimeType: string; sizeBytes: 
 
 const MAX_NAME_LENGTH = 255
 const MAX_SAFE_NAME_LENGTH = 100
+/** Unconfirmed uploads one person may have started in the last PENDING_WINDOW_MS. */
+const MAX_PENDING_UPLOADS = 2 * MAX_FILES
+const PENDING_WINDOW_MS = 24 * 60 * 60 * 1000
 
 const requestSchema = z.object({
   purpose: z.enum(FILE_PURPOSES),
@@ -36,17 +39,30 @@ function forbidden(message = 'You do not have access to this file'): never {
   throw new AppError('FORBIDDEN', message)
 }
 
-/** The display name: the last path component, without control characters, NFC. */
+/**
+ * The display name: the last path component, well-formed UTF-16 (lone surrogates → U+FFFD),
+ * without C0/C1 controls or bidi embedding/override/isolate controls (which can disguise
+ * names such as `invoice<RLO>fdp.exe`), NFC.
+ */
 function cleanName(raw: string): string {
   const base = raw.split(/[/\\]/).pop() ?? ''
-  return base.replace(/[\u0000-\u001f\u007f]/g, '').normalize('NFC').trim()
+  return base
+    .toWellFormed()
+    .replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g, '')
+    .normalize('NFC')
+    .trim()
+}
+
+/** Where files of each purpose for an assignment live; a file belongs to the assignment in its key. */
+function keyPrefix(purpose: FilePurpose, assignmentId: string, ownerId: string): string {
+  return purpose === 'assignment' ? `assignments/${assignmentId}/` : `submissions/${assignmentId}/${ownerId}/`
 }
 
 /** The file-name part of a storage key: ASCII letters, digits, `.`, `_` and `-` only. */
 export function safeName(name: string): string {
   const ascii = name
     .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^A-Za-z0-9._-]+/g, '-')
     .replace(/-{2,}/g, '-')
     .replace(/^[-.]+|-+$/g, '')
@@ -115,13 +131,27 @@ export async function requestUpload(
   // isAllowedFile accepts any finite size in range; the column is an integer.
   if (!Number.isSafeInteger(data.size)) throw new AppError('VALIDATION', 'File not accepted', { reason: 'size' })
 
+  const createdAt = now()
+  const [pending] = await ctx.db
+    .select({ n: count() })
+    .from(file)
+    .where(
+      and(
+        eq(file.ownerId, ctx.user.id),
+        isNull(file.confirmedAt),
+        gt(file.createdAt, new Date(createdAt.getTime() - PENDING_WINDOW_MS)),
+      ),
+    )
+  if (pending.n >= MAX_PENDING_UPLOADS) {
+    throw new AppError('CONFLICT', 'Too many unfinished uploads', { reason: 'too_many_pending' })
+  }
+
   const fileId = crypto.randomUUID()
-  const leaf = `${fileId}-${safeName(name)}`
-  const storageKey =
-    data.purpose === 'assignment' ? `assignments/${asg.id}/${leaf}` : `submissions/${asg.id}/${ctx.user.id}/${leaf}`
+  const storageKey = `${keyPrefix(data.purpose, asg.id, ctx.user.id)}${fileId}-${safeName(name)}`
   const target = await getStorage().uploadTarget(storageKey, mimeType)
   await ctx.db.insert(file).values({
     id: fileId,
+    createdAt,
     ownerId: ctx.user.id,
     purpose: data.purpose,
     storageKey,
@@ -220,23 +250,33 @@ export async function authorizeBlobUpload(
  * - for an assignment attachment: the course owner, or a rostered student once the assignment
  *   is published;
  * - for a submission file: the submitting student or the course owner.
- * A link only counts in the link table that matches the file's purpose (a submission file wrongly
- * linked as an attachment does not become visible to the class). Everything else, including other
+ * A link only counts in the link table that matches the file's purpose, and only when the file was
+ * uploaded for that assignment (and, for a submission, by that student), per its storage key. So a
+ * file wrongly linked elsewhere never becomes visible there. Everything else, including other
  * people's unconfirmed files, is refused.
  */
-async function mayRead(ctx: Ctx, row: { id: string; ownerId: string; purpose: FilePurpose; confirmedAt: Date | null }) {
+async function mayRead(
+  ctx: Ctx,
+  row: { id: string; ownerId: string; purpose: FilePurpose; storageKey: string; confirmedAt: Date | null },
+) {
   const me = ctx.user.id
   if (row.ownerId === me) return true
   if (!row.confirmedAt) return false
 
   if (row.purpose === 'assignment') {
     const links = await ctx.db
-      .select({ courseId: course.id, lecturerId: course.lecturerId, status: assignment.status })
+      .select({
+        assignmentId: assignment.id,
+        courseId: course.id,
+        lecturerId: course.lecturerId,
+        status: assignment.status,
+      })
       .from(assignmentAttachment)
       .innerJoin(assignment, eq(assignment.id, assignmentAttachment.assignmentId))
       .innerJoin(course, eq(course.id, assignment.courseId))
       .where(eq(assignmentAttachment.fileId, row.id))
     for (const link of links) {
+      if (!row.storageKey.startsWith(keyPrefix('assignment', link.assignmentId, row.ownerId))) continue
       if (link.lecturerId === me) return true
       if (ctx.user.role === 'student' && link.status === 'published' && (await isOnCourseRoster(ctx.db, link.courseId, me))) {
         return true
@@ -246,13 +286,17 @@ async function mayRead(ctx: Ctx, row: { id: string; ownerId: string; purpose: Fi
   }
 
   const links = await ctx.db
-    .select({ studentId: submission.studentId, lecturerId: course.lecturerId })
+    .select({ assignmentId: submission.assignmentId, studentId: submission.studentId, lecturerId: course.lecturerId })
     .from(submissionFile)
     .innerJoin(submission, eq(submission.id, submissionFile.submissionId))
     .innerJoin(assignment, eq(assignment.id, submission.assignmentId))
     .innerJoin(course, eq(course.id, assignment.courseId))
     .where(eq(submissionFile.fileId, row.id))
-  return links.some((link) => link.studentId === me || link.lecturerId === me)
+  return links.some(
+    (link) =>
+      row.storageKey.startsWith(keyPrefix('submission', link.assignmentId, link.studentId)) &&
+      (link.studentId === me || link.lecturerId === me),
+  )
 }
 
 /** PDFs and images open in the browser; Word files download. */
@@ -264,24 +308,26 @@ function isInline(mimeType: string): boolean {
 export async function getFileForDownload(
   ctx: Ctx,
   fileId: string,
-): Promise<{ info: FileInfo; stream: ReadableStream<Uint8Array>; inline: boolean }> {
+): Promise<{ info: FileInfo; stream: ReadableStream<Uint8Array>; inline: boolean; confirmed: boolean }> {
   requireVerified(ctx)
   if (typeof fileId !== 'string' || fileId.length === 0 || fileId.length > 100) forbidden()
   const [row] = await ctx.db.select().from(file).where(eq(file.id, fileId))
   if (!row || !(await mayRead(ctx, row))) forbidden()
   const stream = await getStorage().read(row.storageKey)
-  return { info: toInfo(row), stream, inline: isInline(row.mimeType) }
+  return { info: toInfo(row), stream, inline: isInline(row.mimeType), confirmed: row.confirmedAt !== null }
 }
 
 /**
  * For attaching files to an assignment or a submission: at most MAX_FILES distinct ids, each a
- * confirmed file of `ownerId` uploaded for `purpose`. Otherwise VALIDATION.
+ * confirmed file of `ownerId` uploaded for `purpose` on `assignmentId` (its storage key starts with
+ * `assignments/<assignmentId>/` or `submissions/<assignmentId>/<ownerId>/`). Otherwise VALIDATION.
  */
 export async function assertConfirmedFilesOwnedBy(
   db: Db,
   fileIds: string[],
   ownerId: string,
   purpose: FilePurpose,
+  assignmentId: string,
 ): Promise<void> {
   if (!Array.isArray(fileIds) || fileIds.length > MAX_FILES) {
     throw new AppError('VALIDATION', `At most ${MAX_FILES} files`, { reason: 'count' })
@@ -299,6 +345,8 @@ export async function assertConfirmedFilesOwnedBy(
         eq(file.ownerId, ownerId),
         eq(file.purpose, purpose),
         isNotNull(file.confirmedAt),
+        // Exact prefix match (no LIKE, so `%` and `_` in ids are not wildcards).
+        sql`starts_with(${file.storageKey}, ${keyPrefix(purpose, assignmentId, ownerId)})`,
       ),
     )
   if (rows.length !== fileIds.length) {

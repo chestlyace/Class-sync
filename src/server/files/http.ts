@@ -4,6 +4,7 @@ import type { FileInfo } from './service'
 /** `"` `\` and anything outside printable ASCII become `_` in the plain `filename=` fallback. */
 function asciiFallback(name: string): string {
   return name
+    .toWellFormed()
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^\x20-\x7e]|["\\]/g, '_')
@@ -11,7 +12,8 @@ function asciiFallback(name: string): string {
 
 /** RFC 5987 `ext-value` encoding: percent-encode everything outside `attr-char`. */
 function rfc5987(name: string): string {
-  return encodeURIComponent(name).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+  // encodeURIComponent throws on lone surrogates.
+  return encodeURIComponent(name.toWellFormed()).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
 }
 
 export function contentDisposition(name: string, inline: boolean): string {
@@ -20,22 +22,27 @@ export function contentDisposition(name: string, inline: boolean): string {
 
 /**
  * The response for `GET /api/files/[fileId]`. Streams the body. The type comes from our allow-list
- * (never sniffed), and the sandbox CSP keeps a crafted file from running script in our origin.
+ * (never sniffed). Images and Word files get `CSP: sandbox` so a crafted file can't run script in
+ * our origin; PDFs don't, because the sandbox stops browsers' built-in PDF viewers (PDF scripts run
+ * inside the viewer, not in our origin). Content-Length only once the size has been confirmed.
  */
-export function fileResponse(file: { info: FileInfo; stream: ReadableStream<Uint8Array>; inline: boolean }): Response {
-  return new Response(file.stream, {
-    status: 200,
-    headers: {
-      'Content-Type': file.info.mimeType,
-      'Content-Length': String(file.info.sizeBytes),
-      'Content-Disposition': contentDisposition(file.info.name, file.inline),
-      'Cache-Control': 'private, no-store',
-      'X-Content-Type-Options': 'nosniff',
-      'Content-Security-Policy': 'sandbox',
-      'Cross-Origin-Resource-Policy': 'same-origin',
-      'Referrer-Policy': 'no-referrer',
-    },
-  })
+export function fileResponse(file: {
+  info: FileInfo
+  stream: ReadableStream<Uint8Array>
+  inline: boolean
+  confirmed: boolean
+}): Response {
+  const headers: Record<string, string> = {
+    'Content-Type': file.info.mimeType,
+    'Content-Disposition': contentDisposition(file.info.name, file.inline),
+    'Cache-Control': 'private, no-store',
+    'X-Content-Type-Options': 'nosniff',
+    'Cross-Origin-Resource-Policy': 'same-origin',
+    'Referrer-Policy': 'no-referrer',
+  }
+  if (file.confirmed) headers['Content-Length'] = String(file.info.sizeBytes)
+  if (file.info.mimeType !== 'application/pdf') headers['Content-Security-Policy'] = 'sandbox'
+  return new Response(file.stream, { status: 200, headers })
 }
 
 const STATUS: Record<AppError['code'], number> = {
