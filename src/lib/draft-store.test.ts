@@ -91,7 +91,7 @@ describe('loadDraft / saveDraft / clearDraft', () => {
     const cyclic: Record<string, unknown> = {}
     cyclic.self = cyclic
     expect(() => saveDraft('k', cyclic)).not.toThrow()
-    expect(() => saveDraft('k', 10n)).not.toThrow()
+    expect(() => saveDraft('k', BigInt(10))).not.toThrow()
   })
 })
 
