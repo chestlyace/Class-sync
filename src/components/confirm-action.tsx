@@ -30,6 +30,8 @@ export function ConfirmAction({
   note,
   confirmLabel,
   destructive = false,
+  primary = false,
+  renderError,
 }: {
   action: FormAction
   fields: Record<string, string>
@@ -41,6 +43,10 @@ export function ConfirmAction({
   note?: string
   confirmLabel: string
   destructive?: boolean
+  /** Shows the trigger as the page's main action (filled blue). */
+  primary?: boolean
+  /** Replaces the generic error message (e.g. to explain a service `reason`). */
+  renderError?: (state: ActionResult<unknown> | null) => React.ReactNode
 }) {
   const t = useTranslations('common')
   const [open, setOpen] = useState(false)
@@ -55,7 +61,7 @@ export function ConfirmAction({
       <DialogTrigger asChild>
         <Button
           type="button"
-          variant={destructive ? 'destructive' : 'outline'}
+          variant={destructive ? 'destructive' : primary ? 'default' : 'outline'}
           aria-label={triggerAriaLabel}
           title={triggerAriaLabel}
         >
@@ -73,7 +79,7 @@ export function ConfirmAction({
           {Object.entries(fields).map(([name, value]) => (
             <input key={name} type="hidden" name={name} value={value} />
           ))}
-          <ActionError state={state} />
+          {renderError ? renderError(state) : <ActionError state={state} />}
           <DialogFooter>
             <DialogClose asChild>
               <Button type="button" variant="outline">
