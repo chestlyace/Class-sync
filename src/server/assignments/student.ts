@@ -129,13 +129,9 @@ async function requireVisibleAssignment(ctx: Ctx, assignmentId: string): Promise
   return row
 }
 
-/**
- * The one place submission files are checked. Ruling B4 adds an assignment check to
- * assertConfirmedFilesOwnedBy; at merge `assignmentId` is passed through here.
- */
+/** The one place submission files are checked: the student's own confirmed uploads for this assignment. */
 async function assertSubmissionFiles(db: Db, fileIds: string[], studentId: string, assignmentId: string) {
-  void assignmentId
-  await assertConfirmedFilesOwnedBy(db, fileIds, studentId, 'submission')
+  await assertConfirmedFilesOwnedBy(db, fileIds, studentId, 'submission', assignmentId)
 }
 
 // ---------------------------------------------------------------------------------------------
