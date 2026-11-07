@@ -155,12 +155,9 @@ function parseInput(input: AssignmentInput, current?: AssignmentRow): CleanInput
   }
 }
 
-/**
- * The one place attachment ids are checked: the lecturer's own confirmed `assignment` files.
- * (Ruling B4 adds "uploaded for this assignment": pass `target.assignmentId` through here.)
- */
+/** The one place attachment ids are checked: the lecturer's own confirmed uploads for this assignment. */
 async function assertAttachable(db: Db, target: { ownerId: string; assignmentId: string }, fileIds: string[]) {
-  await assertConfirmedFilesOwnedBy(db, fileIds, target.ownerId, 'assignment')
+  await assertConfirmedFilesOwnedBy(db, fileIds, target.ownerId, 'assignment', target.assignmentId)
 }
 
 /** Owner-only lookup of an assignment. "No such assignment" and "not yours" are both FORBIDDEN. */
