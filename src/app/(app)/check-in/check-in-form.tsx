@@ -56,6 +56,11 @@ export function CheckInForm({
   const inputId = `check-in-code-${windowId}`
   const hintId = `${inputId}-hint`
   const errorId = `${inputId}-error`
+  const locationId = `${inputId}-location`
+  // Location explanation first (it is about the prompt focusing brings up), then hint, then error.
+  const describedBy = [requireOnCampus && locationId, hintId, outcome?.kind === 'error' && errorId]
+    .filter(Boolean)
+    .join(' ')
   // On campus-only check-ins the location request starts when the student focuses the code input,
   // so the fix arrives while they type and the code cannot expire while the browser locates them.
   const locator = useRef<Locator | null>(null)
@@ -126,7 +131,7 @@ export function CheckInForm({
           <FieldGroup>
             {/* Above the input: read before the location prompt that focusing the input brings up. */}
             {requireOnCampus && (
-              <p className="flex gap-2 text-sm text-muted-foreground">
+              <p id={locationId} className="flex gap-2 text-sm text-muted-foreground">
                 <MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
                 {t('locationExplain')}
               </p>
@@ -144,7 +149,7 @@ export function CheckInForm({
                 autoCorrect="off"
                 spellCheck={false}
                 maxLength={MAX_CODE_LENGTH}
-                aria-describedby={invalid ? `${hintId} ${errorId}` : hintId}
+                aria-describedby={describedBy}
                 aria-invalid={invalid}
                 className="max-w-56 font-mono text-lg tracking-[0.2em] uppercase"
               />

@@ -149,9 +149,9 @@ test('attendance with a rotating code and a campus check, end to end', async ({
       await bob.getByLabel('Code on the screen', { exact: true }).fill(wrong)
       await bob.getByRole('button', { name: 'Check in', exact: true }).click()
       await expect(bob.getByRole('alert').filter({ hasText: "That code isn't right." })).toBeVisible()
-      // The error is tied to the input, after its hint.
+      // The input is described by the location explanation, then its hint, then the error.
       await expect(bob.getByLabel('Code on the screen', { exact: true })).toHaveAccessibleDescription(
-        /It changes every minute\..*That code isn't right\./,
+        /^This class checks that you're on campus\..*It changes every minute\..*That code isn't right\./,
       )
     })
 
