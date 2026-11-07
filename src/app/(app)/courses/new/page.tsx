@@ -28,9 +28,9 @@ export default async function NewCoursePage({ searchParams }: PageProps<'/course
   const defaultClassId = typeof classId === 'string' && options.some((o) => o.id === classId) ? classId : ''
 
   return (
-    <>
-      <PageHeader title={t('courses.new.title')} description={t('courses.new.description')} />
-      <Panel className="max-w-2xl">
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
+      <PageHeader eyebrow={t('courses.new.step')} title={t('courses.new.title')} description={t('courses.new.description')} />
+      <Panel>
         {options.length === 0 ? (
           <div className="flex flex-col items-start gap-4">
             <p className="text-muted-foreground">{t('courses.new.noClasses')}</p>
@@ -43,6 +43,6 @@ export default async function NewCoursePage({ searchParams }: PageProps<'/course
           <NewCourseForm classes={options} defaultClassId={defaultClassId} />
         )}
       </Panel>
-    </>
+    </div>
   )
 }

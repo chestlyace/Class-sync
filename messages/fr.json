@@ -82,6 +82,7 @@
   "schools": {
     "title": "Établissements",
     "new": {
+      "step": "Étape 1 sur 3 · Établissement",
       "title": "Trouvez votre établissement",
       "description": "Cherchez d'abord : votre établissement est peut-être déjà sur Clasync.",
       "searchLabel": "Rechercher par nom d'établissement",
@@ -114,8 +115,10 @@
   "classes": {
     "title": "Classes",
     "new": {
+      "step": "Étape 2 sur 3 · Classe",
       "title": "Nouvelle classe",
       "description": "Une classe est partagée : vos collègues la rejoignent avec le code enseignant et y ajoutent leurs propres cours.",
+      "joinInstead": "Un collègue a déjà créé cette classe ? Rejoignez-la avec son code enseignant",
       "pickSchool": "Choisissez d'abord l'établissement.",
       "school": "Établissement",
       "changeSchool": "Changer d'établissement",
@@ -165,6 +168,7 @@
   "courses": {
     "title": "Cours",
     "new": {
+      "step": "Étape 3 sur 3 · Cours",
       "title": "Nouveau cours",
       "description": "Tous les étudiants actifs de la classe sont inscrits au cours. Vous pourrez ajuster la liste ensuite.",
       "class": "Classe",

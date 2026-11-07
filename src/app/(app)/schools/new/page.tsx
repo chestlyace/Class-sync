@@ -17,8 +17,8 @@ export default async function NewSchoolPage() {
   if (user.role !== 'lecturer') return <ErrorState code="FORBIDDEN" />
   const t = await getTranslations('schools.new')
   return (
-    <>
-      <PageHeader title={t('title')} description={t('description')} />
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
+      <PageHeader eyebrow={t('step')} title={t('title')} description={t('description')} />
       <Panel>
         <SchoolSearch />
       </Panel>
@@ -29,6 +29,6 @@ export default async function NewSchoolPage() {
           <NewSchoolForm />
         </Panel>
       </section>
-    </>
+    </div>
   )
 }
