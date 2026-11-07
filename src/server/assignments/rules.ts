@@ -21,8 +21,10 @@ export type AllowedMimeType = keyof typeof EXTENSIONS_BY_MIME
 export const ALLOWED_MIME_TYPES = Object.keys(EXTENSIONS_BY_MIME) as AllowedMimeType[]
 
 export function extensionsFor(mime: string): string[] {
-  const list = (EXTENSIONS_BY_MIME as Record<string, readonly string[]>)[mime.trim().toLowerCase()]
-  return list ? [...list] : []
+  // `mime` is client-declared: only own keys count ('constructor', '__proto__', ... must not match).
+  const key = mime.trim().toLowerCase()
+  if (!Object.hasOwn(EXTENSIONS_BY_MIME, key)) return []
+  return [...(EXTENSIONS_BY_MIME as Record<string, readonly string[]>)[key]]
 }
 
 /** Checks the declared type, then that the extension matches it, then the size. */
