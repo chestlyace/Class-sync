@@ -19,7 +19,7 @@ import { getSchool } from '@/server/schools/service'
 import { isUniqueViolation } from '@/server/lib/db-errors'
 import { currentCode, newWindowSecret } from './code'
 import { loadStatusMatrixForRoster, type StudentSessionState } from './matrix'
-import { WINDOW_MAX_MINUTES } from './rules'
+import { isSessionOver, WINDOW_MAX_MINUTES } from './rules'
 import type { OverrideStatus } from './status'
 
 export type { StudentSessionState } from './matrix'
@@ -195,6 +195,9 @@ export async function openWindow(ctx: Ctx, sessionId: string, kind: WindowKind):
   const { session } = await requireOwnedSession(ctx, sessionId)
   if (!(WINDOW_KINDS as readonly string[]).includes(kind)) invalid('kind', 'Invalid window kind')
   const at = now()
+  if (isSessionOver(session.createdAt, at)) {
+    throw new AppError('CONFLICT', 'This session is over', { reason: 'session_over' })
+  }
   const windowStart = new Date(at.getTime() - WINDOW_MAX_MS)
 
   let created: WindowRow

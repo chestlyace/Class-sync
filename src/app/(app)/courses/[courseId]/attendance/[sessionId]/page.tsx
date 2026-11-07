@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { getLiveWindow, getSession, type LiveWindow as LiveWindowData, type WindowState } from '@/server/attendance/sessions'
 import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
+import { isSessionOver, SESSION_MAX_HOURS } from '@/server/attendance/rules'
+import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import { AppError } from '@/server/core/errors'
 import { loadPage } from '../../../../load-page'
@@ -46,7 +48,10 @@ export default async function AttendanceSessionPage({
 
   const windowOf = (kind: 'start' | 'end') => session.windows.find((w) => w.kind === kind)
   const anyOpen = session.windows.some((w) => w.open)
+  // The same rule openWindow enforces: no new check-in once the session is 12 h old.
+  const over = isSessionOver(session.createdAt, now())
   const disabledReason = (kind: 'start' | 'end') => {
+    if (over) return t('sessionOver', { hours: SESSION_MAX_HOURS })
     if (windowOf(kind)) return t('alreadyUsed')
     if (anyOpen) return t('otherOpenHere')
     return undefined

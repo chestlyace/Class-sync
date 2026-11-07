@@ -413,8 +413,10 @@
       "errors": {
         "alreadyOpened": "This check-in was already opened for this session.",
         "anotherOpen": "Another check-in of this course is open. Close it first.",
-        "noCampusLocation": "The school has no campus location yet, so you can't require students on campus."
-      }
+        "noCampusLocation": "The school has no campus location yet, so you can't require students on campus.",
+        "sessionOver": "This session is over: it started more than {hours} hours ago. Start a new session."
+      },
+      "sessionOver": "This session is over: it started more than {hours} hours ago. Start a new session to take attendance."
     }
   }
 }

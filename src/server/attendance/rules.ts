@@ -14,3 +14,10 @@ export const ACCURACY_ALLOWANCE_CAP_M = 150
 export const LIVE_POLL_MS = 3000
 /** Student screen refresh interval. */
 export const STUDENT_POLL_MS = 15000
+/** A session is over (no more windows can be opened) this long after it was created. */
+export const SESSION_MAX_HOURS = 12
+
+/** Whether a session created at `createdAt` is over at `at` (timezone-free: 12 h of wall time). */
+export function isSessionOver(createdAt: Date, at: Date): boolean {
+  return at.getTime() - createdAt.getTime() > SESSION_MAX_HOURS * 3_600_000
+}

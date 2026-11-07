@@ -9,12 +9,14 @@ import { FieldError } from '@/components/ui/field'
 import { NativeSelect } from '@/components/ui/native-select'
 import type { ActionResult } from '@/lib/action-result'
 import { submitWith } from '@/lib/form-submit'
+import { SESSION_MAX_HOURS } from '@/server/attendance/rules'
 import { createSessionAction, openWindowAction, setOverrideAction } from './attendance-actions'
 
-const ERROR_REASONS: Record<string, 'alreadyOpened' | 'anotherOpen' | 'noCampusLocation'> = {
+const ERROR_REASONS: Record<string, 'alreadyOpened' | 'anotherOpen' | 'noCampusLocation' | 'sessionOver'> = {
   already_opened: 'alreadyOpened',
   another_open: 'anotherOpen',
   no_campus_location: 'noCampusLocation',
+  session_over: 'sessionOver',
 }
 
 /** A failed attendance action; the service's known `reason`s get their own message. */
@@ -22,7 +24,7 @@ export function AttendanceError({ state }: { state: ActionResult<unknown> | null
   const t = useTranslations('attendance.lecturer.errors')
   if (!state || state.ok) return null
   const reason = typeof state.details?.reason === 'string' ? ERROR_REASONS[state.details.reason] : undefined
-  if (reason) return <FieldError>{t(reason)}</FieldError>
+  if (reason) return <FieldError>{t(reason, { hours: SESSION_MAX_HOURS })}</FieldError>
   return <ActionError state={state} />
 }
 

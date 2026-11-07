@@ -238,6 +238,23 @@ describe('attendance sessions', () => {
     expect(await db.select().from(attendanceWindow)).toHaveLength(1)
   })
 
+  it('a window can be opened up to 12 h after the session was created; later it is CONFLICT session_over', async () => {
+    const { lecturer, algo } = await setup()
+    const HOUR = 60 * MIN
+    const recent = await createSession(lecturer, algo.id, { requireOnCampus: false })
+    advance(11 * HOUR + 59 * MIN)
+    const live = await openWindow(lecturer, recent.id, 'start')
+    expect(live).toMatchObject({ kind: 'start', open: true })
+    await closeWindow(lecturer, live.windowId)
+
+    advance(2 * MIN) // 12 h 1 min after the session was created
+    await expect(openWindow(lecturer, recent.id, 'end')).rejects.toMatchObject({
+      code: 'CONFLICT',
+      details: { reason: 'session_over' },
+    })
+    expect(await db.select().from(attendanceWindow)).toHaveLength(1)
+  })
+
   it('rejects an unknown window kind', async () => {
     const { lecturer, algo } = await setup()
     const session = await createSession(lecturer, algo.id, { requireOnCampus: false })

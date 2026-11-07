@@ -413,8 +413,10 @@
       "errors": {
         "alreadyOpened": "Cet appel a déjà été ouvert pour cette séance.",
         "anotherOpen": "Un autre appel de ce cours est ouvert. Fermez-le d'abord.",
-        "noCampusLocation": "L'école n'a pas encore de position de campus : vous ne pouvez pas exiger la présence sur place."
-      }
+        "noCampusLocation": "L'école n'a pas encore de position de campus : vous ne pouvez pas exiger la présence sur place.",
+        "sessionOver": "Cette séance est terminée : elle a commencé il y a plus de {hours} heures. Démarrez une nouvelle séance."
+      },
+      "sessionOver": "Cette séance est terminée : elle a commencé il y a plus de {hours} heures. Démarrez une nouvelle séance pour faire l'appel."
     }
   }
 }
