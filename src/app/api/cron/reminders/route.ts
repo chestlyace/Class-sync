@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto'
 import { runDueReminders } from '@/server/assignments/reminders'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60
 
 function authorized(header: string | null, secret: string): boolean {
   const expected = Buffer.from(`Bearer ${secret}`)
