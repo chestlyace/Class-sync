@@ -69,7 +69,8 @@ export async function SiteNav({ user, sections }: { user: SessionUser | null; se
               </>
             ) : sections ? (
               <>
-                <Link href="/sign-in" className={buttonVariants({ variant: 'ghost', className: 'hidden sm:inline-flex' })}>
+                {/* max-sm:hidden, not hidden + sm:inline-flex: the button's own inline-flex would win over a plain `hidden`. */}
+                <Link href="/sign-in" className={buttonVariants({ variant: 'ghost', className: 'max-sm:hidden' })}>
                   {t('nav.signIn')}
                 </Link>
                 <Link href="/sign-up" className={buttonVariants({ className: 'bg-foreground text-background hover:bg-foreground/85' })}>
