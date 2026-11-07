@@ -102,6 +102,20 @@ Session dates and check-in closing times are shown in one school time zone, set 
 It defaults to `Africa/Douala` and must be a valid IANA zone name (e.g. `Africa/Lagos`, `Europe/Paris`); an invalid name makes the attendance screens fail to render.
 Attendance rules themselves (15-minute check-ins, a session is over 12 hours after it starts) don't depend on it.
 
+## Reminders (cron)
+
+Students get one email about 24 hours before an assignment is due, if they have not submitted yet.
+The job is `POST /api/cron/reminders`; it must be called every hour, and an hour that was missed is made up on the next call (each student is reminded at most once per assignment).
+
+1. Set `CRON_SECRET` to a long random string (e.g. `openssl rand -hex 32`) in the Vercel project: Settings, Environment Variables, add `CRON_SECRET` for Production (and Preview if you want to test there), then redeploy. Without it the route answers 503.
+2. On the VPS, add this line with `crontab -e` (replace `<domain>`, and export the same `CRON_SECRET` in the crontab or inline it):
+
+   ```cron
+   0 * * * * curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://<domain>/api/cron/reminders
+   ```
+
+The response is JSON like `{"assignments":2,"reminded":14}`. The links in the emails use `BETTER_AUTH_URL`.
+
 ## Deploying
 
 Run the migrations against the production database **before** deploying code that needs new tables or columns:
