@@ -10,6 +10,7 @@ import { getCourse, getCourseRoster, type CourseSummary } from '@/server/courses
 import { loadPage } from '../../load-page'
 import { IncludeSearch } from '../include-search'
 import { RosterButton } from '../roster-button'
+import { MyAttendance } from './my-attendance'
 
 type CourseRosterEntry = RosterEntry & { source: 'class' | 'included' }
 
@@ -62,10 +63,13 @@ export default async function CoursePage({ params }: PageProps<'/courses/[course
         }
       />
       {view.data.role === 'student' ? (
-        <Panel className="flex flex-col gap-2">
-          <Eyebrow>{t('lecturer', { name: course.lecturerName })}</Eyebrow>
-          <p className="text-muted-foreground">{t('studentNext')}</p>
-        </Panel>
+        <>
+          <Panel className="flex flex-col gap-2">
+            <Eyebrow>{t('lecturer', { name: course.lecturerName })}</Eyebrow>
+            <p className="text-muted-foreground">{t('studentNext')}</p>
+          </Panel>
+          <MyAttendance courseId={course.id} />
+        </>
       ) : (
         <LecturerRoster
           courseId={course.id}
