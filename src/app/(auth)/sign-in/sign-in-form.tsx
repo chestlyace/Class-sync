@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/password-input'
 import { authClient } from '@/lib/auth-client'
 import { authErrorKey } from '@/lib/auth-errors'
 
@@ -48,17 +49,12 @@ export function SignInForm() {
         </Field>
         <Field>
           <FieldLabel htmlFor="password">{t('password')}</FieldLabel>
-          <Input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-          />
+          <PasswordInput id="password" name="password" autoComplete="current-password" required />
         </Field>
         <FieldError>{error}</FieldError>
       </FieldGroup>
-      <Button type="submit" size="lg" disabled={pending}>
+      <Button type="submit" size="lg" disabled={pending} className="mt-1 h-13 text-base">
+
         {pending ? t('submitting') : t('submit')}
       </Button>
     </form>

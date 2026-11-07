@@ -17,9 +17,9 @@ describe('authErrorKey', () => {
   it('maps HTTP 429 (rate limited) to a translated "too many attempts" message, whatever the code', () => {
     expect(authErrorKey(undefined, 429)).toBe('auth.errors.tooManyAttempts')
     expect(authErrorKey('INVALID_EMAIL_OR_PASSWORD', 429)).toBe('auth.errors.tooManyAttempts')
-    expect(lookup('auth.errors.tooManyAttempts')).toBe('Too many attempts — wait a moment and try again.')
+    expect(lookup('auth.errors.tooManyAttempts')).toBe('Too many attempts. Wait a moment and try again.')
     expect(lookup('auth.errors.tooManyAttempts', fr)).toBe(
-      'Trop de tentatives — patientez un instant puis réessayez.',
+      'Trop de tentatives. Patientez un instant puis réessayez.',
     )
     expect(authErrorKey('INVALID_EMAIL_OR_PASSWORD', 401)).toBe('auth.errors.invalidCredentials')
   })

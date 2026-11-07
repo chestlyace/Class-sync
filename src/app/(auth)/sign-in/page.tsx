@@ -18,10 +18,10 @@ export default async function SignInPage() {
         <p className="text-sm text-muted-foreground">{t('description')}</p>
       </div>
       <SignInForm />
-      <p className="text-sm text-muted-foreground">
+      <p className="text-center text-sm text-[#48484a]">
         {t('noAccount')}{' '}
-        <Link href="/sign-up" className="font-medium text-foreground underline underline-offset-4">
-          {(await getTranslations('nav'))('signUp')}
+        <Link href="/sign-up" className="font-medium text-primary underline-offset-4 hover:underline">
+          {t('createAccount')}
         </Link>
       </p>
     </>

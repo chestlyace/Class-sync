@@ -15,6 +15,11 @@
     "optional": "Facultatif"
   },
   "auth": {
+    "aside": "Pour les enseignants qui ont plusieurs classes, et pour leurs étudiants.",
+    "password": {
+      "show": "Afficher le mot de passe",
+      "hide": "Masquer le mot de passe"
+    },
     "signUp": {
       "title": "Créez votre compte",
       "description": "Rejoignez Clasync en tant qu'enseignant ou étudiant.",
@@ -25,7 +30,7 @@
       "role": "Je suis…",
       "roleLecturer": "Je suis enseignant",
       "roleStudent": "Je suis étudiant",
-      "language": "Langue",
+      "language": "Langue de l'application et de vos e-mails",
       "submit": "Créer mon compte",
       "submitting": "Création du compte…",
       "haveAccount": "Vous avez déjà un compte ?",
@@ -39,7 +44,8 @@
       "password": "Mot de passe",
       "submit": "Se connecter",
       "submitting": "Connexion…",
-      "noAccount": "Nouveau sur Clasync ?"
+      "noAccount": "Nouveau sur Clasync ?",
+      "createAccount": "Créer un compte"
     },
     "verify": {
       "title": "Vérifiez votre boîte mail",
@@ -55,7 +61,7 @@
       "passwordTooLong": "Votre mot de passe est trop long.",
       "invalidEmail": "Veuillez saisir une adresse e-mail valide.",
       "emailNotVerified": "Veuillez vérifier votre adresse e-mail avant de vous connecter. Nous venons de vous envoyer un nouveau lien de vérification.",
-      "tooManyAttempts": "Trop de tentatives — patientez un instant puis réessayez."
+      "tooManyAttempts": "Trop de tentatives. Patientez un instant puis réessayez."
     }
   },
   "nav": {

@@ -20,9 +20,9 @@ export default async function SignUpPage() {
         <p className="text-sm text-muted-foreground">{t('description')}</p>
       </div>
       <SignUpForm defaultLocale={isLocale(locale) ? locale : 'en'} />
-      <p className="text-sm text-muted-foreground">
+      <p className="text-center text-sm text-[#48484a]">
         {t('haveAccount')}{' '}
-        <Link href="/sign-in" className="font-medium text-foreground underline underline-offset-4">
+        <Link href="/sign-in" className="font-medium text-primary underline-offset-4 hover:underline">
           {(await getTranslations('nav'))('signIn')}
         </Link>
       </p>

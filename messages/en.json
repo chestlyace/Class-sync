@@ -15,6 +15,11 @@
     "optional": "Optional"
   },
   "auth": {
+    "aside": "For lecturers who teach several classes, and for the students in them.",
+    "password": {
+      "show": "Show password",
+      "hide": "Hide password"
+    },
     "signUp": {
       "title": "Create your account",
       "description": "Join Clasync as a lecturer or a student.",
@@ -25,7 +30,7 @@
       "role": "I am…",
       "roleLecturer": "I'm a lecturer",
       "roleStudent": "I'm a student",
-      "language": "Language",
+      "language": "Language for the app and your emails",
       "submit": "Create account",
       "submitting": "Creating account…",
       "haveAccount": "Already have an account?",
@@ -39,7 +44,8 @@
       "password": "Password",
       "submit": "Sign in",
       "submitting": "Signing in…",
-      "noAccount": "New to Clasync?"
+      "noAccount": "New to Clasync?",
+      "createAccount": "Create an account"
     },
     "verify": {
       "title": "Check your inbox",
@@ -55,7 +61,7 @@
       "passwordTooLong": "Your password is too long.",
       "invalidEmail": "Please enter a valid email address.",
       "emailNotVerified": "Please verify your email address before signing in. We just sent you a new verification link.",
-      "tooManyAttempts": "Too many attempts — wait a moment and try again."
+      "tooManyAttempts": "Too many attempts. Wait a moment and try again."
     }
   },
   "nav": {
