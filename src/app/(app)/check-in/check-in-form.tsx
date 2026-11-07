@@ -12,6 +12,7 @@ import type { ActionResult } from '@/lib/action-result'
 import type { CheckInRefusal } from '@/server/attendance/check-in'
 import type { Position } from '@/server/attendance/geo'
 import { checkInAction } from './actions'
+import { locate } from './locate'
 
 const MAX_CODE_LENGTH = 20
 
@@ -31,18 +32,6 @@ function isRefusal(value: unknown): value is CheckInRefusal {
 type Phase = 'idle' | 'locating' | 'sending'
 
 type Outcome = { kind: 'done'; already: boolean } | { kind: 'error'; message: React.ReactNode }
-
-/** One position fix; null when the browser has no geolocation, the prompt is denied or it times out. */
-function locate(): Promise<Position | null> {
-  return new Promise((resolve) => {
-    if (!('geolocation' in navigator)) return resolve(null)
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => resolve({ latitude: coords.latitude, longitude: coords.longitude, accuracy: coords.accuracy }),
-      () => resolve(null),
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
-    )
-  })
-}
 
 /** Code entry for one open check-in; asks for the position only when the session requires it. */
 export function CheckInForm({ windowId, requireOnCampus }: { windowId: string; requireOnCampus: boolean }) {
@@ -79,7 +68,8 @@ export function CheckInForm({ windowId, requireOnCampus }: { windowId: string; r
       let position: Position | null = null
       if (requireOnCampus) {
         setPhase('locating')
-        position = await locate()
+        // Settles within LOCATE_FALLBACK_MS even when the permission prompt is ignored.
+        position = await locate('geolocation' in navigator ? navigator.geolocation : undefined)
       }
       setPhase('sending')
       const result = await checkInAction(windowId, code, position)
