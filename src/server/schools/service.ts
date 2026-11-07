@@ -1,4 +1,4 @@
-import { and, asc, eq, ilike } from 'drizzle-orm'
+import { and, asc, eq, like } from 'drizzle-orm'
 import { z } from 'zod'
 import { AppError } from '@/server/core/errors'
 import type { Ctx } from '@/server/core/context'
@@ -71,12 +71,13 @@ function toSchool(row: typeof school.$inferSelect): School {
 
 export async function searchSchools(ctx: Ctx, query: string): Promise<School[]> {
   requireVerified(ctx)
-  const q = query.trim()
+  // Match on the normalised key, so case, spacing and accents don't matter ("ecole" finds "École").
+  const q = normalizeKey(query)
   if (!q) return []
   const rows = await ctx.db
     .select()
     .from(school)
-    .where(ilike(school.name, containsPattern(q)))
+    .where(like(school.nameKey, containsPattern(q)))
     .orderBy(asc(school.nameKey), asc(school.id)) // nameKey: collation-independent, case-insensitive order
     .limit(SEARCH_LIMIT)
   return rows.map(toSchool)

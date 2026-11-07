@@ -89,6 +89,15 @@ describe('schools service', () => {
     })
   })
 
+  it('a name differing only by accents in the same town is CONFLICT', async () => {
+    const ctx = await lecturerCtx()
+    const first = await createSchool(ctx, { name: 'Université de Buea', town: 'Buéa' })
+    await expect(createSchool(ctx, { name: 'Universite de Buea', town: 'Buea' })).rejects.toMatchObject({
+      code: 'CONFLICT',
+      details: { existingSchoolId: first.id },
+    })
+  })
+
   it('same name in a different town is allowed', async () => {
     const ctx = await lecturerCtx()
     const a = await createSchool(ctx, { name: 'Government High School', town: 'Buea' })
@@ -122,6 +131,15 @@ describe('schools service', () => {
       await createSchool(ctx, { name: 'Other College', town: 'Buea' })
       const found = await searchSchools(ctx, 'institute')
       expect(found.map((s) => s.name)).toEqual(['alpha INSTITUTE', 'Zeta Institute'])
+    })
+
+    it('ignores accents in both directions', async () => {
+      const ctx = await lecturerCtx()
+      await createSchool(ctx, { name: 'Université de Buea', town: 'Buea' })
+      await createSchool(ctx, { name: 'Ecole Normale', town: 'Yaounde' })
+      expect((await searchSchools(ctx, 'Universite de Buea')).map((s) => s.name)).toEqual(['Université de Buea'])
+      expect((await searchSchools(ctx, '  UNIVERSITÉ   de ')).map((s) => s.name)).toEqual(['Université de Buea'])
+      expect((await searchSchools(ctx, 'école')).map((s) => s.name)).toEqual(['Ecole Normale'])
     })
 
     it('caps results at 20', async () => {

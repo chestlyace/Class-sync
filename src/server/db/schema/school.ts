@@ -9,7 +9,7 @@ export const school = pgTable(
       .$defaultFn(() => crypto.randomUUID()),
     name: text('name').notNull(),
     town: text('town').notNull(),
-    // Lowercased, whitespace-collapsed copies used for duplicate detection.
+    // normalizeKey() copies (lowercased, accent-folded, whitespace-collapsed): duplicate detection and search.
     nameKey: text('name_key').notNull(),
     townKey: text('town_key').notNull(),
     latitude: doublePrecision('latitude'),
