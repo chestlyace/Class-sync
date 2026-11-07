@@ -40,7 +40,10 @@ export async function sendDueReminders(db: Db, at: Date): Promise<{ assignments:
     .innerJoin(course, eq(course.id, assignment.courseId))
     .where(and(eq(assignment.status, 'published'), gt(assignment.dueAt, at), lte(assignment.dueAt, upper)))
 
-  const notifications: Notification[] = []
+  if (due.length > 0 && !process.env.BETTER_AUTH_URL) {
+    console.warn('[reminders] BETTER_AUTH_URL is not set: reminder emails will carry relative links')
+  }
+  let reminded = 0
   for (const a of due) {
     const roster = await courseRosterQuery(db, { courseId: a.courseId })
     if (roster.length === 0) continue
@@ -69,6 +72,8 @@ export async function sendDueReminders(db: Db, at: Date): Promise<{ assignments:
       .where(inArray(user.id, [...claimed]))
     const localeOf = new Map(locales.map((l) => [l.id, (l.locale === 'fr' ? 'fr' : 'en') as Locale]))
 
+    // Send per assignment, right after its claim, so a killed run loses at most one assignment's emails.
+    const notifications: Notification[] = []
     for (const student of candidates) {
       if (!claimed.has(student.studentId)) continue
       const locale = localeOf.get(student.studentId) ?? 'en'
@@ -87,11 +92,12 @@ export async function sendDueReminders(db: Db, at: Date): Promise<{ assignments:
         }),
       })
     }
+    // Never throws: a provider outage must not fail the cron run (the rows are already claimed).
+    await sendNotifications(notifications)
+    reminded += notifications.length
   }
 
-  // Never throws: a provider outage must not fail the cron run (the rows are already claimed).
-  await sendNotifications(notifications)
-  return { assignments: due.length, reminded: notifications.length }
+  return { assignments: due.length, reminded }
 }
 
 /** The job at the current time against the app database; the cron route calls this (UI code may not import `db`). */

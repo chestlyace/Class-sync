@@ -111,10 +111,10 @@ The job is `POST /api/cron/reminders`; it must be called every hour, and an hour
 2. On the VPS, add this line with `crontab -e` (replace `<domain>`, and export the same `CRON_SECRET` in the crontab or inline it):
 
    ```cron
-   0 * * * * curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://<domain>/api/cron/reminders
+   0 * * * * curl -fsS --max-time 120 -X POST -H "Authorization: Bearer $CRON_SECRET" https://<domain>/api/cron/reminders
    ```
 
-The response is JSON like `{"assignments":2,"reminded":14}`. The links in the emails use `BETTER_AUTH_URL`.
+The response is JSON like `{"assignments":2,"reminded":14}`; `reminded` counts emails attempted, not confirmed deliveries. The links in the emails use `BETTER_AUTH_URL`.
 
 ## Deploying
 

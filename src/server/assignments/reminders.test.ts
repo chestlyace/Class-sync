@@ -172,6 +172,33 @@ describe('sendDueReminders', () => {
     expect(to).toContain(visitor.user.email)
   })
 
+  it('sends once per assignment, each call with its own recipients', async () => {
+    const at = new Date()
+    const { lecturer, algo, students } = await setup()
+    await addAssignment(algo.id, lecturer.user.id, at, 5, { title: 'Lab one' })
+    const a2 = await addAssignment(algo.id, lecturer.user.id, at, 10, { title: 'Lab two' })
+    await db.insert(submission).values({ assignmentId: a2.id, studentId: students[0].user.id, submittedAt: at })
+    await expect(sendDueReminders(db, at)).resolves.toEqual({ assignments: 2, reminded: 5 })
+    expect(batches).toHaveLength(2)
+    const byLab = (t: string) => batches.find((b) => b.every((m) => m.subject.includes(t)))!
+    expect(byLab('Lab one').map((m) => m.to).sort()).toEqual(students.map((s) => s.user.email).sort())
+    expect(byLab('Lab two').map((m) => m.to).sort()).toEqual([students[1].user.email, students[2].user.email].sort())
+  })
+
+  it('warns once per run, without addresses, when BETTER_AUTH_URL is unset', async () => {
+    const at = new Date()
+    const { lecturer, algo } = await setup()
+    await addAssignment(algo.id, lecturer.user.id, at, 5)
+    await addAssignment(algo.id, lecturer.user.id, at, 6)
+    vi.stubEnv('BETTER_AUTH_URL', '')
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    await sendDueReminders(db, at)
+    const calls = warn.mock.calls.filter((c) => String(c[0]).includes('BETTER_AUTH_URL'))
+    expect(calls).toHaveLength(1)
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('@example.com')
+    warn.mockRestore()
+  })
+
   it('links each email to the assignment page', async () => {
     const at = new Date()
     const { lecturer, algo } = await setup()
