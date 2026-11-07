@@ -11,7 +11,6 @@
     "back": "Retour",
     "genericError": "Une erreur est survenue. Veuillez réessayer.",
     "close": "Fermer",
-    "copy": "Copier",
     "copied": "Copié",
     "optional": "Facultatif"
   },
@@ -149,8 +148,7 @@
       "coursesEmpty": "Vous n'avez encore aucun cours dans cette classe.",
       "addCourse": "Ajouter un cours",
       "studentCourses": "Cours de cette classe",
-      "studentCoursesEmpty": "Aucun cours dans cette classe pour l'instant.",
-      "myMatricule": "Votre matricule"
+      "studentCoursesEmpty": "Aucun cours dans cette classe pour l'instant."
     }
   },
   "courses": {
@@ -251,7 +249,6 @@
     "studentEmptyBody": "Demandez le code de la classe à votre enseignant, puis rejoignez-la avec votre matricule.",
     "classMeta": "{year} · {count, plural, one {# étudiant} other {# étudiants}}",
     "addCourse": "Ajouter un cours à cette classe",
-    "openClass": "Ouvrir la classe",
     "noCourses": "Aucun cours dans cette classe pour l'instant.",
     "semester": "Semestre {n}",
     "taughtBy": "Avec {name}"

@@ -11,7 +11,6 @@
     "back": "Back",
     "genericError": "Something went wrong. Please try again.",
     "close": "Close",
-    "copy": "Copy",
     "copied": "Copied",
     "optional": "Optional"
   },
@@ -149,8 +148,7 @@
       "coursesEmpty": "You have no course in this class yet.",
       "addCourse": "Add a course",
       "studentCourses": "Courses in this class",
-      "studentCoursesEmpty": "No courses in this class yet.",
-      "myMatricule": "Your matricule"
+      "studentCoursesEmpty": "No courses in this class yet."
     }
   },
   "courses": {
@@ -251,7 +249,6 @@
     "studentEmptyBody": "Ask your lecturer for the class code, then join with your matricule.",
     "classMeta": "{year} · {count, plural, one {# student} other {# students}}",
     "addCourse": "Add a course to this class",
-    "openClass": "Open class",
     "noCourses": "No courses in this class yet.",
     "semester": "Semester {n}",
     "taughtBy": "With {name}"
