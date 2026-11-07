@@ -1,6 +1,6 @@
 import { createElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { sendNotifications, setResendClientFactoryForTests, type Notification } from './notify'
+import { sendNotifications, setResendClientFactoryForTests, setRetryWaitForTests, type Notification } from './notify'
 import { runAfterResponse, setAfterResponseForTests } from '@/server/lib/after-response'
 
 function items(n: number): Notification[] {
@@ -40,8 +40,11 @@ describe('sendNotifications without RESEND_API_KEY', () => {
 
 describe('sendNotifications with a key', () => {
   const send = vi.fn()
+  const wait = vi.fn<(ms: number) => Promise<void>>(async () => {})
 
   beforeEach(() => {
+    wait.mockClear()
+    setRetryWaitForTests(wait)
     vi.stubEnv('RESEND_API_KEY', 're_test')
     send.mockReset()
     setResendClientFactoryForTests(() => ({ batch: { send } }))
@@ -50,6 +53,7 @@ describe('sendNotifications with a key', () => {
     vi.unstubAllEnvs()
     vi.restoreAllMocks()
     setResendClientFactoryForTests(null)
+    setRetryWaitForTests(null)
   })
 
   it('sends 230 items in 3 batch calls of at most 100', async () => {
@@ -70,6 +74,7 @@ describe('sendNotifications with a key', () => {
     const result = await sendNotifications(items(150))
     expect(result).toEqual({ sent: 100, skipped: 0, failed: 50 })
     expect(send).toHaveBeenCalledTimes(3)
+    expect(wait).toHaveBeenCalledTimes(1)
     expect(error).toHaveBeenCalled()
   })
 
@@ -80,6 +85,8 @@ describe('sendNotifications with a key', () => {
       .mockResolvedValueOnce({ data: { data: [] }, error: null })
     await expect(sendNotifications(items(10))).resolves.toEqual({ sent: 10, skipped: 0, failed: 0 })
     expect(send).toHaveBeenCalledTimes(2)
+    expect(wait).toHaveBeenCalledTimes(1)
+    expect(wait).toHaveBeenCalledWith(750)
   })
 
   it('never throws when the client itself throws', async () => {

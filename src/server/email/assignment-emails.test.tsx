@@ -51,6 +51,44 @@ describe.each([
   })
 })
 
+const nasty = `<b>x</b> & "Ada's lab"`
+
+describe.each([
+  ['AssignmentPublishedEmail', AssignmentPublishedEmail],
+  ['AssignmentReminderEmail', AssignmentReminderEmail],
+] as const)('%s escaping', (_name, Template) => {
+  it('escapes titles in the body and the preview text', async () => {
+    const html = await render(<Template {...base} {...due} assignmentTitle={nasty} courseTitle={nasty} locale="en" />)
+    expect(html).not.toContain('<b>x</b>')
+    expect(html).toContain('&lt;b&gt;x&lt;/b&gt; &amp; &quot;Ada&#x27;s lab&quot;')
+    // the preview text is the hidden preheader div
+    const preheader = html.slice(html.indexOf('data-skip-in-text'), html.indexOf('</div>', html.indexOf('data-skip-in-text')))
+    expect(preheader).toContain('&lt;b&gt;x&lt;/b&gt;')
+    expect(preheader).not.toContain('<b>')
+  })
+})
+
+it('escapes titles in the grades email', async () => {
+  const html = await render(<GradesReleasedEmail {...base} assignmentTitle={nasty} locale="fr" />)
+  expect(html).not.toContain('<b>x</b>')
+  expect(html).toContain('&lt;b&gt;x&lt;/b&gt; &amp; &quot;Ada&#x27;s lab&quot;')
+})
+
+describe('subject lines', () => {
+  it('stay on one line and bounded whatever the titles contain', () => {
+    for (const kind of ['assignmentPublished', 'assignmentReminder', 'gradesReleased'] as const) {
+      const subject = emailSubject(kind, 'en', {
+        courseTitle: 'Algo\r\nBcc: evil@example.com',
+        assignmentTitle: `Lab\n\n\t1 ${'x'.repeat(400)}`,
+      })
+      expect(subject).not.toMatch(/[\r\n]/)
+      expect(subject).toContain('Algo Bcc: evil@example.com')
+      expect(subject).toContain('Lab 1 ')
+      expect(subject.length).toBeLessThan(150 * 2 + 100)
+    }
+  })
+})
+
 describe('GradesReleasedEmail', () => {
   it('renders both languages with the link', async () => {
     const frHtml = await render(<GradesReleasedEmail {...base} locale="fr" />)
