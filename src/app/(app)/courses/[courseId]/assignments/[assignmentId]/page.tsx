@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
+import { formatDecimal } from '@/lib/number-format'
 import { cn } from '@/lib/utils'
 import { listSubmissions, type AssignmentDetail, type SubmissionRow } from '@/server/assignments/lecturer'
 import { isRichTextEmpty } from '@/server/assignments/rich-text'
@@ -44,6 +45,7 @@ export default async function AssignmentDetailPage({
   const href = `${courseHref}/assignments/${encodeURIComponent(assignment.id)}`
   const date = (d: Date) => formatSessionDate(d, locale, config.timeZone)
   const isDraft = assignment.status === 'draft'
+  const num = (n: number) => formatDecimal(n, locale)
 
   const submitted = rows.filter((r) => r.state !== 'missing')
   const graded = submitted.filter((r) => r.graded).length
@@ -84,10 +86,10 @@ export default async function AssignmentDetailPage({
             <span className="block text-xs text-muted-foreground">{config.timeZone}</span>
           </Fact>
           <Fact label={t('detail.maxMark')}>
-            <span className="font-mono">{assignment.maxMark}</span>
+            <span className="font-mono">{num(assignment.maxMark)}</span>
           </Fact>
           <Fact label={t('detail.weight')}>
-            <span className="font-mono">{assignment.weight}</span>
+            <span className="font-mono">{num(assignment.weight)}</span>
           </Fact>
           <Fact label={t('detail.submissionMode')}>{t(`form.mode.${assignment.submissionMode}`)}</Fact>
           <Fact label={t('detail.latePolicy')}>{t(`form.late.${assignment.latePolicy}`)}</Fact>
@@ -178,7 +180,7 @@ export default async function AssignmentDetailPage({
                     </TableCell>
                     <TableCell className="whitespace-nowrap">{row.submittedAt ? date(row.submittedAt) : '—'}</TableCell>
                     <TableCell className="text-right font-mono whitespace-nowrap">
-                      {row.mark !== null ? `${row.mark} / ${assignment.maxMark}` : '—'}
+                      {row.mark !== null ? `${num(row.mark)} / ${num(assignment.maxMark)}` : '—'}
                     </TableCell>
                     <TableCell>
                       {row.submissionId && (
