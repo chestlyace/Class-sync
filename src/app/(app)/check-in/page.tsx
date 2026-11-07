@@ -4,11 +4,13 @@ import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
 import { PageHeader, Panel } from '@/components/page-header'
 import { Badge } from '@/components/ui/badge'
+import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
 import { listOpenCheckIns } from '@/server/attendance/check-in'
 import { STUDENT_POLL_MS } from '@/server/attendance/rules'
 import { getSessionUser } from '@/server/auth/session'
 import { config } from '@/server/core/config'
 import { isVerificationPending } from '@/server/core/guards'
+import { formatSessionDate } from '../courses/attendance-format'
 import { loadPage } from '../load-page'
 import { AutoRefresh } from './auto-refresh'
 import { CheckInForm } from './check-in-form'
@@ -21,11 +23,10 @@ export async function generateMetadata() {
 export default async function CheckInPage() {
   const user = await getSessionUser()
   if (!user || isVerificationPending(user)) return null // the layout shows the verification banner
-  const [t, locale] = await Promise.all([getTranslations('attendance.student'), getLocale()])
+  const [t, rawLocale] = await Promise.all([getTranslations('attendance.student'), getLocale()])
+  const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
   const open = await loadPage((ctx) => listOpenCheckIns(ctx))
   if (!open.ok) return <ErrorState code={open.code} />
-
-  const time = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', timeZone: config.timeZone })
 
   return (
     <>
@@ -55,7 +56,7 @@ export default async function CheckInPage() {
                   </div>
                   <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <Clock aria-hidden="true" className="size-4" />
-                    {t('closesAt', { time: time.format(c.closesAt) })}
+                    {t('closesAt', { time: formatSessionDate(c.closesAt, locale, config.timeZone, 'time') })}
                   </p>
                 </div>
                 <CheckInForm windowId={c.windowId} requireOnCampus={c.requireOnCampus} checkedIn={c.checkedIn} />

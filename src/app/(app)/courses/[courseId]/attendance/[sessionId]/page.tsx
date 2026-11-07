@@ -41,10 +41,7 @@ export default async function AttendanceSessionPage({
   if (!view.ok) return <ErrorState code={view.code} />
   const { session, course, students, live } = view.data
   const gridHref = `/courses/${encodeURIComponent(course.id)}/attendance`
-  const time = (date: Date) =>
-    new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: config.timeZone }).format(
-      date,
-    )
+  const time = (date: Date) => formatSessionDate(date, locale, config.timeZone, 'time')
 
   const windowOf = (kind: 'start' | 'end') => session.windows.find((w) => w.kind === kind)
   const anyOpen = session.windows.some((w) => w.open)

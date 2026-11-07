@@ -7,10 +7,12 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import { ErrorCodeMessage } from '@/components/action-error'
 import { Button } from '@/components/ui/button'
 import { FieldError } from '@/components/ui/field'
+import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
 import type { ActionResult } from '@/lib/action-result'
 import { LIVE_POLL_MS } from '@/server/attendance/rules'
 import { closeWindowAction, getLiveWindowAction, type LiveWindowView } from './attendance-actions'
 import { AttendanceError } from './attendance-controls'
+import { formatSessionDate } from './attendance-format'
 
 type Snapshot = { view: LiveWindowView; receivedAt: number }
 
@@ -93,12 +95,7 @@ export function LiveWindow({ initial, timeZone }: { initial: LiveWindowView; tim
     view.codeExpiresInSeconds === null
       ? null
       : Math.max(0, view.codeExpiresInSeconds - Math.floor((now - snapshot.receivedAt) / 1000))
-  const closesAt = new Intl.DateTimeFormat(locale, {
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-    timeZone,
-  }).format(new Date(view.closesAt))
+  const closesAt = formatSessionDate(new Date(view.closesAt), isLocale(locale) ? locale : DEFAULT_LOCALE, timeZone, 'time')
 
   function present() {
     panel.current?.requestFullscreen?.().catch(() => {

@@ -19,4 +19,10 @@ describe('formatSessionDate', () => {
     expect(formatSessionDate(new Date('2026-11-08T23:30:00Z'), 'en', 'Africa/Douala')).toContain('Monday')
     expect(formatSessionDate(new Date('2026-11-08T23:30:00Z'), 'en', 'UTC')).toContain('Sunday')
   })
+
+  it("'time' is the clock time alone, 24-hour in both languages", () => {
+    const evening = new Date('2026-11-09T19:05:00Z') // 20:05 in Douala
+    expect(formatSessionDate(evening, 'en', 'Africa/Douala', 'time')).toBe('20:05')
+    expect(formatSessionDate(evening, 'fr', 'Africa/Douala', 'time')).toBe('20:05')
+  })
 })
