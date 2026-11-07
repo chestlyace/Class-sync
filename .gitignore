@@ -40,6 +40,9 @@ yarn-error.log*
 .env*
 !.env.example
 
+# local file storage (STORAGE_DRIVER=local)
+/.uploads/
+
 # local planning/agent scratch
 .superpowers/
 
