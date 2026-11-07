@@ -258,7 +258,9 @@
     "addCourse": "Add a course to this class",
     "noCourses": "No courses in this class yet.",
     "semester": "Semester {n}",
-    "taughtBy": "With {name}"
+    "taughtBy": "With {name}",
+    "otherCourses": "Other courses",
+    "otherCoursesHint": "Courses you were added to outside your own classes."
   },
   "join": {
     "title": "Join a class",

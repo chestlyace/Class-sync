@@ -6,7 +6,13 @@ import { class_, classLecturer, classStudent, course, courseRosterAdjustment, sc
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
 import { createSchool } from '@/server/schools/service'
-import { createClass, joinClassAsLecturer, joinClassAsStudent, removeStudentFromClass } from '@/server/classes/service'
+import {
+  createClass,
+  joinClassAsLecturer,
+  joinClassAsStudent,
+  listMyClasses,
+  removeStudentFromClass,
+} from '@/server/classes/service'
 import {
   createCourse,
   getCourse,
@@ -173,6 +179,51 @@ describe('courses service', () => {
     await removeStudentFromClass(lecturer, otherClass.id, carry.user.id)
     expect(await isOnCourseRoster(db, algo.id, carry.user.id)).toBe(false)
     expect(await getCourseRoster(lecturer, algo.id)).toEqual([])
+  })
+
+  it("an included student's course is listed for them although its class is not one of theirs", async () => {
+    const { lecturer, sch, cls, algo } = await setup()
+    const otherClass = await createClass(lecturer, { schoolId: sch.id, name: 'CS L2', academicYear: '2026/27' })
+    const carry = await studentCtx({ name: 'Alice' })
+    await enroll(carry, otherClass.studentCode!, 'UB21S9')
+    expect(await listStudentCourses(carry)).toEqual([])
+    await setRosterAdjustment(lecturer, algo.id, carry.user.id, 'include')
+    const listed = await listStudentCourses(carry)
+    expect(listed).toEqual([algo])
+    expect(listed[0].classId).toBe(cls.id)
+    expect((await listMyClasses(carry)).map((c) => c.id)).toEqual([otherClass.id])
+  })
+
+  it('an included student who moves to another school drops off the roster and their course list', async () => {
+    const { lecturer, sch, algo } = await setup()
+    const otherClass = await createClass(lecturer, { schoolId: sch.id, name: 'CS L2', academicYear: '2026/27' })
+    const elsewhere = await createSchool(lecturer, { name: 'Other University', town: 'Douala' })
+    const elsewhereClass = await createClass(lecturer, { schoolId: elsewhere.id, name: 'Law L1', academicYear: '2026/27' })
+    const carry = await studentCtx({ name: 'Alice' })
+    await enroll(carry, otherClass.studentCode!, 'UB21S9')
+    await setRosterAdjustment(lecturer, algo.id, carry.user.id, 'include')
+    expect((await listStudentCourses(carry)).map((c) => c.id)).toEqual([algo.id])
+
+    // Leaves the school (removed from its only class there) and joins a class at another school.
+    await removeStudentFromClass(lecturer, otherClass.id, carry.user.id)
+    await enroll(carry, elsewhereClass.studentCode!, 'OU1')
+    expect(await isOnCourseRoster(db, algo.id, carry.user.id)).toBe(false)
+    expect(await getCourseRoster(lecturer, algo.id)).toEqual([])
+    expect(await listStudentCourses(carry)).toEqual([])
+    await expect(getCourse(carry, algo.id)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+  })
+
+  it('an included student who later joins the course class is listed once, with source "class"', async () => {
+    const { lecturer, sch, cls, algo, dbs } = await setup()
+    const otherClass = await createClass(lecturer, { schoolId: sch.id, name: 'CS L2', academicYear: '2026/27' })
+    const carry = await studentCtx({ name: 'Alice' })
+    await enroll(carry, otherClass.studentCode!, 'UB21S9')
+    await setRosterAdjustment(lecturer, algo.id, carry.user.id, 'include')
+    await enroll(carry, cls.studentCode!, 'UB20S7')
+    expect(await getCourseRoster(lecturer, algo.id)).toEqual([
+      { studentId: carry.user.id, name: 'Alice', email: carry.user.email, matricule: 'UB20S7', source: 'class' },
+    ])
+    expect((await listStudentCourses(carry)).map((c) => c.id).sort()).toEqual([algo.id, dbs.id].sort())
   })
 
   it('an included student uses the most recent school membership for the matricule', async () => {

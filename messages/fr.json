@@ -258,6 +258,8 @@
     "addCourse": "Ajouter un cours à cette classe",
     "noCourses": "Aucun cours dans cette classe pour l'instant.",
     "semester": "Semestre {n}",
+    "otherCourses": "Autres cours",
+    "otherCoursesHint": "Cours auxquels vous avez été ajouté en dehors de vos classes.",
     "taughtBy": "Avec {name}"
   },
   "join": {

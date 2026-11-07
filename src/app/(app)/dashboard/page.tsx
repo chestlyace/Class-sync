@@ -9,23 +9,11 @@ import { listMyClasses, type ClassSummary } from '@/server/classes/service'
 import { isVerificationPending } from '@/server/core/guards'
 import { listLecturerCourses, listStudentCourses, type CourseSummary } from '@/server/courses/service'
 import { loadPage } from '../load-page'
+import { groupDashboard } from './group'
 
 export async function generateMetadata() {
   const t = await getTranslations('dashboard')
   return { title: t('title') }
-}
-
-type SchoolGroup = { schoolId: string; schoolName: string; classes: ClassSummary[] }
-
-/** Classes arrive sorted by school then class name; keep that order while grouping. */
-function groupBySchool(classes: ClassSummary[]): SchoolGroup[] {
-  const groups = new Map<string, SchoolGroup>()
-  for (const cls of classes) {
-    const group = groups.get(cls.schoolId) ?? { schoolId: cls.schoolId, schoolName: cls.schoolName, classes: [] }
-    group.classes.push(cls)
-    groups.set(cls.schoolId, group)
-  }
-  return [...groups.values()]
 }
 
 export default async function DashboardPage() {
@@ -53,9 +41,9 @@ export default async function DashboardPage() {
     return { classes, courses }
   })
   if (!data.ok) return <ErrorState code={data.code} />
-  const { classes, courses } = data.data
+  const { schools, otherCourses } = groupDashboard(data.data.classes, data.data.courses)
 
-  if (classes.length === 0) {
+  if (schools.length === 0 && otherCourses.length === 0) {
     return (
       <>
         {header}
@@ -70,19 +58,31 @@ export default async function DashboardPage() {
   return (
     <>
       {header}
-      {groupBySchool(classes).map((group) => (
+      {schools.map((group) => (
         <section key={group.schoolId} aria-labelledby={`school-${group.schoolId}`} className="flex flex-col gap-7">
           <SectionHeading id={`school-${group.schoolId}`}>{group.schoolName}</SectionHeading>
-          {group.classes.map((cls) => (
-            <ClassBlock
-              key={cls.id}
-              cls={cls}
-              courses={courses.filter((c) => c.classId === cls.id)}
-              isLecturer={isLecturer}
-            />
+          {group.classes.map(({ cls, courses }) => (
+            <ClassBlock key={cls.id} cls={cls} courses={courses} isLecturer={isLecturer} />
           ))}
         </section>
       ))}
+      {otherCourses.length > 0 && (
+        <section aria-labelledby="other-courses" className="flex flex-col gap-4">
+          <SectionHeading id="other-courses">{t('otherCourses')}</SectionHeading>
+          <p className="text-sm text-muted-foreground">{t('otherCoursesHint')}</p>
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {otherCourses.map((course) => (
+              <li key={course.id}>
+                <CourseCard
+                  course={course}
+                  context={`${course.className} · ${course.schoolName}`}
+                  footer={isLecturer ? t('semester', { n: course.semester }) : t('taughtBy', { name: course.lecturerName })}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </>
   )
 }
@@ -144,19 +144,10 @@ async function ClassBlock({
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {courses.map((course) => (
           <li key={course.id}>
-            <Link
-              href={`/courses/${encodeURIComponent(course.id)}`}
-              className="flex h-full min-h-32 flex-col gap-1 rounded-2xl border bg-card px-5 py-4 outline-none hover:border-input focus-visible:ring-3 focus-visible:ring-ring/50"
-            >
-              {course.code && (
-                <span className="font-mono text-xs tracking-[0.08em] text-muted-foreground">{course.code}</span>
-              )}
-              <span className="text-lg font-semibold">{course.title}</span>
-              <span className="mt-auto flex items-center justify-between gap-2 border-t border-accent pt-3 text-sm text-muted-foreground">
-                {isLecturer ? t('semester', { n: course.semester }) : t('taughtBy', { name: course.lecturerName })}
-                <ArrowRight aria-hidden="true" className="size-4 shrink-0" />
-              </span>
-            </Link>
+            <CourseCard
+              course={course}
+              footer={isLecturer ? t('semester', { n: course.semester }) : t('taughtBy', { name: course.lecturerName })}
+            />
           </li>
         ))}
         {isLecturer && (
@@ -173,5 +164,23 @@ async function ClassBlock({
       </ul>
       {!isLecturer && courses.length === 0 && <p className="text-sm text-muted-foreground">{t('noCourses')}</p>}
     </div>
+  )
+}
+
+/** A course tile; `context` (class · school) is shown for courses outside my own classes. */
+function CourseCard({ course, footer, context }: { course: CourseSummary; footer: string; context?: string }) {
+  return (
+    <Link
+      href={`/courses/${encodeURIComponent(course.id)}`}
+      className="flex h-full min-h-32 flex-col gap-1 rounded-2xl border bg-card px-5 py-4 outline-none hover:border-input focus-visible:ring-3 focus-visible:ring-ring/50"
+    >
+      {course.code && <span className="font-mono text-xs tracking-[0.08em] text-muted-foreground">{course.code}</span>}
+      <span className="text-lg font-semibold">{course.title}</span>
+      {context && <span className="text-sm break-words text-muted-foreground">{context}</span>}
+      <span className="mt-auto flex items-center justify-between gap-2 border-t border-accent pt-3 text-sm text-muted-foreground">
+        {footer}
+        <ArrowRight aria-hidden="true" className="size-4 shrink-0" />
+      </span>
+    </Link>
   )
 }
