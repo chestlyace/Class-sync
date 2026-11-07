@@ -54,7 +54,8 @@
       "passwordTooShort": "Votre mot de passe est trop court (8 caractères minimum).",
       "passwordTooLong": "Votre mot de passe est trop long.",
       "invalidEmail": "Veuillez saisir une adresse e-mail valide.",
-      "emailNotVerified": "Veuillez vérifier votre adresse e-mail avant de vous connecter."
+      "emailNotVerified": "Veuillez vérifier votre adresse e-mail avant de vous connecter. Nous venons de vous envoyer un nouveau lien de vérification.",
+      "tooManyAttempts": "Trop de tentatives — patientez un instant puis réessayez."
     }
   },
   "nav": {

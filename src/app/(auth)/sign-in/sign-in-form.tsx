@@ -27,7 +27,7 @@ export function SignInForm() {
         password: String(form.get('password') ?? ''),
       })
       if (authError) {
-        setError(tRoot(authErrorKey(authError.code)))
+        setError(tRoot(authErrorKey(authError.code, authError.status)))
         return
       }
       router.push('/')

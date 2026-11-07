@@ -48,7 +48,7 @@ export function SignUpForm({ defaultLocale }: { defaultLocale: Locale }) {
         locale,
       })
       if (authError) {
-        setError(tRoot(authErrorKey(authError.code)))
+        setError(tRoot(authErrorKey(authError.code, authError.status)))
         return
       }
       // No session token means the account must be verified by email first.

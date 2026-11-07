@@ -54,7 +54,8 @@
       "passwordTooShort": "Your password is too short (minimum 8 characters).",
       "passwordTooLong": "Your password is too long.",
       "invalidEmail": "Please enter a valid email address.",
-      "emailNotVerified": "Please verify your email address before signing in."
+      "emailNotVerified": "Please verify your email address before signing in. We just sent you a new verification link.",
+      "tooManyAttempts": "Too many attempts — wait a moment and try again."
     }
   },
   "nav": {

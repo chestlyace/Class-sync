@@ -16,9 +16,8 @@ const DATABASE_URL = process.env.E2E_DATABASE_URL ?? 'postgres://postgres@127.0.
 
 export default defineConfig({
   testDir: './e2e',
-  // One serial scenario per project. Better Auth rate-limits sign-ups to 3 per 10 s per IP
-  // under `next start`; each project signs up 3 users, so projects must not overlap and the
-  // second one waits out the window first (see the spec).
+  // One serial scenario per project, one project after the other. Sign-ups are rate-limited to
+  // 30 per minute per IP under `next start` (src/server/auth/auth.ts); a full run signs up 6 users.
   workers: 1,
   fullyParallel: false,
   retries: 0,

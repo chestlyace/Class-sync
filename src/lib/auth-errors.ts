@@ -11,6 +11,11 @@ const AUTH_ERROR_KEYS: Record<string, string> = {
   VALIDATION_ERROR: 'errors.VALIDATION',
 }
 
-export function authErrorKey(code: string | undefined | null): string {
+/**
+ * The message key for a failed Better Auth call. `status` is the HTTP status: a 429 from the rate
+ * limiter carries no error code, and whatever the code, "wait and retry" is the useful message.
+ */
+export function authErrorKey(code: string | undefined | null, status?: number): string {
+  if (status === 429) return 'auth.errors.tooManyAttempts'
   return (code && AUTH_ERROR_KEYS[code]) || 'common.genericError'
 }

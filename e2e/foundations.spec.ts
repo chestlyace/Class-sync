@@ -8,10 +8,6 @@ import { expect, test, type Browser, type BrowserContext, type Page } from '@pla
  * Lecturer A works in French, lecturer B and the student in English.
  */
 
-// Better Auth allows 3 sign-ups per 10 s per IP under `next start`. Each project signs up 3 users,
-// so a project that is not the first waits out the window left by the previous one.
-const SIGN_UP_WINDOW_MS = 11_000
-
 const PASSWORD = 'correct-horse-battery-9'
 
 type Role = 'lecturer' | 'student'
@@ -66,10 +62,7 @@ test('classes, joining and courses, end to end', async ({
   hasTouch,
   deviceScaleFactor,
 }, testInfo) => {
-  const { projects } = testInfo.config
-  const projectIndex = projects.findIndex((p) => p.name === testInfo.project.name)
-  if (projectIndex > 0) await new Promise((resolve) => setTimeout(resolve, SIGN_UP_WINDOW_MS))
-
+  // Sign-ups are rate-limited to 30 per minute per IP; the whole run signs up 6 users, so no waiting.
   // Unique per run and project: emails, the school name (a duplicate school is a CONFLICT).
   const run = `${Date.now().toString(36)}-${testInfo.project.name}`
   const emailOf = (who: string) => `e2e-${run}-${who}@example.test`

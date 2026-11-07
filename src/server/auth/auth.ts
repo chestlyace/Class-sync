@@ -16,7 +16,17 @@ type CreateAuthOptions = {
   secret?: string
   /** Disable in tests: the plugin needs Next's request scope to set cookies. */
   nextCookies?: boolean
+  /** Tests only: Better Auth rate-limits in production only unless this is set. */
+  rateLimitEnabled?: boolean
 }
+
+/**
+ * A whole class signs in at the start of a lesson, often from one school network (one public
+ * IP), so Better Auth's default of 3 sign-ins / sign-ups per 10 s per IP would lock students out.
+ * 30 per minute per IP still slows down password guessing. Memory storage: per instance.
+ */
+const CLASSROOM_RULE = { window: 60, max: 30 }
+
 
 function toApiError(err: unknown): unknown {
   return err instanceof AppError
@@ -35,6 +45,9 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
     },
     emailVerification: {
       sendOnSignUp: config.requireEmailVerification,
+      // An unverified user who signs in (e.g. after the first link expired) gets a fresh link,
+      // instead of being stuck with no way to verify.
+      sendOnSignIn: config.requireEmailVerification,
       sendVerificationEmail: async ({ user, url }) => {
         // additionalFields are not reflected in this callback's user type.
         const rawLocale = (user as { locale?: unknown }).locale
@@ -48,6 +61,14 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
           subject: emailSubject('verify', locale),
           react: VerifyEmail({ name: user.name, url, locale }),
         })
+      },
+    },
+    rateLimit: {
+      ...(options.rateLimitEnabled !== undefined ? { enabled: options.rateLimitEnabled } : {}),
+      storage: 'memory',
+      customRules: {
+        '/sign-in/email': CLASSROOM_RULE,
+        '/sign-up/email': CLASSROOM_RULE,
       },
     },
     user: {
