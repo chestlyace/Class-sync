@@ -22,7 +22,7 @@ import { createSchool } from '@/server/schools/service'
 import { createClass, joinClassAsLecturer, joinClassAsStudent } from '@/server/classes/service'
 import { createCourse, setRosterAdjustment } from '@/server/courses/service'
 import { getAttendanceGrid, getMyAttendance } from './reports'
-import { closeWindow, createSession, openWindow, setAttendanceOverride } from './sessions'
+import { closeWindow, createSession, getSession, openWindow, setAttendanceOverride } from './sessions'
 
 const MIN = 60_000
 
@@ -167,7 +167,6 @@ describe('attendance reports', () => {
       .update(classStudent)
       .set({ joinedAt: new Date(first.session.createdAt.getTime() + MIN / 2) })
       .where(eq(classStudent.userId, dave.user.id))
-    await checkIn(first.start.windowId, dave.user.id)
     await checkIn(second.start.windowId, dave.user.id)
     await checkIn(second.end.windowId, dave.user.id)
     await checkIn(first.start.windowId, alice.user.id)
@@ -178,6 +177,44 @@ describe('attendance reports', () => {
     expect(row.totals).toEqual({ present: 1, partial: 0, absent: 0 })
     // The session still counts for Alice.
     expect(grid.rows.find((r) => r.studentId === alice.user.id)!.totals).toEqual({ present: 0, partial: 1, absent: 1 })
+  })
+
+  it('a late joiner who checked in to a session created before they joined is present there (a check-in proves enrolment)', async () => {
+    const { lecturer, algo, cls } = await setup()
+    const gina = await studentCtx({ name: 'Gina' })
+    await joinClassAsStudent(gina, cls.studentCode!, 'UB5')
+
+    const session = await createSession(lecturer, algo.id, { requireOnCampus: false })
+    // Gina joined the class a little after the lecturer created the session...
+    await db
+      .update(classStudent)
+      .set({ joinedAt: new Date(session.createdAt.getTime() + MIN / 2) })
+      .where(eq(classStudent.userId, gina.user.id))
+    // ...and then checked in to both windows.
+    advance(MIN)
+    const start = await openWindow(lecturer, session.id, 'start')
+    await checkIn(start.windowId, gina.user.id)
+    await closeWindow(lecturer, start.windowId)
+    const end = await openWindow(lecturer, session.id, 'end')
+    await checkIn(end.windowId, gina.user.id)
+    await closeWindow(lecturer, end.windowId)
+
+    const grid = await getAttendanceGrid(lecturer, algo.id)
+    const row = grid.rows.find((r) => r.studentId === gina.user.id)!
+    expect(row.statuses).toEqual({ [session.id]: 'present' })
+    expect(row.totals).toEqual({ present: 1, partial: 0, absent: 0 })
+
+    const view = await getSession(lecturer, session.id)
+    expect(view.students.find((s) => s.studentId === gina.user.id)).toMatchObject({
+      checkedStart: true,
+      checkedEnd: true,
+      status: 'present',
+    })
+
+    expect(await getMyAttendance(gina, algo.id)).toEqual({
+      entries: [{ sessionId: session.id, createdAt: session.createdAt, status: 'present' }],
+      totals: { present: 1, partial: 0, absent: 0 },
+    })
   })
 
   it('an included student is enrolled from the include date', async () => {

@@ -18,8 +18,8 @@ export type StatusMatrix = Map<string, Map<string, StudentSessionState>>
 /**
  * THE place attendance statuses are assembled: for every session of the course (or the one
  * asked for) and every student currently on its roster (or the one asked for). A student is
- * enrolled for a session when they joined the roster no later than the session was created;
- * the status itself is `computeStatus`.
+ * enrolled for a session when they joined the roster no later than the session was created, or
+ * checked in to one of its windows; the status itself is `computeStatus`.
  */
 export async function loadStatusMatrix(
   db: Db,
@@ -91,8 +91,11 @@ export async function loadStatusMatrixForRoster(
       const checkedEnd = checked.has(`${s.id}:end:${studentId}`)
       const override = overridden.get(`${s.id}:${studentId}`) ?? null
       const start = starts.get(studentId)
-      // No known enrolment date: treat as enrolled rather than hide their attendance.
-      const enrolled = start === undefined || start.getTime() <= s.createdAt.getTime()
+      // No known enrolment date: treat as enrolled rather than hide their attendance. A check-in
+      // proves enrolment too: a student who joined after the session was created but checked in
+      // to it was there.
+      const enrolled =
+        start === undefined || start.getTime() <= s.createdAt.getTime() || checkedStart || checkedEnd
       row.set(studentId, {
         checkedStart,
         checkedEnd,

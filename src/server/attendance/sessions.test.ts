@@ -405,7 +405,6 @@ describe('attendance sessions', () => {
     await closeWindow(lecturer, start.windowId)
     const end = await openWindow(lecturer, session.id, 'end')
     await checkIn(end.windowId, alice.user.id)
-    await checkIn(end.windowId, dave.user.id)
     await closeWindow(lecturer, end.windowId)
     await setAttendanceOverride(lecturer, session.id, erin.user.id, 'present')
 
@@ -416,19 +415,21 @@ describe('attendance sessions', () => {
       { studentId: alice.user.id, name: 'Alice', matricule: 'UB1', checkedStart: true, checkedEnd: true, override: null, status: 'present' },
       { studentId: bob.user.id, name: 'Bob', matricule: 'UB2', checkedStart: true, checkedEnd: false, override: null, status: 'partial' },
       { studentId: carol.user.id, name: 'Carol', matricule: 'UB3', checkedStart: false, checkedEnd: false, override: null, status: 'absent' },
-      { studentId: dave.user.id, name: 'Dave', matricule: 'UB4', checkedStart: false, checkedEnd: true, override: null, status: 'not_enrolled' },
+      { studentId: dave.user.id, name: 'Dave', matricule: 'UB4', checkedStart: false, checkedEnd: false, override: null, status: 'not_enrolled' },
       { studentId: erin.user.id, name: 'Erin', matricule: 'UB5', checkedStart: false, checkedEnd: false, override: 'present', status: 'present' },
       { studentId: frank.user.id, name: 'Frank', matricule: 'UB9', checkedStart: true, checkedEnd: false, override: null, status: 'partial' },
     ])
 
-    // An include made after a session does not enrol the student for it.
+    // An include made after a session does not enrol the student for it...
     await db
       .update(courseRosterAdjustment)
       .set({ createdAt: new Date(clock.getTime() + 2 * MIN) })
       .where(eq(courseRosterAdjustment.studentId, frank.user.id))
     const matrix = await loadStatusMatrix(db, algo.id, { studentId: frank.user.id })
     expect([...matrix.keys()]).toEqual([empty.id, session.id])
-    expect(matrix.get(session.id)!.get(frank.user.id)!.status).toBe('not_enrolled')
+    expect(matrix.get(empty.id)!.get(frank.user.id)!.status).toBe('not_enrolled')
+    // ...unless they checked in to it: a check-in proves enrolment.
+    expect(matrix.get(session.id)!.get(frank.user.id)!.status).toBe('partial')
     expect([...matrix.get(session.id)!.keys()]).toEqual([frank.user.id])
 
     // With only the start window opened, the start check alone is present.
