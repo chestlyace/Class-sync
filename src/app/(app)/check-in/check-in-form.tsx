@@ -33,8 +33,20 @@ type Phase = 'idle' | 'locating' | 'sending'
 
 type Outcome = { kind: 'done'; already: boolean } | { kind: 'error'; message: React.ReactNode }
 
-/** Code entry for one open check-in; asks for the position only when the session requires it. */
-export function CheckInForm({ windowId, requireOnCampus }: { windowId: string; requireOnCampus: boolean }) {
+/**
+ * One open check-in: code entry (asking for the position only when the session requires it), and
+ * an always-present status region that says "Checked in", whether the server already knew it
+ * (`checkedIn`) or this form just did it, so the confirmation is announced and survives refreshes.
+ */
+export function CheckInForm({
+  windowId,
+  requireOnCampus,
+  checkedIn,
+}: {
+  windowId: string
+  requireOnCampus: boolean
+  checkedIn: boolean
+}) {
   const t = useTranslations('attendance.student')
   const tRoot = useTranslations()
   const router = useRouter()
@@ -43,6 +55,7 @@ export function CheckInForm({ windowId, requireOnCampus }: { windowId: string; r
   const [outcome, setOutcome] = useState<Outcome | null>(null)
   const inputId = `check-in-code-${windowId}`
   const hintId = `${inputId}-hint`
+  const errorId = `${inputId}-error`
   // On campus-only check-ins the location request starts when the student focuses the code input,
   // so the fix arrives while they type and the code cannot expire while the browser locates them.
   const locator = useRef<Locator | null>(null)
@@ -83,7 +96,7 @@ export function CheckInForm({ windowId, requireOnCampus }: { windowId: string; r
       const result = await checkInAction(windowId, code, position)
       if (result.ok) {
         setOutcome({ kind: 'done', already: result.data.result === 'already_checked_in' })
-        router.refresh() // the card turns into "Checked in"
+        router.refresh() // the server now reports `checkedIn` too
       } else {
         setOutcome({ kind: 'error', message: failureMessage(result) })
       }
@@ -94,51 +107,57 @@ export function CheckInForm({ windowId, requireOnCampus }: { windowId: string; r
     }
   }
 
-  if (outcome?.kind === 'done') {
-    return (
-      <p role="status" className="flex items-center gap-2 font-medium">
-        <Check aria-hidden="true" className="size-5 text-primary" />
-        {outcome.already ? t('alreadyCheckedIn') : t('checkedIn')}
-      </p>
-    )
-  }
-
+  const done = outcome?.kind === 'done' ? outcome : null
+  const confirmation = done?.already ? t('alreadyCheckedIn') : done || checkedIn ? t('checkedIn') : null
   const invalid = outcome?.kind === 'error' || undefined
   return (
-    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
-      <FieldGroup>
-        {/* Above the input: read before the location prompt that focusing the input brings up. */}
-        {requireOnCampus && (
-          <p className="flex gap-2 text-sm text-muted-foreground">
-            <MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-            {t('locationExplain')}
+    <div>
+      {/* Always rendered (empty until checked in), so the text appearing in it is announced. */}
+      <div role="status" data-testid="check-in-status">
+        {confirmation && (
+          <p className="flex items-center gap-2 font-medium">
+            <Check aria-hidden="true" className="size-5 text-primary" />
+            {confirmation}
           </p>
         )}
-        <Field data-invalid={invalid}>
-          <FieldLabel htmlFor={inputId}>{t('codeLabel')}</FieldLabel>
-          <Input
-            id={inputId}
-            name="code"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            onFocus={requireOnCampus ? () => getLocator().warm() : undefined}
-            autoComplete="off"
-            autoCapitalize="characters"
-            autoCorrect="off"
-            spellCheck={false}
-            maxLength={MAX_CODE_LENGTH}
-            aria-describedby={hintId}
-            aria-invalid={invalid}
-            className="max-w-56 font-mono text-lg tracking-[0.2em] uppercase"
-          />
-          <FieldDescription id={hintId}>{t('codeHint')}</FieldDescription>
-        </Field>
-        {/* FieldError is role="alert"; it is cleared on each submit, so a repeated refusal is announced again. */}
-        {outcome?.kind === 'error' && <FieldError>{outcome.message}</FieldError>}
-      </FieldGroup>
-      <Button type="submit" size="lg" disabled={phase !== 'idle'} className="self-start">
-        {phase === 'locating' ? t('locating') : phase === 'sending' ? t('submitting') : t('submit')}
-      </Button>
-    </form>
+      </div>
+      {confirmation === null && (
+        <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+          <FieldGroup>
+            {/* Above the input: read before the location prompt that focusing the input brings up. */}
+            {requireOnCampus && (
+              <p className="flex gap-2 text-sm text-muted-foreground">
+                <MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                {t('locationExplain')}
+              </p>
+            )}
+            <Field data-invalid={invalid}>
+              <FieldLabel htmlFor={inputId}>{t('codeLabel')}</FieldLabel>
+              <Input
+                id={inputId}
+                name="code"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                onFocus={requireOnCampus ? () => getLocator().warm() : undefined}
+                autoComplete="off"
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
+                maxLength={MAX_CODE_LENGTH}
+                aria-describedby={invalid ? `${hintId} ${errorId}` : hintId}
+                aria-invalid={invalid}
+                className="max-w-56 font-mono text-lg tracking-[0.2em] uppercase"
+              />
+              <FieldDescription id={hintId}>{t('codeHint')}</FieldDescription>
+            </Field>
+            {/* FieldError is role="alert"; it is cleared on each submit, so a repeated refusal is announced again. */}
+            {outcome?.kind === 'error' && <FieldError id={errorId}>{outcome.message}</FieldError>}
+          </FieldGroup>
+          <Button type="submit" size="lg" disabled={phase !== 'idle'} className="self-start">
+            {phase === 'locating' ? t('locating') : phase === 'sending' ? t('submitting') : t('submit')}
+          </Button>
+        </form>
+      )}
+    </div>
   )
 }

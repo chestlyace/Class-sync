@@ -31,6 +31,16 @@ async function readLiveCode(lecturer: Page): Promise<string> {
   return (await code.innerText()).trim()
 }
 
+/**
+ * The student's check-in confirmation: a status region that is always on the card (so its text
+ * is announced) and keeps "Checked in" across the refresh that follows a check-in.
+ */
+async function expectCheckedIn(student: Page) {
+  const status = student.getByTestId('check-in-status')
+  await expect(status).toHaveAttribute('role', 'status')
+  await expect(status).toHaveText('Checked in')
+}
+
 /** Student side: enter a code on /check-in and submit. */
 async function submitCode(student: Page, code: string) {
   await student.goto('/check-in')
@@ -117,7 +127,10 @@ test('attendance with a rotating code and a campus check, end to end', async ({
       await expectNoHorizontalScroll(alice)
 
       await submitCode(alice, await readLiveCode(lecturer))
-      await expect(alice.getByRole('status').filter({ hasText: 'Checked in' })).toBeVisible()
+      await expectCheckedIn(alice)
+      // Still there after a fresh server render of the page.
+      await alice.reload()
+      await expectCheckedIn(alice)
       await expectNoHorizontalScroll(alice)
 
       await alice.goto('/dashboard')
@@ -136,6 +149,10 @@ test('attendance with a rotating code and a campus check, end to end', async ({
       await bob.getByLabel('Code on the screen', { exact: true }).fill(wrong)
       await bob.getByRole('button', { name: 'Check in', exact: true }).click()
       await expect(bob.getByRole('alert').filter({ hasText: "That code isn't right." })).toBeVisible()
+      // The error is tied to the input, after its hint.
+      await expect(bob.getByLabel('Code on the screen', { exact: true })).toHaveAccessibleDescription(
+        /It changes every minute\..*That code isn't right\./,
+      )
     })
 
     // ---- 5. Live count, then the end check-in -------------------------------------------------
@@ -153,7 +170,7 @@ test('attendance with a rotating code and a campus check, end to end', async ({
       await expect(lecturer.getByTestId('attendance-count')).toContainText('0 / 2')
 
       await submitCode(alice, endCode)
-      await expect(alice.getByRole('status').filter({ hasText: 'Checked in' })).toBeVisible()
+      await expectCheckedIn(alice)
       await expect(lecturer.getByTestId('attendance-count')).toContainText('1 / 2', { timeout: 15_000 })
       await lecturer.getByRole('button', { name: 'Close check-in', exact: true }).click()
       await expect(lecturer.getByRole('button', { name: 'Open end check-in', exact: true })).toBeDisabled()

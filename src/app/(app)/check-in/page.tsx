@@ -1,4 +1,4 @@
-import { Check, Clock } from 'lucide-react'
+import { Clock } from 'lucide-react'
 import { getLocale, getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
@@ -58,14 +58,7 @@ export default async function CheckInPage() {
                     {t('closesAt', { time: time.format(c.closesAt) })}
                   </p>
                 </div>
-                {c.checkedIn ? (
-                  <p className="flex items-center gap-2 font-medium">
-                    <Check aria-hidden="true" className="size-5 text-primary" />
-                    {t('checkedIn')}
-                  </p>
-                ) : (
-                  <CheckInForm windowId={c.windowId} requireOnCampus={c.requireOnCampus} />
-                )}
+                <CheckInForm windowId={c.windowId} requireOnCampus={c.requireOnCampus} checkedIn={c.checkedIn} />
               </Panel>
             </li>
           ))}
