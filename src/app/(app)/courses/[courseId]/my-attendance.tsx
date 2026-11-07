@@ -2,10 +2,12 @@ import { getLocale, getTranslations } from 'next-intl/server'
 import { ErrorCodeMessage } from '@/components/action-error'
 import { SectionHeading } from '@/components/page-header'
 import { Badge } from '@/components/ui/badge'
+import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
 import { getMyAttendance } from '@/server/attendance/reports'
 import type { AttendanceStatus } from '@/server/attendance/status'
 import { config } from '@/server/core/config'
 import { loadPage } from '../../load-page'
+import { formatSessionDate } from '../attendance-format'
 
 const BADGE: Record<'present' | 'partial' | 'absent', 'default' | 'outline' | 'destructive'> = {
   present: 'default',
@@ -15,9 +17,9 @@ const BADGE: Record<'present' | 'partial' | 'absent', 'default' | 'outline' | 'd
 
 /** The signed-in student's own attendance on a course: totals, then each session, newest first. */
 export async function MyAttendance({ courseId }: { courseId: string }) {
-  const [t, locale] = await Promise.all([getTranslations('attendance.student'), getLocale()])
+  const [t, rawLocale] = await Promise.all([getTranslations('attendance.student'), getLocale()])
+  const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
   const result = await loadPage((ctx) => getMyAttendance(ctx, courseId))
-  const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: config.timeZone })
 
   return (
     <section aria-labelledby="my-attendance" className="flex flex-col gap-4">
@@ -46,7 +48,7 @@ export async function MyAttendance({ courseId }: { courseId: string }) {
                 key={entry.sessionId}
                 className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 sm:px-5"
               >
-                <span>{date.format(entry.createdAt)}</span>
+                <span>{formatSessionDate(entry.createdAt, locale, config.timeZone)}</span>
                 <StatusLabel status={entry.status} label={t(`status.${entry.status ?? 'none'}`)} />
               </li>
             ))}
