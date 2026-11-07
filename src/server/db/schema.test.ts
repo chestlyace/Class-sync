@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest'
 import { createTestDb } from '@/test/db'
 import { makeUser } from '@/test/factories'
 import {
+  assignment,
+  assignmentAttachment,
+  assignmentReminder,
   attendanceCheckIn,
   attendanceCodeFailure,
   attendanceOverride,
@@ -12,7 +15,10 @@ import {
   classStudent,
   course,
   courseRosterAdjustment,
+  file,
   school,
+  submission,
+  submissionFile,
   user,
 } from './schema'
 
@@ -57,6 +63,26 @@ async function seedSession(db: Awaited<ReturnType<typeof createTestDb>>) {
     .values({ courseId: c.id, createdBy: owner.id })
     .returning()
   return { owner, cls, course: c, session }
+}
+
+async function seedAssignment(db: Awaited<ReturnType<typeof createTestDb>>) {
+  const { owner, cls } = await seedClass(db)
+  const [c] = await db
+    .insert(course)
+    .values({ classId: cls.id, lecturerId: owner.id, title: 'Maths', semester: 1 })
+    .returning()
+  const [a] = await db
+    .insert(assignment)
+    .values({
+      courseId: c.id,
+      title: 'Essay',
+      dueAt: new Date('2026-12-01T10:00:00Z'),
+      maxMark: 20,
+      submissionMode: 'both',
+      createdBy: owner.id,
+    })
+    .returning()
+  return { owner, course: c, assignment: a }
 }
 
 describe('schema', () => {
@@ -245,6 +271,108 @@ describe('schema', () => {
       expect(
         defs.some((d) => d.includes(` ON public.${table} USING btree (${column})`)),
         `${table}(${column})`,
+      ).toBe(true)
+    }
+  })
+
+  it('applies assignment defaults and keeps numbers as numbers', async () => {
+    const db = await createTestDb()
+    const { assignment: a } = await seedAssignment(db)
+    expect(a).toMatchObject({
+      instructions: [],
+      weight: 1,
+      maxMark: 20,
+      latePolicy: 'accept',
+      status: 'draft',
+      publishedAt: null,
+      gradesReleasedAt: null,
+    })
+  })
+
+  it('one submission per student per assignment', async () => {
+    const db = await createTestDb()
+    const { assignment: a } = await seedAssignment(db)
+    const st = await makeUser(db, { role: 'student' })
+    const row = { assignmentId: a.id, studentId: st.id, submittedAt: new Date() }
+    await db.insert(submission).values(row)
+    expect(await sqlState(db.insert(submission).values(row))).toBe('23505')
+  })
+
+  it('rejects unknown submission mode, late policy, status and file purpose', async () => {
+    const db = await createTestDb()
+    const { owner, course: c } = await seedAssignment(db)
+    const base = {
+      courseId: c.id,
+      title: 'T',
+      dueAt: new Date(),
+      maxMark: 10,
+      submissionMode: 'files' as const,
+      createdBy: owner.id,
+    }
+    for (const bad of [{ submissionMode: 'video' }, { latePolicy: 'maybe' }, { status: 'archived' }]) {
+      expect(
+        await sqlState(db.insert(assignment).values({ ...base, ...bad } as never)),
+        JSON.stringify(bad),
+      ).toBe('23514')
+    }
+    expect(
+      await sqlState(
+        db.insert(file).values({
+          ownerId: owner.id,
+          purpose: 'avatar',
+          storageKey: 'k1',
+          name: 'a.pdf',
+          mimeType: 'application/pdf',
+          sizeBytes: 1,
+        } as never),
+      ),
+    ).toBe('23514')
+  })
+
+  it('deleting an assignment removes attachments, submissions, submission file links and reminders', async () => {
+    const db = await createTestDb()
+    const { owner, assignment: a } = await seedAssignment(db)
+    const st = await makeUser(db, { role: 'student' })
+    const mk = (key: string, purpose: 'assignment' | 'submission') => ({
+      ownerId: owner.id,
+      purpose,
+      storageKey: key,
+      name: `${key}.pdf`,
+      mimeType: 'application/pdf',
+      sizeBytes: 10,
+    })
+    const [f1, f2] = await db
+      .insert(file)
+      .values([mk('k-a', 'assignment'), mk('k-s', 'submission')])
+      .returning()
+    await db.insert(assignmentAttachment).values({ assignmentId: a.id, fileId: f1.id, position: 0 })
+    const [sub] = await db
+      .insert(submission)
+      .values({ assignmentId: a.id, studentId: st.id, submittedAt: new Date() })
+      .returning()
+    await db.insert(submissionFile).values({ submissionId: sub.id, fileId: f2.id, position: 0 })
+    await db.insert(assignmentReminder).values({ assignmentId: a.id, studentId: st.id, sentAt: new Date() })
+    await db.delete(assignment)
+    expect(await db.select().from(assignmentAttachment)).toHaveLength(0)
+    expect(await db.select().from(submission)).toHaveLength(0)
+    expect(await db.select().from(submissionFile)).toHaveLength(0)
+    expect(await db.select().from(assignmentReminder)).toHaveLength(0)
+    expect(await db.select().from(file)).toHaveLength(2)
+  })
+
+  it('has the assignment lookup indexes', async () => {
+    const db = await createTestDb()
+    const res = await db.execute(sql`select indexdef from pg_indexes where schemaname = 'public'`)
+    const defs = (res as unknown as { rows: { indexdef: string }[] }).rows.map((r) => r.indexdef.replace(/"/g, ''))
+    for (const [table, columns] of [
+      ['file', 'owner_id'],
+      ['assignment', 'course_id'],
+      ['assignment', 'status, due_at'],
+      ['submission', 'student_id'],
+    ]) {
+      expect(
+        defs.some((d) => d.includes(` ON public.${table} USING btree (${columns})`)),
+        `${table}(${columns})`,
       ).toBe(true)
     }
   })
