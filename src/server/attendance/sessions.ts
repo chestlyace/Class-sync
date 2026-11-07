@@ -63,7 +63,7 @@ function invalid(field: string, message: string): never {
 }
 
 /** A window closes when the lecturer closes it, or by itself 15 minutes after opening. */
-function windowState(row: Pick<WindowRow, 'id' | 'kind' | 'openedAt' | 'closedAt'>, at: Date): WindowState {
+export function windowState(row: Pick<WindowRow, 'id' | 'kind' | 'openedAt' | 'closedAt'>, at: Date): WindowState {
   const deadline = new Date(row.openedAt.getTime() + WINDOW_MAX_MS)
   return {
     id: row.id,
