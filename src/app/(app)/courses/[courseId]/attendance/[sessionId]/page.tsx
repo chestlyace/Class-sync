@@ -132,7 +132,7 @@ export default async function AttendanceSessionPage({
                     </span>
                   </div>
                   <OverrideSelect
-                    key={`${student.studentId}:${student.override ?? 'auto'}`}
+                    key={student.studentId}
                     sessionId={session.id}
                     studentId={student.studentId}
                     name={student.name}
