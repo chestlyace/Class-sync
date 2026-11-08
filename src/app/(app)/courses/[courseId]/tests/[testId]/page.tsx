@@ -1,4 +1,4 @@
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, PenLine } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
@@ -15,7 +15,7 @@ import type { LiveTestView } from '../../../test-actions'
 import { TestLive } from '../../../test-live'
 import { TestStatePill } from '../../../test-state'
 
-type LiveView = { course: CourseSummary; live: LiveTestView; state: TestState }
+type LiveView = { course: CourseSummary; live: LiveTestView; state: TestState; hasShort: boolean }
 
 /** The student link, `/t/<CODE>`, absolute when BETTER_AUTH_URL is set (as in emails). */
 function testLink(code: string): string {
@@ -38,10 +38,13 @@ export default async function TestLivePage({ params }: PageProps<'/courses/[cour
       course: await getCourse(ctx, courseId),
       live: { ...live, endsAt: live.endsAt?.toISOString() ?? null, serverNow: live.serverNow.toISOString() },
       state: summary.state,
+      hasShort: summary.hasShort,
     }
   })
   if (!view.ok) return <ErrorState code={view.code} />
-  const { course, live, state } = view.data
+  const { course, live, state, hasShort } = view.data
+  const tm = await getTranslations('tests.marking')
+  const testHref = `/courses/${encodeURIComponent(course.id)}/tests/${encodeURIComponent(live.testId)}`
 
   return (
     <>
@@ -55,10 +58,18 @@ export default async function TestLivePage({ params }: PageProps<'/courses/[cour
           </span>
         }
         actions={
-          <Link href={`/courses/${encodeURIComponent(course.id)}/tests`} className={buttonVariants({ variant: 'outline' })}>
-            <ArrowLeft aria-hidden="true" data-icon="inline-start" />
-            {t('allTests')}
-          </Link>
+          <>
+            <Link href={`/courses/${encodeURIComponent(course.id)}/tests`} className={buttonVariants({ variant: 'outline' })}>
+              <ArrowLeft aria-hidden="true" data-icon="inline-start" />
+              {t('allTests')}
+            </Link>
+            {hasShort && (state === 'ended' || state === 'released') && (
+              <Link href={`${testHref}/mark`} className={buttonVariants({ variant: 'outline' })}>
+                <PenLine aria-hidden="true" data-icon="inline-start" />
+                {tm('markShort')}
+              </Link>
+            )}
+          </>
         }
       />
       {/* A new phase (Start, End, deadline) remounts the live view with fresh state. */}
