@@ -1,22 +1,17 @@
-import { and, eq, gt, inArray, lte } from 'drizzle-orm'
+import { and, eq, gt, lte } from 'drizzle-orm'
 import { createElement } from 'react'
 import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
-import type { Locale } from '@/server/core/context'
 import { courseRosterQuery } from '@/server/courses/roster'
 import { db as appDb, type Db } from '@/server/db'
-import { assignment, assignmentReminder, course, submission, user } from '@/server/db/schema'
+import { assignment, assignmentReminder, course, submission } from '@/server/db/schema'
 import { sendNotifications, type Notification } from '@/server/email/notify'
 import { AssignmentReminderEmail } from '@/server/email/templates/assignment-reminder'
 import { emailSubject } from '@/server/email/templates/verify-email'
+import { assignmentLinkBuilder, localesOf } from './queries'
 
 export const REMINDER_WINDOW_MS = 24 * 60 * 60 * 1000
 const INSERT_CHUNK = 500
-
-function assignmentUrl(assignmentId: string): string {
-  const base = (process.env.BETTER_AUTH_URL ?? '').replace(/\/+$/, '')
-  return `${base}/assignments/${assignmentId}`
-}
 
 /**
  * Emails every roster student who has not submitted yet for each published assignment due within
@@ -40,9 +35,9 @@ export async function sendDueReminders(db: Db, at: Date): Promise<{ assignments:
     .innerJoin(course, eq(course.id, assignment.courseId))
     .where(and(eq(assignment.status, 'published'), gt(assignment.dueAt, at), lte(assignment.dueAt, upper)))
 
-  if (due.length > 0 && !process.env.BETTER_AUTH_URL) {
-    console.warn('[reminders] BETTER_AUTH_URL is not set: reminder emails will carry relative links')
-  }
+  if (due.length === 0) return { assignments: 0, reminded: 0 }
+  // One builder per run: without BETTER_AUTH_URL it warns once, not per email.
+  const link = assignmentLinkBuilder('reminders')
   let reminded = 0
   for (const a of due) {
     const roster = await courseRosterQuery(db, { courseId: a.courseId })
@@ -66,11 +61,7 @@ export async function sendDueReminders(db: Db, at: Date): Promise<{ assignments:
     }
     if (claimed.size === 0) continue
 
-    const locales = await db
-      .select({ id: user.id, locale: user.locale })
-      .from(user)
-      .where(inArray(user.id, [...claimed]))
-    const localeOf = new Map(locales.map((l) => [l.id, (l.locale === 'fr' ? 'fr' : 'en') as Locale]))
+    const localeOf = await localesOf(db, [...claimed])
 
     // Send per assignment, right after its claim, so a killed run loses at most one assignment's emails.
     const notifications: Notification[] = []
@@ -87,7 +78,7 @@ export async function sendDueReminders(db: Db, at: Date): Promise<{ assignments:
           courseTitle: a.courseTitle,
           assignmentTitle: a.title,
           dueAt: a.dueAt,
-          url: assignmentUrl(a.id),
+          url: link(a.id),
           timeZone: config.timeZone,
         }),
       })
