@@ -25,9 +25,10 @@ import {
   user,
 } from '@/server/db/schema'
 import { createClass, joinClassAsLecturer, joinClassAsStudent } from '@/server/classes/service'
-import { createCourse } from '@/server/courses/service'
+import { createCourse, setRosterAdjustment } from '@/server/courses/service'
 import { createSchool } from '@/server/schools/service'
 import { ctxFor, makeUser } from '@/test/factories'
+import { racing } from '@/test/race'
 import {
   endTestForEveryone,
   getAttemptLog,
@@ -39,19 +40,24 @@ import {
 import { loadTestScores } from './scores'
 
 const MIN = 60_000
+/** Statements per call; a change here should be deliberate. */
+const LIVE_QUERIES = 5
+const SCORE_QUERIES = 2
 const T0 = new Date('2026-11-09T08:00:00Z')
 const at = (minutes: number) => new Date(T0.getTime() + minutes * MIN)
 
-// Every statement goes through this logger, so a test can count them.
+// Every statement goes through this logger, so a test can count them (and read the last ones).
 let queryCount = 0
+let recentQueries: string[] = []
 
 async function createCountingTestDb(): Promise<Db> {
   const client = new PGlite()
   const db = drizzle(client, {
     schema,
     logger: {
-      logQuery: () => {
+      logQuery: (query: string) => {
         queryCount++
+        recentQueries = [...recentQueries.slice(-19), query]
       },
     },
   })
@@ -376,6 +382,12 @@ describe('running a test (lecturer)', () => {
     await startTest(lecturer, q.test.id)
     await join(q.test.id, alice, at(1))
     const small = await countQueries(() => getLiveTest(lecturer, q.test.id))
+    // Owner check (test, course), then roster, question count and attempt states.
+    expect(small).toBe(LIVE_QUERIES)
+    // The correlated subqueries name the outer attempt explicitly, never a bare "id".
+    const attemptsQuery = recentQueries.find((q) => q.includes('from "test_exit"'))
+    expect(attemptsQuery).toMatch(/attempt_id = "test_attempt"\.("id"|id)/)
+    expect(attemptsQuery).not.toMatch(/= "id"/)
 
     for (let i = 0; i < 4; i++) {
       const s = await student(`Late ${i}`, `UB${10 + i}`)
@@ -386,6 +398,38 @@ describe('running a test (lecturer)', () => {
     const live = await getLiveTest(lecturer, q.test.id)
     expect(live.rows).toHaveLength(9)
     expect(await countQueries(() => getLiveTest(lecturer, q.test.id))).toBe(small)
+  })
+
+  it('a student taken off the roster is absent from the live view and the results, though their attempt stays', async () => {
+    const { lecturer, algo, alice, bob } = await setup()
+    const q = await insertTest(lecturer, algo.id, { mcqOnly: true })
+    setClock(T0)
+    await startTest(lecturer, q.test.id)
+    const aAlice = await join(q.test.id, alice, at(1))
+    const aBob = await join(q.test.id, bob, at(1))
+    await answer(aAlice.id, q.q1.id, { optionId: q.o1.id }, at(2))
+    await answer(aBob.id, q.q1.id, { optionId: q.o1.id }, at(2))
+    await setRosterAdjustment(lecturer, algo.id, bob.user.id, 'exclude')
+
+    const live = await getLiveTest(lecturer, q.test.id)
+    expect(live.rows.map((r) => r.studentId)).not.toContain(bob.user.id)
+    expect(live.counts).toMatchObject({ roster: 4, joined: 1, working: 1 })
+
+    setClock(at(33))
+    const results = await getTestResults(lecturer, q.test.id)
+    expect(results.rows.map((r) => r.studentId)).not.toContain(bob.user.id)
+    expect(results.rows).toHaveLength(4)
+    expect(results.rows.find((r) => r.studentId === alice.user.id)).toMatchObject({ score: 2 })
+    const [kept] = await db.select().from(testAttempt).where(eq(testAttempt.id, aBob.id))
+    expect(kept).toBeDefined()
+  })
+
+  it('startTest on a test deleted after the owner check is FORBIDDEN', async () => {
+    const { lecturer, algo } = await setup()
+    const q = await insertTest(lecturer, algo.id)
+    setClock(T0)
+    const raced = racing(lecturer, 'update', () => db.delete(courseTest).where(eq(courseTest.id, q.test.id)))
+    await expect(startTest(raced, q.test.id)).rejects.toMatchObject({ code: 'FORBIDDEN' })
   })
 
   it('after the deadline, a working student reads handed_in', async () => {
@@ -489,6 +533,27 @@ describe('running a test (lecturer)', () => {
       code: 'CONFLICT',
       details: { reason: 'test_over' },
     })
+  })
+
+  it('letBackIn re-checks inside its transaction that the test is still running', async () => {
+    const { lecturer, algo, carol } = await setup()
+    const q = await insertTest(lecturer, algo.id)
+    setClock(T0)
+    await startTest(lecturer, q.test.id)
+    const left = await join(q.test.id, carol, at(1))
+    await close(left.id, 'left', at(4), 3)
+
+    setClock(at(8))
+    // The lecturer ends the test in another tab after this call's first check.
+    const raced = racing(lecturer, 'transaction', () => endTestForEveryone(lecturer, q.test.id))
+    await expect(letBackIn(raced, left.id)).rejects.toMatchObject({
+      code: 'CONFLICT',
+      details: { reason: 'test_over' },
+    })
+    const [stored] = await db.select().from(testAttempt).where(eq(testAttempt.id, left.id))
+    expect(stored.closedReason).toBe('left')
+    const logs = await db.select().from(testLog).where(eq(testLog.attemptId, left.id))
+    expect(logs.map((l) => l.kind)).toEqual(['ended_left'])
   })
 
   it('getAttemptLog lists exits, ending and reopening in order', async () => {
@@ -607,6 +672,7 @@ describe('running a test (lecturer)', () => {
     const small = await countQueries(async () => {
       scores = await loadTestScores(db, [one.test.id, two.test.id], ids)
     })
+    expect(small).toBe(SCORE_QUERIES)
     expect(scores.get(one.test.id)?.get(alice.user.id)).toMatchObject({
       score: 3.25,
       outOf: 9,
