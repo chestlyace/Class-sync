@@ -1,7 +1,12 @@
+import { apiKey } from '@better-auth/api-key'
+import { cimd } from '@better-auth/cimd'
+import { fetchClientMetadataResource } from '@better-auth/cimd/node'
+import { mcp } from '@better-auth/mcp'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { APIError } from 'better-auth/api'
 import { nextCookies } from 'better-auth/next-js'
+import { jwt } from 'better-auth/plugins'
 import { isLocale } from '@/i18n/locale'
 import { config } from '@/server/core/config'
 import { AppError } from '@/server/core/errors'
@@ -31,6 +36,29 @@ const SIGN_IN_RULE = { window: 60, max: 100 }
 const SIGN_UP_RULE = { window: 60, max: 30 }
 
 
+/** Scopes an assistant can be granted. Read tools need `clasync:read`, draft tools `clasync:write`. */
+export const MCP_OAUTH_SCOPES = ['openid', 'profile', 'email', 'offline_access', 'clasync:read', 'clasync:write']
+
+/** Personal access tokens: `cls_` + 64 characters, sent as `Authorization: Bearer cls_…`. */
+export const API_KEY_PREFIX = 'cls_'
+
+/**
+ * The app's public origin: the explicit option, else BETTER_AUTH_URL, else the Vercel deployment
+ * URL, else localhost:3000. The OAuth provider needs a fixed base URL (issuer and MCP resource
+ * derive from it), so production needs BETTER_AUTH_URL set to the stable URL, and local runs on
+ * another port need it too.
+ */
+export function resolveAppOrigin(explicit?: string): string {
+  const vercel = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined
+  const raw = explicit || process.env.BETTER_AUTH_URL || vercel || 'http://localhost:3000'
+  return new URL(raw).origin
+}
+
+/** The MCP endpoint: the resource access tokens are bound to (`aud`). */
+export function mcpResourceUrl(origin: string): string {
+  return `${origin}/api/mcp`
+}
+
 function toApiError(err: unknown): unknown {
   return err instanceof AppError
     ? new APIError('BAD_REQUEST', { message: err.message, code: err.code })
@@ -38,9 +66,12 @@ function toApiError(err: unknown): unknown {
 }
 
 export function createAuth(database: Db, options: CreateAuthOptions = {}) {
+  const origin = resolveAppOrigin(options.baseURL)
   return betterAuth({
-    ...(options.baseURL ? { baseURL: options.baseURL } : {}),
+    baseURL: origin,
     ...(options.secret ? { secret: options.secret } : {}),
+    // The jwt plugin's /token would hand out session JWTs; MCP uses OAuth access tokens only.
+    disabledPaths: ['/token'],
     database: drizzleAdapter(database, { provider: 'pg', schema }),
     emailAndPassword: {
       enabled: true,
@@ -108,8 +139,34 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
         },
       },
     },
-    // Must stay last: lets Server Actions set the session cookie.
-    plugins: options.nextCookies === false ? [] : [nextCookies()],
+    plugins: [
+      // Signs the OAuth access tokens (keys live in the jwks table, created on first use).
+      jwt({ disableSettingJwtHeader: true }),
+      // OAuth 2.1 provider for AI assistants (Claude, ChatGPT…): tokens bound to /api/mcp.
+      mcp({
+        loginPage: '/sign-in',
+        consentPage: '/oauth/consent',
+        resource: mcpResourceUrl(origin),
+        scopes: MCP_OAUTH_SCOPES,
+        // Hosted assistants register themselves (RFC 7591) without credentials.
+        allowDynamicClientRegistration: true,
+        allowUnauthenticatedClientRegistration: true,
+        // No client_credentials: its subject is not a user.
+        grantTypes: ['authorization_code', 'refresh_token'],
+        refreshTokenReuseInterval: 0,
+      }),
+      // Client ID Metadata Documents: an https client_id the server fetches (SSRF-guarded).
+      cimd({ fetchClientMetadataResource, metadataProfile: 'mcp-2026-07-28' }),
+      // Personal access tokens for CLI tools. 120 requests a minute per key (default 10 a day).
+      apiKey({
+        defaultPrefix: API_KEY_PREFIX,
+        maximumNameLength: 60,
+        startingCharactersConfig: { charactersLength: 8 },
+        rateLimit: { enabled: true, timeWindow: 60_000, maxRequests: 120 },
+      }),
+      // Must stay last: lets Server Actions set the session cookie.
+      ...(options.nextCookies === false ? [] : [nextCookies()]),
+    ],
   })
 }
 
