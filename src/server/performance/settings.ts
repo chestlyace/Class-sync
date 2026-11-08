@@ -1,27 +1,9 @@
-import { eq } from 'drizzle-orm'
 import { AppError } from '@/server/core/errors'
 import { now } from '@/server/core/clock'
 import type { Ctx } from '@/server/core/context'
-import type { Db } from '@/server/db'
 import { courseCaSettings } from '@/server/db/schema'
 import { requireCourseOwner } from '@/server/courses/service'
-import { DEFAULT_SETTINGS, validateSettings, type CaSettings } from './rules'
-
-/** The stored CA settings of a course, or the defaults when none were saved yet. */
-export async function readCaSettings(db: Db, courseId: string): Promise<CaSettings> {
-  const [row] = await db
-    .select({
-      total: courseCaSettings.total,
-      attendancePoints: courseCaSettings.attendancePoints,
-      assignmentPoints: courseCaSettings.assignmentPoints,
-      participationPoints: courseCaSettings.participationPoints,
-      testPoints: courseCaSettings.testPoints,
-      participationTarget: courseCaSettings.participationTarget,
-    })
-    .from(courseCaSettings)
-    .where(eq(courseCaSettings.courseId, courseId))
-  return row ?? { ...DEFAULT_SETTINGS }
-}
+import { validateSettings, type CaSettings } from './rules'
 
 /**
  * Saves a course's CA settings. Owner only. The numbers are checked by `validateSettings`;
