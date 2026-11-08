@@ -345,8 +345,8 @@ export async function suggestMarks(
  * Confirms (or changes) the mark of one real short answer, with an optional comment the student
  * sees beside it. Owner only; a student still on the roster only (else FORBIDDEN); final answers
  * only. The mark is 0..the question's mark in 0.25 steps; the comment is trimmed, blank → null,
- * at most COMMENT_MAX characters. Also allowed after
- * release: the student then sees the new mark (no new email).
+ * at most COMMENT_MAX characters. Also allowed after release: the student then sees the new mark
+ * (no new email).
  */
 export async function confirmMark(
   ctx: Ctx,
