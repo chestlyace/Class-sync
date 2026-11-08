@@ -121,3 +121,51 @@ export async function joinClassAsStudent(page: Page, classUrl: string, code: str
   await page.getByRole('button', { name: 'Join class', exact: true }).click()
   await expect(page).toHaveURL(classUrl)
 }
+
+/** The app's time zone (APP_TIME_ZONE is unset for e2e, so the default applies). */
+export const APP_TIME_ZONE = 'Africa/Douala'
+
+/**
+ * Tomorrow at 08:00 in the app's time zone, as a `datetime-local` value (YYYY-MM-DDTHH:mm): the
+ * form reads it in that zone, so "tomorrow" must be too, whatever the machine's own zone.
+ */
+export function tomorrowAt8(): string {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: APP_TIME_ZONE, dateStyle: 'short' }).format(new Date())
+  const tomorrow = new Date(Date.parse(`${today}T00:00:00Z`) + 24 * 60 * 60 * 1000)
+  return `${tomorrow.toISOString().slice(0, 10)}T08:00`
+}
+
+/** Clicks into a BlockNote editor (found by the aria-label on its contenteditable) and types. */
+export async function typeInEditor(page: Page, label: string, text: string) {
+  const editor = page.locator(`[contenteditable="true"][aria-label="${label}"]`)
+  await expect(editor).toBeVisible()
+  await editor.click()
+  await page.keyboard.type(text)
+  return editor
+}
+
+export const CODE = /^[A-Z0-9]{6}$/
+
+/** The code on the lecturer's screen: waits until it is a real code, not the placeholder dashes. */
+export async function readLiveCode(lecturer: Page): Promise<string> {
+  const code = lecturer.getByTestId('attendance-code')
+  await expect(code).toHaveText(CODE)
+  return (await code.innerText()).trim()
+}
+
+/**
+ * The student's check-in confirmation: a status region that is always on the card (so its text
+ * is announced) and keeps "Checked in" across the refresh that follows a check-in.
+ */
+export async function expectCheckedIn(student: Page) {
+  const status = student.getByTestId('check-in-status')
+  await expect(status).toHaveAttribute('role', 'status')
+  await expect(status).toHaveText('Checked in')
+}
+
+/** Student side: enter a code on /check-in and submit. */
+export async function submitCode(student: Page, code: string) {
+  await student.goto('/check-in')
+  await student.getByLabel('Code on the screen', { exact: true }).fill(code)
+  await student.getByRole('button', { name: 'Check in', exact: true }).click()
+}

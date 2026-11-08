@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import path from 'node:path'
 import {
   createCourse,
@@ -7,6 +7,8 @@ import {
   expectNoHorizontalScroll,
   joinClassAsStudent,
   signUp,
+  tomorrowAt8,
+  typeInEditor,
   userPages,
 } from './helpers'
 
@@ -26,28 +28,6 @@ const PHOTO = path.join(FIXTURES, 'photo.jpg')
 const INSTRUCTIONS = 'Configure the router and describe the subnets you chose.'
 const ANSWER = 'The subnet mask is 255.255.255.0 and the gateway is 192.168.1.1.'
 const COMMENT = 'Clear answer. Check the broadcast address next time.'
-
-/** The app's time zone (APP_TIME_ZONE is unset for e2e, so the default applies). */
-const APP_TIME_ZONE = 'Africa/Douala'
-
-/**
- * Tomorrow at 08:00 in the app's time zone, as a `datetime-local` value (YYYY-MM-DDTHH:mm): the
- * form reads it in that zone, so "tomorrow" must be too, whatever the machine's own zone.
- */
-function tomorrowAt8(): string {
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: APP_TIME_ZONE, dateStyle: 'short' }).format(new Date())
-  const tomorrow = new Date(Date.parse(`${today}T00:00:00Z`) + 24 * 60 * 60 * 1000)
-  return `${tomorrow.toISOString().slice(0, 10)}T08:00`
-}
-
-/** Clicks into a BlockNote editor (found by the aria-label on its contenteditable) and types. */
-async function typeInEditor(page: Page, label: string, text: string) {
-  const editor = page.locator(`[contenteditable="true"][aria-label="${label}"]`)
-  await expect(editor).toBeVisible()
-  await editor.click()
-  await page.keyboard.type(text)
-  return editor
-}
 
 test('assignments with uploads, grading and release, end to end', async ({
   browser,

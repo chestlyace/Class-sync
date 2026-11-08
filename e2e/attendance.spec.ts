@@ -1,11 +1,15 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import {
+  CODE,
   createCourse,
   createSchoolAndClass,
   EN,
   expectNoHorizontalScroll,
+  expectCheckedIn,
   joinClassAsStudent,
+  readLiveCode,
   signUp,
+  submitCode,
   userPages,
 } from './helpers'
 
@@ -21,32 +25,6 @@ import {
 const CAMPUS = { latitude: 4.1527, longitude: 9.241 }
 /** About 2 km north of the campus, far beyond the default 500 m radius. */
 const TWO_KM_NORTH = { latitude: 4.1707, longitude: 9.241 }
-
-const CODE = /^[A-Z0-9]{6}$/
-
-/** The code on the lecturer's screen: waits until it is a real code, not the placeholder dashes. */
-async function readLiveCode(lecturer: Page): Promise<string> {
-  const code = lecturer.getByTestId('attendance-code')
-  await expect(code).toHaveText(CODE)
-  return (await code.innerText()).trim()
-}
-
-/**
- * The student's check-in confirmation: a status region that is always on the card (so its text
- * is announced) and keeps "Checked in" across the refresh that follows a check-in.
- */
-async function expectCheckedIn(student: Page) {
-  const status = student.getByTestId('check-in-status')
-  await expect(status).toHaveAttribute('role', 'status')
-  await expect(status).toHaveText('Checked in')
-}
-
-/** Student side: enter a code on /check-in and submit. */
-async function submitCode(student: Page, code: string) {
-  await student.goto('/check-in')
-  await student.getByLabel('Code on the screen', { exact: true }).fill(code)
-  await student.getByRole('button', { name: 'Check in', exact: true }).click()
-}
 
 test('attendance with a rotating code and a campus check, end to end', async ({
   browser,
