@@ -148,3 +148,25 @@ body:has(main[data-taking-test]) {
 .clasync-rich-text-view .bn-editor {
   padding-inline: 0;
 }
+/* Read-only notes: code blocks are a light mono box that scrolls inside itself; the page never does. */
+.clasync-rich-text-view,
+.clasync-rich-text-view .bn-container,
+.clasync-rich-text-view .bn-editor,
+.clasync-rich-text-view .bn-block-group,
+.clasync-rich-text-view .bn-block-outer,
+.clasync-rich-text-view .bn-block,
+.clasync-rich-text-view .bn-block-content {
+  min-width: 0;
+  max-width: 100%;
+}
+.clasync-rich-text-view .bn-block-content[data-content-type='codeBlock'] {
+  color: var(--foreground);
+  background-color: var(--muted);
+  border: 1px solid var(--border);
+}
+.clasync-rich-text-view .bn-block-content[data-content-type='codeBlock'] > pre {
+  overflow-x: auto;
+  padding: 16px;
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-size: 0.85rem;
+}

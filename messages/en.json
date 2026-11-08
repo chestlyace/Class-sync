@@ -1450,5 +1450,41 @@
       "mcqCount": "{count, plural, one {# question} other {# questions}}",
       "mcqNote": "Shown as one total, so the answers stay private."
     }
+  },
+  "notes": {
+    "student": {
+      "eyebrow": "Notes",
+      "title": "Notes",
+      "back": "Back to {course}",
+      "searchLabel": "Search this course's notes",
+      "searchPlaceholder": "Search this course's notes",
+      "searchButton": "Search",
+      "clearSearch": "Clear search",
+      "topicHeading": "{n} · {title}",
+      "empty": "Your lecturer has not shared any notes yet.",
+      "noResults": "Nothing matches “{q}”.",
+      "noteMeta": "Note",
+      "newBadge": "New",
+      "fileType": {
+        "pdf": "PDF",
+        "word": "Word",
+        "slides": "Slides",
+        "image": "Image",
+        "other": "File"
+      },
+      "practiceTitle": "Practise this topic",
+      "practiceMeta": "{count, plural, one {# question} other {# questions}} · doesn't count for marks",
+      "openFile": "Open {title}",
+      "openLink": "Open {title} in a new tab",
+      "updated": "{lecturer} · updated {date}",
+      "allNotes": "All notes",
+      "practise": "Practise this topic",
+      "topicLabel": "{course} · Topic {n}",
+      "section": {
+        "title": "Notes",
+        "body": "Notes, files and links from your lecturer, by topic.",
+        "open": "Open notes"
+      }
+    }
   }
 }
