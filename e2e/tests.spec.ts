@@ -211,7 +211,7 @@ test('a test run with offline answers, leaving and letting back in, end to end',
       await alice.getByRole('button', { name: 'Next', exact: true }).click()
       await answerShownQuestion(alice)
       await expect(progress(alice, 2)).toBeVisible()
-      await expect(alice.getByText('Saved on this phone · waiting for connection', { exact: true })).toBeVisible()
+      await expect(alice.getByText('Saved on this device · waiting for connection', { exact: true })).toBeVisible()
       await expectNoHorizontalScroll(alice)
 
       await alice.context().setOffline(false)
