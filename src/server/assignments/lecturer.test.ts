@@ -1,10 +1,12 @@
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { setNowForTests } from '@/server/core/clock'
 import type { Ctx } from '@/server/core/context'
 import type { Db } from '@/server/db'
 import {
   assignment,
   assignmentAttachment,
+  assignmentReminder,
   class_,
   classLecturer,
   classStudent,
@@ -76,6 +78,7 @@ describe('lecturer assignment services', () => {
     vi.stubEnv('BETTER_AUTH_URL', 'https://clasync.test')
   })
   afterEach(async () => {
+    setNowForTests(null)
     setAfterResponseForTests(null)
     vi.unstubAllEnvs()
     await db.delete(submissionFile)
@@ -340,6 +343,57 @@ describe('lecturer assignment services', () => {
     await expect(
       updateAssignment(lecturer, a.id, baseInput({ dueAt: new Date(Date.now() - 2 * DAY) })),
     ).rejects.toMatchObject({ code: 'VALIDATION', details: { fields: ['dueAt'] } })
+  })
+
+  it('a new due date recomputes who is late; only an extension clears the reminders (ruling B11)', async () => {
+    const { lecturer, algo, alice, bob, carol } = await setup()
+    const t0 = new Date('2026-11-10T08:00:00Z')
+    setNowForTests(() => t0)
+    const at = (hours: number) => new Date(t0.getTime() + hours * 60 * 60_000)
+    const a = await published(lecturer, algo.id, { dueAt: at(72) })
+    const other = await published(lecturer, algo.id, { dueAt: at(72) })
+    // In before the original deadline (72 h) at 12 h, 48 h and 60 h.
+    await addSubmission(alice, a.id, { submittedAt: at(48), isLate: false })
+    await addSubmission(bob, a.id, { submittedAt: at(60), isLate: false })
+    await addSubmission(carol, a.id, { submittedAt: at(12), isLate: false })
+    await addSubmission(alice, other.id, { submittedAt: at(48), isLate: false })
+    const remind = (assignmentId: string, student: Ctx) =>
+      db.insert(assignmentReminder).values({ assignmentId, studentId: student.user.id, sentAt: t0 })
+    await remind(a.id, alice)
+    await remind(a.id, bob)
+    await remind(other.id, bob)
+
+    const lateness = async (assignmentId: string) =>
+      Object.fromEntries(
+        (await db.select().from(submission).where(eq(submission.assignmentId, assignmentId))).map((s) => [
+          s.studentId,
+          s.isLate,
+        ]),
+      )
+    const reminded = async (assignmentId: string) =>
+      (await db.select().from(assignmentReminder).where(eq(assignmentReminder.assignmentId, assignmentId)))
+        .map((r) => r.studentId)
+        .sort()
+
+    // Shortened to 24 h: work handed in after it becomes late; reminders stay (no second email).
+    await updateAssignment(lecturer, a.id, baseInput({ dueAt: at(24) }))
+    expect(await lateness(a.id)).toEqual({ [alice.user.id]: true, [bob.user.id]: true, [carol.user.id]: false })
+    expect(await reminded(a.id)).toEqual([alice.user.id, bob.user.id].sort())
+
+    // Same due date, another field: nothing about lateness or reminders changes.
+    await updateAssignment(lecturer, a.id, baseInput({ dueAt: at(24), title: 'Renamed' }))
+    expect(await lateness(a.id)).toEqual({ [alice.user.id]: true, [bob.user.id]: true, [carol.user.id]: false })
+    expect(await reminded(a.id)).toEqual([alice.user.id, bob.user.id].sort())
+
+    // Extended to 50 h: Alice (48 h) is on time again, Bob (60 h) is still late; the reminders go so
+    // the new deadline can be reminded.
+    await updateAssignment(lecturer, a.id, baseInput({ dueAt: at(50) }))
+    expect(await lateness(a.id)).toEqual({ [alice.user.id]: false, [bob.user.id]: true, [carol.user.id]: false })
+    expect(await reminded(a.id)).toEqual([])
+
+    // The other assignment is untouched.
+    expect(await lateness(other.id)).toEqual({ [alice.user.id]: false })
+    expect(await reminded(other.id)).toEqual([bob.user.id])
   })
 
   it('deletes a draft; a published assignment is a CONFLICT', async () => {

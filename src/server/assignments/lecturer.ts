@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNotNull, isNull, max } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, max } from 'drizzle-orm'
 import { createElement } from 'react'
 import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
@@ -11,6 +11,7 @@ import type { Db } from '@/server/db'
 import {
   assignment,
   assignmentAttachment,
+  assignmentReminder,
   classStudent,
   LATE_POLICIES,
   submission,
@@ -225,7 +226,8 @@ export async function createAssignment(ctx: Ctx, courseId: string, input: Assign
 /**
  * Edits a draft or a published assignment. The submission mode can't change once anyone has
  * submitted (CONFLICT mode_locked), and the max mark can't drop below a mark already given.
- * The attachment list is replaced by `attachmentIds`.
+ * The attachment list is replaced by `attachmentIds`. A new due date recomputes every
+ * submission's `isLate`; a later one also clears the assignment's sent reminders (ruling B11).
  */
 export async function updateAssignment(ctx: Ctx, assignmentId: string, input: AssignmentInput): Promise<AssignmentDetail> {
   const { row: current } = await requireOwnedAssignment(ctx, assignmentId)
@@ -274,6 +276,18 @@ export async function updateAssignment(ctx: Ctx, assignmentId: string, input: As
       .where(eq(assignment.id, assignmentId))
       .returning()
     await replaceAttachments(tx, assignmentId, data.attachmentIds)
+
+    // Ruling B11: a new due date decides again who handed in late, and an extension forgets the
+    // reminders already sent so the new deadline gets its own reminder.
+    if (data.dueAt.getTime() !== locked.dueAt.getTime()) {
+      await tx
+        .update(submission)
+        .set({ isLate: gt(submission.submittedAt, data.dueAt) })
+        .where(eq(submission.assignmentId, assignmentId))
+      if (data.dueAt.getTime() > locked.dueAt.getTime()) {
+        await tx.delete(assignmentReminder).where(eq(assignmentReminder.assignmentId, assignmentId))
+      }
+    }
     return updated
   })
   return loadAssignmentDetail(ctx.db, row)
