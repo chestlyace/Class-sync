@@ -710,6 +710,25 @@ describe('schema', () => {
     expect(row.mark).toBeNull()
   })
 
+  it('rejects a negative mark or suggested mark on an answer, but allows 0 and null', async () => {
+    const db = await createTestDb()
+    const { test: t, question: q } = await seedTest(db)
+    const st = await makeUser(db, { role: 'student' })
+    const [a] = await db
+      .insert(testAttempt)
+      .values({ testId: t.id, studentId: st.id, seed: 's', deviceId: 'd', deviceSeenAt: new Date() })
+      .returning()
+    const ans = { attemptId: a.id, questionId: q.id, text: 'two', rev: 1, receivedAt: new Date() }
+    expect(await sqlState(db.insert(testAnswer).values({ ...ans, mark: -0.25 })), 'mark').toBe('23514')
+    expect(await sqlState(db.insert(testAnswer).values({ ...ans, suggestedMark: -1 })), 'suggested').toBe('23514')
+    await db.insert(testAnswer).values({ ...ans, mark: 0, suggestedMark: 0 })
+    expect(await sqlState(db.update(testAnswer).set({ mark: -1 }))).toBe('23514')
+    expect(await sqlState(db.update(testAnswer).set({ suggestedMark: -0.5 }))).toBe('23514')
+    await db.update(testAnswer).set({ mark: null, suggestedMark: null })
+    const [row] = await db.select().from(testAnswer)
+    expect(row).toMatchObject({ mark: null, suggestedMark: null })
+  })
+
   it('sets copied_from to null when the source test is deleted', async () => {
     const db = await createTestDb()
     const { owner, course: c, test: t } = await seedTest(db)

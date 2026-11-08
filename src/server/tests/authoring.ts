@@ -46,6 +46,15 @@ function started(): AppError {
   return new AppError('CONFLICT', 'The test has started: it can no longer be changed', { reason: 'started' })
 }
 
+/**
+ * Why a conditional write on `started_at is null` matched nothing: CONFLICT started when the test
+ * is still there, FORBIDDEN (as for any missing test) when it was deleted in between.
+ */
+async function startedOrGone(db: Db, testId: string): Promise<AppError> {
+  const [row] = await db.select({ id: courseTest.id }).from(courseTest).where(eq(courseTest.id, testId))
+  return row ? started() : new AppError('FORBIDDEN', 'Only the lecturer of this course can do this')
+}
+
 /** The validated test, or VALIDATION { reason, question? } naming the first problem found. */
 function parseTestInput(input: unknown): TestInput {
   const result = validateTestInput(input)
@@ -213,7 +222,8 @@ export async function createTest(ctx: Ctx, courseId: string, input: unknown): Pr
 /**
  * Replaces the settings and every question of a test that has not started. The first statement
  * of the transaction is the conditional update on `started_at is null`, so it cannot race Start:
- * once Start has committed, nothing is changed (CONFLICT { reason: 'started' }).
+ * once Start has committed, nothing is changed (CONFLICT { reason: 'started' }); a test deleted
+ * in between is FORBIDDEN.
  */
 export async function updateTest(ctx: Ctx, testId: string, input: unknown): Promise<TestSummary> {
   await requireOwnedTest(ctx, testId)
@@ -224,7 +234,7 @@ export async function updateTest(ctx: Ctx, testId: string, input: unknown): Prom
       .set({ ...settingsOf(data), updatedAt: now() })
       .where(and(eq(courseTest.id, testId), isNull(courseTest.startedAt)))
       .returning()
-    if (!row) throw started()
+    if (!row) throw await startedOrGone(tx, testId)
     // Options go with their questions (cascade).
     await tx.delete(testQuestion).where(eq(testQuestion.testId, testId))
     await insertQuestions(tx, testId, data.questions)
@@ -264,16 +274,18 @@ export async function copyTest(ctx: Ctx, testId: string, targetCourseId: string)
   const { test } = await requireOwnedTest(ctx, testId)
   await requireCourseOwner(ctx, targetCourseId)
   const questions = await loadStoredQuestions(ctx.db, test.id)
-  const created = await insertNewTest(ctx, targetCourseId, settingsOf(test), questions.map(toQuestionInput), test.id)
+  // Checked like a new test, so a copy never carries a test the rules now refuse.
+  const data = parseTestInput({ ...settingsOf(test), questions: questions.map(toQuestionInput) })
+  const created = await insertNewTest(ctx, targetCourseId, settingsOf(data), data.questions, test.id)
   return summarizeTest(ctx.db, created)
 }
 
-/** Deletes a test that has not started (conditional, so it cannot race Start). */
+/** Deletes a test that has not started (conditional, so it cannot race Start); already gone is FORBIDDEN. */
 export async function deleteTest(ctx: Ctx, testId: string): Promise<void> {
   await requireOwnedTest(ctx, testId)
   const deleted = await ctx.db
     .delete(courseTest)
     .where(and(eq(courseTest.id, testId), isNull(courseTest.startedAt)))
     .returning({ id: courseTest.id })
-  if (deleted.length === 0) throw started()
+  if (deleted.length === 0) throw await startedOrGone(ctx.db, testId)
 }

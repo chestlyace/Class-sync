@@ -72,19 +72,19 @@ describe('auth: rate limits sized for a classroom', () => {
     })
   })
 
-  it('allows 30 sign-ins per minute from one address (a class behind one NAT), then answers 429', async () => {
+  it('allows 100 sign-ins per minute from one address (a class behind one NAT at the start of a test), then answers 429', async () => {
     const ip = '198.51.100.7'
     const statuses: number[] = []
-    for (let i = 0; i < 31; i++) {
+    for (let i = 0; i < 101; i++) {
       statuses.push((await post(auth, '/sign-in/email', { email: `nobody${i}@example.com`, password: PASSWORD }, ip)).status)
     }
-    expect(statuses.slice(0, 30).every((s) => s === 401)).toBe(true)
-    expect(statuses[30]).toBe(429)
+    expect(statuses.slice(0, 100).every((s) => s === 401)).toBe(true)
+    expect(statuses[100]).toBe(429)
     // Another address is unaffected.
     expect((await post(auth, '/sign-in/email', { email: 'x@example.com', password: PASSWORD }, '198.51.100.8')).status).toBe(401)
-  })
+  }, 120_000)
 
-  it('allows 30 sign-ups per minute from one address, then answers 429', async () => {
+  it('still allows only 30 sign-ups per minute from one address, then answers 429', async () => {
     const ip = '198.51.100.9'
     const statuses: number[] = []
     for (let i = 0; i < 31; i++) {

@@ -20,9 +20,11 @@ export type SuggestInput = {
 export type Suggestion = { key: string; mark: number; reason: string }
 
 /**
- * Suggests marks for a batch of answers. Answers it cannot judge are simply missing from the
- * result. It may reject (provider down, timeout, malformed output): callers catch that, store
- * nothing for the batch and let the lecturer mark by hand.
+ * Suggests marks for a batch of answers. It rejects when the provider fails or times out, or when
+ * the output cannot be parsed as a list of suggestions at all: callers catch that, store nothing
+ * for the batch and let the lecturer mark by hand. Within parsed output, marks are rounded to the
+ * nearest 0.25 and a bad item (unknown or repeated key, mark outside 0..maxMark, empty reason) is
+ * dropped, so answers it cannot judge are simply missing from the result.
  */
 export type MarkSuggester = (input: SuggestInput) => Promise<Suggestion[]>
 

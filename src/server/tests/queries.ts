@@ -46,7 +46,10 @@ export async function requireOwnedTest(ctx: Ctx, testId: string): Promise<{ test
   return { test, course: await requireCourseOwner(ctx, test.courseId) }
 }
 
-/** The test's questions with their options, both in position order; marks as stored. */
+/**
+ * The test's questions with their options, both in position order; marks as stored.
+ * Owner-only data (correct options, guide); never return to students.
+ */
 export async function loadStoredQuestions(db: Db, testId: string): Promise<StoredQuestion[]> {
   const questions = await db
     .select({
@@ -83,7 +86,10 @@ export async function loadStoredQuestions(db: Db, testId: string): Promise<Store
   return questions.map((q) => ({ ...q, options: byQuestion.get(q.id) ?? [] }))
 }
 
-/** The test's questions in position order, each mark resolved against the test's default. */
+/**
+ * The test's questions in position order, each mark resolved against the test's default.
+ * Owner-only data (correct options, guide); never return to students.
+ */
 export async function loadQuestions(db: Db, testId: string): Promise<LoadedQuestion[]> {
   const [test, questions] = await Promise.all([loadTestRow(db, testId), loadStoredQuestions(db, testId)])
   if (!test) return []

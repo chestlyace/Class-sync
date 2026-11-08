@@ -21,11 +21,14 @@ type CreateAuthOptions = {
 }
 
 /**
- * A whole class signs in at the start of a lesson, often from one school network (one public
- * IP), so Better Auth's default of 3 sign-ins / sign-ups per 10 s per IP would lock students out.
- * 30 per minute per IP still slows down password guessing. Memory storage: per instance.
+ * A whole class signs in at once, often from one school network or a carrier's CGNAT (one public
+ * IP), so Better Auth's default of 3 per 10 s per IP would lock students out. Sign-in allows 100
+ * per minute per IP: at the start of a test ~50 students may sign in together, and a refused
+ * student loses time on the clock. That still slows down password guessing. Sign-up keeps 30 per
+ * minute (a class signs up once, not under a running clock). Memory storage: per instance.
  */
-const CLASSROOM_RULE = { window: 60, max: 30 }
+const SIGN_IN_RULE = { window: 60, max: 100 }
+const SIGN_UP_RULE = { window: 60, max: 30 }
 
 
 function toApiError(err: unknown): unknown {
@@ -67,8 +70,8 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
       ...(options.rateLimitEnabled !== undefined ? { enabled: options.rateLimitEnabled } : {}),
       storage: 'memory',
       customRules: {
-        '/sign-in/email': CLASSROOM_RULE,
-        '/sign-up/email': CLASSROOM_RULE,
+        '/sign-in/email': SIGN_IN_RULE,
+        '/sign-up/email': SIGN_UP_RULE,
       },
     },
     user: {

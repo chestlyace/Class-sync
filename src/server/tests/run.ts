@@ -99,13 +99,16 @@ async function loadAttemptStates(db: Db, testId: string): Promise<Map<string, At
       id: testAttempt.id,
       studentId: testAttempt.studentId,
       closedReason: testAttempt.closedReason,
+      // Drizzle prints columns unqualified in a single-table select, so the correlated subqueries
+      // spell out their aliases and the outer table: a bare "id" would bind to the inner table
+      // the day it gets an id column.
       // An answer counts once it has an option or some non-blank text.
-      answered: sql<number>`(select count(*)::int from ${testAnswer}
-        where ${testAnswer.attemptId} = ${testAttempt.id}
-          and (${testAnswer.optionId} is not null or ${testAnswer.text} ~ '\\S'))`,
-      exits: sql<number>`(select count(*)::int from ${testExit} where ${testExit.attemptId} = ${testAttempt.id})`,
-      openExit: sql<boolean>`exists (select 1 from ${testExit}
-        where ${testExit.attemptId} = ${testAttempt.id} and ${testExit.returnedAt} is null)`,
+      answered: sql<number>`(select count(*)::int from ${testAnswer} as ans
+        where ans.attempt_id = ${testAttempt}.id
+          and (ans.option_id is not null or ans.text ~ '\\S'))`,
+      exits: sql<number>`(select count(*)::int from ${testExit} as ex where ex.attempt_id = ${testAttempt}.id)`,
+      openExit: sql<boolean>`exists (select 1 from ${testExit} as ex
+        where ex.attempt_id = ${testAttempt}.id and ex.returned_at is null)`,
     })
     .from(testAttempt)
     .where(eq(testAttempt.testId, testId))
@@ -141,6 +144,8 @@ export async function startTest(ctx: Ctx, testId: string): Promise<TestSummary> 
     .returning()
   // Already started (a double click, or a retry): the first Start stands.
   const row = started ?? (await ctx.db.select().from(courseTest).where(eq(courseTest.id, testId)))[0]
+  // Deleted after the owner check: the same answer as any missing test.
+  if (!row) forbidden()
   return summarizeTest(ctx.db, row)
 }
 
@@ -214,6 +219,9 @@ export async function letBackIn(ctx: Ctx, attemptId: string): Promise<void> {
   if (testPhase(test, at) !== 'running') conflict('test_over', 'The test is over')
 
   await ctx.db.transaction(async (tx) => {
+    // Again inside the transaction: the test may have been ended since the check above.
+    const [current] = await tx.select().from(courseTest).where(eq(courseTest.id, test.id))
+    if (!current || testPhase(current, at) !== 'running') conflict('test_over', 'The test is over')
     const reopened = await tx
       .update(testAttempt)
       .set({ closedAt: null, closedReason: null, exitsSinceReopen: 0 })

@@ -1,0 +1,2 @@
+ALTER TABLE "test_answer" ADD CONSTRAINT "test_answer_mark_check" CHECK ("test_answer"."mark" >= 0);--> statement-breakpoint
+ALTER TABLE "test_answer" ADD CONSTRAINT "test_answer_suggested_mark_check" CHECK ("test_answer"."suggested_mark" >= 0);

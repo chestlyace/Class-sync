@@ -92,10 +92,18 @@ describe('testState', () => {
     )
   })
 
-  it('MCQ-only is released as soon as it ends', () => {
-    expect(testState({ ...ended, hasShort: false, resultsReleasedAt: null }, at('08:31'))).toBe(
-      'released',
-    )
+  it('MCQ-only is released once answers are final (the end plus the grace), ended before that', () => {
+    const mcq = { ...ended, hasShort: false, resultsReleasedAt: null }
+    expect(testState(mcq, at('08:30'))).toBe('ended')
+    expect(testState(mcq, at('08:31:59'))).toBe('ended')
+    expect(testState(mcq, at('08:32'))).toBe('released')
+    expect(testState(mcq, at('09:00'))).toBe('released')
+  })
+
+  it('MCQ-only ended early by the lecturer is released 2 minutes after that end', () => {
+    const early = { ...t, endedAt: at('08:20'), hasShort: false, resultsReleasedAt: null }
+    expect(testState(early, at('08:21'))).toBe('ended')
+    expect(testState(early, at('08:22'))).toBe('released')
   })
 
   it('with short answers waits for the lecturer', () => {
