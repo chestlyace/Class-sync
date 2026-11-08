@@ -905,6 +905,84 @@
       "assignments": "Devoirs (/{points})",
       "participation": "Participation (/{points})",
       "total": "CA (/{points})"
+    },
+    "lecturer": {
+      "courseLink": "CC",
+      "participationLink": "Participation",
+      "eyebrow": "Contrôle continu",
+      "title": "CC",
+      "export": "Exporter vers Excel",
+      "classTitle": "Classe",
+      "studentCount": "{count, plural, one {# étudiant} other {# étudiants}}",
+      "noStudents": "Aucun étudiant dans ce cours pour l'instant.",
+      "summary": "{slipping, plural, =0 {Personne ne décroche} one {# étudiant décroche} other {# étudiants décrochent}} · {missing, plural, =0 {aucun travail manquant} one {# avec du travail manquant} other {# avec du travail manquant}}",
+      "legend": "« En cours » ne compte que les parties commencées. « Final » compte les autres pour 0 : c'est la note de l'export. « — » signifie pas encore commencé.",
+      "component": {
+        "attendance": "Présence",
+        "assignments": "Devoirs",
+        "participation": "Participation"
+      },
+      "table": {
+        "caption": "La classe classée par CC, avec chaque partie, le CC en cours, le CC final, le travail manquant et qui décroche.",
+        "rank": "Rang",
+        "student": "Étudiant",
+        "sortBy": "Trier par {column}",
+        "outOf": "/ {points}",
+        "soFar": "En cours",
+        "final": "Final",
+        "missing": "Travail manquant",
+        "missingLabel": "{count, plural, one {# travail manquant} other {# travaux manquants}} pour {name} : ouvrir les devoirs",
+        "flag": "Alerte",
+        "notStarted": "Pas encore commencé",
+        "slipping": "Décroche",
+        "slippingHint": "CC en cours sous la moitié de ses points, ou présence sous 75 % après 3 séances"
+      },
+      "settings": {
+        "title": "Réglages du CC",
+        "hint": "Répartissez le total du CC entre les parties. Les changements s'appliquent à tous les étudiants à la fois.",
+        "total": "Total du CC",
+        "parts": "Points par partie",
+        "attendance": "Présence",
+        "assignments": "Devoirs",
+        "participation": "Participation",
+        "sumHelper": "Les parties font {sum} sur {total}",
+        "sumHelperNoTotal": "Les parties font {sum}",
+        "dropHint": "Donnez 0 point à une partie pour la retirer.",
+        "target": "Objectif de participation",
+        "targetHint": "Nombre net de points de participation pour obtenir tous les points.",
+        "save": "Enregistrer les réglages",
+        "saving": "Enregistrement…",
+        "saved": "Réglages enregistrés.",
+        "errors": {
+          "sum": "Les parties doivent faire exactement le total du CC.",
+          "range": "Le total doit être entre 1 et 100, chaque partie entre 0 et 100, et l'objectif un nombre entier de 1 à 100.",
+          "decimals": "Utilisez au plus 2 décimales (par exemple {example}).",
+          "tests": "Les points de tests ne sont pas encore disponibles.",
+          "shape": "Les réglages sont illisibles. Rechargez la page et réessayez.",
+          "fields": "Saisissez un nombre dans chaque case signalée."
+        }
+      },
+      "board": {
+        "eyebrow": "Participation",
+        "title": "Participation",
+        "backToCa": "Retour au CC",
+        "targetHint": "{target, plural, one {# point net donne} other {# points nets donnent}} tous les points de participation.",
+        "noPointsHint": "La participation vaut 0 point dans ce cours. Les points sont tout de même enregistrés.",
+        "noStudents": "Aucun étudiant dans ce cours pour l'instant.",
+        "today": "Aujourd'hui",
+        "net": "Net",
+        "plusLabel": "+1 pour {name}",
+        "minusLabel": "−1 pour {name}",
+        "undo": "Annuler le dernier point",
+        "undoing": "Annulation…",
+        "nothingToUndo": "Rien à annuler",
+        "undone": "Dernier point annulé.",
+        "announceTap": "{name} : {delta} (net {net})",
+        "announceUndo": "Annulé pour {name} (net {net})",
+        "announceFailed": "Point pour {name} non enregistré.",
+        "network": "Le point n'a pas atteint le serveur. Vérifiez votre connexion et réessayez.",
+        "notOnRoster": "Cet étudiant n'est plus sur la liste du cours. Rechargez la page."
+      }
     }
   }
 }

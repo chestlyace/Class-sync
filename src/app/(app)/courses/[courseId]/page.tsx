@@ -1,4 +1,4 @@
-import { ArrowRight, ClipboardCheck, NotebookPen, RotateCcw, UserMinus } from 'lucide-react'
+import { ArrowRight, ChartColumn, ClipboardCheck, Hand, NotebookPen, RotateCcw, UserMinus } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
@@ -35,6 +35,7 @@ export default async function CoursePage({ params }: PageProps<'/courses/[course
   const t = await getTranslations('courses.page')
   const tAttendance = await getTranslations('attendance.lecturer')
   const tAssignments = await getTranslations('assignments.lecturer')
+  const tPerformance = await getTranslations('performance.lecturer')
   const view = await loadPage<CourseView>(async (ctx) => {
     const course = await getCourse(ctx, courseId) // FORBIDDEN unless owner or rostered student
     if (ctx.user.role !== 'lecturer') return { role: 'student', course }
@@ -69,6 +70,20 @@ export default async function CoursePage({ params }: PageProps<'/courses/[course
               >
                 <NotebookPen aria-hidden="true" data-icon="inline-start" />
                 {tAssignments('courseLink')}
+              </Link>
+              <Link
+                href={`/courses/${encodeURIComponent(course.id)}/performance`}
+                className={buttonVariants({ variant: 'outline' })}
+              >
+                <ChartColumn aria-hidden="true" data-icon="inline-start" />
+                {tPerformance('courseLink')}
+              </Link>
+              <Link
+                href={`/courses/${encodeURIComponent(course.id)}/performance/participation`}
+                className={buttonVariants({ variant: 'outline' })}
+              >
+                <Hand aria-hidden="true" data-icon="inline-start" />
+                {tPerformance('participationLink')}
               </Link>
               <Link
                 href={`/classes/${encodeURIComponent(course.classId)}`}
