@@ -7,7 +7,9 @@ import { Panel } from '@/components/page-header'
 import { buttonVariants } from '@/components/ui/button'
 import { getSessionUser } from '@/server/auth/session'
 import { resolveTestLink } from '@/server/tests/attempt'
+import { getMyTestResult } from '@/server/tests/results'
 import { loadPage } from '@/app/(app)/load-page'
+import { ReleasedResult } from './released-result'
 import { TestRunner } from './test-runner'
 
 export async function generateMetadata() {
@@ -17,7 +19,9 @@ export async function generateMetadata() {
 
 /**
  * The link a student opens to take a test. Signed out → sign in and come back; the lecturer who
- * owns it → its live page; anyone off the roster → a calm screen with nothing of the test.
+ * owns it → its live page; anyone off the roster → a calm screen with nothing of the test. Once
+ * results with short answers are released (the release email links here), the student's own
+ * result in detail; before that, and for MCQ-only tests, the runner shows where things stand.
  */
 export default async function TestPage({ params }: PageProps<'/t/[code]'>) {
   const { code } = await params
@@ -30,6 +34,10 @@ export default async function TestPage({ params }: PageProps<'/t/[code]'>) {
   if (link.data.role === 'owner') {
     redirect(`/courses/${encodeURIComponent(link.data.courseId)}/tests/${encodeURIComponent(link.data.testId)}`)
   }
+  const released = await loadPage((ctx) => getMyTestResult(ctx, link.data.testId))
+  if (released.ok) return <ReleasedResult result={released.data} />
+  // CONFLICT: not released yet, or MCQ-only (the runner's quick result).
+  if (released.code !== 'CONFLICT') return <ErrorState code={released.code} />
   return <TestRunner userId={user.id} code={code} />
 }
 

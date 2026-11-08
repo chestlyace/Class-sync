@@ -1,21 +1,44 @@
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, CircleCheck, Clock, PenLine, Unlock } from 'lucide-react'
 import { getLocale, getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
 import { Eyebrow, PageHeader, Panel, SectionHeading } from '@/components/page-header'
 import { Badge } from '@/components/ui/badge'
-import { buttonVariants } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
 import { toActionResult } from '@/lib/action-result'
 import { formatDecimal } from '@/lib/number-format'
+import { config } from '@/server/core/config'
+import { now } from '@/server/core/clock'
 import { AppError } from '@/server/core/errors'
+import { answersFinalAt } from '@/server/tests/phase'
+import { requireOwnedTest } from '@/server/tests/queries'
 import { getTestResults, type ResultRow } from '@/server/tests/run'
 import type { TestSummary } from '@/server/tests/authoring'
+import type { Locale } from '@/server/core/context'
 import { loadPage } from '../../../../../load-page'
+import { formatSessionDate } from '../../../../attendance-format'
+import { ReleaseResultsButton } from '../../../../marking-panel'
 import { TestStatePill } from '../../../../test-state'
 
-type ResultsView = { test: TestSummary; rows: ResultRow[]; pending: number } | { notEnded: true }
+type ResultsView =
+  | {
+      test: TestSummary
+      rows: ResultRow[]
+      pending: number
+      /** When answers become final (release and marking open then); null if never started. */
+      finalAt: Date | null
+      releasedAt: Date | null
+      at: Date
+    }
+  | { notEnded: true }
+
+/** "09:41" today, else "Mon 9 Nov, 09:41", in the school's time zone. */
+function formatWhen(date: Date, at: Date, locale: Locale): string {
+  const day = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: config.timeZone }).format(d)
+  return formatSessionDate(date, locale, config.timeZone, day(date) === day(at) ? 'time' : 'short')
+}
 
 export async function generateMetadata() {
   const t = await getTranslations('tests.lecturer.results')
@@ -34,10 +57,13 @@ export default async function TestResultsPage({ params }: PageProps<'/courses/[c
       throw new AppError(result.code, 'Results unavailable', result.details)
     }
     if (result.data.test.courseId !== courseId) throw new AppError('NOT_FOUND', 'Test not in this course')
-    return result.data
+    const { test } = await requireOwnedTest(ctx, testId)
+    return { ...result.data, finalAt: answersFinalAt(test), releasedAt: test.resultsReleasedAt, at: now() }
   })
   if (!view.ok) return <ErrorState code={view.code} />
+  const tm = await getTranslations('tests')
   const testHref = `/courses/${encodeURIComponent(courseId)}/tests/${encodeURIComponent(testId)}`
+  const markHref = `${testHref}/mark`
   const back = (
     <Link href={testHref} className={buttonVariants({ variant: 'outline' })}>
       <ArrowLeft aria-hidden="true" data-icon="inline-start" />
@@ -56,9 +82,16 @@ export default async function TestResultsPage({ params }: PageProps<'/courses/[c
     )
   }
 
-  const { test, rows, pending } = view.data
+  const { test, rows, pending, finalAt, releasedAt, at } = view.data
   const num = (value: number) => formatDecimal(value, locale)
   const average = rows.length === 0 ? null : rows.reduce((sum, r) => sum + r.score, 0) / rows.length
+  const final = finalAt !== null && at.getTime() >= finalAt.getTime()
+  const markLink = (
+    <Link href={markHref} className={buttonVariants({ variant: 'outline' })}>
+      <PenLine aria-hidden="true" data-icon="inline-start" />
+      {tm('marking.markShort')}
+    </Link>
+  )
 
   return (
     <>
@@ -73,6 +106,49 @@ export default async function TestResultsPage({ params }: PageProps<'/courses/[c
         }
         actions={back}
       />
+
+      {test.hasShort && (
+        <section aria-labelledby="test-release" className="flex flex-col gap-4">
+          <SectionHeading id="test-release">{tm('release.heading')}</SectionHeading>
+          <Panel className="flex flex-col items-start gap-3">
+            {releasedAt !== null ? (
+              <>
+                <p className="flex items-center gap-2 font-medium">
+                  <CircleCheck aria-hidden="true" className="size-5 shrink-0" />
+                  {tm('release.released', { time: formatWhen(releasedAt, at, locale) })}
+                </p>
+                <p className="text-sm text-muted-foreground">{tm('release.releasedNote')}</p>
+                {pending > 0 && <p className="text-sm font-medium">{tm('release.toConfirm', { count: pending })}</p>}
+                {markLink}
+              </>
+            ) : !final ? (
+              <>
+                <Button type="button" disabled>
+                  <Unlock aria-hidden="true" data-icon="inline-start" />
+                  {tm('release.button')}
+                </Button>
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Clock aria-hidden="true" className="size-4 shrink-0" />
+                  {finalAt ? tm('release.notFinal', { time: formatWhen(finalAt, at, locale) }) : tm('marking.notFinalNoTime')}
+                </p>
+              </>
+            ) : pending > 0 ? (
+              <>
+                <Button type="button" disabled aria-describedby="release-blocked">
+                  <Unlock aria-hidden="true" data-icon="inline-start" />
+                  {tm('release.button')}
+                </Button>
+                <p id="release-blocked" className="text-sm font-medium">
+                  {tm('release.toConfirm', { count: pending })}
+                </p>
+                {markLink}
+              </>
+            ) : (
+              <ReleaseResultsButton testId={test.id} />
+            )}
+          </Panel>
+        </section>
+      )}
 
       <Panel className="flex flex-col gap-1">
         <Eyebrow>{t('results.average')}</Eyebrow>

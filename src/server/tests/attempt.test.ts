@@ -270,8 +270,11 @@ describe('taking a test (student services)', () => {
     const { lecturer, algo, alice } = await setup()
     const t = await makeTest(algo.id, lecturer)
     expect(await resolveTestLink(lecturer, t.code)).toEqual({ role: 'owner', courseId: algo.id, testId: t.id })
-    expect(await resolveTestLink(alice, t.code)).toEqual({ role: 'student' })
-    expect(await resolveTestLink(alice, ` ${t.code.slice(0, 3)}-${t.code.slice(3).toLowerCase()} `)).toEqual({ role: 'student' })
+    expect(await resolveTestLink(alice, t.code)).toEqual({ role: 'student', testId: t.id })
+    expect(await resolveTestLink(alice, ` ${t.code.slice(0, 3)}-${t.code.slice(3).toLowerCase()} `)).toEqual({
+      role: 'student',
+      testId: t.id,
+    })
     // Resolving never creates an attempt.
     expect(await db.select().from(testAttempt)).toHaveLength(0)
   })

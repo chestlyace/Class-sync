@@ -20,14 +20,19 @@ import { loadTestScores } from './scores'
 
 /**
  * A student's released result: total, and per question (in the lecturer's order) the mark and
- * the lecturer's comment. Never the options, the correct answers or the marking guide.
+ * the lecturer's comment. Never the options, the correct answers or the marking guide. `joined`
+ * is false for a student who never opened the test (every mark 0). A real short answer without a
+ * confirmed mark (possible only when a student is back on the roster after the release) has
+ * `mark: null` — pending, never shown as 0 — and is left out of `score`; `pending` counts them.
  */
 export type MyTestResult = {
   title: string
   courseTitle: string
+  joined: boolean
   score: number
   outOf: number
-  questions: { number: number; kind: QuestionKind; prompt: string; mark: number; outOf: number; comment: string | null }[]
+  pending: number
+  questions: { number: number; kind: QuestionKind; prompt: string; mark: number | null; outOf: number; comment: string | null }[]
 }
 
 /** Builds `<BETTER_AUTH_URL>/t/<code>`; relative (with one warning) when the base is not set. */
@@ -110,7 +115,7 @@ export async function releaseResults(ctx: Ctx, testId: string): Promise<{ releas
  * The calling student's released result for a test with short answers. A rostered student only
  * (anyone else, or an unknown test, is FORBIDDEN); MCQ-only → CONFLICT automatic (the quick
  * result shows the total); not released → CONFLICT not_released. Reads only the caller's own
- * attempt; a student who never joined scores 0 on every question. Four queries.
+ * attempt; a student who never joined scores 0 on every question. Five queries.
  */
 export async function getMyTestResult(ctx: Ctx, testId: string): Promise<MyTestResult> {
   requireRole(ctx, 'student')
@@ -127,7 +132,7 @@ export async function getMyTestResult(ctx: Ctx, testId: string): Promise<MyTestR
   }
   const { test } = found
 
-  const [questions, answers] = await Promise.all([
+  const [questions, answers, attempts] = await Promise.all([
     ctx.db
       .select({
         id: testQuestion.id,
@@ -152,6 +157,10 @@ export async function getMyTestResult(ctx: Ctx, testId: string): Promise<MyTestR
       .from(testAnswer)
       .innerJoin(testAttempt, eq(testAttempt.id, testAnswer.attemptId))
       .where(and(eq(testAttempt.testId, test.id), eq(testAttempt.studentId, ctx.user.id))),
+    ctx.db
+      .select({ id: testAttempt.id })
+      .from(testAttempt)
+      .where(and(eq(testAttempt.testId, test.id), eq(testAttempt.studentId, ctx.user.id))),
   ])
   const hasShort = questions.some((q) => q.kind === 'short')
   if (!hasShort) automatic()
@@ -173,16 +182,18 @@ export async function getMyTestResult(ctx: Ctx, testId: string): Promise<MyTestR
   return {
     title: test.title,
     courseTitle: found.courseTitle,
+    joined: attempts.length > 0,
     score: score.score,
     outOf: score.outOf,
+    pending: score.pendingShort,
     questions: questions.map((q, i) => {
       const answer = byQuestion.get(q.id)
-      const mark = score.perQuestion[i].mark ?? 0
       return {
         number: i + 1,
         kind: q.kind,
         prompt: q.prompt,
-        mark,
+        // null = a real answer still to be confirmed (pending), never a 0.
+        mark: score.perQuestion[i].mark,
         outOf: scoring[i].mark,
         // Comments go with confirmed marks of real short answers only.
         comment: q.kind === 'short' && answer?.mark !== null && answer?.text?.trim() ? (answer.comment ?? null) : null,

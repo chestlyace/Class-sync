@@ -601,7 +601,7 @@ async function buildView(
 export async function resolveTestLink(
   ctx: Ctx,
   code: string,
-): Promise<{ role: 'owner'; courseId: string; testId: string } | { role: 'student' }> {
+): Promise<{ role: 'owner'; courseId: string; testId: string } | { role: 'student'; testId: string }> {
   requireVerified(ctx)
   const found = await findTestByCode(ctx.db, code)
   if (!found) notYourCourse()
@@ -610,7 +610,7 @@ export async function resolveTestLink(
     return { role: 'owner', courseId: found.test.courseId, testId: found.test.id }
   }
   if (!(await isOnCourseRoster(ctx.db, found.test.courseId, ctx.user.id))) notYourCourse()
-  return { role: 'student' }
+  return { role: 'student', testId: found.test.id }
 }
 
 /**

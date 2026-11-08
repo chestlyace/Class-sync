@@ -1360,6 +1360,89 @@
         },
         "score": "{score} / {outOf}"
       }
+    },
+    "marking": {
+      "metaTitle": "Corriger les réponses courtes",
+      "eyebrow": "Correction",
+      "markShort": "Corriger les réponses courtes",
+      "backToResults": "Résultats",
+      "questionLabel": "Question {number} · réponse courte {index} sur {count}",
+      "outOf": "Sur {max}",
+      "guide": "Grille de correction",
+      "noGuide": "Pas de grille de correction.",
+      "navLabel": "Questions à réponse courte",
+      "previous": "Précédente",
+      "next": "Suivante",
+      "confirmedCount": "{confirmed} sur {total} confirmées",
+      "blankNote": "{count, plural, one {# réponse vide vaut 0 d'office.} other {# réponses vides valent 0 d'office.}}",
+      "hideNames": "Masquer les noms pendant la correction",
+      "hideNamesHint": "Pour juger la réponse, pas l'étudiant.",
+      "privacy": "Les suggestions viennent d'un service d'IA qui voit la question, votre grille et les réponses — jamais les noms. Rien ne compte tant que vous ne l'avez pas confirmé.",
+      "aiOff": "Pas de suggestions d'IA — corrigez à la main.",
+      "gettingSuggestions": "Suggestions en cours…",
+      "suggestionsFailed": "Suggestions indisponibles — corrigez à la main.",
+      "tryAgain": "Réessayer",
+      "answers": "Réponses",
+      "noAnswers": "Personne n'a répondu à cette question.",
+      "student": "Étudiant {n}",
+      "aiLabel": "Suggestion de l'IA",
+      "suggested": "Suggéré {mark} / {max}",
+      "noSuggestion": "Pas de suggestion : choisissez vous-même la note.",
+      "toConfirm": "À confirmer",
+      "confirm": "Confirmer {mark}",
+      "confirmLabel": "Confirmer {mark} pour {student}",
+      "confirmed": "Confirmé {mark} / {max}",
+      "change": "Modifier",
+      "cancel": "Annuler",
+      "mark": "Note",
+      "pickMark": "Choisissez une note",
+      "comment": "Commentaire (facultatif)",
+      "commentHint": "L'étudiant le voit à côté de la note une fois les résultats publiés.",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "notFinal": "La correction ouvre à {time}, quand aucune réponse tardive ne peut plus arriver.",
+      "notFinalNoTime": "La correction ouvre une fois le test terminé et quand aucune réponse tardive ne peut plus arriver.",
+      "automatic": "Ce test n'a que des questions à choix multiple : il a été corrigé automatiquement.",
+      "errors": {
+        "mark": "Choisissez une note de 0 à {max}, par pas de 0,25.",
+        "comment": "Un commentaire fait 1 000 caractères au plus.",
+        "answer": "Une réponse vide vaut 0 d'office : il n'y a rien à confirmer.",
+        "notFinal": "Des réponses peuvent encore arriver : réessayez dans un instant."
+      }
+    },
+    "release": {
+      "heading": "Publication",
+      "button": "Publier les résultats",
+      "title": "Publier les résultats ?",
+      "body": "Les étudiants verront leurs notes et recevront un e-mail.",
+      "confirm": "Publier",
+      "toConfirm": "{count, plural, one {# réponse reste à confirmer} other {# réponses restent à confirmer}}",
+      "notFinal": "Vous pourrez publier à partir de {time}, quand aucune réponse tardive ne peut plus arriver.",
+      "released": "Résultats publiés · {time}",
+      "releasedNote": "Les étudiants voient leurs notes. Une note que vous modifiez maintenant s'affiche aussitôt, sans nouvel e-mail.",
+      "errors": {
+        "unmarked": "{count, plural, one {# réponse attend encore une note confirmée.} other {# réponses attendent encore une note confirmée.}}",
+        "notFinal": "Des réponses peuvent encore arriver : réessayez dans un instant.",
+        "automatic": "Ce test n'a que des questions à choix multiple : les étudiants voient déjà leur total."
+      }
+    },
+    "released": {
+      "eyebrow": "Résultat",
+      "total": "Votre résultat",
+      "score": "{score} / {outOf}",
+      "onlyYou": "Votre résultat n'est visible que par vous.",
+      "notJoined": "Vous n'avez pas passé ce test : il compte pour 0.",
+      "pendingNote": "{count, plural, one {# réponse est encore en correction : votre total peut changer.} other {# réponses sont encore en correction : votre total peut changer.}}",
+      "questions": "Questions",
+      "question": "Question {n}",
+      "kind": {
+        "mcq": "Choix multiple",
+        "short": "Réponse courte"
+      },
+      "mark": "{mark} / {outOf}",
+      "pending": "En correction",
+      "comment": "Commentaire",
+      "seeMarks": "Voir vos notes"
     }
   }
 }

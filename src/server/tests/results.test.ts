@@ -181,6 +181,30 @@ describe('releasing test results', () => {
     expect(sent).toHaveLength(3)
   })
 
+  it('an unconfirmed real answer after release reads as pending, never as 0', async () => {
+    const s = await scenario()
+    await confirmAll(s)
+    await releaseResults(s.lecturer, s.test.id)
+    // E.g. a student back on the roster after the release: their real answer has no mark yet.
+    await db
+      .update(testAnswer)
+      .set({ mark: null, comment: null })
+      .where(and(eq(testAnswer.attemptId, s.attempts.alice.id), eq(testAnswer.questionId, s.q2.id)))
+
+    const alice = await getMyTestResult(s.alice, s.test.id)
+    expect(alice).toMatchObject({ score: 4, outOf: 8, pending: 1 })
+    expect(alice.questions[1]).toEqual({
+      number: 2,
+      kind: 'short',
+      prompt: 'What is osmosis?',
+      mark: null,
+      outOf: 4,
+      comment: null,
+    })
+    // A blank answer is still a plain 0.
+    expect((await getMyTestResult(s.bob, s.test.id)).questions[1]).toMatchObject({ mark: 0 })
+  })
+
   it('getMyTestResult before release is CONFLICT not_released; it shows marks and comments but no options', async () => {
     const s = await scenario()
     await expect(getMyTestResult(s.alice, s.test.id)).rejects.toMatchObject({
@@ -195,8 +219,10 @@ describe('releasing test results', () => {
     expect(alice).toEqual({
       title: 'CA 1',
       courseTitle: 'Cell biology',
+      joined: true,
       score: 7.5,
       outOf: 8,
+      pending: 0,
       questions: [
         { number: 1, kind: 'mcq', prompt: 'Which organelle makes ATP?', mark: 2, outOf: 2, comment: null },
         { number: 2, kind: 'short', prompt: 'What is osmosis?', mark: 3.5, outOf: 4, comment: 'Name the membrane.' },
@@ -215,6 +241,7 @@ describe('releasing test results', () => {
     })
     // Dave never joined: every mark 0.
     expect(await getMyTestResult(s.dave, s.test.id)).toMatchObject({
+      joined: false,
       score: 0,
       outOf: 8,
       questions: [{ mark: 0 }, { mark: 0 }, { mark: 0 }],

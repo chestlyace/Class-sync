@@ -1,10 +1,11 @@
 'use client'
 
-import { CircleCheck, LoaderCircle } from 'lucide-react'
+import { CircleCheck, ListChecks, LoaderCircle } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { PageHeader, Panel } from '@/components/page-header'
-import { buttonVariants } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { formatDecimal } from '@/lib/number-format'
 import type { QuickResult, TestInfo } from '@/server/tests/attempt'
 import { resultState } from './runner-logic'
@@ -16,7 +17,9 @@ import { resultState } from './runner-logic'
  */
 export function ResultScreen({ info, result }: { info: TestInfo; result: QuickResult | null }) {
   const t = useTranslations('tests.student')
+  const tr = useTranslations('tests.released')
   const locale = useLocale()
+  const router = useRouter()
   const state = resultState({ hasShort: info.hasShort, result })
   return (
     <>
@@ -33,6 +36,13 @@ export function ResultScreen({ info, result }: { info: TestInfo; result: QuickRe
             <span className="text-lg text-muted-foreground">
               {t('result.right', { right: result.mcqCorrect, count: result.mcqCount })}
             </span>
+          )}
+          {info.hasShort && (
+            // Released while this page was open: the page itself shows marks and comments.
+            <Button type="button" variant="outline" className="mt-2" onClick={() => router.refresh()}>
+              <ListChecks aria-hidden="true" data-icon="inline-start" />
+              {tr('seeMarks')}
+            </Button>
           )}
         </Panel>
       ) : (
