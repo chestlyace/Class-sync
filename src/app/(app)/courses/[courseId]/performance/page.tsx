@@ -1,4 +1,4 @@
-import { ArrowLeft, Download, Hand } from 'lucide-react'
+import { ArrowLeft, Download, Hand, Info } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
@@ -30,6 +30,8 @@ export default async function CoursePerformancePage({ params }: PageProps<'/cour
   const courseHref = `/courses/${encodeURIComponent(course.id)}`
   const slipping = rows.filter((r) => r.slipping).length
   const missing = rows.filter((r) => r.missingWork > 0).length
+  // Whether a part has started is the same for every row: it is decided for the class.
+  const notStarted = rows[0]?.result.components.filter((c) => c.status === 'not_started') ?? []
 
   return (
     <>
@@ -67,6 +69,16 @@ export default async function CoursePerformancePage({ params }: PageProps<'/cour
             <p className="text-sm text-muted-foreground">
               {t('summary', { slipping, missing })}
             </p>
+            {notStarted.length > 0 && (
+              <ul className="flex flex-col gap-2 rounded-3xl border bg-muted/40 px-4 py-3 text-sm sm:px-5">
+                {notStarted.map((c) => (
+                  <li key={c.key} className="flex gap-2">
+                    <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    <span>{t(`notStartedNotice.${c.key}`)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
             <CaTable courseId={course.id} rows={rows} />
             <p className="text-sm text-muted-foreground">{t('legend')}</p>
           </>

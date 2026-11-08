@@ -31,19 +31,40 @@ export async function MyCa({ courseId }: { courseId: string }) {
         <>
           <div className="flex flex-col gap-1 rounded-3xl border px-5 py-5 sm:px-7">
             <p className="flex flex-wrap items-baseline gap-x-3">
-              <span className="font-display text-7xl leading-none">
+              <span className="sr-only">
+                {t("scoreLabel", {
+                  score: num(result.data.result.final),
+                  total: num(result.data.result.total),
+                })}
+              </span>
+              <span
+                aria-hidden="true"
+                className="font-display text-7xl leading-none"
+              >
                 {num(result.data.result.final)}
               </span>
-              <span className="font-mono text-sm tracking-[0.04em] text-muted-foreground">
+              <span
+                aria-hidden="true"
+                className="font-mono text-sm tracking-[0.04em] text-muted-foreground"
+              >
                 {t("outOf", { total: num(result.data.result.total) })}
               </span>
             </p>
-            {result.data.result.components.some((c) => c.score !== null) && (
+            {/* Only while some part hasn't started or doesn't apply: otherwise it is the final. */}
+            {result.data.result.soFarOutOf > 0 &&
+              result.data.result.soFarOutOf < result.data.result.total && (
+                <p className="text-sm text-muted-foreground">
+                  {t("soFar", {
+                    score: num(result.data.result.soFar),
+                    max: num(result.data.result.soFarOutOf),
+                  })}
+                </p>
+              )}
+            {result.data.result.scaled && (
               <p className="text-sm text-muted-foreground">
-                {t("soFar", {
-                  score: num(result.data.result.soFar),
-                  max: num(result.data.result.soFarOutOf),
-                })}
+                {result.data.result.notAssessed
+                  ? t("notAssessed")
+                  : t("scaled", { total: num(result.data.result.total) })}
               </p>
             )}
           </div>
@@ -57,7 +78,9 @@ export async function MyCa({ courseId }: { courseId: string }) {
                   <span className="font-medium">{t(`name.${c.key}`)}</span>
                   {c.score === null ? (
                     <span className="text-sm text-muted-foreground">
-                      {t("notStarted")}
+                      {c.status === "not_applicable"
+                        ? t("notApplicable")
+                        : t("notStarted")}
                     </span>
                   ) : (
                     <span className="font-mono text-sm tracking-[0.04em]">

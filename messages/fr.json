@@ -924,7 +924,7 @@
       "studentCount": "{count, plural, one {# étudiant} other {# étudiants}}",
       "noStudents": "Aucun étudiant dans ce cours pour l'instant.",
       "summary": "{slipping, plural, =0 {Personne ne décroche} one {# étudiant décroche} other {# étudiants décrochent}} · {missing, plural, =0 {aucun travail manquant} one {# avec du travail manquant} other {# avec du travail manquant}}",
-      "legend": "« En cours » ne compte que les parties commencées. « Final » compte les autres pour 0 : c'est la note de l'export. « — » signifie pas encore commencé.",
+      "legend": "« En cours » ne compte que les parties commencées. « Final » compte les autres pour 0 : c'est la note de l'export. « — » signifie pas encore commencé. « N/A » signifie que la partie ne s'applique pas encore à cet étudiant (seulement du travail en attente de note, du travail dû avant son arrivée, ou aucune séance depuis son arrivée) : ses autres parties sont alors mises à l'échelle sur le total.",
       "component": {
         "attendance": "Présence",
         "assignments": "Devoirs",
@@ -943,7 +943,13 @@
         "flag": "Alerte",
         "notStarted": "Pas encore commencé",
         "slipping": "Décroche",
-        "slippingHint": "CC en cours sous la moitié de ses points, ou présence sous 75 % après 3 séances"
+        "slippingHint": "CC en cours sous la moitié de ses points (dès que ces parties valent un quart du total), ou présence sous 75 % après 3 séances",
+        "notApplicable": "N/A",
+        "notApplicableLabel": "Ne s'applique pas à cet étudiant",
+        "scaled": "Mis à l'échelle",
+        "scaledHint": "Certaines parties ne s'appliquent pas à cet étudiant : ses autres parties ont été mises à l'échelle sur /{total}",
+        "notAssessed": "Non évalué",
+        "notAssessedHint": "Aucune partie ne s'applique encore à cet étudiant"
       },
       "settings": {
         "title": "Réglages du CC",
@@ -990,24 +996,33 @@
         "announceFailed": "Point pour {name} non enregistré.",
         "network": "Le point n'a pas atteint le serveur. Vérifiez votre connexion et réessayez.",
         "notOnRoster": "Cet étudiant n'est plus sur la liste du cours. Rechargez la page."
+      },
+      "notStartedNotice": {
+        "attendance": "La présence n'a pas commencé : elle compte 0 pour tout le monde. Mettez-la à 0 point si vous ne l'utilisez pas.",
+        "assignments": "Les devoirs n'ont pas commencé (aucune note publiée) : ils comptent 0 pour tout le monde. Mettez-les à 0 point si vous ne les utilisez pas.",
+        "participation": "La participation n'a pas commencé : elle compte 0 pour tout le monde. Mettez-la à 0 point si vous ne l'utilisez pas."
       }
     },
     "student": {
-      "title": "Mon CA",
+      "title": "Mon CC",
       "outOf": "sur {total}",
+      "scoreLabel": "CC {score} sur {total}",
       "soFar": "Jusqu'ici : {score} sur {max}",
       "notStarted": "Pas encore commencé",
+      "notApplicable": "Ne vous concerne pas encore",
+      "scaled": "Certaines parties ne vous concernent pas encore : vos autres parties sont mises à l'échelle sur {total}.",
+      "notAssessed": "Aucune partie ne vous concerne encore : pas encore d'évaluation.",
       "score": "{score} / {points}",
-      "componentsLabel": "CA par partie",
+      "componentsLabel": "CC par partie",
       "name": {
         "attendance": "Présence",
         "assignments": "Devoirs",
         "participation": "Participation"
       },
       "how": {
-        "attendance": "Présent compte en entier, partiel compte pour moitié.",
-        "assignments": "Moyenne pondérée des notes publiées ; un travail manquant compte 0.",
-        "participation": "Gagnée en classe, note maximale à {target} interventions."
+        "attendance": "Une présence compte en entier, une présence partielle compte pour moitié.",
+        "assignments": "Moyenne pondérée des notes publiées ; un travail manquant compte 0. Un travail en attente de note, ou dû avant votre arrivée, n'est pas compté.",
+        "participation": "Gagnée en classe, note maximale à {target, plural, one {# intervention} other {# interventions}}."
       },
       "missingWork": "{count, plural, one {# travail manquant} other {# travaux manquants}}",
       "seeAssignments": "Voir mes devoirs"
