@@ -190,7 +190,7 @@ test('AI assistants: access tokens, OAuth consent and connected apps', async ({
       await lecturer.goto(`${as.authorization_endpoint}?${params}`)
       await expect(lecturer).toHaveURL(/\/oauth\/consent\?/)
       await expect(lecturer.getByRole('heading', { name: 'Connect your assistant' })).toBeVisible()
-      await expect(lecturer.getByText(clientName)).toBeVisible()
+      await expect(lecturer.getByText(clientName, { exact: true })).toBeVisible()
       await expectNoHorizontalScroll(lecturer)
       await lecturer.getByRole('button', { name: 'Allow', exact: true }).click()
       // The callback is on the app's origin and 404s: only its URL matters.
