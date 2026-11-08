@@ -492,7 +492,7 @@ export async function storeAssistantSuggestions(
       and ${testAnswer.questionId} = v.question_id
       and ${testAnswer.mark} is null
     returning ${testAnswer.attemptId} as attempt_id, ${testAnswer.questionId} as question_id`)
-  const done = new Set(updated.rows.map((r) => key(r.attempt_id, r.question_id)))
+  const done = new Set(updated.rows.map((r: { attempt_id: string; question_id: string }) => key(r.attempt_id, r.question_id)))
   const suggested: { attemptId: string; questionId: string }[] = []
   for (const s of wanted.values()) {
     const k = key(s.attemptId, s.questionId)

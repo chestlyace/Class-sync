@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { listMyClasses } from '@/server/classes/service'
 import { listLecturerCourses } from '@/server/courses/service'
 import { defineTool, type McpTool } from '../tool'
+import { draftTools } from './draft-tools'
 
 const whoami = defineTool({
   name: 'whoami',
@@ -22,4 +23,4 @@ const whoami = defineTool({
 })
 
 /** Every tool the MCP endpoint offers, in the order assistants see them. */
-export const mcpTools: McpTool[] = [whoami]
+export const mcpTools: McpTool[] = [whoami, ...draftTools]
