@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { toActionResult, type ActionResult } from '@/lib/action-result'
 import { getCtx } from '@/server/auth/session'
 import { AppError } from '@/server/core/errors'
-import { confirmMark, suggestMarks } from '@/server/tests/marking'
+import { confirmMark } from '@/server/tests/marking'
 import { releaseResults } from '@/server/tests/results'
 import { parseMarkInput } from './marking-format'
 
@@ -25,16 +25,6 @@ function revalidateMarks() {
   revalidatePath('/courses/[courseId]/tests/[testId]/results', 'page')
   revalidatePath('/courses/[courseId]/tests/[testId]/mark', 'page')
   revalidatePath('/t/[code]', 'page')
-}
-
-/**
- * Asks the AI for suggestions on the question's real answers that have none (called when the
- * lecturer opens the question, or presses Try again). Stores suggestions only; never a mark.
- */
-export async function suggestMarksAction(
-  questionId: string,
-): Promise<ActionResult<{ suggested: number; failed: boolean }>> {
-  return toActionResult(async () => suggestMarks(await getCtx(), requireId(questionId, 'questionId')))
 }
 
 /**

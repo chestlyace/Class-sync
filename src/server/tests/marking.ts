@@ -15,6 +15,8 @@ import { COMMENT_MAX, questionMark, type QuestionKind } from './rules'
 import { loadTestScores } from './scores'
 
 export type MarkingAnswer = {
+  /** "Student N" while names are hidden: the attempt's place among the whole test's attempts, the same on every question. */
+  number: number
   attemptId: string
   studentId: string
   name: string
@@ -174,15 +176,18 @@ export async function getMarkingQuestion(ctx: Ctx, testId: string, questionId: s
   const answers: MarkingAnswer[] = []
   let blank = 0
   let confirmed = 0
+  let number = 0
   for (const r of rows) {
     const student = onRoster.get(r.studentId)
     if (!student) continue
+    number += 1
     if (isBlank(r.text)) {
       blank += 1
       continue
     }
     if (r.mark !== null) confirmed += 1
     answers.push({
+      number,
       attemptId: r.attemptId,
       studentId: r.studentId,
       name: student.name,
@@ -218,8 +223,10 @@ type PendingAnswer = { attemptId: string; text: string }
 
 /**
  * Asks the suggester about one batch and stores what comes back, only on answers still without a
- * suggestion or a mark. Never writes `mark`. Returns how many answers got a suggestion. Answers go
- * out under opaque per-batch keys; nothing identifies a student.
+ * suggestion or a mark. An answer it says nothing usable about is recorded as tried
+ * (`suggested_at` set, no mark), so reopening the question does not ask again. Never writes
+ * `mark`. Returns how many answers got a suggestion. Answers go out under opaque per-batch keys;
+ * nothing identifies a student.
  */
 async function suggestBatch(
   db: Db,
@@ -248,18 +255,20 @@ async function suggestBatch(
     seen.add(attemptId)
     values.push(sql`(${attemptId}::text, ${s.mark}::numeric, ${s.reason}::text)`)
   }
-  if (values.length === 0) return 0
+  for (const a of batch) {
+    if (!seen.has(a.attemptId)) values.push(sql`(${a.attemptId}::text, null::numeric, null::text)`)
+  }
 
-  const updated = await db.execute<{ attempt_id: string }>(sql`
+  const updated = await db.execute<{ attempt_id: string; suggested: boolean }>(sql`
     update ${testAnswer}
     set suggested_mark = v.mark, suggested_reason = v.reason, suggested_at = ${at.toISOString()}::timestamptz
     from (values ${sql.join(values, sql`, `)}) as v(attempt_id, mark, reason)
     where ${testAnswer.attemptId} = v.attempt_id
       and ${testAnswer.questionId} = ${input.questionId}
-      and ${testAnswer.suggestedAt} is null
+      and ${testAnswer.suggestedMark} is null
       and ${testAnswer.mark} is null
-    returning ${testAnswer.attemptId}`)
-  return updated.rows.length
+    returning ${testAnswer.attemptId}, v.mark is not null as suggested`)
+  return updated.rows.filter((r: { suggested: boolean }) => r.suggested).length
 }
 
 /**
@@ -267,8 +276,13 @@ async function suggestBatch(
  * neither a suggestion nor a mark, in batches of 20 sent in parallel. A batch that fails stores
  * nothing and makes `failed` true (the page offers to try again); the other batches still count.
  * With suggestions off: `{ suggested: 0, failed: false }`. Owner only; final answers only.
+ * Answers already tried with no suggestion are skipped, unless `retry` (Try again) asks afresh.
  */
-export async function suggestMarks(ctx: Ctx, questionId: string): Promise<{ suggested: number; failed: boolean }> {
+export async function suggestMarks(
+  ctx: Ctx,
+  questionId: string,
+  opts: { retry?: boolean } = {},
+): Promise<{ suggested: number; failed: boolean }> {
   const { test, question } = await requireOwnedQuestion(ctx, questionId)
   if (question.kind !== 'short') automatic()
   const at = now()
@@ -286,7 +300,7 @@ export async function suggestMarks(ctx: Ctx, questionId: string): Promise<{ sugg
         and(
           eq(testAnswer.questionId, question.id),
           eq(testAttempt.testId, test.id),
-          isNull(testAnswer.suggestedAt),
+          opts.retry ? isNull(testAnswer.suggestedMark) : isNull(testAnswer.suggestedAt),
           isNull(testAnswer.mark),
         ),
       )

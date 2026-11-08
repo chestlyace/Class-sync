@@ -125,12 +125,16 @@ describe('marking short answers', () => {
       blank: 1,
       aiAvailable: true,
     })
+    // "Student N" is the attempt's place among the whole test's attempts (by id), on every question.
+    const byId = [s.attempts.alice, s.attempts.bob, s.attempts.carol].map((a) => a.id).sort()
+    const numberOf = (attempt: { id: string }) => byId.indexOf(attempt.id) + 1
     const expected = [
       { attempt: s.attempts.alice, name: 'Alice', matricule: 'UB1', text: 'Water moving across a membrane' },
       { attempt: s.attempts.carol, name: 'Carol', matricule: 'UB3', text: 'No idea' },
     ].sort((x, y) => (x.attempt.id < y.attempt.id ? -1 : 1))
     expect(q2.answers).toEqual(
       expected.map((e) => ({
+        number: numberOf(e.attempt),
         attemptId: e.attempt.id,
         studentId: e.attempt.studentId,
         name: e.name,
@@ -159,6 +163,7 @@ describe('marking short answers', () => {
       blank: 1, // Carol has no answer to q3
     })
     expect(q3.answers.map((a) => a.name).sort()).toEqual(['Alice', 'Bob'])
+    for (const a of q3.answers) expect(a.number).toBe(numberOf({ id: a.attemptId }))
 
     // Everything confirmed: back to the first short question.
     for (const attempt of [s.attempts.alice, s.attempts.bob]) {
@@ -231,7 +236,51 @@ describe('marking short answers', () => {
     ])
     setClock(at(40))
     expect(await suggestMarks(s.lecturer, s.q2.id)).toEqual({ suggested: 0, failed: false })
-    expect((await answerRow(db, s.attempts.alice.id, s.q2.id)).suggestedAt).toBeNull()
+    // Asked, nothing usable came back: recorded as tried, with no suggestion.
+    expect(await answerRow(db, s.attempts.alice.id, s.q2.id)).toMatchObject({
+      suggestedMark: null,
+      suggestedReason: null,
+      suggestedAt: at(40),
+      mark: null,
+    })
+  })
+
+  it('an answer the model said nothing about is not sent again on reopening, only on Try again', async () => {
+    const s = await scenario()
+    const sent: string[][] = []
+    let skip = 'No idea'
+    setMarkSuggesterForTests(async (input) => {
+      sent.push(input.answers.map((a) => a.text))
+      return (await fakeSuggester(input)).filter((x) => input.answers.find((a) => a.key === x.key)?.text !== skip)
+    })
+    setClock(at(40))
+
+    expect(await suggestMarks(s.lecturer, s.q2.id)).toEqual({ suggested: 1, failed: false })
+    expect(await answerRow(db, s.attempts.carol.id, s.q2.id)).toMatchObject({ suggestedMark: null, suggestedAt: at(40) })
+    expect(sent).toHaveLength(1)
+
+    // Reopening the question: nothing left to ask, the provider is not called.
+    setClock(at(41))
+    expect(await suggestMarks(s.lecturer, s.q2.id)).toEqual({ suggested: 0, failed: false })
+    expect(sent).toHaveLength(1)
+    const q = await getMarkingQuestion(s.lecturer, s.test.id, s.q2.id)
+    expect(q.answers.find((a) => a.name === 'Carol')?.suggestion).toBeNull()
+
+    // Try again asks afresh about the answers without a suggestion, never the suggested ones.
+    skip = ''
+    expect(await suggestMarks(s.lecturer, s.q2.id, { retry: true })).toEqual({ suggested: 1, failed: false })
+    expect(sent[1]).toEqual(['No idea'])
+    expect(await answerRow(db, s.attempts.carol.id, s.q2.id)).toMatchObject({ suggestedMark: 0, suggestedAt: at(41) })
+    expect((await answerRow(db, s.attempts.alice.id, s.q2.id)).suggestedAt).toEqual(at(40))
+
+    // A marked answer is never sent, even on Try again.
+    await confirmMark(s.lecturer, { attemptId: s.attempts.carol.id, questionId: s.q2.id, mark: 1, comment: null })
+    await db
+      .update(testAnswer)
+      .set({ suggestedMark: null, suggestedReason: null })
+      .where(and(eq(testAnswer.attemptId, s.attempts.carol.id), eq(testAnswer.questionId, s.q2.id)))
+    expect(await suggestMarks(s.lecturer, s.q2.id, { retry: true })).toEqual({ suggested: 0, failed: false })
+    expect(sent).toHaveLength(2)
   })
 
   it('suggestMarks skips answers already suggested or marked; a throwing batch stores nothing and reports failed', async () => {

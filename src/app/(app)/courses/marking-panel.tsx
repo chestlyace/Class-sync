@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils'
 import type { MarkingAnswer, MarkingQuestion } from '@/server/tests/marking'
 import { COMMENT_MAX } from '@/server/tests/rules'
 import { markSteps, needsSuggestions } from './marking-format'
-import { confirmMarkAction, releaseResultsAction, suggestMarksAction } from './test-marking-actions'
+import { confirmMarkAction, releaseResultsAction } from './test-marking-actions'
 
 // ---------------------------------------------------------------------------------------------
 // "Hide names while marking": on by default, remembered on this device
@@ -68,6 +68,23 @@ function useHideNames(): [boolean, (value: boolean) => void] {
 // ---------------------------------------------------------------------------------------------
 
 type SuggestStatus = 'idle' | 'loading' | 'failed'
+type SuggestResult = ActionResult<{ suggested: number; failed: boolean }>
+
+/**
+ * Asks for the question's suggestions. A plain fetch to a Route Handler, never a Server Action:
+ * a client runs its Server Actions one at a time, so a 30-60 s provider call would hold up every
+ * Confirm and Save behind it. Network errors and non-JSON replies come back as a failure.
+ */
+async function fetchSuggestions(questionId: string, retry: boolean, signal: AbortSignal): Promise<SuggestResult | null> {
+  const res = await fetch(`/api/tests/questions/${encodeURIComponent(questionId)}/suggestions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ retry }),
+    signal,
+  })
+  const body = (await res.json().catch(() => null)) as SuggestResult | null
+  return body && typeof body === 'object' && 'ok' in body ? body : null
+}
 
 /**
  * The question and its guide on the left, every real answer on the right. When the lecturer
@@ -85,6 +102,8 @@ export function MarkingPanel({ question }: { question: MarkingQuestion }) {
     needsSuggestions(question.aiAvailable, question.answers) ? 'loading' : 'idle',
   )
   const started = useRef(false)
+  /** The request in flight, aborted when the panel goes (another question, another page). */
+  const inFlight = useRef<AbortController | null>(null)
   // The refresh that brings new suggestions in still counts as "getting suggestions".
   const [refreshing, startRefresh] = useTransition()
   const shownStatus: SuggestStatus = refreshing ? 'loading' : status
@@ -92,28 +111,39 @@ export function MarkingPanel({ question }: { question: MarkingQuestion }) {
   const max = num(question.maxMark)
 
   /** Asks for suggestions; the answers that get one show it after the refresh. */
-  function requestSuggestions() {
-    suggestMarksAction(question.questionId)
+  function requestSuggestions(retry: boolean) {
+    inFlight.current?.abort()
+    const controller = new AbortController()
+    inFlight.current = controller
+    fetchSuggestions(question.questionId, retry, controller.signal)
       .then((result) => {
-        setStatus(!result.ok || result.data.failed ? 'failed' : 'idle')
-        if (result.ok && result.data.suggested > 0) startRefresh(() => router.refresh())
+        if (controller.signal.aborted) return
+        setStatus(!result?.ok || result.data.failed ? 'failed' : 'idle')
+        if (result?.ok && result.data.suggested > 0) startRefresh(() => router.refresh())
       })
-      .catch(() => setStatus('failed'))
+      .catch(() => {
+        if (!controller.signal.aborted) setStatus('failed')
+      })
   }
 
   function retry() {
     setStatus('loading')
-    requestSuggestions()
+    requestSuggestions(true)
   }
 
   const onOpen = useEffectEvent(() => {
     if (started.current || status !== 'loading') return
     started.current = true
-    requestSuggestions()
+    requestSuggestions(false)
   })
   // Once per opening of the question (the page keys this panel by question), never on load of a list.
   useEffect(() => {
     onOpen()
+    return () => {
+      // Leaving the question drops its request; a remount (Strict Mode) asks again.
+      inFlight.current?.abort()
+      started.current = false
+    }
   }, [])
 
   return (
@@ -157,13 +187,13 @@ export function MarkingPanel({ question }: { question: MarkingQuestion }) {
           {question.answers.length === 0 ? (
             <p className="rounded-3xl border bg-card p-5 text-muted-foreground">{t('noAnswers')}</p>
           ) : (
-            question.answers.map((answer, i) => (
+            question.answers.map((answer) => (
               <AnswerCard
                 key={answer.attemptId}
                 answer={answer}
                 questionId={question.questionId}
                 maxMark={question.maxMark}
-                label={hideNames ? t('student', { n: i + 1 }) : answer.name}
+                label={hideNames ? t('student', { n: answer.number }) : answer.name}
                 matricule={hideNames ? null : answer.matricule}
                 suggesting={shownStatus === 'loading'}
               />
