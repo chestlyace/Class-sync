@@ -171,7 +171,13 @@ export const testAnswer = pgTable(
     suggestedReason: text('suggested_reason'),
     suggestedAt: timestamp('suggested_at', { withTimezone: true }),
   },
-  (t) => [primaryKey({ columns: [t.attemptId, t.questionId] }), index('test_answer_question_id_idx').on(t.questionId)],
+  (t) => [
+    primaryKey({ columns: [t.attemptId, t.questionId] }),
+    index('test_answer_question_id_idx').on(t.questionId),
+    // The upper bound depends on the question, so only the service checks it.
+    check('test_answer_mark_check', sql`${t.mark} >= 0`),
+    check('test_answer_suggested_mark_check', sql`${t.suggestedMark} >= 0`),
+  ],
 )
 
 export const testExit = pgTable(
