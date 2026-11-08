@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const runDueReminders = vi.fn()
 vi.mock('@/server/assignments/reminders', () => ({ runDueReminders: () => runDueReminders() }))
+const pruneUnusedOauthClients = vi.fn()
+vi.mock('@/server/mcp/prune', () => ({ pruneUnusedOauthClients: () => pruneUnusedOauthClients() }))
 
 import { GET, POST } from './route'
 
@@ -12,6 +14,7 @@ const get = (headers: Record<string, string> = {}) => GET(new Request(url, { met
 describe('POST /api/cron/reminders', () => {
   beforeEach(() => {
     runDueReminders.mockReset().mockResolvedValue({ assignments: 2, reminded: 5 })
+    pruneUnusedOauthClients.mockReset().mockResolvedValue(3)
     vi.stubEnv('CRON_SECRET', 'right-secret')
   })
   afterEach(() => vi.unstubAllEnvs())
@@ -38,8 +41,19 @@ describe('POST /api/cron/reminders', () => {
   it('runs the job and returns the counts for the right secret', async () => {
     const res = await post({ authorization: 'Bearer right-secret' })
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ assignments: 2, reminded: 5 })
+    expect(await res.json()).toEqual({ assignments: 2, reminded: 5, oauthClientsPruned: 3 })
     expect(runDueReminders).toHaveBeenCalledTimes(1)
+  })
+
+  it('still sends reminders when pruning OAuth clients fails, and never prunes unauthenticated', async () => {
+    pruneUnusedOauthClients.mockRejectedValue(new Error('db down'))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const res = await post({ authorization: 'Bearer right-secret' })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ assignments: 2, reminded: 5, oauthClientsPruned: null })
+    pruneUnusedOauthClients.mockClear()
+    await post({ authorization: 'Bearer wrong-secret' })
+    expect(pruneUnusedOauthClients).not.toHaveBeenCalled()
   })
 
   it('does not echo the secret when the job fails', async () => {
@@ -54,6 +68,7 @@ describe('POST /api/cron/reminders', () => {
 describe('GET /api/cron/reminders (Vercel Cron)', () => {
   beforeEach(() => {
     runDueReminders.mockReset().mockResolvedValue({ assignments: 2, reminded: 5 })
+    pruneUnusedOauthClients.mockReset().mockResolvedValue(3)
     vi.stubEnv('CRON_SECRET', 'right-secret')
   })
   afterEach(() => vi.unstubAllEnvs())
@@ -61,7 +76,7 @@ describe('GET /api/cron/reminders (Vercel Cron)', () => {
   it('runs the job and returns the counts for the right secret', async () => {
     const res = await get({ authorization: 'Bearer right-secret' })
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ assignments: 2, reminded: 5 })
+    expect(await res.json()).toEqual({ assignments: 2, reminded: 5, oauthClientsPruned: 3 })
     expect(runDueReminders).toHaveBeenCalledTimes(1)
   })
 

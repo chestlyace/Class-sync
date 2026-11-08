@@ -144,11 +144,10 @@ describe('resolveMcpCaller', () => {
       expect(res.headers.get('www-authenticate')).toContain('error="invalid_token"')
     })
 
-    it("a student's token gets 403", async () => {
+    it('a student cannot get a token: allowing at the consent step is refused', async () => {
       const clientId = await registerClient(auth)
       const { cookie } = await signUp(auth, 'student', `oauth-stu-${crypto.randomUUID()}@example.com`)
-      const { tokens } = await runOAuthFlow(auth, { clientId, cookie })
-      await expectForbidden(await resolveMcpCaller(mcpRequest(tokens.access_token), deps), "Clasync's assistant connection is for lecturers")
+      await expect(runOAuthFlow(auth, { clientId, cookie })).rejects.toThrow(/consent failed: 403/)
     })
   })
 })

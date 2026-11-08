@@ -49,12 +49,12 @@ export async function signUp(auth: AuthInstance, role: 'lecturer' | 'student', e
   return { cookie: cookiesOf(res), userId: json.user.id }
 }
 
-export async function registerClient(auth: AuthInstance, name = 'Test Assistant') {
+export async function registerClient(auth: AuthInstance, name = 'Test Assistant', redirectUris: string[] = [REDIRECT_URI]) {
   const res = await auth.handler(
     authRequest('/api/auth/oauth2/register', {
       body: {
         client_name: name,
-        redirect_uris: [REDIRECT_URI],
+        redirect_uris: redirectUris,
         token_endpoint_auth_method: 'none',
         grant_types: ['authorization_code', 'refresh_token'],
         response_types: ['code'],
@@ -115,4 +115,26 @@ export async function runOAuthFlow(
   const tokens = (await tokenRes.json()) as { access_token?: string; refresh_token?: string; scope?: string; error?: string }
   if (!tokens.access_token) throw new Error(`token failed: ${tokenRes.status} ${JSON.stringify(tokens)}`)
   return { consentUrl, tokens: tokens as { access_token: string; refresh_token?: string; scope?: string } }
+}
+
+/** GET authorize as the signed-in user; returns the consent page's signed query (no leading `?`). */
+export async function authorizeToConsent(
+  auth: AuthInstance,
+  { clientId, cookie, redirectUri = REDIRECT_URI }: { clientId: string; cookie: string; redirectUri?: string },
+): Promise<string> {
+  const { challenge } = pkce()
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    scope: 'openid offline_access clasync:read clasync:write',
+    state: 's',
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
+    resource: `${TEST_ORIGIN}/api/mcp`,
+  })
+  const res = await auth.handler(authRequest(`/api/auth/oauth2/authorize?${params}`, { cookie }))
+  const location = res.headers.get('location')
+  if (!location) throw new Error(`authorize did not redirect: ${res.status} ${await res.text()}`)
+  return new URL(location, TEST_ORIGIN).search.slice(1)
 }

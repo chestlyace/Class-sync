@@ -4,7 +4,7 @@ import { fetchClientMetadataResource } from '@better-auth/cimd/node'
 import { mcp } from '@better-auth/mcp'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { APIError } from 'better-auth/api'
+import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api'
 import { nextCookies } from 'better-auth/next-js'
 import { jwt } from 'better-auth/plugins'
 import { isLocale } from '@/i18n/locale'
@@ -35,6 +35,16 @@ type CreateAuthOptions = {
 const SIGN_IN_RULE = { window: 60, max: 100 }
 const SIGN_UP_RULE = { window: 60, max: 30 }
 
+
+/** The OAuth provider's client CRUD routes, closed over HTTP (see `disabledPaths`). */
+export const OAUTH_CLIENT_MANAGEMENT_PATHS = [
+  '/oauth2/create-client',
+  '/oauth2/update-client',
+  '/oauth2/delete-client',
+  '/oauth2/get-client',
+  '/oauth2/get-clients',
+  '/oauth2/client/rotate-secret',
+]
 
 /** Scopes an assistant can be granted. Read tools need `clasync:read`, draft tools `clasync:write`. */
 export const MCP_OAUTH_SCOPES = ['openid', 'profile', 'email', 'offline_access', 'clasync:read', 'clasync:write']
@@ -74,7 +84,29 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
     // Personal access tokens are managed through src/server/mcp/connections.ts (lecturers only,
     // at most 10, named, fixed expiries), so the api-key plugin's HTTP routes stay closed;
     // `auth.api` calls are not affected.
-    disabledPaths: ['/token', '/api-key/create', '/api-key/update', '/api-key/delete', '/api-key/list', '/api-key/get'],
+    // The OAuth provider's client-management routes are closed too: assistants register through
+    // dynamic registration or a metadata document, and nobody (students included) manages clients
+    // over HTTP. The consent page reads clients through src/server/mcp/connections.ts.
+    disabledPaths: [
+      '/token',
+      '/api-key/create',
+      '/api-key/update',
+      '/api-key/delete',
+      '/api-key/list',
+      '/api-key/get',
+      ...OAUTH_CLIENT_MANAGEMENT_PATHS,
+    ],
+    hooks: {
+      // Only a verified lecturer can allow an assistant (denying stays open to everyone).
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== '/oauth2/consent' || (ctx.body as { accept?: unknown } | undefined)?.accept !== true) return
+        const session = await getSessionFromCtx(ctx)
+        const u = session?.user as { role?: unknown; emailVerified?: boolean } | undefined
+        if (!u || u.role !== 'lecturer' || (config.requireEmailVerification && !u.emailVerified)) {
+          throw new APIError('FORBIDDEN', { message: "Clasync's assistant connection is for lecturers", code: 'LECTURERS_ONLY' })
+        }
+      }),
+    },
     database: drizzleAdapter(database, { provider: 'pg', schema }),
     emailAndPassword: {
       enabled: true,
@@ -160,6 +192,9 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
         // No client_credentials: its subject is not a user.
         grantTypes: ['authorization_code', 'refresh_token'],
         refreshTokenReuseInterval: 0,
+        // Defence in depth behind `disabledPaths`: no user manages OAuth clients, and a signed-in
+        // browser can't register one either (assistants register without cookies).
+        clientPrivileges: () => false,
       }),
       // Client ID Metadata Documents: an https client_id the server fetches (SSRF-guarded).
       cimd({ fetchClientMetadataResource, metadataProfile: 'mcp-2026-07-28' }),
