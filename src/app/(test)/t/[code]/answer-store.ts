@@ -133,6 +133,20 @@ export function recordLeaveEvent(state: LocalAttempt, event: LeaveEvent): LocalA
   }
 }
 
+/** The exit's `left` report is still queued: the server has not counted it. */
+export function hasLeftQueued(state: LocalAttempt, exitId: string): boolean {
+  return state.exits.some((e) => e.exitId === exitId && e.phase === 'left')
+}
+
+/** Forgets an exit the server never heard of (a same-tab reload): its reports and the open exit. */
+export function dropExit(state: LocalAttempt, exitId: string): LocalAttempt {
+  return {
+    ...state,
+    exits: state.exits.filter((e) => e.exitId !== exitId),
+    openExit: state.openExit?.exitId === exitId ? null : state.openExit,
+  }
+}
+
 /**
  * After a sync succeeded. `acceptedRevs` is the server's rev per question: an answer changed while
  * the request was in flight has a higher local rev and stays pending. `sentExitIds` has one entry

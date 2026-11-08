@@ -133,6 +133,11 @@
     @apply font-sans;
   }
 }
+/* Taking a test: no pull-to-refresh or overscroll bounce (a reload mid-test is never wanted). */
+html:has(main[data-taking-test]),
+body:has(main[data-taking-test]) {
+  overscroll-behavior-y: none;
+}
 /* Rich text (BlockNote): Clasync's font; a narrower gutter for the block handles on phones. */
 .clasync-rich-text .bn-container {
   --bn-font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;

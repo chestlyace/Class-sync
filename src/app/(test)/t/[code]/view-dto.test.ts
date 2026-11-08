@@ -36,4 +36,13 @@ describe('toAttemptViewDto', () => {
     expect(dto.endsAt).toBeNull()
     expect(dto.acceptedRevs).toEqual({})
   })
+
+  it('leaves out the paper and saved answers when a lean sync did not carry them', () => {
+    const lean: Partial<AttemptView> = { ...view }
+    delete lean.paper
+    delete lean.saved
+    const dto = toAttemptViewDto({ ...(lean as Omit<AttemptView, 'paper' | 'saved'>), acceptedRevs: {} })
+    expect(dto).not.toHaveProperty('paper')
+    expect(dto).not.toHaveProperty('saved')
+  })
 })

@@ -65,6 +65,18 @@ export type AttemptView = {
   awaitingRelease: boolean
 }
 
+/** A view without the paper and the saved answers (a sync that did not ask for them). */
+export type LeanView = Omit<AttemptView, 'paper' | 'saved'>
+
+/**
+ * A sync's view: `paper` and `saved` only when the device asked for them (`withPaper`: it holds no
+ * paper yet, e.g. it was waiting at Start), else left out and the device keeps its own.
+ */
+export type SyncView = LeanView & Partial<Pick<AttemptView, 'paper' | 'saved'>> & { acceptedRevs: Record<string, number> }
+
+/** What the device sends with each sync. */
+export type SyncInput = { deviceId: string; answers: AnswerInput[]; exits: ExitReport[]; withPaper?: boolean }
+
 export type MyTestItem = {
   testId: string
   code: string
@@ -543,6 +555,11 @@ async function applyExits(
 // View
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * The student's view. `full` (the default) carries the paper and the saved answers; a lean view
+ * (a sync that did not ask for them) leaves both out, so a heartbeat costs a few hundred bytes
+ * and skips the shuffle.
+ */
 async function buildView(
   db: Db,
   test: TestRow,
@@ -550,7 +567,25 @@ async function buildView(
   questions: LoadedQuestion[],
   attempt: AttemptRow | null,
   at: Date,
-): Promise<AttemptView> {
+): Promise<AttemptView>
+async function buildView(
+  db: Db,
+  test: TestRow,
+  courseTitle: string,
+  questions: LoadedQuestion[],
+  attempt: AttemptRow | null,
+  at: Date,
+  full: boolean,
+): Promise<AttemptView | LeanView>
+async function buildView(
+  db: Db,
+  test: TestRow,
+  courseTitle: string,
+  questions: LoadedQuestion[],
+  attempt: AttemptRow | null,
+  at: Date,
+  full = true,
+): Promise<AttemptView | LeanView> {
   const phase = testPhase(test, at)
   const stage = stageOf(phase, attempt)
   const info = infoOf(test, courseTitle, questions)
@@ -562,30 +597,39 @@ async function buildView(
     serverNow: at,
     exitsSoFar: attempt?.exitsSinceReopen ?? 0,
   }
-  if (!attempt) return { ...base, paper: null, saved: [], result: null, awaitingRelease: false }
-
-  const rows = await db
-    .select({
-      questionId: testAnswer.questionId,
-      optionId: testAnswer.optionId,
-      text: testAnswer.text,
-      rev: testAnswer.rev,
-      mark: testAnswer.mark,
-    })
-    .from(testAnswer)
-    .where(eq(testAnswer.attemptId, attempt.id))
-  const position = new Map(questions.map((q) => [q.id, q.position]))
-  rows.sort((a, b) => (position.get(a.questionId) ?? 0) - (position.get(b.questionId) ?? 0))
+  if (!attempt) {
+    const none = { ...base, result: null, awaitingRelease: false }
+    return full ? { ...none, paper: null, saved: [] } : none
+  }
 
   const released = isReleased(test, phase)
   const done = stage === 'handed_in' || stage === 'over'
   const visible = done && resultVisible(test, attempt, info.hasShort, phase, at)
-  return {
+  const rows =
+    full || visible
+      ? await db
+          .select({
+            questionId: testAnswer.questionId,
+            optionId: testAnswer.optionId,
+            text: testAnswer.text,
+            rev: testAnswer.rev,
+            mark: testAnswer.mark,
+          })
+          .from(testAnswer)
+          .where(eq(testAnswer.attemptId, attempt.id))
+      : []
+  const lean: LeanView = {
     ...base,
-    paper: stage === 'answering' ? paperFor(test, attempt.seed, questions) : null,
-    saved: rows.map((r) => ({ questionId: r.questionId, optionId: r.optionId, text: r.text, rev: r.rev })),
     result: visible ? quickResult(questions, new Map(rows.map((r) => [r.questionId, r]))) : null,
     awaitingRelease: done && info.hasShort && !released,
+  }
+  if (!full) return lean
+  const position = new Map(questions.map((q) => [q.id, q.position]))
+  rows.sort((a, b) => (position.get(a.questionId) ?? 0) - (position.get(b.questionId) ?? 0))
+  return {
+    ...lean,
+    paper: stage === 'answering' ? paperFor(test, attempt.seed, questions) : null,
+    saved: rows.map((r) => ({ questionId: r.questionId, optionId: r.optionId, text: r.text, rev: r.rev })),
   }
 }
 
@@ -697,13 +741,9 @@ async function writeAttempt(
  * (kept while the attempt accepts them and the rev is higher than the stored one; an answer that
  * does not fit its question is VALIDATION { fields: ['answers'] }); then exit reports.
  */
-export async function syncAttempt(
-  ctx: Ctx,
-  attemptId: string,
-  input: { deviceId: string; answers: AnswerInput[]; exits: ExitReport[] },
-): Promise<AttemptView & { acceptedRevs: Record<string, number> }> {
+export async function syncAttempt(ctx: Ctx, attemptId: string, input: SyncInput): Promise<SyncView> {
   const w = await writeAttempt(ctx, attemptId, input, false)
-  const view = await buildView(ctx.db, w.test, w.courseTitle, w.questions, w.attempt, w.at)
+  const view = await buildView(ctx.db, w.test, w.courseTitle, w.questions, w.attempt, w.at, input?.withPaper === true)
   return { ...view, acceptedRevs: w.acceptedRevs }
 }
 

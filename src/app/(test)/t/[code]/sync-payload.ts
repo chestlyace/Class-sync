@@ -1,6 +1,6 @@
 import { z } from 'zod'
 // Types only (erased at build): one definition shared with the service, no server code in the bundle.
-import type { AnswerInput, ExitReport } from '@/server/tests/attempt'
+import type { AnswerInput, ExitReport, SyncInput } from '@/server/tests/attempt'
 import { MAX_QUESTIONS, SHORT_ANSWER_MAX } from '@/server/tests/rules'
 import { MAX_AWAY_MS } from './leave-tracker'
 
@@ -8,11 +8,12 @@ export type { AnswerInput, ExitReport }
 
 /**
  * What the student's test runner sends with each sync: its device id, the answers the server has
- * not acknowledged yet and the queued leave reports. Read by the sync action before it calls
- * `syncAttempt`, and used by the answer store to read back what it saved in localStorage.
+ * not acknowledged yet, the queued leave reports, and `withPaper` when it holds no paper yet. Read
+ * by the sync and hand-in routes before they call the service, and used by the answer store to
+ * read back what it saved in localStorage.
  */
 
-export type SyncPayload = { deviceId: string; answers: AnswerInput[]; exits: ExitReport[] }
+export type SyncPayload = SyncInput
 
 export const MAX_SYNC_EXITS = 50
 export const MAX_REV = 1_000_000
@@ -41,6 +42,7 @@ const syncPayloadSchema = z.object({
     // One row per question: a question twice in one upsert is ambiguous (and Postgres refuses it).
     .refine((answers) => new Set(answers.map((a) => a.questionId)).size === answers.length),
   exits: z.array(exitReportSchema).max(MAX_SYNC_EXITS),
+  withPaper: z.boolean().optional(),
 }) satisfies z.ZodType<SyncPayload>
 
 /** The payload when every part is valid, otherwise null. Unknown keys are dropped. */

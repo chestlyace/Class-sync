@@ -4,7 +4,9 @@ import {
   acknowledge,
   answeredCount,
   attemptKey,
+  dropExit,
   emptyAttempt,
+  hasLeftQueued,
   loadLocalAttempt,
   mergeServerCopy,
   pendingAnswers,
@@ -249,5 +251,27 @@ describe('mergeServerCopy', () => {
     const merged = mergeServerCopy(s, [])
     expect(merged.exits).toEqual(s.exits)
     expect(merged.openExit).toEqual(s.openExit)
+  })
+})
+
+describe('dropExit (a same-tab reload is not leaving)', () => {
+  it('removes every queued report of that exit and its open exit, keeping the rest', () => {
+    let s = recordLeaveEvent(emptyAttempt(), { type: 'left', exitId: EXIT_A, leftAtEpochMs: 1 })
+    s = recordLeaveEvent(s, { type: 'back', exitId: EXIT_A, awayMs: 5 })
+    s = recordLeaveEvent(s, { type: 'left', exitId: EXIT_B, leftAtEpochMs: 9 })
+    expect(hasLeftQueued(s, EXIT_B)).toBe(true)
+    const dropped = dropExit(s, EXIT_B)
+    expect(dropped.exits).toEqual([
+      { exitId: EXIT_A, phase: 'left', awayMs: null },
+      { exitId: EXIT_A, phase: 'back', awayMs: 5 },
+    ])
+    expect(dropped.openExit).toBeNull()
+    expect(hasLeftQueued(dropped, EXIT_B)).toBe(false)
+    expect(hasLeftQueued(dropped, EXIT_A)).toBe(true)
+  })
+
+  it('a back alone (its left already acknowledged) does not count as a queued left', () => {
+    const s = recordLeaveEvent(emptyAttempt(), { type: 'back', exitId: EXIT_A, awayMs: 5 })
+    expect(hasLeftQueued(s, EXIT_A)).toBe(false)
   })
 })
