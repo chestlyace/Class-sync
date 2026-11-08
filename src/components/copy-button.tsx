@@ -5,8 +5,11 @@ import { useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 
-/** Copies `value` to the clipboard; `label` is the translated accessible name. */
-export function CopyButton({ value, label }: { value: string; label: string }) {
+/**
+ * Copies `value` to the clipboard; `label` is the translated accessible name. With `text`, the
+ * button shows that text next to the icon (a dark pill) instead of being icon-only.
+ */
+export function CopyButton({ value, label, text }: { value: string; label: string; text?: string }) {
   const t = useTranslations('common')
   const [copied, setCopied] = useState(false)
 
@@ -27,9 +30,22 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
 
   return (
     <>
-      <Button type="button" variant="outline" size="icon-lg" onClick={copy} aria-label={label} title={label}>
-        {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-      </Button>
+      {text ? (
+        <Button
+          type="button"
+          size="lg"
+          onClick={copy}
+          title={label}
+          className="bg-foreground text-background hover:bg-foreground/85"
+        >
+          {copied ? <Check aria-hidden="true" data-icon="inline-start" /> : <Copy aria-hidden="true" data-icon="inline-start" />}
+          {text}
+        </Button>
+      ) : (
+        <Button type="button" variant="outline" size="icon-lg" onClick={copy} aria-label={label} title={label}>
+          {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+        </Button>
+      )}
       <span role="status" className="sr-only">
         {copied ? t('copied') : ''}
       </span>

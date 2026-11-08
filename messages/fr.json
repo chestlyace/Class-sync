@@ -157,7 +157,10 @@
       "coursesEmpty": "Vous n'avez encore aucun cours dans cette classe.",
       "addCourse": "Ajouter un cours",
       "studentCourses": "Cours de cette classe",
-      "studentCoursesEmpty": "Aucun cours dans cette classe pour l'instant."
+      "studentCoursesEmpty": "Aucun cours dans cette classe pour l'instant.",
+      "copyInvite": "Copier le message d'invitation",
+      "copyInviteLabel": "Copier un message avec le code étudiant et la marche à suivre, en anglais et en français",
+      "inviteMessage": "Join {className} on Clasync: open {url}, then enter the code {code} and your matricule.\nRejoignez {className} sur Clasync : ouvrez {url}, puis saisissez le code {code} et votre matricule."
     }
   },
   "courses": {
