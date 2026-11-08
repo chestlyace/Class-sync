@@ -725,7 +725,7 @@ describe('taking a test (student services)', () => {
     expect(over.result).toEqual({ score: 3, outOf: 7, mcqCorrect: 1, mcqCount: 3 })
   })
 
-  it('MCQ-only: a working student sees the total once the test ends, and it follows answers arriving in the grace', async () => {
+  it('MCQ-only: a working student sees no total while the grace is open, then the total including the grace answers', async () => {
     const { lecturer, algo, alice } = await setup()
     const t = await makeTest(algo.id, lecturer, { mcq: 2 })
     const [q1, q2] = t.questions
@@ -734,12 +734,151 @@ describe('taking a test (student services)', () => {
     const running = await sync(alice, attemptId, [mcqAnswer(q1, right(q1))])
     expect(running.result).toBeNull()
 
+    // The test has ended but answers are still accepted: no total anywhere (it would be an oracle).
     setClock(after(DEADLINE, 10 * SEC))
     const atEnd = await sync(alice, attemptId)
-    expect(atEnd.result).toEqual({ score: 3, outOf: 5, mcqCorrect: 1, mcqCount: 2 })
+    expect(atEnd.stage).toBe('over')
+    expect(atEnd.result).toBeNull()
     setClock(after(DEADLINE, 60 * SEC))
     const graced = await sync(alice, attemptId, [mcqAnswer(q2, right(q2))])
-    expect(graced.result).toEqual({ score: 5, outOf: 5, mcqCorrect: 2, mcqCount: 2 })
+    expect(graced.acceptedRevs).toEqual({ [q2.id]: 1 })
+    expect(graced.result).toBeNull()
+    expect((await openTest(alice, t.code, 'dev-A')).result).toBeNull()
+    expect((await handIn(alice, attemptId, { deviceId: 'dev-A', answers: [] })).result).toBeNull()
+    expect((await listMyTests(alice, algo.id))[0]).toMatchObject({ state: 'released', result: null })
+
+    // Once the answers are final, the total includes the grace answer.
+    setClock(after(DEADLINE, 2 * MIN))
+    const total = { score: 5, outOf: 5, mcqCorrect: 2, mcqCount: 2 }
+    expect((await sync(alice, attemptId)).result).toEqual(total)
+    expect((await openTest(alice, t.code, 'dev-A')).result).toEqual(total)
+    expect((await listMyTests(alice, algo.id))[0].result).toEqual(total)
+  })
+
+  it('MCQ-only: the total cannot be used to probe answers in the grace (higher revs during it show nothing)', async () => {
+    const { lecturer, algo, alice } = await setup()
+    const t = await makeTest(algo.id, lecturer, { mcq: 2 })
+    const [q1, q2] = t.questions
+    await start(t.id)
+    const attemptId = await joinRunning(alice, t)
+    await sync(alice, attemptId, [mcqAnswer(q1, wrong(q1)), mcqAnswer(q2, wrong(q2))])
+
+    setClock(after(DEADLINE, 30 * SEC))
+    for (const [i, o] of q1.options.entries()) {
+      const probe = await sync(alice, attemptId, [mcqAnswer(q1, o.id, 2 + i)])
+      expect(probe.acceptedRevs).toEqual({ [q1.id]: 2 + i })
+      expect(probe.result).toBeNull()
+    }
+  })
+
+  it('ended for leaving near the end: the total waits until both the test has ended and its own grace is over', async () => {
+    const { lecturer, algo, alice } = await setup()
+    const t = await makeTest(algo.id, lecturer, { mcq: 2, maxExits: 1 })
+    const [q1, q2] = t.questions
+    await start(t.id)
+    const attemptId = await joinRunning(alice, t)
+
+    // Ended for leaving 30 s before the deadline: answers count until DEADLINE + 90 s.
+    setClock(after(DEADLINE, -30 * SEC))
+    const ended = await sync(alice, attemptId, [mcqAnswer(q1, right(q1))], [{ exitId: 'a1', phase: 'left', awayMs: null }])
+    expect(ended.stage).toBe('ended_left')
+    expect(ended.result).toBeNull()
+
+    setClock(after(DEADLINE, 10 * SEC))
+    const graced = await sync(alice, attemptId, [mcqAnswer(q2, right(q2))])
+    expect(graced.acceptedRevs).toEqual({ [q2.id]: 1 })
+    expect(graced.stage).toBe('over')
+    expect(graced.result).toBeNull()
+    expect((await listMyTests(alice, algo.id))[0].result).toBeNull()
+
+    setClock(after(DEADLINE, 90 * SEC))
+    const final = await sync(alice, attemptId)
+    expect(final.result).toEqual({ score: 5, outOf: 5, mcqCorrect: 2, mcqCount: 2 })
+    expect((await listMyTests(alice, algo.id))[0].result).toEqual({ score: 5, outOf: 5, mcqCorrect: 2, mcqCount: 2 })
+  })
+
+  it('a student removed from the roster mid-test is FORBIDDEN on syncAttempt and handIn', async () => {
+    const { lecturer, algo, alice } = await setup()
+    const t = await makeTest(algo.id, lecturer)
+    const [q1] = t.questions
+    await start(t.id)
+    const attemptId = await joinRunning(alice, t)
+    await sync(alice, attemptId, [mcqAnswer(q1, right(q1))])
+
+    await db.insert(courseRosterAdjustment).values({ courseId: algo.id, studentId: alice.user.id, kind: 'exclude', createdBy: lecturer.user.id })
+    await expect(sync(alice, attemptId, [mcqAnswer(q1, wrong(q1), 2)])).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    await expect(handIn(alice, attemptId, { deviceId: 'dev-A', answers: [] })).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    expect(await storedAnswers(attemptId)).toEqual([{ questionId: q1.id, optionId: right(q1), text: null, rev: 1 }])
+    expect((await attemptRow(attemptId)).closedAt).toBeNull()
+  })
+
+  it('a higher rev with the same content keeps a mark and suggestion; a changed answer clears them', async () => {
+    const { lecturer, algo, alice } = await setup()
+    const t = await makeTest(algo.id, lecturer, { mcq: 1, short: 1 })
+    const [q1, q2] = t.questions
+    await start(t.id)
+    const attemptId = await joinRunning(alice, t)
+    await sync(alice, attemptId, [mcqAnswer(q1, right(q1)), shortAnswer(q2, 'osmosis')])
+
+    const marked = {
+      mark: 1.5,
+      comment: 'good',
+      markedBy: lecturer.user.id,
+      markedAt: clock,
+      suggestedMark: 1,
+      suggestedReason: 'close',
+      suggestedAt: clock,
+    }
+    await db.update(testAnswer).set(marked).where(eq(testAnswer.attemptId, attemptId))
+    const marksOf = async (questionId: string) => {
+      const [row] = await db
+        .select()
+        .from(testAnswer)
+        .where(and(eq(testAnswer.attemptId, attemptId), eq(testAnswer.questionId, questionId)))
+      return row
+    }
+
+    // Re-sent with a higher rev but unchanged: the rev moves, the marks stay.
+    await sync(alice, attemptId, [mcqAnswer(q1, right(q1), 2), shortAnswer(q2, 'osmosis', 2)])
+    expect(await marksOf(q1.id)).toMatchObject({ rev: 2, ...marked })
+    expect(await marksOf(q2.id)).toMatchObject({ rev: 2, ...marked })
+
+    // A changed option or text clears them (null counts as a change too).
+    await sync(alice, attemptId, [mcqAnswer(q1, null, 3), shortAnswer(q2, 'diffusion', 3)])
+    const cleared = {
+      mark: null,
+      comment: null,
+      markedBy: null,
+      markedAt: null,
+      suggestedMark: null,
+      suggestedReason: null,
+      suggestedAt: null,
+    }
+    expect(await marksOf(q1.id)).toMatchObject({ rev: 3, optionId: null, ...cleared })
+    expect(await marksOf(q2.id)).toMatchObject({ rev: 3, text: 'diffusion', ...cleared })
+  })
+
+  it('a reported absence is capped at how long the test has been running', async () => {
+    const { lecturer, algo, alice } = await setup()
+    const t = await makeTest(algo.id, lecturer, { maxAbsenceSeconds: 90 })
+    await start(t.id)
+    const attemptId = await joinRunning(alice, t)
+
+    // One minute into the test, the device claims 10 minutes away: at most 60 s counts.
+    const view = await sync(alice, attemptId, [], [{ exitId: 'e1', phase: 'back', awayMs: 10 * MIN }])
+    expect(view.stage).toBe('answering')
+    const [e1] = await db.select().from(testExit).where(eq(testExit.attemptId, attemptId))
+    expect(e1.awayMs).toBe(MIN)
+
+    // The same cap on a back arriving after its left.
+    await sync(alice, attemptId, [], [{ exitId: 'e2', phase: 'left', awayMs: null }])
+    setClock(after(START, 2 * MIN))
+    await sync(alice, attemptId, [], [{ exitId: 'e2', phase: 'back', awayMs: 20 * MIN }])
+    const [e2] = await db
+      .select()
+      .from(testExit)
+      .where(and(eq(testExit.attemptId, attemptId), eq(testExit.exitId, 'e2')))
+    expect(e2.awayMs).toBe(2 * MIN)
   })
 
   it('a test with short answers shows awaitingRelease and no result', async () => {

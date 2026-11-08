@@ -7,6 +7,7 @@ import { GET, POST } from './route'
 
 const url = 'http://localhost/api/cron/reminders'
 const post = (headers: Record<string, string> = {}) => POST(new Request(url, { method: 'POST', headers }))
+const get = (headers: Record<string, string> = {}) => GET(new Request(url, { method: 'GET', headers }))
 
 describe('POST /api/cron/reminders', () => {
   beforeEach(() => {
@@ -48,8 +49,38 @@ describe('POST /api/cron/reminders', () => {
     expect(res.status).toBe(500)
     expect(JSON.stringify(await res.json())).not.toContain('right-secret')
   })
+})
 
-  it('answers GET with 405', async () => {
-    expect(GET().status).toBe(405)
+describe('GET /api/cron/reminders (Vercel Cron)', () => {
+  beforeEach(() => {
+    runDueReminders.mockReset().mockResolvedValue({ assignments: 2, reminded: 5 })
+    vi.stubEnv('CRON_SECRET', 'right-secret')
+  })
+  afterEach(() => vi.unstubAllEnvs())
+
+  it('runs the job and returns the counts for the right secret', async () => {
+    const res = await get({ authorization: 'Bearer right-secret' })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ assignments: 2, reminded: 5 })
+    expect(runDueReminders).toHaveBeenCalledTimes(1)
+  })
+
+  it('is 401 without an Authorization header', async () => {
+    expect((await get()).status).toBe(401)
+    expect(runDueReminders).not.toHaveBeenCalled()
+  })
+
+  it('is 401 for a wrong secret', async () => {
+    for (const bad of ['Bearer wrong-secret', 'Bearer right-secre', 'right-secret']) {
+      expect((await get({ authorization: bad })).status).toBe(401)
+    }
+    expect(runDueReminders).not.toHaveBeenCalled()
+  })
+
+  it('is 503 when CRON_SECRET is not configured', async () => {
+    vi.stubEnv('CRON_SECRET', '')
+    expect((await get({ authorization: 'Bearer ' })).status).toBe(503)
+    expect((await get({ authorization: 'Bearer right-secret' })).status).toBe(503)
+    expect(runDueReminders).not.toHaveBeenCalled()
   })
 })
