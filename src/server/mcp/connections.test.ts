@@ -180,6 +180,23 @@ describe('mcp connections service', () => {
       expect(await getConsentClient('nope', db)).toBeNull()
       expect(await getConsentClient('', db)).toBeNull()
     })
+
+    it('listConnectedApps hides non-https icons and uris too', async () => {
+      const ctx = await lecturer()
+      await insertClient('client-d', { icon: 'http://insecure.example/icon.png', uri: 'javascript:alert(1)' })
+      const now = new Date()
+      await db.insert(oauthConsent).values({
+        id: crypto.randomUUID(),
+        clientId: 'client-d',
+        userId: ctx.user.id,
+        scopes: ['clasync:read', 'clasync:write'],
+        createdAt: now,
+        updatedAt: now,
+      })
+      expect(await listConnectedApps(ctx)).toEqual([
+        { clientId: 'client-d', name: 'Claude', icon: null, uri: null, scopes: ['clasync:read', 'clasync:write'], connectedAt: now },
+      ])
+    })
   })
 })
 

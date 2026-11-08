@@ -130,7 +130,8 @@ export async function listConnectedApps(ctx: Ctx): Promise<ConnectedApp[]> {
     .innerJoin(oauthClient, eq(oauthClient.clientId, oauthConsent.clientId))
     .where(eq(oauthConsent.userId, ctx.user.id))
     .orderBy(desc(oauthConsent.createdAt))
-  return rows
+  // The client chose these at registration: show https ones only (as on the consent page).
+  return rows.map((r) => ({ ...r, icon: safeHttpsUrl(r.icon), uri: safeHttpsUrl(r.uri) }))
 }
 
 /**

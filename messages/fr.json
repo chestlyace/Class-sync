@@ -515,6 +515,88 @@
       "submit": "Changer le mot de passe",
       "saving": "Modification…",
       "changed": "Mot de passe modifié."
+    },
+    "ai": {
+      "title": "Assistants IA",
+      "intro": "Votre assistant IA peut agir en votre nom dans Clasync. Il lit vos cours et prépare des devoirs, des tests, des notes de cours et des propositions de notes. Rien n'arrive aux étudiants tant que vous ne l'avez pas approuvé dans Clasync. Cette fonction n'est pas proposée aux étudiants.",
+      "connector": {
+        "title": "Connecter un assistant",
+        "description": "Ajoutez Clasync à votre assistant avec cette URL, puis connectez-vous avec votre compte Clasync.",
+        "label": "URL du connecteur",
+        "copy": "Copier l'URL du connecteur"
+      },
+      "howTo": {
+        "label": "Comment l'ajouter",
+        "tokenPlaceholder": "votre jeton",
+        "claude": {
+          "tab": "Claude",
+          "step1": "Dans Claude, ouvrez Paramètres, puis Connecteurs.",
+          "step2": "Choisissez Ajouter un connecteur personnalisé et collez l'URL.",
+          "step3": "Connectez-vous avec Clasync et autorisez l'accès."
+        },
+        "chatgpt": {
+          "tab": "ChatGPT",
+          "step1": "Dans ChatGPT, ouvrez Paramètres, puis Applications et connecteurs.",
+          "step2": "Dans Avancé, activez le mode développeur.",
+          "step3": "Choisissez Créer, collez l'URL, puis connectez-vous avec Clasync.",
+          "note": "ChatGPT renomme ses menus de temps en temps. Si vous ne les trouvez pas, cherchez les connecteurs personnalisés ou les serveurs MCP."
+        },
+        "other": {
+          "tab": "Autres outils",
+          "intro": "Pour Cursor, Claude Code et les autres outils configurés par un fichier mcp.json : créez un jeton d'accès personnel ci-dessous et mettez-le à la place de '<votre jeton>'.",
+          "copy": "Copier l'extrait mcp.json",
+          "oauth": "Les outils qui gèrent la connexion OAuth n'ont besoin que de l'URL : ils vous demanderont de vous connecter avec Clasync."
+        }
+      },
+      "tokens": {
+        "title": "Jetons d'accès personnels",
+        "description": "Pour les outils qui ne savent pas se connecter seuls. Un jeton agit en votre nom : gardez-le secret, comme un mot de passe.",
+        "name": "Nom du jeton",
+        "namePlaceholder": "ex. Cursor sur mon portable",
+        "nameHint": "Pour distinguer vos jetons. {max} caractères au plus.",
+        "nameRequired": "Donnez au jeton un nom de {max} caractères au plus.",
+        "expiry": "Expiration",
+        "expiry30": "Dans 30 jours",
+        "expiry90": "Dans 90 jours",
+        "expiryNever": "Jamais",
+        "create": "Créer le jeton",
+        "creating": "Création…",
+        "newTitle": "Votre nouveau jeton : {name}",
+        "copy": "Copier le jeton",
+        "copyNow": "Copiez-le maintenant — vous ne le reverrez plus.",
+        "done": "Je l'ai copié",
+        "limit": "Vous avez {max} jetons actifs, le maximum autorisé. Révoquez-en un pour en créer un autre.",
+        "empty": "Aucun jeton pour l'instant.",
+        "listLabel": "Vos jetons",
+        "created": "Créé le",
+        "lastUsed": "Dernière utilisation",
+        "neverUsed": "jamais",
+        "expires": "Expire le",
+        "expiredOn": "Expiré le",
+        "noExpiry": "jamais",
+        "expired": "Expiré",
+        "revoke": "Révoquer",
+        "revokeAria": "Révoquer le jeton {name}",
+        "revokeTitle": "Révoquer {name} ?",
+        "revokeBody": "Tout outil qui utilise ce jeton perd immédiatement l'accès à Clasync. C'est définitif.",
+        "revokeConfirm": "Révoquer le jeton"
+      },
+      "apps": {
+        "title": "Applications connectées",
+        "description": "Les assistants que vous avez autorisés en vous connectant avec Clasync.",
+        "listLabel": "Vos applications connectées",
+        "unnamed": "Un assistant IA",
+        "read": "Lecture",
+        "draft": "Rédaction",
+        "connected": "Connecté le {date}",
+        "disconnect": "Déconnecter",
+        "disconnectAria": "Déconnecter {name}",
+        "disconnectTitle": "Déconnecter {name} ?",
+        "disconnectBody": "{name} perd immédiatement l'accès à Clasync. Pour l'utiliser de nouveau, reconnectez-le depuis l'assistant.",
+        "disconnectConfirm": "Déconnecter",
+        "emptyTitle": "Aucun assistant connecté pour l'instant",
+        "emptyBody": "Ajoutez l'URL du connecteur ci-dessus dans Claude ou ChatGPT, connectez-vous avec Clasync et autorisez l'accès. L'assistant apparaît alors ici, et vous pouvez le déconnecter à tout moment."
+      }
     }
   },
   "join": {

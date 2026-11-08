@@ -515,6 +515,88 @@
       "submit": "Change password",
       "saving": "Changing…",
       "changed": "Password changed."
+    },
+    "ai": {
+      "title": "AI assistants",
+      "intro": "Your AI assistant can act as you in Clasync. It reads your courses and drafts assignments, tests, notes and suggested marks. Nothing reaches students until you approve it in Clasync. This isn't available to students.",
+      "connector": {
+        "title": "Connect an assistant",
+        "description": "Add Clasync to your assistant with this URL, then sign in with your Clasync account.",
+        "label": "Connector URL",
+        "copy": "Copy the connector URL"
+      },
+      "howTo": {
+        "label": "How to add it",
+        "tokenPlaceholder": "your token",
+        "claude": {
+          "tab": "Claude",
+          "step1": "In Claude, open Settings, then Connectors.",
+          "step2": "Choose Add custom connector and paste the URL.",
+          "step3": "Sign in with Clasync and allow access."
+        },
+        "chatgpt": {
+          "tab": "ChatGPT",
+          "step1": "In ChatGPT, open Settings, then Apps & Connectors.",
+          "step2": "Under Advanced, turn on developer mode.",
+          "step3": "Choose Create, paste the URL, then sign in with Clasync.",
+          "note": "ChatGPT renames its menus from time to time. If you can't find these, look for custom connectors or MCP servers."
+        },
+        "other": {
+          "tab": "Other tools",
+          "intro": "For Cursor, Claude Code and other tools set up with an mcp.json file: create a personal access token below and put it in place of '<your token>'.",
+          "copy": "Copy the mcp.json snippet",
+          "oauth": "Tools that support OAuth sign-in only need the URL: they'll ask you to sign in with Clasync."
+        }
+      },
+      "tokens": {
+        "title": "Personal access tokens",
+        "description": "For tools that can't sign in by themselves. A token acts as you, so keep it private, like a password.",
+        "name": "Token name",
+        "namePlaceholder": "e.g. Cursor on my laptop",
+        "nameHint": "So you can tell your tokens apart. Up to {max} characters.",
+        "nameRequired": "Give the token a name of up to {max} characters.",
+        "expiry": "Expires",
+        "expiry30": "In 30 days",
+        "expiry90": "In 90 days",
+        "expiryNever": "Never",
+        "create": "Create token",
+        "creating": "Creating…",
+        "newTitle": "Your new token: {name}",
+        "copy": "Copy the token",
+        "copyNow": "Copy it now — you won't see it again.",
+        "done": "I've copied it",
+        "limit": "You have {max} active tokens, the most allowed. Revoke one to create another.",
+        "empty": "No tokens yet.",
+        "listLabel": "Your tokens",
+        "created": "Created",
+        "lastUsed": "Last used",
+        "neverUsed": "never",
+        "expires": "Expires",
+        "expiredOn": "Expired",
+        "noExpiry": "never",
+        "expired": "Expired",
+        "revoke": "Revoke",
+        "revokeAria": "Revoke the token {name}",
+        "revokeTitle": "Revoke {name}?",
+        "revokeBody": "Any tool using this token loses access to Clasync immediately. This can't be undone.",
+        "revokeConfirm": "Revoke token"
+      },
+      "apps": {
+        "title": "Connected apps",
+        "description": "Assistants you allowed by signing in with Clasync.",
+        "listLabel": "Your connected apps",
+        "unnamed": "An AI assistant",
+        "read": "Read",
+        "draft": "Draft",
+        "connected": "Connected {date}",
+        "disconnect": "Disconnect",
+        "disconnectAria": "Disconnect {name}",
+        "disconnectTitle": "Disconnect {name}?",
+        "disconnectBody": "{name} loses access to Clasync immediately. To use it again, connect it again from the assistant.",
+        "disconnectConfirm": "Disconnect",
+        "emptyTitle": "No assistant connected yet",
+        "emptyBody": "Add the connector URL above in Claude or ChatGPT, sign in with Clasync and allow access. The assistant then appears here, and you can disconnect it at any time."
+      }
     }
   },
   "join": {

@@ -4,11 +4,22 @@ import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
 import { PageHeader, Panel, SectionHeading } from '@/components/page-header'
 import { buttonVariants } from '@/components/ui/button'
-import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
+import { DEFAULT_LOCALE, isLocale, type Locale } from '@/i18n/locale'
+import { mcpResourceUrl, resolveAppOrigin } from '@/server/auth/auth'
 import { getSessionUser } from '@/server/auth/session'
 import { listMyClasses, type ClassSummary } from '@/server/classes/service'
+import { config } from '@/server/core/config'
+import {
+  listAccessTokens,
+  listConnectedApps,
+  MAX_ACCESS_TOKENS,
+  TOKEN_NAME_MAX,
+  type AccessTokenSummary,
+  type ConnectedApp,
+} from '@/server/mcp/connections'
 import { getSchool, type School } from '@/server/schools/service'
 import { loadPage } from '../load-page'
+import { AiAssistantsSection, type AppRow, type TokenRow } from './ai-assistants'
 import { ChangePasswordForm, LanguageSwitch, NameForm, SchoolLocationButton } from './settings-forms'
 
 export async function generateMetadata() {
@@ -24,6 +35,51 @@ function initials(name: string): string {
 
 type SchoolGroup = { school: School; classes: ClassSummary[] }
 
+/** "9 Nov 2026" / "9 nov. 2026", in the app's time zone. */
+function dayFormatter(locale: Locale): (date: Date) => string {
+  const format = new Intl.DateTimeFormat(locale === 'fr' ? 'fr-FR' : 'en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: config.timeZone,
+  })
+  return (date) => format.format(date)
+}
+
+function hostOf(uri: string | null): string | null {
+  if (!uri) return null
+  try {
+    return new URL(uri).host
+  } catch {
+    return null
+  }
+}
+
+function toTokenRows(tokens: AccessTokenSummary[], day: (d: Date) => string): TokenRow[] {
+  const now = Date.now()
+  return tokens.map((tk) => ({
+    id: tk.id,
+    name: tk.name,
+    start: tk.start,
+    created: day(tk.createdAt),
+    lastUsed: tk.lastUsedAt ? day(tk.lastUsedAt) : null,
+    expires: tk.expiresAt ? day(tk.expiresAt) : null,
+    expired: tk.expiresAt !== null && tk.expiresAt.getTime() <= now,
+  }))
+}
+
+function toAppRows(apps: ConnectedApp[], day: (d: Date) => string): AppRow[] {
+  return apps.map((app) => ({
+    clientId: app.clientId,
+    name: app.name,
+    icon: app.icon,
+    host: hostOf(app.uri),
+    canRead: app.scopes.includes('clasync:read'),
+    canDraft: app.scopes.includes('clasync:write'),
+    connected: day(app.connectedAt),
+  }))
+}
+
 export default async function SettingsPage() {
   const user = await getSessionUser()
   if (!user) return null
@@ -34,16 +90,23 @@ export default async function SettingsPage() {
 
   const data = await loadPage(async (ctx) => {
     const classes = await listMyClasses(ctx)
-    if (!isLecturer) return { classes, schools: [] as SchoolGroup[] }
+    if (!isLecturer) return { classes, schools: [] as SchoolGroup[], tokens: [], apps: [] }
     const schoolIds = [...new Set(classes.map((c) => c.schoolId))]
-    const schools = await Promise.all(schoolIds.map((id) => getSchool(ctx, id)))
+    const [schools, tokens, apps] = await Promise.all([
+      Promise.all(schoolIds.map((id) => getSchool(ctx, id))),
+      listAccessTokens(ctx),
+      listConnectedApps(ctx),
+    ])
     return {
       classes,
       schools: schools.map((school) => ({ school, classes: classes.filter((c) => c.schoolId === school.id) })),
+      tokens,
+      apps,
     }
   })
   if (!data.ok) return <ErrorState code={data.code} />
-  const { classes, schools } = data.data
+  const { classes, schools, tokens, apps } = data.data
+  const day = dayFormatter(locale)
 
   return (
     <>
@@ -161,6 +224,16 @@ export default async function SettingsPage() {
           )}
           <p className="text-[13px] text-muted-foreground">{t('classes.matriculeHint')}</p>
         </section>
+      )}
+
+      {isLecturer && (
+        <AiAssistantsSection
+          connectorUrl={mcpResourceUrl(resolveAppOrigin())}
+          tokens={toTokenRows(tokens, day)}
+          apps={toAppRows(apps, day)}
+          maxTokens={MAX_ACCESS_TOKENS}
+          nameMax={TOKEN_NAME_MAX}
+        />
       )}
 
       <section aria-labelledby="password" className="flex flex-col gap-4">
