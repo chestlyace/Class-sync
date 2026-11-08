@@ -3,6 +3,7 @@ import { generateJoinCode } from '@/server/classes/join-code'
 import { now } from '@/server/core/clock'
 import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
+import { courseRosterQuery } from '@/server/courses/roster'
 import { requireCourseOwner } from '@/server/courses/service'
 import type { Db } from '@/server/db'
 import { courseTest, testAttempt, testOption, testQuestion } from '@/server/db/schema'
@@ -23,7 +24,10 @@ export type TestSummary = {
   durationMinutes: number
   startedAt: Date | null
   endsAt: Date | null
-  /** Students who have opened the test (an attempt exists), whatever its state. */
+  /**
+   * Students on the course's current roster who have opened the test (an attempt exists),
+   * whatever its state; the live view counts the same way.
+   */
   joined: number
 }
 
@@ -122,11 +126,15 @@ async function insertNewTest(
   throw new Error('Could not generate a unique test code')
 }
 
-/** Summaries for the given tests in the same order, in two queries whatever their number. */
+/**
+ * Summaries for the given tests in the same order: two queries plus one roster query per course,
+ * whatever the number of tests or attempts.
+ */
 async function summarize(db: Db, tests: TestRow[]): Promise<TestSummary[]> {
   if (tests.length === 0) return []
   const ids = tests.map((t) => t.id)
-  const [questionStats, joinedCounts] = await Promise.all([
+  const courseIds = [...new Set(tests.map((t) => t.courseId))]
+  const [questionStats, attempts, rosters] = await Promise.all([
     db
       .select({
         testId: testQuestion.testId,
@@ -139,13 +147,20 @@ async function summarize(db: Db, tests: TestRow[]): Promise<TestSummary[]> {
       .where(inArray(testQuestion.testId, ids))
       .groupBy(testQuestion.testId),
     db
-      .select({ testId: testAttempt.testId, joined: count() })
+      .select({ testId: testAttempt.testId, studentId: testAttempt.studentId })
       .from(testAttempt)
-      .where(inArray(testAttempt.testId, ids))
-      .groupBy(testAttempt.testId),
+      .where(inArray(testAttempt.testId, ids)),
+    Promise.all(courseIds.map((courseId) => courseRosterQuery(db, { courseId }))),
   ])
   const stats = new Map(questionStats.map((s) => [s.testId, s]))
-  const joined = new Map(joinedCounts.map((j) => [j.testId, j.joined]))
+  const onRoster = new Map(courseIds.map((id, i) => [id, new Set(rosters[i].map((r) => r.studentId))]))
+  const courseOf = new Map(tests.map((t) => [t.id, t.courseId]))
+  // Only students still on the roster count, so the list agrees with the live view.
+  const joined = new Map<string, number>()
+  for (const a of attempts) {
+    if (!onRoster.get(courseOf.get(a.testId)!)?.has(a.studentId)) continue
+    joined.set(a.testId, (joined.get(a.testId) ?? 0) + 1)
+  }
   const at = now()
   return tests.map((t) => {
     const s = stats.get(t.id)
@@ -168,7 +183,8 @@ async function summarize(db: Db, tests: TestRow[]): Promise<TestSummary[]> {
   })
 }
 
-async function summaryOf(db: Db, test: TestRow): Promise<TestSummary> {
+/** One test's summary, timing judged against `now()`. */
+export async function summarizeTest(db: Db, test: TestRow): Promise<TestSummary> {
   const [summary] = await summarize(db, [test])
   return summary
 }
@@ -190,7 +206,7 @@ export async function createTest(ctx: Ctx, courseId: string, input: unknown): Pr
   await requireCourseOwner(ctx, courseId)
   const data = parseTestInput(input)
   const created = await insertNewTest(ctx, courseId, settingsOf(data), data.questions, null)
-  return summaryOf(ctx.db, created)
+  return summarizeTest(ctx.db, created)
 }
 
 /**
@@ -213,12 +229,12 @@ export async function updateTest(ctx: Ctx, testId: string, input: unknown): Prom
     await insertQuestions(tx, testId, data.questions)
     return row
   })
-  return summaryOf(ctx.db, updated)
+  return summarizeTest(ctx.db, updated)
 }
 
 export async function getTestForEdit(ctx: Ctx, testId: string): Promise<TestForEdit> {
   const { test } = await requireOwnedTest(ctx, testId)
-  const [summary, questions] = await Promise.all([summaryOf(ctx.db, test), loadStoredQuestions(ctx.db, test.id)])
+  const [summary, questions] = await Promise.all([summarizeTest(ctx.db, test), loadStoredQuestions(ctx.db, test.id)])
   return {
     summary,
     input: {
@@ -248,7 +264,7 @@ export async function copyTest(ctx: Ctx, testId: string, targetCourseId: string)
   await requireCourseOwner(ctx, targetCourseId)
   const questions = await loadStoredQuestions(ctx.db, test.id)
   const created = await insertNewTest(ctx, targetCourseId, settingsOf(test), questions.map(toQuestionInput), test.id)
-  return summaryOf(ctx.db, created)
+  return summarizeTest(ctx.db, created)
 }
 
 /** Deletes a test that has not started (conditional, so it cannot race Start). */
