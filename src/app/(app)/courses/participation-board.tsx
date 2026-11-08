@@ -35,8 +35,9 @@ const signed = (n: number) => (n > 0 ? `+${n}` : plain(n))
 /**
  * The phone-friendly tap screen. A tap shows at once (optimistic) and is sent in order per student:
  * each student has a queue, so two quick taps become two events, never a race. A refused tap is
- * taken back off the screen and its error shown. One always-mounted status line announces each
- * confirmed tap.
+ * taken back off the screen and its error shown. "Undo" first waits for the taps already sent;
+ * taps made while it runs wait for it. One always-mounted status line announces each confirmed
+ * tap.
  */
 export function ParticipationBoard({ courseId, initial }: { courseId: string; initial: BoardRow[] }) {
   const t = useTranslations('performance.lecturer.board')
@@ -48,8 +49,9 @@ export function ParticipationBoard({ courseId, initial }: { courseId: string; in
   const [undoing, setUndoing] = useState(false)
   const queues = useRef(new Map<string, Promise<void>>())
   const nextId = useRef(0)
-  // Guards against a second undo before the first re-render (the button stays focusable).
-  const undoingRef = useRef(false)
+  // The undo in flight, if any. Taps made meanwhile wait for it, and a second undo is ignored
+  // (the button stays focusable, so this guards it before the re-render).
+  const pendingUndo = useRef<Promise<void> | null>(null)
 
   function sendTap(row: BoardRow, tap: PendingTap): Promise<void> {
     return tapParticipationAction(courseId, row.studentId, tap.delta).then(
@@ -81,7 +83,9 @@ export function ParticipationBoard({ courseId, initial }: { courseId: string; in
     setPending((list) => [...list, entry])
     setError(null)
     const previous = queues.current.get(row.studentId) ?? Promise.resolve()
-    const next = previous.then(() => sendTap(row, entry))
+    // After this student's earlier taps and after an undo already under way, so the undo never
+    // removes a tap made after it was pressed.
+    const next = Promise.all([previous, pendingUndo.current]).then(() => sendTap(row, entry))
     queues.current.set(row.studentId, next)
     // Forget a finished queue so the map doesn't grow with every student tapped.
     void next.then(() => {
@@ -89,9 +93,7 @@ export function ParticipationBoard({ courseId, initial }: { courseId: string; in
     })
   }
 
-  async function undo() {
-    if (undoingRef.current) return
-    undoingRef.current = true
+  async function runUndo(): Promise<void> {
     setUndoing(true)
     setError(null)
     // Cleared first so the same message ("Nothing to undo") is announced again.
@@ -108,18 +110,26 @@ export function ParticipationBoard({ courseId, initial }: { courseId: string; in
         setAnnouncement(t('nothingToUndo'))
         return
       }
-      const { studentId, net } = result.data
+      const { studentId, net, delta, today } = result.data
       const row = confirmed.find((r) => r.studentId === studentId)
       setConfirmed((rows) =>
-        rows.map((r) => (r.studentId === studentId ? { ...r, today: r.today - (r.net - net), net } : r)),
+        rows.map((r) => (r.studentId === studentId ? { ...r, today: today ? r.today - delta : r.today, net } : r)),
       )
       setAnnouncement(row ? t('announceUndo', { name: row.name, net: plain(net) }) : t('undone'))
     } catch {
       setError({ kind: 'network' })
     } finally {
-      undoingRef.current = false
       setUndoing(false)
     }
+  }
+
+  function undo() {
+    if (pendingUndo.current) return
+    // runUndo never rejects: its errors are shown on the board.
+    const run = runUndo().finally(() => {
+      pendingUndo.current = null
+    })
+    pendingUndo.current = run
   }
 
   if (confirmed.length === 0) return <p className="text-muted-foreground">{t('noStudents')}</p>

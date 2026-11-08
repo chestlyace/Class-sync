@@ -10,6 +10,7 @@ import { createSchool } from '@/server/schools/service'
 import { createClass, joinClassAsLecturer, joinClassAsStudent } from '@/server/classes/service'
 import { createCourse, setRosterAdjustment } from '@/server/courses/service'
 import { listParticipationToday, tapParticipation, undoLastTap } from './participation'
+import { updateCaSettings } from './settings'
 
 const MIN = 60_000
 
@@ -122,11 +123,25 @@ describe('participation taps', () => {
     })
     setClock(new Date(start))
 
-    expect(await undoLastTap(lecturer, algo.id)).toEqual({ studentId: bob.user.id, net: 1 })
-    expect(await undoLastTap(lecturer, algo.id)).toEqual({ studentId: alice.user.id, net: 1 })
+    expect(await undoLastTap(lecturer, algo.id)).toEqual({ studentId: bob.user.id, net: 1, delta: 1, today: true })
+    expect(await undoLastTap(lecturer, algo.id)).toEqual({ studentId: alice.user.id, net: 1, delta: 1, today: true })
     // What is left for the caller is 11 minutes old; the colleague's event is not theirs.
     expect(await undoLastTap(lecturer, algo.id)).toBeNull()
     expect(await events(algo.id)).toHaveLength(2)
+  })
+
+  it('undo reports the removed delta and whether it was today, across local midnight', async () => {
+    const { lecturer, alice, algo } = await setup()
+    // Africa/Douala is UTC+1: local midnight of 2026-11-09 is 2026-11-08T23:00Z.
+    setClock(new Date('2026-11-08T22:57:00Z')) // Nov 8 locally
+    await tapParticipation(lecturer, algo.id, alice.user.id, -1)
+    setClock(new Date('2026-11-08T22:58:00Z'))
+    await tapParticipation(lecturer, algo.id, alice.user.id, 1)
+    setClock(new Date('2026-11-08T23:02:00Z')) // Nov 9 locally: both taps were yesterday
+    expect(await undoLastTap(lecturer, algo.id)).toEqual({ studentId: alice.user.id, net: -1, delta: 1, today: false })
+    await tapParticipation(lecturer, algo.id, alice.user.id, 1) // today
+    expect(await undoLastTap(lecturer, algo.id)).toEqual({ studentId: alice.user.id, net: -1, delta: 1, today: true })
+    expect(await undoLastTap(lecturer, algo.id)).toEqual({ studentId: alice.user.id, net: 0, delta: -1, today: false })
   })
 
   it('undo is null when there is nothing to undo', async () => {
@@ -164,7 +179,7 @@ describe('participation taps', () => {
     await tapParticipation(lecturer, algo.id, bob.user.id, -1)
     setClock(new Date('2026-11-08T23:30:00Z'))
 
-    expect(await listParticipationToday(lecturer, algo.id)).toEqual([
+    expect((await listParticipationToday(lecturer, algo.id)).rows).toEqual([
       { studentId: alice.user.id, name: 'Alice', matricule: 'UB1', today: 1, net: 3 },
       { studentId: bob.user.id, name: 'Bob', matricule: 'UB2', today: -1, net: -1 },
     ])
@@ -172,17 +187,31 @@ describe('participation taps', () => {
     // In UTC, midnight is 2026-11-08T00:00Z, so every event above is today.
     setConfigForTests({ timeZone: 'UTC' })
     const utc = await listParticipationToday(lecturer, algo.id)
-    expect(utc.map((r) => r.today)).toEqual([3, -1])
+    expect(utc.rows.map((r) => r.today)).toEqual([3, -1])
+  })
+
+  it('returns the participation target and points: defaults, then the saved settings', async () => {
+    const { lecturer, algo } = await setup()
+    expect(await listParticipationToday(lecturer, algo.id)).toMatchObject({ target: 5, points: 5 })
+    await updateCaSettings(lecturer, algo.id, {
+      total: 30,
+      attendancePoints: 10,
+      assignmentPoints: 20,
+      participationPoints: 0,
+      testPoints: 0,
+      participationTarget: 8,
+    })
+    expect(await listParticipationToday(lecturer, algo.id)).toMatchObject({ target: 8, points: 0 })
   })
 
   it('lists students with no taps as zero and leaves off students no longer on the roster', async () => {
     const { lecturer, alice, bob, algo } = await setup()
     await tapParticipation(lecturer, algo.id, bob.user.id, 1)
-    expect(await listParticipationToday(lecturer, algo.id)).toEqual([
+    expect((await listParticipationToday(lecturer, algo.id)).rows).toEqual([
       { studentId: alice.user.id, name: 'Alice', matricule: 'UB1', today: 0, net: 0 },
       { studentId: bob.user.id, name: 'Bob', matricule: 'UB2', today: 1, net: 1 },
     ])
     await setRosterAdjustment(lecturer, algo.id, bob.user.id, 'exclude')
-    expect((await listParticipationToday(lecturer, algo.id)).map((r) => r.studentId)).toEqual([alice.user.id])
+    expect((await listParticipationToday(lecturer, algo.id)).rows.map((r) => r.studentId)).toEqual([alice.user.id])
   })
 })

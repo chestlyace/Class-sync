@@ -5,7 +5,7 @@ import { toActionResult, type ActionResult } from '@/lib/action-result'
 import { formString } from '@/lib/form-data'
 import { getCtx } from '@/server/auth/session'
 import { AppError } from '@/server/core/errors'
-import { tapParticipation, undoLastTap } from '@/server/performance/participation'
+import { tapParticipation, undoLastTap, type UndoneTap } from '@/server/performance/participation'
 import type { CaSettings } from '@/server/performance/rules'
 import { updateCaSettings } from '@/server/performance/settings'
 import { parseDecimalInput, parseWholeInput, POINT_FIELDS, type SettingsField } from './performance-form'
@@ -17,11 +17,6 @@ function invalid(fields: string[]): never {
 function requireId(value: unknown, field: string): string {
   if (typeof value !== 'string' || value === '' || value.length > 100) invalid([field])
   return value
-}
-
-/** The CA table reads the settings and the taps. */
-function revalidateCa() {
-  revalidatePath('/courses/[courseId]/performance', 'page')
 }
 
 /**
@@ -51,14 +46,17 @@ export async function updateCaSettingsAction(
   return toActionResult(async () => {
     const id = requireId(courseId, 'courseId')
     const saved = await updateCaSettings(await getCtx(), id, parseSettingsForm(data))
-    revalidateCa()
-    // The board shows the participation target.
-    revalidatePath('/courses/[courseId]/performance/participation', 'page')
+    // The form lives on the CA page: refresh its table with the new split. (Both CA pages are
+    // dynamic, so any other visit reads fresh data anyway.)
+    revalidatePath('/courses/[courseId]/performance', 'page')
     return saved
   })
 }
 
-/** One +1 or −1 for a student. Returns the student's new all-time net. */
+/**
+ * One +1 or −1 for a student. Returns the student's new all-time net. No revalidation: the board
+ * keeps its own counts, and the CA page is dynamic, so it reads fresh taps on the next visit.
+ */
 export async function tapParticipationAction(
   courseId: string,
   studentId: string,
@@ -68,20 +66,14 @@ export async function tapParticipationAction(
     const id = requireId(courseId, 'courseId')
     const student = requireId(studentId, 'studentId')
     if (delta !== 1 && delta !== -1) invalid(['delta'])
-    // The board keeps its own counts after loading, so only the CA table needs refreshing.
-    const result = await tapParticipation(await getCtx(), id, student, delta)
-    revalidateCa()
-    return result
+    return tapParticipation(await getCtx(), id, student, delta)
   })
 }
 
-/** Removes my last tap in the course (last 10 minutes). `null` when there is nothing to undo. */
-export async function undoLastTapAction(
-  courseId: string,
-): Promise<ActionResult<{ studentId: string; net: number } | null>> {
-  return toActionResult(async () => {
-    const result = await undoLastTap(await getCtx(), requireId(courseId, 'courseId'))
-    if (result) revalidateCa()
-    return result
-  })
+/**
+ * Removes my last tap in the course (last 10 minutes): whose, its delta, whether it was today,
+ * and the new net. `null` when there is nothing to undo. No revalidation (see above).
+ */
+export async function undoLastTapAction(courseId: string): Promise<ActionResult<UndoneTap | null>> {
+  return toActionResult(async () => undoLastTap(await getCtx(), requireId(courseId, 'courseId')))
 }

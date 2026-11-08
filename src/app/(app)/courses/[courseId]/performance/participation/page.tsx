@@ -6,12 +6,10 @@ import { PageHeader } from '@/components/page-header'
 import { buttonVariants } from '@/components/ui/button'
 import { getCourse, type CourseSummary } from '@/server/courses/service'
 import { listParticipationToday } from '@/server/performance/participation'
-import type { CaSettings } from '@/server/performance/rules'
-import { getCaSettings } from '@/server/performance/service'
 import { loadPage } from '../../../../load-page'
 import { ParticipationBoard, type BoardRow } from '../../../participation-board'
 
-type BoardView = { course: CourseSummary; settings: CaSettings; rows: BoardRow[] }
+type BoardView = { course: CourseSummary; target: number; points: number; rows: BoardRow[] }
 
 export async function generateMetadata() {
   const t = await getTranslations('performance.lecturer.board')
@@ -22,12 +20,11 @@ export default async function ParticipationPage({ params }: PageProps<'/courses/
   const { courseId } = await params
   const t = await getTranslations('performance.lecturer.board')
   const view = await loadPage<BoardView>(async (ctx) => {
-    const rows = await listParticipationToday(ctx, courseId) // FORBIDDEN unless I teach this course
-    const [course, settings] = await Promise.all([getCourse(ctx, courseId), getCaSettings(ctx.db, courseId)])
-    return { course, settings, rows }
+    const board = await listParticipationToday(ctx, courseId) // FORBIDDEN unless I teach this course
+    return { course: await getCourse(ctx, courseId), ...board }
   })
   if (!view.ok) return <ErrorState code={view.code} />
-  const { course, settings, rows } = view.data
+  const { course, target, points, rows } = view.data
   const caHref = `/courses/${encodeURIComponent(course.id)}/performance`
 
   return (
@@ -44,9 +41,7 @@ export default async function ParticipationPage({ params }: PageProps<'/courses/
         }
       />
       <p className="text-sm text-muted-foreground">
-        {settings.participationPoints > 0
-          ? t('targetHint', { target: settings.participationTarget })
-          : t('noPointsHint')}
+        {points > 0 ? t('targetHint', { target }) : t('noPointsHint')}
       </p>
       <ParticipationBoard courseId={course.id} initial={rows} />
     </>
