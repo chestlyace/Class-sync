@@ -211,7 +211,8 @@ test('marking a test with AI suggestions, release and the CA, end to end', async
       // No result is released yet: the tests column has not started.
       await expect(lecturer.getByText(/^Tests haven't started/)).toBeVisible()
       const amaRow = lecturer.getByRole('row').filter({ hasText: AMA.name })
-      await expect(amaRow.locator('[data-testid^="ca-part-tests-"]')).toHaveText('Not started yet')
+      // A dash on screen, "Not started yet" for screen readers.
+      await expect(amaRow.locator('[data-testid^="ca-part-tests-"]')).toHaveText('—Not started yet')
       await expectNoHorizontalScroll(lecturer)
     })
 
