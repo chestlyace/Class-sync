@@ -43,6 +43,16 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  /* Secondary reading text (darker than muted, for long copy) and quiet status tones for examples. */
+  --color-subtle: var(--subtle);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-late: var(--late);
+  --color-late-soft: var(--late-soft);
+  --color-alert: var(--alert);
+  --color-alert-soft: var(--alert-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -86,6 +96,42 @@
   --sidebar-accent-foreground: #1d1d1f;
   --sidebar-border: #e3e3e8;
   --sidebar-ring: #2563eb;
+  --subtle: #48484a;
+  --ok: #047857;
+  --ok-soft: #ecfdf5;
+  --late: #9a3412;
+  --late-soft: #fff4e5;
+  --alert: #b91c1c;
+  --alert-soft: #fdecec;
+  --info: #1d4ed8;
+  --info-soft: #e8f0fe;
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Landing: a quiet fade-up as an example scrolls into view (see components/landing/reveal.tsx).
+   Content is visible without JavaScript; the hidden state is only set by the client. */
+[data-reveal='hidden'] [data-reveal-item],
+[data-reveal='hidden'][data-reveal-item] {
+  opacity: 0;
+  transform: translateY(10px);
+}
+[data-reveal] [data-reveal-item],
+[data-reveal][data-reveal-item] {
+  transition:
+    opacity 520ms var(--ease-out-quint),
+    transform 620ms var(--ease-out-quint);
+  transition-delay: calc(var(--reveal-index, 0) * var(--reveal-step, 90ms));
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal='hidden'] [data-reveal-item],
+  [data-reveal='hidden'][data-reveal-item] {
+    transform: none;
+  }
+  [data-reveal] [data-reveal-item],
+  [data-reveal][data-reveal-item] {
+    transition: opacity 200ms ease;
+    transition-delay: 0ms;
+  }
 }
 
 .dark {

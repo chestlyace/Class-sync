@@ -42,7 +42,7 @@ export async function PhoneExample({ className }: { className?: string }) {
   const t = await getTranslations('landing.phone')
   return (
     <div role="img" aria-label={t('label')} className={cn(frame, 'flex flex-col gap-3.5 px-5 py-6', className)}>
-      <span aria-hidden="true" className="font-mono text-[11px] font-semibold tracking-[0.1em] text-[#1d4ed8] uppercase">
+      <span aria-hidden="true" className="font-mono text-[11px] font-semibold tracking-[0.1em] text-info uppercase">
         {t('open')}
       </span>
       <span aria-hidden="true" className="text-xl leading-tight font-semibold">
@@ -78,9 +78,9 @@ const LOW_RATE = 0.75
 
 function MarkCell({ mark }: { mark: Mark }) {
   if (mark === 'P') return <Check className="size-[18px]" strokeWidth={2.5} />
-  if (mark === 'H') return <span className="font-bold text-[#c2410c]">½</span>
+  if (mark === 'H') return <span className="font-bold text-late">½</span>
   return (
-    <span className="flex size-6 items-center justify-center rounded-md bg-[#fdecec] font-mono text-[11px] font-semibold text-[#b91c1c]">
+    <span className="flex size-6 items-center justify-center rounded-md bg-alert-soft font-mono text-[11px] font-semibold text-alert">
       A
     </span>
   )
@@ -94,7 +94,7 @@ export async function AttendanceExample({ className }: { className?: string }) {
   return (
     <div role="img" aria-label={t('label')} className={cn('overflow-hidden rounded-3xl border bg-background text-sm', className)}>
       <div aria-hidden="true">
-        <div className={cn(grid, label, 'border-b bg-[#fafafa] py-3 text-[11px] tracking-[0.08em] text-muted-foreground')}>
+        <div className={cn(grid, label, 'border-b bg-muted/50 py-3 text-[11px] tracking-[0.08em] text-muted-foreground')}>
           <span>{t('student')}</span>
           {sessions.map((date) => (
             <span key={date} className="text-center">
@@ -113,7 +113,7 @@ export async function AttendanceExample({ className }: { className?: string }) {
                   <MarkCell mark={mark} />
                 </span>
               ))}
-              <span className={cn('text-right font-mono font-semibold', rate < LOW_RATE && 'text-[#b91c1c]')}>
+              <span className={cn('text-right font-mono font-semibold', rate < LOW_RATE && 'text-alert')}>
                 {format.number(rate, { style: 'percent' })}
               </span>
             </div>
@@ -127,10 +127,10 @@ export async function AttendanceExample({ className }: { className?: string }) {
 type Status = 'graded' | 'late' | 'submitted' | 'missing'
 
 const statusStyle: Record<Status, string> = {
-  graded: 'bg-[#ecfdf5] text-[#047857]',
-  late: 'bg-[#fff4e5] text-[#9a3412]',
-  submitted: 'bg-[#e8f0fe] text-[#1d4ed8]',
-  missing: 'bg-[#fdecec] text-[#b91c1c]',
+  graded: 'bg-ok-soft text-ok',
+  late: 'bg-late-soft text-late',
+  submitted: 'bg-info-soft text-info',
+  missing: 'bg-alert-soft text-alert',
 }
 
 const submissions: { name: string; status: Status; mark?: string }[] = [

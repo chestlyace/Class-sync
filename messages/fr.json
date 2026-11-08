@@ -272,18 +272,30 @@
   "landing": {
     "nav": {
       "sections": "Sections de la page",
-      "attendance": "Présences",
-      "assignments": "Devoirs",
+      "features": "Fonctionnalités",
+      "assistant": "Assistant IA",
       "how": "Comment ça marche",
+      "faq": "Questions",
       "getStarted": "Commencer"
     },
     "hero": {
       "eyebrow": "Pour les enseignants et leurs étudiants · English & français",
       "titleLead": "Présences, devoirs, notes.",
       "titleTail": "Au même endroit.",
-      "body": "Clasync s'adresse aux enseignants qui ont plusieurs classes, parfois dans plusieurs établissements. Vous affichez un code au projecteur et les étudiants pointent depuis leur téléphone. Les devoirs, les copies rendues et les notes se trouvent au même endroit.",
+      "body": "Clasync s'adresse aux enseignants qui ont plusieurs classes, parfois dans plusieurs établissements. Le pointage s'affiche au projecteur, les tests et les devoirs arrivent sur le téléphone des étudiants, et le CC se calcule tout seul. Votre propre assistant IA peut se charger des brouillons.",
       "lecturerCta": "Commencer comme enseignant",
-      "studentCta": "Rejoindre comme étudiant"
+      "studentCta": "Rejoindre comme étudiant",
+      "aiLink": "Nouveau : connectez votre propre assistant IA",
+      "aiLinkTail": "via MCP"
+    },
+    "index": {
+      "label": "Au programme",
+      "attendance": "Présences",
+      "assignments": "Devoirs",
+      "tests": "Tests",
+      "ca": "Notes de CC",
+      "notes": "Cours et révision",
+      "assistant": "Assistant IA"
     },
     "projector": {
       "label": "Exemple : le code de pointage affiché au projecteur",
@@ -314,7 +326,47 @@
       "marks": {
         "label": "Notes",
         "before": "Un fichier Excel par classe, mis à jour à la main.",
-        "after": "Les copies, les notes et les commentaires sont réunis. Les étudiants voient leur note quand vous la publiez."
+        "after": "Le CC se calcule à partir des présences, des devoirs, des tests et de la participation. Excel ne sert plus qu'à l'export."
+      }
+    },
+    "structure": {
+      "kicker": "Comment tout s'organise",
+      "title": "Une seule inscription. Tous les cours.",
+      "body": "Clasync suit votre façon d'enseigner. Vous enseignez dans un ou plusieurs établissements, chaque établissement a ses classes, et chaque classe suit vos cours. Un étudiant rejoint sa classe une seule fois, avec le code de la classe et son matricule, et retrouve ensuite tous les cours de cette classe, de tous les enseignants, au même endroit.",
+      "diagram": {
+        "label": "Exemple : les établissements d'un enseignant, une classe et ses cours, et un étudiant qui rejoint la classe une seule fois",
+        "lecturer": "Enseignant",
+        "lecturerValue": "Vous",
+        "school": "Établissement",
+        "schoolValue": "Deux établissements, un seul compte",
+        "class": "Classe",
+        "classValue": "HND 2 Génie logiciel · 2026/27",
+        "courses": "Cours",
+        "course1": "Bases de données",
+        "course2": "Réseaux 2",
+        "course3": "Développement web",
+        "student": "L'étudiant s'inscrit une fois",
+        "code": "Code de la classe",
+        "matricule": "Matricule",
+        "result": "Dans tous les cours du HND 2, de tous les enseignants"
+      },
+      "points": {
+        "schools": {
+          "title": "Plusieurs établissements, un seul compte",
+          "body": "Toutes vos classes sur un même tableau de bord, regroupées par établissement."
+        },
+        "shared": {
+          "title": "Une liste de classe partagée",
+          "body": "Les collègues qui ont la même classe partagent sa liste d'étudiants. Ils ne voient jamais vos présences ni vos notes."
+        },
+        "languages": {
+          "title": "Anglais et français",
+          "body": "Chacun choisit sa langue, et les e-mails qu'il reçoit suivent ce choix."
+        },
+        "devices": {
+          "title": "Téléphones et projecteurs",
+          "body": "Rien à installer. Les étudiants utilisent leur propre téléphone, même avec peu de données ; vos écrans se lisent depuis le fond de la salle."
+        }
       }
     },
     "attendance": {
@@ -323,9 +375,9 @@
       "body": "Vous affichez le code au projecteur et les étudiants le saisissent sur leur téléphone. Il change toutes les 60 secondes : pointer pour un camarade absent devient bien plus difficile qu'écrire son nom sur une feuille.",
       "points": {
         "twoCheckIns": "Deux pointages, en début et en fin de cours. Ceux qui font les deux sont marqués présents.",
-        "liveCount": "Un compteur en direct, à comparer avec le nombre de personnes dans la salle.",
-        "campus": "Si vous l'activez, il faut être sur le campus pour pointer.",
-        "corrections": "Vous pouvez corriger n'importe quelle présence à la main, et Clasync garde une trace de qui l'a modifiée."
+        "liveCount": "Vous ouvrez et fermez chaque pointage, et le compteur monte en direct.",
+        "campus": "Si vous l'activez, il faut être près de l'établissement pour pointer.",
+        "corrections": "Une grille par cours montre toutes les séances. Vous pouvez corriger n'importe quelle présence à la main, et Clasync garde une trace de qui l'a modifiée."
       },
       "example": {
         "label": "Exemple : l'historique des présences d'un cours",
@@ -339,12 +391,13 @@
     "assignments": {
       "kicker": "Devoirs",
       "title": "Des devoirs que personne n'oublie",
-      "body": "Chaque devoir part par e-mail. La veille de la date limite, Clasync relance les étudiants qui n'ont encore rien rendu.",
+      "body": "Donnez le devoir par écrit, une seule fois, et laissez Clasync s'occuper des relances.",
       "points": {
-        "formats": "Les étudiants tapent leur réponse, envoient un fichier ou la photo d'une page manuscrite.",
+        "drafts": "Rédigez-le en brouillon. Sa publication l'envoie par e-mail à chaque étudiant.",
+        "formats": "Les étudiants tapent leur réponse, envoient des fichiers, ou les deux. La photo d'une page manuscrite convient aussi.",
+        "reminder": "La veille de la date limite, un rappel part vers les étudiants qui n'ont encore rien rendu.",
         "late": "Vous décidez si les retards sont acceptés. Si oui, vous voyez le retard de chaque copie.",
-        "release": "Vous corrigez une copie à la fois, puis vous publiez toutes les notes ensemble.",
-        "private": "Chaque étudiant ne voit que sa propre note."
+        "release": "Corrigez une copie à la fois, puis publiez toutes les notes ensemble. Chaque étudiant ne voit que la sienne."
       },
       "example": {
         "label": "Exemple : les copies rendues pour un devoir",
@@ -356,23 +409,176 @@
         "missing": "Manquant"
       }
     },
-    "fit": {
-      "title": "Pensé pour votre façon d'enseigner",
-      "schools": {
-        "title": "Plusieurs établissements, un seul compte",
-        "body": "Toutes vos classes sur un même tableau de bord, regroupées par établissement."
+    "tests": {
+      "kicker": "Tests",
+      "title": "Des tests en classe, sur leur téléphone",
+      "body": "Préparez le test une fois et partagez son lien. Il ne s'ouvre que lorsque vous appuyez sur Lancer en classe, et les QCM se corrigent tout seuls.",
+      "points": {
+        "start": "Programmez-le à l'avance. Personne ne voit une question avant que vous le lanciez dans la salle.",
+        "types": "Des questions à choix multiple, corrigées automatiquement, et des questions à réponse courte.",
+        "timer": "Le chrono tourne sur le serveur. Un rechargement ou une coupure ne fait rien perdre, et les réponses se synchronisent au retour de la connexion.",
+        "leaving": "Quitter le test pour un autre onglet ou une autre application est détecté et enregistré. Vous choisissez le nombre de sorties permises, et vous pouvez laisser un étudiant revenir.",
+        "results": "La publication des résultats prévient chaque étudiant par e-mail. Le QCM s'affiche en un seul total : les bonnes réponses restent confidentielles."
       },
-      "shared": {
-        "title": "Une liste de classe partagée",
-        "body": "Les collègues qui ont la même classe partagent sa liste d'étudiants. Ils ne voient jamais vos présences ni vos notes."
+      "example": {
+        "label": "Exemple : un étudiant répond à une question de test sur son téléphone",
+        "course": "Bases de données · CC 1",
+        "time": "18:42",
+        "progress": "Question 4 sur 10",
+        "question": "Quelle forme normale élimine les dépendances partielles envers une clé composée ?",
+        "optionA": "Première forme normale",
+        "optionB": "Deuxième forme normale",
+        "optionC": "Troisième forme normale",
+        "optionD": "Forme normale de Boyce-Codd",
+        "saved": "Enregistré sur ce téléphone",
+        "exits": "Sorties 0 sur 3",
+        "next": "Suivante"
+      }
+    },
+    "ca": {
+      "kicker": "Contrôle continu",
+      "title": "Le CC se calcule tout seul",
+      "body": "Décidez une fois de la composition du CC. La note de chaque étudiant se met à jour au fil des présences, des devoirs, des tests et de la participation.",
+      "points": {
+        "split": "Sur 30 par défaut, modifiable. Répartissez-le entre présences, devoirs, tests et participation.",
+        "weights": "Donnez plus de poids à n'importe quel élément, et retenez les N meilleurs tests sur M.",
+        "participation": "Touchez +1 ou −1 à côté d'un nom pendant le cours pour la participation.",
+        "views": "Chaque étudiant voit son propre détail. Vous voyez toute la classe, et qui décroche.",
+        "export": "Export Excel : matricule, nom, chaque composante et le total du CC."
       },
-      "languages": {
-        "title": "Anglais et français",
-        "body": "Chacun choisit sa langue, et les e-mails qu'il reçoit suivent ce choix."
+      "example": {
+        "label": "Exemple : les notes de CC d'une classe, dont un étudiant qui décroche",
+        "title": "Réseaux 2 · HND 2",
+        "meta": "CC sur 30 · 2 meilleurs tests sur 3",
+        "export": "Exporter vers Excel",
+        "student": "Étudiant",
+        "attendance": "Prés.",
+        "assignments": "Dev.",
+        "tests": "Tests",
+        "participation": "Part.",
+        "total": "CC",
+        "slipping": "Décroche"
+      }
+    },
+    "notes": {
+      "kicker": "Cours et révision",
+      "title": "Tous les supports d'un cours, au même endroit",
+      "body": "Fini les PDF perdus dans le groupe WhatsApp. Chaque cours garde ses notes, fichiers et liens par thème, avec des questions d'entraînement pour réviser, et les étudiants peuvent tout rechercher depuis leur téléphone.",
+      "points": {
+        "resources": "Des thèmes dans l'ordre que vous choisissez. Chacun contient des notes rédigées dans l'éditeur, des fichiers (PDF, Word, PowerPoint) et des liens.",
+        "share": "Partagez une note avec vos autres cours. Modifiez-la une fois, elle change partout.",
+        "practice": "Les questions d'entraînement sont sans chrono, corrigées sur-le-champ, et ne comptent jamais dans le CC.",
+        "fromTest": "Un clic transforme les questions d'un test terminé en révision. Les étudiants les voient une fois les résultats publiés."
       },
-      "data": {
-        "title": "Léger en données",
-        "body": "Rien à installer. Les photos sont réduites avant l'envoi, et une réponse commencée reste sur le téléphone si la connexion coupe."
+      "example": {
+        "label": "Exemple : les notes d'un cours sur le téléphone d'un étudiant, et la correction immédiate d'une question d'entraînement",
+        "course": "Bases de données",
+        "search": "Rechercher dans les notes",
+        "topic": "2 · Normalisation",
+        "note": "Note",
+        "file": "Fichier",
+        "link": "Lien",
+        "practice": "Entraînement",
+        "new": "Nouveau",
+        "noteTitle": "Les formes normales, avec exemples",
+        "fileTitle": "Diapos semaine 5.pptx",
+        "linkTitle": "Dépendances fonctionnelles",
+        "linkHost": "fr.wikipedia.org",
+        "practiceTitle": "Questions d'entraînement · 12 questions",
+        "practiceMeta": "Ne compte pas dans les notes",
+        "feedbackLabel": "Juste",
+        "feedback": "La deuxième forme normale élimine les dépendances partielles envers une clé composée."
+      }
+    },
+    "assistant": {
+      "kicker": "Assistant IA · MCP",
+      "title": "Votre propre assistant IA, connecté à vos classes",
+      "body": "Clasync fonctionne avec l'assistant que vous utilisez déjà. Connectez Claude, ChatGPT, Cursor ou tout autre client MCP, puis interrogez-le sur vos cours ou demandez-lui de rédiger le travail. Il agit en votre nom, avec exactement vos droits, et tout ce qu'il rédige attend votre validation.",
+      "exchange": {
+        "label": "Exemple : un enseignant demande à son assistant IA de rédiger un test, qui apparaît dans Clasync en brouillon",
+        "assistantName": "Votre assistant",
+        "connected": "Clasync connecté",
+        "you": "Vous",
+        "prompt": "Rédige un QCM de 10 questions pour Bases de données, à partir des notes de la semaine dernière sur la normalisation.",
+        "toolRead": "Notes lues · 2 · Normalisation",
+        "toolDraft": "Brouillon de test enregistré · 10 questions · 20 points",
+        "reply": "C'est fait. « Quiz normalisation » est enregistré en brouillon dans Bases de données, HND 2. Rien n'a été envoyé aux étudiants. Ouvrez-le dans Clasync pour vérifier les questions, puis lancez-le en classe quand vous serez prêt.",
+        "draft": "Brouillon",
+        "draftTitle": "Quiz normalisation",
+        "draftMeta": "10 questions · 20 points · 15 min",
+        "draftAction": "Vérifier dans Clasync"
+      },
+      "scope": {
+        "reads": {
+          "title": "Il consulte",
+          "body": "Vos cours, listes d'étudiants, présences, CC et résultats de tests."
+        },
+        "drafts": {
+          "title": "Il rédige",
+          "body": "Des devoirs, des tests, des notes de cours et des propositions de notes."
+        },
+        "never": {
+          "title": "Il ne fait jamais",
+          "body": "De publication, de diffusion de notes ni d'envoi aux étudiants. C'est vous qui le faites, dans Clasync."
+        }
+      },
+      "asks": {
+        "title": "Ce que vous pouvez demander",
+        "slipping": "Qui décroche en Réseaux 2 ?",
+        "checkIns": "Quels étudiants ont manqué les deux pointages cette semaine ?",
+        "assignment": "Rédige un devoir sur les diagrammes E-A, à rendre vendredi prochain.",
+        "notes": "Transforme ce plan en notes pour le thème 3.",
+        "marks": "Propose des notes pour la question 4 à partir de mon barème."
+      },
+      "connect": {
+        "title": "Pour le connecter",
+        "url": "Copiez l'URL du connecteur Clasync dans les Paramètres.",
+        "add": "Ajoutez-la comme connecteur dans Claude, ChatGPT, Cursor ou un autre client MCP.",
+        "signIn": "Connectez-vous avec votre compte Clasync. Pour les outils en ligne de commande, utilisez plutôt un jeton d'accès personnel créé dans les Paramètres."
+      },
+      "marking": {
+        "kicker": "Intégré aux tests",
+        "title": "Des réponses courtes corrigées plus vite",
+        "body": "Quand vous corrigez un test, chaque réponse courte arrive avec une note proposée et une raison en une ligne, tirées de votre propre barème. Vous la confirmez ou choisissez une autre note. Rien n'est définitif avant votre confirmation, et il n'y a pas de « tout accepter ».",
+        "points": {
+          "byQuestion": "Corrigez une question à la fois, pour toute la classe.",
+          "hidden": "Les noms sont masqués pendant la correction, sauf si vous les affichez.",
+          "private": "Les étudiants ne voient jamais une proposition, seulement la note que vous confirmez."
+        },
+        "example": {
+          "label": "Exemple : une note proposée par l'IA pour une réponse courte, en attente de confirmation par l'enseignant",
+          "question": "Question 3 · 3 points",
+          "prompt": "Expliquez pourquoi une table à clé composée peut ne pas respecter la deuxième forme normale.",
+          "guide": "Votre barème : 1 pour la clé composée, 1 pour la dépendance partielle, 1 pour un exemple.",
+          "student": "Étudiant 12",
+          "answer": "Parce que certaines colonnes dépendent d'une partie de la clé seulement, pas de toute la clé, donc les mêmes données se répètent.",
+          "suggested": "Proposé",
+          "reason": "Cite la dépendance partielle et la clé, mais ne donne pas d'exemple.",
+          "confirm": "Confirmer 2",
+          "or": "ou choisir une note",
+          "confirmed": "9 sur 41 confirmées"
+        }
+      }
+    },
+    "sides": {
+      "title": "Les deux côtés d'une même classe",
+      "lecturer": {
+        "title": "Pour les enseignants",
+        "checkIn": "Lancez les pointages depuis le projecteur.",
+        "assignments": "Publiez les devoirs, corrigez-les et publiez les notes au même endroit.",
+        "tests": "Faites passer les tests en classe et corrigez les réponses courtes avec des notes proposées.",
+        "ca": "Regardez le CC se construire, puis exportez-le vers Excel.",
+        "notes": "Rangez les notes, fichiers et révisions de chaque cours par thème.",
+        "assistant": "Demandez le prochain brouillon à votre propre assistant IA."
+      },
+      "student": {
+        "title": "Pour les étudiants",
+        "join": "Rejoignez une classe une seule fois, avec son code et votre matricule.",
+        "checkIn": "Pointez depuis votre téléphone en quelques secondes.",
+        "submit": "Rendez un texte tapé, des fichiers ou la photo d'une page manuscrite.",
+        "tests": "Passez les tests sur votre téléphone sans perdre une réponse.",
+        "ca": "Voyez vos notes et le détail de votre CC, et celles de personne d'autre.",
+        "practice": "Révisez avec des questions d'entraînement qui ne comptent jamais contre vous."
       }
     },
     "how": {
@@ -390,24 +596,39 @@
         "body": "Affichez le code au projecteur et regardez le compteur monter."
       }
     },
-    "next": {
-      "kicker": "Bientôt",
-      "title": "Et ensuite",
-      "ca": {
-        "title": "Notes de contrôle continu",
-        "body": "Calculées à partir des présences, des devoirs et des tests."
+    "faq": {
+      "title": "Réponses franches",
+      "private": {
+        "q": "Qui peut voir les notes de mes étudiants ?",
+        "a": "Vous seul. Les collègues qui ont la même classe partagent sa liste d'étudiants et rien d'autre, et chaque étudiant ne voit que ses propres notes."
       },
-      "tests": {
-        "title": "Tests en classe",
-        "body": "Chronométrés, et ouverts seulement quand vous le décidez."
+      "drafts": {
+        "q": "L'IA peut-elle envoyer quelque chose à mes étudiants ?",
+        "a": "Non. Ce que rédige votre assistant et chaque note proposée restent des brouillons. Vous seul publiez, lancez un test ou publiez les résultats."
       },
-      "notes": {
-        "title": "Cours et révisions",
-        "body": "Supports de cours et exercices d'entraînement, par thème."
+      "access": {
+        "q": "Que peut voir mon assistant ?",
+        "a": "Ce que vous voyez dans Clasync, et rien de plus. Il se connecte en votre nom, avec vos droits, et n'accède donc jamais aux cours d'un autre enseignant."
       },
-      "assistant": {
-        "title": "Votre propre assistant IA",
-        "body": "Connecté via MCP. Tout ce qu'il rédige attend votre validation."
+      "data": {
+        "q": "Où vont les réponses des étudiants quand une note est proposée ?",
+        "a": "Pour proposer une note, Clasync envoie cette réponse et votre barème à un modèle d'IA. Cela n'arrive que lorsque vous ouvrez cette question pour la corriger."
+      },
+      "cheating": {
+        "q": "Clasync empêche-t-il la triche pendant les tests ?",
+        "a": "Aucun navigateur ne peut verrouiller un téléphone. Clasync détecte et enregistre chaque sortie du test, y met fin après le nombre de sorties que vous autorisez, et vous laisse décider."
+      },
+      "connection": {
+        "q": "Et si la connexion d'un étudiant coupe pendant un test ?",
+        "a": "Ses réponses restent sur le téléphone et se synchronisent au retour de la connexion. Le chrono tourne sur le serveur : un rechargement ne le remet pas à zéro, et une coupure ne compte jamais comme une sortie."
+      },
+      "install": {
+        "q": "Les étudiants doivent-ils installer une application ?",
+        "a": "Non. Clasync s'ouvre dans le navigateur du téléphone, et les photos sont réduites avant l'envoi pour économiser les données."
+      },
+      "practice": {
+        "q": "L'entraînement compte-t-il dans le CC ?",
+        "a": "Jamais. L'entraînement est privé : vous ne voyez ni qui s'est entraîné ni ses résultats."
       }
     },
     "cta": {

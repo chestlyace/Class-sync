@@ -272,18 +272,30 @@
   "landing": {
     "nav": {
       "sections": "Page sections",
-      "attendance": "Attendance",
-      "assignments": "Assignments",
+      "features": "Features",
+      "assistant": "AI assistant",
       "how": "How it works",
+      "faq": "Questions",
       "getStarted": "Get started"
     },
     "hero": {
       "eyebrow": "For lecturers and their students · English & français",
       "titleLead": "Attendance, assignments, marks.",
       "titleTail": "In one place.",
-      "body": "Clasync is for lecturers who teach several classes, sometimes at more than one school. You put a code on the projector and students check in from their phones. Assignments, submissions and marks live in the same place.",
+      "body": "Clasync is for lecturers who teach several classes, sometimes at more than one school. Check-ins go on the projector, tests and assignments go to students' phones, and the CA adds itself up. Your own AI assistant can do the drafting.",
       "lecturerCta": "Start as a lecturer",
-      "studentCta": "Join as a student"
+      "studentCta": "Join as a student",
+      "aiLink": "New: connect your own AI assistant",
+      "aiLinkTail": "over MCP"
+    },
+    "index": {
+      "label": "What's inside",
+      "attendance": "Attendance",
+      "assignments": "Assignments",
+      "tests": "Tests",
+      "ca": "CA marks",
+      "notes": "Notes and revision",
+      "assistant": "AI assistant"
     },
     "projector": {
       "label": "Example: the check-in code on a classroom projector",
@@ -314,7 +326,47 @@
       "marks": {
         "label": "Marks",
         "before": "One Excel file per class, kept up to date by hand.",
-        "after": "Submissions, marks and comments sit together. Students see their mark when you release it."
+        "after": "The CA works itself out from attendance, assignments, tests and participation. Excel is only for the export."
+      }
+    },
+    "structure": {
+      "kicker": "How it fits together",
+      "title": "One join. Every course.",
+      "body": "Clasync follows the way you already teach. You teach at one or more schools, each school has classes, and each class takes your courses. A student joins their class once, with its code and their matricule, and from then on sees every course of that class, from every lecturer, in one place.",
+      "diagram": {
+        "label": "Example: a lecturer's schools, a class and its courses, and a student who joins the class once",
+        "lecturer": "Lecturer",
+        "lecturerValue": "You",
+        "school": "School",
+        "schoolValue": "Two schools, one account",
+        "class": "Class",
+        "classValue": "HND 2 Software Engineering · 2026/27",
+        "courses": "Courses",
+        "course1": "Database Systems",
+        "course2": "Networks 2",
+        "course3": "Web Development",
+        "student": "A student joins once",
+        "code": "Class code",
+        "matricule": "Matricule",
+        "result": "In every course of HND 2, from every lecturer"
+      },
+      "points": {
+        "schools": {
+          "title": "Several schools, one account",
+          "body": "Every class you teach is on one dashboard, grouped by school."
+        },
+        "shared": {
+          "title": "One class list, shared",
+          "body": "Colleagues who teach the same class share its student list. They never see your attendance or your marks."
+        },
+        "languages": {
+          "title": "English and French",
+          "body": "Everyone picks their language, and the emails they get follow it."
+        },
+        "devices": {
+          "title": "Phones and projectors",
+          "body": "Nothing to install. Students use their own phones, even on weak data; your screens are made to be read from the back of the room."
+        }
       }
     },
     "attendance": {
@@ -323,9 +375,9 @@
       "body": "You put the code on the projector and students type it on their phones. It changes every 60 seconds, so checking in for a friend who isn't there is a lot harder than writing their name on a sheet.",
       "points": {
         "twoCheckIns": "Two check-ins, at the start and the end of class. Students who do both are marked present.",
-        "liveCount": "A live count you can compare with the heads in the room.",
-        "campus": "If you turn it on, students have to be on campus to check in.",
-        "corrections": "You can change any mark by hand, and Clasync notes who changed it."
+        "liveCount": "You open and close each check-in, and watch the count go up live.",
+        "campus": "If you turn it on, students have to be near the school to check in.",
+        "corrections": "A grid per course shows every session. You can change any mark by hand, and Clasync notes who changed it."
       },
       "example": {
         "label": "Example: attendance history for a course",
@@ -339,12 +391,13 @@
     "assignments": {
       "kicker": "Assignments",
       "title": "Work nobody forgets",
-      "body": "Every assignment goes out by email. The day before it's due, Clasync reminds the students who haven't handed anything in.",
+      "body": "Give the work in writing, once, and let Clasync do the chasing.",
       "points": {
-        "formats": "Students can type an answer, upload a file or send a photo of a handwritten page.",
+        "drafts": "Write it as a draft. Publishing it emails every student.",
+        "formats": "Students type an answer, upload files, or both. A photo of a handwritten page works too.",
+        "reminder": "The day before it's due, a reminder goes to the students who haven't handed anything in.",
         "late": "You decide whether late work is accepted. If it is, you see how late each one was.",
-        "release": "You mark one submission at a time, then release all the grades together.",
-        "private": "Students only ever see their own mark."
+        "release": "Mark one submission at a time, then release all the grades together. Each student sees only their own."
       },
       "example": {
         "label": "Example: submissions for one assignment",
@@ -356,23 +409,176 @@
         "missing": "Missing"
       }
     },
-    "fit": {
-      "title": "Built around how you teach",
-      "schools": {
-        "title": "Several schools, one account",
-        "body": "Every class you teach is on one dashboard, grouped by school."
+    "tests": {
+      "kicker": "Tests",
+      "title": "Tests in class, on their phones",
+      "body": "Set the test once and share its link. It opens only when you press Start in class, and multiple choice marks itself.",
+      "points": {
+        "start": "Schedule it ahead. Nobody sees a question until you start it in the room.",
+        "types": "Multiple choice, marked automatically, and short answers.",
+        "timer": "The timer runs on the server. A refresh or a dropped connection loses nothing, and answers sync when the connection comes back.",
+        "leaving": "Leaving the test for another tab or app is detected and logged. You choose how many exits are allowed, and you can let a student back in.",
+        "results": "Releasing results emails each student. Multiple choice shows as one total, so the right answers stay private."
       },
-      "shared": {
-        "title": "One class list, shared",
-        "body": "Colleagues who teach the same class share its student list. They never see your attendance or your marks."
+      "example": {
+        "label": "Example: a student answering a test question on a phone",
+        "course": "Database Systems · CA 1",
+        "time": "18:42",
+        "progress": "Question 4 of 10",
+        "question": "Which normal form removes partial dependencies on a composite key?",
+        "optionA": "First normal form",
+        "optionB": "Second normal form",
+        "optionC": "Third normal form",
+        "optionD": "Boyce–Codd normal form",
+        "saved": "Saved on this phone",
+        "exits": "Exits 0 of 3",
+        "next": "Next"
+      }
+    },
+    "ca": {
+      "kicker": "Continuous assessment",
+      "title": "The CA adds itself up",
+      "body": "Decide once how the CA is made up. Every student's mark stays current as attendance, assignments, tests and participation come in.",
+      "points": {
+        "split": "Out of 30 by default, and you can change it. Split it across attendance, assignments, tests and participation.",
+        "weights": "Give any item more weight, and count the best N of M tests.",
+        "participation": "Tap +1 or −1 beside a name during class for participation.",
+        "views": "Students see their own breakdown. You see the whole class, and who is slipping.",
+        "export": "Export to Excel: matricule, name, each component and the CA total."
       },
-      "languages": {
-        "title": "English and French",
-        "body": "Everyone picks their language, and the emails they get follow it."
+      "example": {
+        "label": "Example: CA marks for a class, with one student slipping",
+        "title": "Networks 2 · HND 2",
+        "meta": "CA out of 30 · best 2 of 3 tests",
+        "export": "Export to Excel",
+        "student": "Student",
+        "attendance": "Att.",
+        "assignments": "Assign.",
+        "tests": "Tests",
+        "participation": "Part.",
+        "total": "CA",
+        "slipping": "Slipping"
+      }
+    },
+    "notes": {
+      "kicker": "Notes and revision",
+      "title": "Every course's material, in one place",
+      "body": "No more PDFs lost in the WhatsApp group. Each course keeps its notes, files and links by topic, with practice questions for revision, and students can search all of it from their phone.",
+      "points": {
+        "resources": "Topics in your order. Each holds notes written in the editor, files (PDF, Word, PowerPoint) and links.",
+        "share": "Share a note with your other courses. Edit it once and it changes everywhere.",
+        "practice": "Practice questions are untimed, give instant feedback, and never count toward the CA.",
+        "fromTest": "One click turns a finished test's questions into revision. Students see them once the results are out."
       },
-      "data": {
-        "title": "Light on data",
-        "body": "There's nothing to install. Photos are shrunk before they upload, and a half-written answer stays on the phone if the connection drops."
+      "example": {
+        "label": "Example: a course's notes on a student's phone, and instant feedback on a practice question",
+        "course": "Database Systems",
+        "search": "Search notes",
+        "topic": "2 · Normalisation",
+        "note": "Note",
+        "file": "File",
+        "link": "Link",
+        "practice": "Practice",
+        "new": "New",
+        "noteTitle": "Normal forms, with examples",
+        "fileTitle": "Week 5 slides.pptx",
+        "linkTitle": "Functional dependencies",
+        "linkHost": "en.wikipedia.org",
+        "practiceTitle": "Practice questions · 12 questions",
+        "practiceMeta": "Doesn't count for marks",
+        "feedbackLabel": "Right",
+        "feedback": "Second normal form removes partial dependencies on a composite key."
+      }
+    },
+    "assistant": {
+      "kicker": "AI assistant · MCP",
+      "title": "Your own AI assistant, connected to your classes",
+      "body": "Clasync works with the assistant you already use. Connect Claude, ChatGPT, Cursor or any other MCP client, then ask about your courses or have it draft the work. It acts as you, with exactly your permissions, and everything it writes waits for your approval.",
+      "exchange": {
+        "label": "Example: a lecturer asks their AI assistant to draft a test, and it appears in Clasync as a draft",
+        "assistantName": "Your assistant",
+        "connected": "Clasync connected",
+        "you": "You",
+        "prompt": "Draft a 10-question multiple choice test for Database Systems, from last week's notes on normalisation.",
+        "toolRead": "Read notes · 2 · Normalisation",
+        "toolDraft": "Saved draft test · 10 questions · 20 marks",
+        "reply": "Done. “Normalisation quiz” is saved as a draft in Database Systems, HND 2. Nothing has gone to students. Open it in Clasync to check the questions, then start it in class when you're ready.",
+        "draft": "Draft",
+        "draftTitle": "Normalisation quiz",
+        "draftMeta": "10 questions · 20 marks · 15 min",
+        "draftAction": "Review in Clasync"
+      },
+      "scope": {
+        "reads": {
+          "title": "It reads",
+          "body": "Your courses, rosters, attendance, CA and test results."
+        },
+        "drafts": {
+          "title": "It drafts",
+          "body": "Assignments, tests, notes and suggested marks."
+        },
+        "never": {
+          "title": "It never",
+          "body": "Publishes, releases a mark or reaches a student. You do that, in Clasync."
+        }
+      },
+      "asks": {
+        "title": "Things to ask",
+        "slipping": "Who's slipping in Networks 2?",
+        "checkIns": "Which students missed both check-ins this week?",
+        "assignment": "Draft an assignment on ER diagrams, due next Friday.",
+        "notes": "Turn this outline into notes for topic 3.",
+        "marks": "Suggest marks for question 4 from my marking guide."
+      },
+      "connect": {
+        "title": "Connecting it",
+        "url": "Copy the Clasync connector URL from Settings.",
+        "add": "Add it as a connector in Claude, ChatGPT, Cursor or another MCP client.",
+        "signIn": "Sign in with your Clasync account. For command-line tools, use a personal access token from Settings instead."
+      },
+      "marking": {
+        "kicker": "Built into tests",
+        "title": "Short answers, marked faster",
+        "body": "When you mark a test, every short answer comes with a suggested mark and a one-line reason, drawn from your own marking guide. You confirm it or pick another mark. Nothing is final until you do, and there is no “accept all”.",
+        "points": {
+          "byQuestion": "Mark one question at a time, across the whole class.",
+          "hidden": "Names are hidden while you mark, unless you show them.",
+          "private": "Students never see a suggestion, only the mark you confirm."
+        },
+        "example": {
+          "label": "Example: an AI-suggested mark for a short answer, waiting for the lecturer to confirm it",
+          "question": "Question 3 · 3 marks",
+          "prompt": "Explain why a table with a composite key can fail second normal form.",
+          "guide": "Your guide: 1 for naming the composite key, 1 for the partial dependency, 1 for an example.",
+          "student": "Student 12",
+          "answer": "Because some columns depend on only part of the key, not the whole key, so the same data repeats.",
+          "suggested": "Suggested",
+          "reason": "Names the partial dependency and the key, but gives no example.",
+          "confirm": "Confirm 2",
+          "or": "or pick a mark",
+          "confirmed": "9 of 41 confirmed"
+        }
+      }
+    },
+    "sides": {
+      "title": "Two sides of the same class",
+      "lecturer": {
+        "title": "For lecturers",
+        "checkIn": "Run check-ins from the projector.",
+        "assignments": "Publish assignments, mark them and release grades in one place.",
+        "tests": "Run tests in class and mark short answers with suggested marks.",
+        "ca": "Watch the CA add up, then export it to Excel.",
+        "notes": "Keep each course's notes, files and revision by topic.",
+        "assistant": "Ask your own AI assistant for the next draft."
+      },
+      "student": {
+        "title": "For students",
+        "join": "Join a class once, with its code and your matricule.",
+        "checkIn": "Check in from your phone in seconds.",
+        "submit": "Hand in typed work, files or a photo of a handwritten page.",
+        "tests": "Take tests on your phone without losing an answer.",
+        "ca": "See your own marks and CA breakdown, and nobody else's.",
+        "practice": "Revise with practice questions that never count against you."
       }
     },
     "how": {
@@ -390,24 +596,39 @@
         "body": "Put the code on the projector and watch the count go up."
       }
     },
-    "next": {
-      "kicker": "On the way",
-      "title": "What comes next",
-      "ca": {
-        "title": "CA marks",
-        "body": "Worked out from attendance, assignments and tests."
+    "faq": {
+      "title": "Straight answers",
+      "private": {
+        "q": "Who can see my students' marks?",
+        "a": "Only you. Colleagues who teach the same class share its student list and nothing else, and each student sees only their own marks."
       },
-      "tests": {
-        "title": "Tests in class",
-        "body": "Timed, and opened only when you say so."
+      "drafts": {
+        "q": "Can the AI send anything to my students?",
+        "a": "No. Whatever your assistant writes and every suggested mark is a draft. Only you publish, start a test or release results."
       },
-      "notes": {
-        "title": "Notes and revision",
-        "body": "Course material and practice questions, by topic."
+      "access": {
+        "q": "What can my assistant see?",
+        "a": "What you can see in Clasync, and nothing more. It signs in as you, with your permissions, so it never reaches another lecturer's courses."
       },
-      "assistant": {
-        "title": "Your own AI assistant",
-        "body": "Connected over MCP. Anything it writes waits for your approval."
+      "data": {
+        "q": "Where do students' answers go when a mark is suggested?",
+        "a": "To suggest a mark, Clasync sends that answer and your marking guide to an AI model. It happens only when you open that question for marking."
+      },
+      "cheating": {
+        "q": "Does Clasync stop cheating in tests?",
+        "a": "No browser can lock a phone. Clasync detects and records every time a student leaves the test, ends it after the number of exits you allow, and leaves the decision to you."
+      },
+      "connection": {
+        "q": "What if a student's connection drops mid-test?",
+        "a": "Their answers stay on the phone and sync when the connection returns. The timer runs on the server, so a refresh doesn't reset it, and a lost connection never counts as leaving."
+      },
+      "install": {
+        "q": "Do students need to install an app?",
+        "a": "No. Clasync runs in the phone's browser, and photos are shrunk before they upload to save data."
+      },
+      "practice": {
+        "q": "Does revision practice count toward the CA?",
+        "a": "Never. Practice is private to each student, and you don't see who practised or how they did."
       }
     },
     "cta": {
