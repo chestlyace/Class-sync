@@ -13,6 +13,7 @@ import { RosterButton } from '../roster-button'
 import { MyAssignments } from './my-assignments'
 import { MyAttendance } from './my-attendance'
 import { MyCa } from './my-ca'
+import { MyTests } from './my-tests'
 
 type CourseRosterEntry = RosterEntry & { source: 'class' | 'included' }
 
@@ -103,6 +104,7 @@ export default async function CoursePage({ params }: PageProps<'/courses/[course
             <Eyebrow>{t('lecturer', { name: course.lecturerName })}</Eyebrow>
             <p className="text-muted-foreground">{t('studentNext')}</p>
           </Panel>
+          <MyTests courseId={course.id} />
           <MyAssignments courseId={course.id} />
           <MyAttendance courseId={course.id} />
           <MyCa courseId={course.id} />
