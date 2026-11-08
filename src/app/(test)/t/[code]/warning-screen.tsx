@@ -53,12 +53,15 @@ export function WarningScreen({
           <dd className="font-display text-4xl leading-none tabular-nums">{formatCountdown(msLeft)}</dd>
         </div>
       </dl>
-      <p className="flex items-start gap-3 rounded-3xl bg-muted p-5 font-medium">
+      <div className="flex items-start gap-3 rounded-3xl bg-muted p-5 font-medium">
         <TriangleAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
-        {remaining <= 1
-          ? t('nextEnds')
-          : t('nextMore', { count: remaining, seconds: rule.maxAbsenceSeconds })}
-      </p>
+        <div className="flex flex-col gap-2">
+          <p>
+            {remaining <= 1 ? t('nextEnds') : t('nextMore', { count: remaining, seconds: rule.maxAbsenceSeconds })}
+          </p>
+          {awayMs === null && <p>{t('stillAway', { seconds: rule.maxAbsenceSeconds })}</p>}
+        </div>
+      </div>
       <div className="flex flex-col gap-1">
         <p>{t('saved')}</p>
         <SyncLine status={status} />

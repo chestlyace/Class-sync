@@ -1055,6 +1055,8 @@
       "listTitle": "Tests",
       "count": "{count, plural, one {# test} other {# tests}}",
       "empty": "No tests yet. Write one, save it and share its link with the class.",
+      "pointsZero": "Tests count for 0 points in this course's CA for now. Give tests a share of the CA in the CA settings.",
+      "pointsLink": "CA settings",
       "new": "New test",
       "newTitle": "New test",
       "editTitle": "Edit test",
@@ -1187,7 +1189,7 @@
         "lettingIn": "Letting in…",
         "log": {
           "title": "{name}: log",
-          "description": "Exits, endings and reopenings, oldest first. Times are the server's.",
+          "description": "Exits, endings and reopenings, oldest first. Times are in the school's time zone.",
           "empty": "Nothing logged yet.",
           "exit": "Exit {n}, away {seconds} s",
           "exitOpen": "Exit {n}, not back yet",
@@ -1249,7 +1251,7 @@
       "backToDashboard": "Back to dashboard",
       "notYourCourse": {
         "title": "This test is not for one of your courses",
-        "body": "Check the link with your class rep or lecturer, and that you are signed in with the account you use for this course."
+        "body": "Check the link with your class rep or lecturer, and that you are using the account you use for this course. If you just created your account, join your class first with the code from your lecturer or class rep, then open this link again."
       },
       "openElsewhere": {
         "title": "This test is already open on another device",
@@ -1265,7 +1267,7 @@
         "saved": "Saved",
         "saving": "Saving…",
         "offline": "Saved on this device · waiting for connection",
-        "signedOut": "Saved on this device · sign in again to send your answers",
+        "signedOut": "Saved on this device · your session has expired. Stay on this page and tell your lecturer.",
         "failed": "Saved on this device · trying again"
       },
       "facts": {
@@ -1280,12 +1282,13 @@
         "rule": "The test ends for you after {exits, plural, one {# exit} other {# exits}} from this page, or one absence longer than {seconds, plural, one {# second} other {# seconds}}.",
         "ruleWhat": "Leaving means switching to another tab or app; on a laptop, also another window or leaving full screen.",
         "saved": "Your answers are saved on this device as you go.",
+        "screenOn": "Keep your screen on during the test: locking your phone counts as leaving.",
         "notice": "Clasync notices when you leave this page; it does not lock your phone."
       },
       "begin": {
         "title": "The test has started",
         "body": "Click Begin to open the questions in full screen. The timer is already running.",
-        "note": "Leaving full screen counts as leaving the test.",
+        "note": "Leaving full screen counts as leaving the test, and Esc leaves full screen: close dialogs with their buttons instead.",
         "button": "Begin"
       },
       "question": {
@@ -1314,6 +1317,7 @@
         "timeLeft": "Time left",
         "nextEnds": "If you leave again, your test ends and your answers are handed in.",
         "nextMore": "Your test ends after {count, plural, one {# more exit} other {# more exits}}, or at once after an absence longer than {seconds, plural, one {# second} other {# seconds}}.",
+        "stillAway": "This absence still counts until you go back to full screen; over {seconds, plural, one {# second} other {# seconds}}, your test ends.",
         "saved": "Your answers are saved.",
         "continue": "Back to the questions",
         "fullscreen": "Back to full screen"

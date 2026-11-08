@@ -43,11 +43,11 @@ export function NoticeScreen({ kind, onRetry }: { kind: Kind; onRetry?: () => vo
         <p className="text-muted-foreground">{text.body}</p>
       </div>
       {onRetry ? (
-        <Button type="button" onClick={onRetry}>
+        <Button type="button" size="lg" onClick={onRetry}>
           {kind === 'open_elsewhere' ? t('openElsewhere.retry') : t('openFailed.retry')}
         </Button>
       ) : (
-        <Link href="/dashboard" className={buttonVariants({ variant: 'outline' })}>
+        <Link href="/dashboard" className={buttonVariants({ variant: 'outline', size: 'lg' })}>
           {t('backToDashboard')}
         </Link>
       )}

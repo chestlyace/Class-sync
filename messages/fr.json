@@ -1055,6 +1055,8 @@
       "listTitle": "Tests",
       "count": "{count, plural, one {# test} other {# tests}}",
       "empty": "Aucun test pour l'instant. Rédigez-en un, enregistrez-le et partagez son lien avec la classe.",
+      "pointsZero": "Pour l'instant, les tests comptent pour 0 point dans le CA de ce cours. Donnez-leur une part du CA dans les réglages du CA.",
+      "pointsLink": "Réglages du CA",
       "new": "Nouveau test",
       "newTitle": "Nouveau test",
       "editTitle": "Modifier le test",
@@ -1187,7 +1189,7 @@
         "lettingIn": "Réouverture…",
         "log": {
           "title": "{name} : journal",
-          "description": "Sorties, arrêts et réouvertures, du plus ancien au plus récent. Heures du serveur.",
+          "description": "Sorties, arrêts et réouvertures, du plus ancien au plus récent. Heures dans le fuseau horaire de l'école.",
           "empty": "Rien n'a encore été noté.",
           "exit": "Sortie {n}, absent {seconds} s",
           "exitOpen": "Sortie {n}, pas encore revenu",
@@ -1249,7 +1251,7 @@
       "backToDashboard": "Retour au tableau de bord",
       "notYourCourse": {
         "title": "Ce test ne concerne aucun de vos cours",
-        "body": "Vérifiez le lien auprès de votre délégué ou de votre enseignant, et que vous êtes connecté avec le compte que vous utilisez pour ce cours."
+        "body": "Vérifiez le lien auprès de votre délégué ou de votre enseignant, et que vous utilisez le compte de ce cours. Si vous venez de créer votre compte, rejoignez d'abord votre classe avec le code de votre enseignant ou de votre délégué, puis rouvrez ce lien."
       },
       "openElsewhere": {
         "title": "Ce test est déjà ouvert sur un autre appareil",
@@ -1265,7 +1267,7 @@
         "saved": "Enregistré",
         "saving": "Enregistrement…",
         "offline": "Enregistré sur cet appareil · en attente de connexion",
-        "signedOut": "Enregistré sur cet appareil · reconnectez-vous pour envoyer vos réponses",
+        "signedOut": "Enregistré sur cet appareil · votre session a expiré. Restez sur cette page et prévenez votre enseignant.",
         "failed": "Enregistré sur cet appareil · nouvel essai en cours"
       },
       "facts": {
@@ -1280,12 +1282,13 @@
         "rule": "Le test se termine pour vous après {exits, plural, one {# sortie} other {# sorties}} de cette page, ou une absence de plus de {seconds, plural, one {# seconde} other {# secondes}}.",
         "ruleWhat": "Sortir, c'est passer à un autre onglet ou une autre application ; sur un ordinateur, aussi à une autre fenêtre ou quitter le plein écran.",
         "saved": "Vos réponses sont enregistrées sur cet appareil au fur et à mesure.",
+        "screenOn": "Gardez l'écran allumé pendant le test : verrouiller votre téléphone compte comme une sortie.",
         "notice": "Clasync remarque quand vous quittez cette page ; il ne verrouille pas votre téléphone."
       },
       "begin": {
         "title": "Le test a commencé",
         "body": "Cliquez sur Commencer pour ouvrir les questions en plein écran. Le chrono tourne déjà.",
-        "note": "Quitter le plein écran compte comme quitter le test.",
+        "note": "Quitter le plein écran compte comme quitter le test, et la touche Échap quitte le plein écran : fermez plutôt les fenêtres avec leurs boutons.",
         "button": "Commencer"
       },
       "question": {
@@ -1314,6 +1317,7 @@
         "timeLeft": "Temps restant",
         "nextEnds": "Si vous quittez encore, votre test se termine et vos réponses sont remises.",
         "nextMore": "Votre test se termine après {count, plural, one {# sortie de plus} other {# sorties de plus}}, ou aussitôt après une absence de plus de {seconds, plural, one {# seconde} other {# secondes}}.",
+        "stillAway": "Cette absence compte tant que vous ne revenez pas en plein écran ; au-delà de {seconds, plural, one {# seconde} other {# secondes}}, votre test se termine.",
         "saved": "Vos réponses sont enregistrées.",
         "continue": "Revenir aux questions",
         "fullscreen": "Revenir en plein écran"

@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ChevronRight, Hourglass, Send } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Eyebrow } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import {
@@ -64,6 +64,13 @@ export function QuestionScreen({
   const answer = answers[q.id]
   const unanswered = Math.max(0, paper.length - answered)
   const promptId = `prompt-${q.id}`
+  const promptRef = useRef<HTMLParagraphElement>(null)
+
+  // A new question (or the questions just opened): focus its prompt, so focus never falls to the
+  // page when Next is disabled on the last question, and a screen reader reads the question.
+  useEffect(() => {
+    promptRef.current?.focus()
+  }, [q.id])
 
   return (
     <>
@@ -95,7 +102,12 @@ export function QuestionScreen({
             {t('mark', { n: q.mark, mark: formatDecimal(q.mark, locale) })}
           </span>
         </div>
-        <p id={promptId} className="text-lg font-medium whitespace-pre-wrap break-words">
+        <p
+          id={promptId}
+          ref={promptRef}
+          tabIndex={-1}
+          className="text-lg font-medium whitespace-pre-wrap break-words outline-none"
+        >
           {q.prompt}
         </p>
         {q.kind === 'mcq' ? (
@@ -188,12 +200,13 @@ export function QuestionScreen({
             )}
             <DialogFooter>
               <DialogClose asChild>
-                <Button type="button" variant="outline">
+                <Button type="button" variant="outline" size="lg">
                   {tc('cancel')}
                 </Button>
               </DialogClose>
               <Button
                 type="button"
+                size="lg"
                 disabled={handingIn}
                 onClick={async () => {
                   if (await onHandIn()) setConfirming(false)

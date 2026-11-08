@@ -2,13 +2,25 @@
 
 import { CloudCheck, CloudOff, CloudUpload } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { spokenSyncStatus } from './runner-logic'
 
 export type SyncStatus = 'saved' | 'saving' | 'offline' | 'signed_out' | 'failed'
 
-/** Where the answers stand: text with a Lucide icon, never a coloured dot. Read out politely. */
+/**
+ * Where the answers stand: text with a Lucide icon, never a coloured dot. One status element (so
+ * the line is found once), live only when it matters: screen readers hear the problems and the
+ * return to "Saved" after one (spokenSyncStatus), not the Saving / Saved round of every answer.
+ */
 export function SyncLine({ status, className }: { status: SyncStatus; className?: string }) {
   const t = useTranslations('tests.student.sync')
+  const [seen, setSeen] = useState(status)
+  const [spoken, setSpoken] = useState<SyncStatus | null>(() => spokenSyncStatus(null, status))
+  if (seen !== status) {
+    setSeen(status)
+    setSpoken(spokenSyncStatus(spoken, status))
+  }
   const Icon = status === 'saved' ? CloudCheck : status === 'saving' ? CloudUpload : CloudOff
   const label = {
     saved: t('saved'),
@@ -18,7 +30,11 @@ export function SyncLine({ status, className }: { status: SyncStatus; className?
     failed: t('failed'),
   }[status]
   return (
-    <p role="status" aria-live="polite" className={cn('flex items-center gap-2 text-sm text-muted-foreground', className)}>
+    <p
+      role="status"
+      aria-live={spoken === status ? 'polite' : 'off'}
+      className={cn('flex items-center gap-2 text-sm text-muted-foreground', className)}
+    >
       <Icon aria-hidden="true" className="size-4 shrink-0" />
       <span>{label}</span>
     </p>
