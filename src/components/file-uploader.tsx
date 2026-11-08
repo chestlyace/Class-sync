@@ -30,6 +30,7 @@ type ErrorKey =
   | 'files'
   | 'name'
   | 'closed'
+  | 'released'
   | 'too_many_pending'
   | 'forbidden'
   | 'session'
@@ -59,7 +60,9 @@ function errorKeyOf(result: Extract<ActionResult<unknown>, { ok: false }>): Erro
     if (Array.isArray(fields) && fields.includes('name')) return 'name'
     return 'upload'
   }
-  if (result.code === 'CONFLICT' && (reason === 'closed' || reason === 'too_many_pending')) return reason
+  if (result.code === 'CONFLICT' && (reason === 'closed' || reason === 'released' || reason === 'too_many_pending')) {
+    return reason
+  }
   if (result.code === 'FORBIDDEN') return 'forbidden'
   if (result.code === 'UNAUTHENTICATED' || result.code === 'EMAIL_UNVERIFIED') return 'session'
   return 'upload'

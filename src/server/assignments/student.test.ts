@@ -448,18 +448,59 @@ describe('student assignment services', () => {
       expect((await listMyAssignments(alice))[0]).toMatchObject({ state: 'graded', mark: 15.5, maxMark: 20 })
     })
 
-    it('clears the grade when the student resubmits after grading', async () => {
+    it('clears the grade when the student resubmits after grading, before the release', async () => {
       const { lecturer, algo, alice } = await setup()
       const id = await makeAssignment(algo.id, lecturer)
       await submitAssignment(alice, id, { text: para('Answer'), fileIds: [] })
       await grade(id, alice, lecturer, 12, 'OK')
-      await release(id)
 
       await submitAssignment(alice, id, { text: para('Better answer'), fileIds: [] })
       const [row] = await submissionsOf(id)
       expect(row).toMatchObject({ mark: null, feedback: null, gradedAt: null, gradedBy: null })
       expect((await getAssignmentForStudent(alice, id)).mySubmission).toMatchObject({ mark: null, feedback: null })
       expect((await listMyAssignments(alice))[0]).toMatchObject({ state: 'submitted', mark: null })
+    })
+
+    it('refuses any submission once grades are released, keeping the released grade (CONFLICT released)', async () => {
+      const { lecturer, algo, alice, bob } = await setup()
+      const id = await makeAssignment(algo.id, lecturer)
+      await submitAssignment(alice, id, { text: para('Answer'), fileIds: [] })
+      await grade(id, alice, lecturer, 12, 'OK')
+      await release(id)
+
+      expect((await getAssignmentForStudent(alice, id)).canSubmit).toBe('released')
+      await expect(submitAssignment(alice, id, { text: para('Better answer'), fileIds: [] })).rejects.toMatchObject({
+        code: 'CONFLICT',
+        details: { reason: 'released' },
+      })
+      const [row] = await submissionsOf(id)
+      expect(row).toMatchObject({ text: para('Answer'), mark: 12, feedback: 'OK', gradedBy: lecturer.user.id })
+      expect((await getAssignmentForStudent(alice, id)).mySubmission).toMatchObject({ mark: 12, feedback: 'OK' })
+      expect((await listMyAssignments(alice))[0]).toMatchObject({ state: 'graded', mark: 12 })
+
+      // Nothing handed in before the release: closed too, never a first submission.
+      expect((await getAssignmentForStudent(bob, id)).canSubmit).toBe('released')
+      await expect(submitAssignment(bob, id, { text: para('Too late'), fileIds: [] })).rejects.toMatchObject({
+        code: 'CONFLICT',
+        details: { reason: 'released' },
+      })
+      expect(await submissionsOf(id)).toHaveLength(1)
+      expect((await listMyAssignments(bob))[0]).toMatchObject({ state: 'closed', mark: null })
+    })
+
+    it('re-checks the release inside the transaction', async () => {
+      const { lecturer, algo, alice } = await setup()
+      const id = await makeAssignment(algo.id, lecturer)
+      await submitAssignment(alice, id, { text: para('Answer'), fileIds: [] })
+      await grade(id, alice, lecturer, 12, 'OK')
+      // Released between the unlocked check and the locked one.
+      const releasing = racing(alice, () => release(id))
+      await expect(submitAssignment(releasing, id, { text: para('Better'), fileIds: [] })).rejects.toMatchObject({
+        code: 'CONFLICT',
+        details: { reason: 'released' },
+      })
+      const [row] = await submissionsOf(id)
+      expect(row).toMatchObject({ text: para('Answer'), mark: 12 })
     })
   })
 

@@ -35,7 +35,8 @@ import {
 } from './service'
 import type { UploadTarget } from './storage'
 
-const DAY = 24 * 60 * 60_000
+const HOUR = 60 * 60_000
+const DAY = 24 * HOUR
 const PDF = 'application/pdf'
 
 function streamOf(data: Uint8Array): ReadableStream<Uint8Array> {
@@ -216,6 +217,19 @@ describe('files service', () => {
     })
     const lateOk = await makeAssignment(algo.id, lecturer, { status: 'published', dueAt: new Date(Date.now() - DAY) })
     await expect(requestUpload(alice, { ...input, assignmentId: lateOk })).resolves.toMatchObject({ fileId: expect.any(String) })
+  })
+
+  it('refuses submission uploads once grades are released (CONFLICT released); attachments still work', async () => {
+    const { lecturer, alice, published } = await setup()
+    await db.update(assignment).set({ gradesReleasedAt: new Date() }).where(eq(assignment.id, published))
+    const before = await fileCount()
+    await expect(
+      requestUpload(alice, { purpose: 'submission', assignmentId: published, name: 'a.pdf', mimeType: PDF, size: 9 }),
+    ).rejects.toMatchObject({ code: 'CONFLICT', details: { reason: 'released' } })
+    expect(await fileCount()).toBe(before)
+    await expect(
+      requestUpload(lecturer, { purpose: 'assignment', assignmentId: published, name: 'b.pdf', mimeType: PDF, size: 9 }),
+    ).resolves.toMatchObject({ fileId: expect.any(String) })
   })
 
   it('rejects .exe declared as pdf (type), 20 MB + 1 (size) before creating anything', async () => {

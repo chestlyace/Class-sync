@@ -805,6 +805,7 @@
         "files": "This file can't be used here.",
         "name": "This file name can't be used. Rename the file and try again.",
         "closed": "Submissions are closed.",
+        "released": "Grades have been released, so submissions are closed.",
         "too_many_pending": "Too many unfinished uploads. Wait a moment, then try again.",
         "forbidden": "You can't upload files here.",
         "session": "Your session has expired. Sign in again, then retry.",
@@ -832,6 +833,7 @@
       },
       "lateNote": "The due date has passed. Work handed in now is marked late.",
       "closedNote": "Submissions are closed. The due date has passed and this assignment no longer accepts work.",
+      "releasedNote": "Submissions are closed. Grades have been released, so this assignment no longer accepts work.",
       "instructions": "Instructions",
       "noInstructions": "No instructions.",
       "openFile": "Open {name}",
@@ -852,7 +854,6 @@
       "submittedAt": "Submitted at {time}",
       "submittedOn": "Submitted {date}",
       "late": "Late",
-      "replaceGradedNote": "Your work is graded. Submitting again replaces it and removes the grade.",
       "nothingHandedIn": "You didn't hand anything in.",
       "myAssignments": "My assignments",
       "noAssignments": "No assignments yet.",
@@ -877,6 +878,7 @@
         "fileIds": "The file list couldn't be read. Reload the page and try again.",
         "text": "Your answer is too long or couldn't be read.",
         "closed": "Submissions are closed for this assignment.",
+        "released": "Grades have been released, so this assignment no longer accepts work.",
         "too_many_pending": "Too many unfinished uploads. Wait a moment, then try again.",
         "forbidden": "You're not on this course's list, so you can't hand in work here."
       }

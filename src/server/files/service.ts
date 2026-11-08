@@ -84,6 +84,7 @@ async function loadAssignment(db: Db, assignmentId: string) {
       status: assignment.status,
       latePolicy: assignment.latePolicy,
       dueAt: assignment.dueAt,
+      gradesReleasedAt: assignment.gradesReleasedAt,
     })
     .from(assignment)
     .where(eq(assignment.id, assignmentId))
@@ -94,7 +95,8 @@ async function loadAssignment(db: Db, assignmentId: string) {
  * Step 1 of an upload: checks who may upload where and what, creates an unconfirmed `file` row and
  * says where the browser sends the bytes.
  * - `assignment` (an attachment): the caller owns the assignment's course.
- * - `submission`: the caller is a rostered student and the assignment takes submissions now.
+ * - `submission`: the caller is a rostered student and the assignment takes submissions now
+ *   (CONFLICT { reason: 'closed' } past a hard deadline, { reason: 'released' } once grades are out).
  * "No such assignment" and "not yours" are both FORBIDDEN.
  */
 export async function requestUpload(
@@ -121,8 +123,11 @@ export async function requestUpload(
   } else {
     requireRole(ctx, 'student')
     if (!asg || !(await isOnCourseRoster(ctx.db, asg.courseId, ctx.user.id))) forbidden('Not on this course')
-    const verdict = canSubmit({ status: asg.status, latePolicy: asg.latePolicy, dueAt: asg.dueAt, now: now() })
+    const verdict = canSubmit({ ...asg, now: now() })
     if (verdict === 'not_published') forbidden('Not on this course')
+    if (verdict === 'released') {
+      throw new AppError('CONFLICT', 'Grades are released, so submissions are closed', { reason: 'released' })
+    }
     if (verdict === 'closed') throw new AppError('CONFLICT', 'Submissions are closed', { reason: 'closed' })
   }
 

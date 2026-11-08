@@ -805,6 +805,7 @@
         "files": "Ce fichier ne peut pas être utilisé ici.",
         "name": "Ce nom de fichier n'est pas accepté. Renommez le fichier, puis réessayez.",
         "closed": "Les rendus sont fermés.",
+        "released": "Les notes ont été publiées : les rendus sont fermés.",
         "too_many_pending": "Trop d'envois inachevés. Patientez un instant, puis réessayez.",
         "forbidden": "Vous ne pouvez pas envoyer de fichiers ici.",
         "session": "Votre session a expiré. Reconnectez-vous, puis réessayez.",
@@ -832,6 +833,7 @@
       },
       "lateNote": "La date limite est passée. Un travail rendu maintenant est marqué en retard.",
       "closedNote": "Les rendus sont fermés. La date limite est passée et ce devoir n'accepte plus de travail.",
+      "releasedNote": "Les rendus sont fermés. Les notes ont été publiées, ce devoir n'accepte donc plus de travail.",
       "instructions": "Consignes",
       "noInstructions": "Aucune consigne.",
       "openFile": "Ouvrir {name}",
@@ -852,7 +854,6 @@
       "submittedAt": "Rendu à {time}",
       "submittedOn": "Rendu {date}",
       "late": "En retard",
-      "replaceGradedNote": "Votre travail est noté. Le rendre à nouveau le remplace et efface la note.",
       "nothingHandedIn": "Vous n'avez rien rendu.",
       "myAssignments": "Mes devoirs",
       "noAssignments": "Aucun devoir pour l'instant.",
@@ -877,6 +878,7 @@
         "fileIds": "La liste des fichiers n'a pas pu être lue. Rechargez la page et réessayez.",
         "text": "Votre réponse est trop longue ou n'a pas pu être lue.",
         "closed": "Les rendus sont fermés pour ce devoir.",
+        "released": "Les notes ont été publiées : ce devoir n'accepte plus de travail.",
         "too_many_pending": "Trop d'envois inachevés. Patientez un instant, puis réessayez.",
         "forbidden": "Vous n'êtes pas sur la liste de ce cours, vous ne pouvez donc pas rendre de travail ici."
       }

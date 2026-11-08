@@ -14,7 +14,12 @@ import { formatDecimal } from '@/lib/number-format'
 import { cn } from '@/lib/utils'
 import { listSubmissions } from '@/server/assignments/lecturer'
 import { isRichTextEmpty } from '@/server/assignments/rich-text'
-import { getAssignmentForStudent, type AssignmentDetail, type MySubmission } from '@/server/assignments/student'
+import {
+  getAssignmentForStudent,
+  type AssignmentDetail,
+  type MySubmission,
+  type StudentSubmitVerdict,
+} from '@/server/assignments/student'
 import type { FileInfo } from '@/server/files/service'
 import { config } from '@/server/core/config'
 import { getCourse, type CourseSummary } from '@/server/courses/service'
@@ -28,7 +33,7 @@ type StudentView = {
   course: CourseSummary
   assignment: AssignmentDetail
   mySubmission: MySubmission | null
-  canSubmit: 'ok' | 'closed'
+  canSubmit: StudentSubmitVerdict
   now: Date
 }
 
@@ -67,10 +72,10 @@ export default async function StudentAssignmentPage({ params }: PageProps<'/assi
   const { userId, course, assignment, mySubmission, canSubmit, now } = view.data
   const date = (d: Date) => formatSessionDate(d, locale, config.timeZone)
   const num = (n: number) => formatDecimal(n, locale)
-  const closed = canSubmit === 'closed'
+  // Past a hard deadline, or once grades are released (ruling B9): the work is read-only.
+  const readOnly = canSubmit !== 'ok'
   const pastDue = assignment.dueAt.getTime() < now.getTime()
   const mark = assignment.gradesReleasedAt !== null ? (mySubmission?.mark ?? null) : null
-  const graded = mark !== null
 
   return (
     <>
@@ -97,10 +102,10 @@ export default async function StudentAssignmentPage({ params }: PageProps<'/assi
           </Fact>
           <Fact label={t('handIn')}>{t(`mode.${assignment.submissionMode}`)}</Fact>
         </dl>
-        {closed ? (
+        {readOnly ? (
           <p className="flex items-start gap-2 border-t pt-4 text-sm font-medium">
             <Lock aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-            {t('closedNote')}
+            {canSubmit === 'released' ? t('releasedNote') : t('closedNote')}
           </p>
         ) : (
           pastDue && <p className="border-t pt-4 text-sm text-muted-foreground">{t('lateNote')}</p>
@@ -144,11 +149,10 @@ export default async function StudentAssignmentPage({ params }: PageProps<'/assi
 
       <section aria-labelledby="assignment-my-work" className="flex flex-col gap-4">
         <SectionHeading id="assignment-my-work">{t('yourWork')}</SectionHeading>
-        {closed ? (
+        {readOnly ? (
           <ClosedWork submission={mySubmission} locale={locale} />
         ) : (
           <Panel className="flex flex-col gap-5">
-            {graded && <p className="text-sm text-muted-foreground">{t('replaceGradedNote')}</p>}
             <SubmitForm
               userId={userId}
               assignmentId={assignment.id}
@@ -166,7 +170,7 @@ export default async function StudentAssignmentPage({ params }: PageProps<'/assi
   )
 }
 
-/** Past a hard deadline: what was handed in, read-only (or that nothing was). */
+/** Past a hard deadline or after the release of grades: what was handed in, read-only (or that nothing was). */
 async function ClosedWork({ submission, locale }: { submission: MySubmission | null; locale: 'en' | 'fr' }) {
   const t = await getTranslations('assignments.student')
   if (!submission) return <p className="text-muted-foreground">{t('nothingHandedIn')}</p>

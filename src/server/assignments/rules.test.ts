@@ -102,13 +102,21 @@ describe('isLate', () => {
 })
 
 describe('canSubmit', () => {
+  const open = { gradesReleasedAt: null }
   it('requires a published assignment', () => {
-    expect(canSubmit({ status: 'draft', latePolicy: 'accept', dueAt, now: before })).toBe('not_published')
+    expect(canSubmit({ status: 'draft', latePolicy: 'accept', dueAt, now: before, ...open })).toBe('not_published')
   })
   it('closes after the deadline only under the close policy', () => {
-    expect(canSubmit({ status: 'published', latePolicy: 'close', dueAt, now: after })).toBe('closed')
-    expect(canSubmit({ status: 'published', latePolicy: 'accept', dueAt, now: after })).toBe('ok')
-    expect(canSubmit({ status: 'published', latePolicy: 'close', dueAt, now: before })).toBe('ok')
-    expect(canSubmit({ status: 'published', latePolicy: 'close', dueAt, now: dueAt })).toBe('ok')
+    expect(canSubmit({ status: 'published', latePolicy: 'close', dueAt, now: after, ...open })).toBe('closed')
+    expect(canSubmit({ status: 'published', latePolicy: 'accept', dueAt, now: after, ...open })).toBe('ok')
+    expect(canSubmit({ status: 'published', latePolicy: 'close', dueAt, now: before, ...open })).toBe('ok')
+    expect(canSubmit({ status: 'published', latePolicy: 'close', dueAt, now: dueAt, ...open })).toBe('ok')
+  })
+  it('closes once grades are released, whatever the deadline and policy (ruling B9)', () => {
+    const gradesReleasedAt = before
+    expect(canSubmit({ status: 'published', latePolicy: 'accept', dueAt, now: before, gradesReleasedAt })).toBe('released')
+    expect(canSubmit({ status: 'published', latePolicy: 'accept', dueAt, now: after, gradesReleasedAt })).toBe('released')
+    expect(canSubmit({ status: 'published', latePolicy: 'close', dueAt, now: after, gradesReleasedAt })).toBe('released')
+    expect(canSubmit({ status: 'draft', latePolicy: 'accept', dueAt, now: before, gradesReleasedAt })).toBe('not_published')
   })
 })

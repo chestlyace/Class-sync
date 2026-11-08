@@ -47,13 +47,20 @@ export function isLate(submittedAt: Date, dueAt: Date): boolean {
   return submittedAt.getTime() > dueAt.getTime()
 }
 
+/**
+ * Whether work can be handed in now: only on a published assignment, never once grades are
+ * released (ruling B9: a resubmission would wipe the released mark), and after the deadline only
+ * under the `accept` late policy.
+ */
 export function canSubmit(input: {
   status: 'draft' | 'published'
   latePolicy: 'accept' | 'close'
   dueAt: Date
+  gradesReleasedAt: Date | null
   now: Date
-}): 'ok' | 'not_published' | 'closed' {
+}): 'ok' | 'not_published' | 'released' | 'closed' {
   if (input.status !== 'published') return 'not_published'
+  if (input.gradesReleasedAt !== null) return 'released'
   if (input.latePolicy === 'close' && isLate(input.now, input.dueAt)) return 'closed'
   return 'ok'
 }

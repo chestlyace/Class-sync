@@ -263,6 +263,15 @@ test('assignments with uploads, grading and release, end to end', async ({
       const grade = alice.getByRole('region', { name: 'Note' })
       await expect(grade).toContainText('17,5 / 20')
       await expect(grade).toContainText(COMMENT)
+      // Released grades close the hand-in (ruling B9): her work is read-only, with no way to replace it.
+      await expect(alice.getByText('Les notes ont été publiées, ce devoir', { exact: false })).toBeVisible()
+      const work = alice.getByRole('region', { name: 'Votre travail' })
+      await expect(work).toContainText(ANSWER)
+      await expect(work.getByRole('link', { name: /photo\.jpg/ })).toBeVisible()
+      await expect(alice.getByRole('button', { name: 'Remplacer le rendu', exact: true })).toHaveCount(0)
+      await expect(alice.getByRole('button', { name: 'Rendre', exact: true })).toHaveCount(0)
+      await expect(alice.locator('[contenteditable="true"]')).toHaveCount(0)
+      await expect(alice.locator('input[type="file"]')).toHaveCount(0)
       await expectNoHorizontalScroll(alice)
 
       await alice.goto(courseUrl)
@@ -270,11 +279,17 @@ test('assignments with uploads, grading and release, end to end', async ({
       await expectNoHorizontalScroll(alice)
     })
 
-    // Bob handed nothing in, so he has no grade to see.
-    await test.step('Bob has no grade and still sees it as to do', async () => {
+    // Bob handed nothing in, so he has no grade to see; the release closed the assignment for him too.
+    await test.step('Bob has no grade, and the assignment is closed to him', async () => {
       await bob.goto(courseUrl)
-      await expect(bob.getByRole('region', { name: 'My assignments' })).toContainText('To do')
+      await expect(bob.getByRole('region', { name: 'My assignments' })).toContainText('Closed')
       await expect(bob.getByText(/Graded ·/)).toHaveCount(0)
+
+      await bob.goto(studentAssignmentUrl)
+      await expect(bob.getByText(/Grades have been released, so this assignment no longer accepts work\./)).toBeVisible()
+      await expect(bob.getByText("You didn't hand anything in.")).toBeVisible()
+      await expect(bob.getByRole('button', { name: 'Submit', exact: true })).toHaveCount(0)
+      await expect(bob.locator('input[type="file"]')).toHaveCount(0)
     })
   } finally {
     await closeAll()

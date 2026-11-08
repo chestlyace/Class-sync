@@ -22,6 +22,9 @@ export type { AssignmentDetail }
 
 export type StudentAssignmentState = 'todo' | 'submitted' | 'late' | 'graded' | 'closed'
 
+/** Whether the student can hand in (or replace) work now: closed by the deadline, or by the release of grades. */
+export type StudentSubmitVerdict = 'ok' | 'closed' | 'released'
+
 export type StudentAssignmentSummary = {
   id: string
   courseId: string
@@ -85,7 +88,7 @@ async function assertSubmissionFiles(db: Db, fileIds: string[], studentId: strin
 // States
 // ---------------------------------------------------------------------------------------------
 
-/** graded (released and marked) > late > submitted > closed (nothing in, hard-closed) > todo. */
+/** graded (released and marked) > late > submitted > closed (nothing in; hard-closed or released) > todo. */
 function stateOf(
   a: { status: 'draft' | 'published'; latePolicy: 'accept' | 'close'; dueAt: Date; gradesReleasedAt: Date | null },
   mine: { isLate: boolean; mark: number | null } | null,
@@ -95,9 +98,8 @@ function stateOf(
     if (a.gradesReleasedAt && mine.mark !== null) return 'graded'
     return mine.isLate ? 'late' : 'submitted'
   }
-  return canSubmit({ status: a.status, latePolicy: a.latePolicy, dueAt: a.dueAt, now: at }) === 'closed'
-    ? 'closed'
-    : 'todo'
+  const verdict = canSubmit({ ...a, now: at })
+  return verdict === 'closed' || verdict === 'released' ? 'closed' : 'todo'
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -177,7 +179,7 @@ export async function listMyAssignments(
 export async function getAssignmentForStudent(
   ctx: Ctx,
   assignmentId: string,
-): Promise<{ assignment: AssignmentDetail; mySubmission: MySubmission | null; canSubmit: 'ok' | 'closed' }> {
+): Promise<{ assignment: AssignmentDetail; mySubmission: MySubmission | null; canSubmit: StudentSubmitVerdict }> {
   const row = await requireVisibleAssignment(ctx, assignmentId)
   const [attachments, [mine]] = await Promise.all([
     loadAttachmentsByAssignment(ctx.db, [row.id]),
@@ -199,11 +201,12 @@ export async function getAssignmentForStudent(
     }
   }
 
-  const verdict = canSubmit({ status: row.status, latePolicy: row.latePolicy, dueAt: row.dueAt, now: now() })
+  // The row is published (requireVisibleAssignment), so the verdict is never 'not_published'.
+  const verdict = canSubmit({ ...row, now: now() })
   return {
     assignment: toAssignmentDetail(row, attachments.get(row.id) ?? []),
     mySubmission,
-    canSubmit: verdict === 'closed' ? 'closed' : 'ok',
+    canSubmit: verdict === 'not_published' ? 'closed' : verdict,
   }
 }
 
@@ -227,8 +230,11 @@ function checkSubmission(
   fileIds: string[],
   at: Date,
 ): { storedText: Block[] | null; late: boolean } {
-  const verdict = canSubmit({ status: row.status, latePolicy: row.latePolicy, dueAt: row.dueAt, now: at })
+  const verdict = canSubmit({ ...row, now: at })
   if (verdict === 'not_published') forbidden()
+  if (verdict === 'released') {
+    throw new AppError('CONFLICT', 'Grades are released, so submissions are closed', { reason: 'released' })
+  }
   if (verdict === 'closed') throw new AppError('CONFLICT', 'Submissions are closed', { reason: 'closed' })
 
   let storedText: Block[] | null = null
@@ -252,8 +258,9 @@ function checkSubmission(
  * - `text`: non-empty text (`text_required`) and no files (`files_not_allowed`).
  * - `both`: at least one of them (`empty`); empty text is stored as no text.
  * Text that is not a valid block list is VALIDATION { fields: ['text'] }. After the deadline with
- * the `close` policy: CONFLICT { reason: 'closed' }. A resubmission replaces the text and files,
- * moves `submittedAt`, recomputes `isLate` and clears any grade.
+ * the `close` policy: CONFLICT { reason: 'closed' }; once grades are released, always CONFLICT
+ * { reason: 'released' } (ruling B9). A resubmission (before the release) replaces the text and
+ * files, moves `submittedAt`, recomputes `isLate` and clears any grade.
  */
 export async function submitAssignment(
   ctx: Ctx,

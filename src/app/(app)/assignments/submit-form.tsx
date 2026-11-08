@@ -39,6 +39,7 @@ const STUDENT_REASONS = new Set([
   'files',
   'count',
   'closed',
+  'released',
   'too_many_pending',
 ])
 /** File reasons the uploader already explains (`assignments.files.errors`). */
