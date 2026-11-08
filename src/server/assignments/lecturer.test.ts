@@ -508,9 +508,9 @@ describe('lecturer assignment services', () => {
     const { assignment: detail, rows } = await listSubmissions(lecturer, a.id)
     expect(detail.id).toBe(a.id)
     expect(rows).toEqual([
-      { studentId: alice.user.id, name: 'Alice', matricule: 'UB1', state: 'submitted', submissionId: aliceSub, submittedAt: expect.any(Date), mark: 18, graded: true },
-      { studentId: bob.user.id, name: 'Bob', matricule: 'UB2', state: 'late', submissionId: bobSub, submittedAt: at, mark: null, graded: false },
-      { studentId: carol.user.id, name: 'Carol', matricule: 'UB3', state: 'missing', submissionId: null, submittedAt: null, mark: null, graded: false },
+      { studentId: alice.user.id, name: 'Alice', matricule: 'UB1', state: 'submitted', submissionId: aliceSub, submittedAt: expect.any(Date), mark: 18, graded: true, hasText: false, fileCount: 0 },
+      { studentId: bob.user.id, name: 'Bob', matricule: 'UB2', state: 'late', submissionId: bobSub, submittedAt: at, mark: null, graded: false, hasText: false, fileCount: 0 },
+      { studentId: carol.user.id, name: 'Carol', matricule: 'UB3', state: 'missing', submissionId: null, submittedAt: null, mark: null, graded: false, hasText: false, fileCount: 0 },
     ])
   })
 
@@ -536,6 +536,17 @@ describe('lecturer assignment services', () => {
     })
     expect(view.files.map((f) => f.name)).toEqual(['page1.jpg', 'page2.jpg'])
     expect(view.submittedAt).toBeInstanceOf(Date)
+    expect(view.suggestion).toBeNull()
+
+    const { rows } = await listSubmissions(lecturer, a.id)
+    expect(rows.find((r) => r.submissionId === subId)).toMatchObject({ hasText: true, fileCount: 2 })
+
+    const suggestedAt = new Date('2026-11-08T12:00:00Z')
+    await db
+      .update(submission)
+      .set({ suggestedMark: 15, suggestedFeedback: 'Clear.', suggestedAt })
+      .where(eq(submission.id, subId))
+    expect((await getSubmissionForLecturer(lecturer, subId)).suggestion).toEqual({ mark: 15, feedback: 'Clear.', at: suggestedAt })
   })
 
   it('grades with a valid mark and feedback, recording who and when', async () => {

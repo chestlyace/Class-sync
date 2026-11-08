@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, max } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, max, sql } from 'drizzle-orm'
 import { createElement } from 'react'
 import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
@@ -15,6 +15,7 @@ import {
   classStudent,
   LATE_POLICIES,
   submission,
+  submissionFile,
   SUBMISSION_MODES,
   user,
 } from '@/server/db/schema'
@@ -67,6 +68,9 @@ export type SubmissionRow = {
   submittedAt: Date | null
   mark: number | null
   graded: boolean
+  /** The hand-in has typed text / how many files it has (both false/0 when missing). */
+  hasText: boolean
+  fileCount: number
 }
 
 export type LecturerSubmissionView = {
@@ -78,7 +82,7 @@ export type LecturerSubmissionView = {
   isLate: boolean
   mark: number | null
   feedback: string | null
-  /** A grade the lecturer's AI assistant suggested (MCP); only the lecturer turns it into `mark`. */
+  /** A grade suggested by the lecturer's assistant, never applied by itself. */
   suggestion: { mark: number; feedback: string | null; at: Date } | null
 }
 
@@ -439,10 +443,20 @@ export async function listSubmissions(
         submittedAt: submission.submittedAt,
         isLate: submission.isLate,
         mark: submission.mark,
+        hasText: sql<boolean>`${submission.text} is not null`,
       })
       .from(submission)
       .where(eq(submission.assignmentId, assignmentId)),
   ])
+  const fileCounts =
+    submissions.length === 0
+      ? []
+      : await ctx.db
+          .select({ submissionId: submissionFile.submissionId, n: count() })
+          .from(submissionFile)
+          .where(inArray(submissionFile.submissionId, submissions.map((s) => s.id)))
+          .groupBy(submissionFile.submissionId)
+  const filesBySubmission = new Map(fileCounts.map((f) => [f.submissionId, f.n]))
   const byStudent = new Map(submissions.map((s) => [s.studentId, s]))
   const rows: SubmissionRow[] = roster.map((student) => {
     const s = byStudent.get(student.studentId)
@@ -455,6 +469,8 @@ export async function listSubmissions(
       submittedAt: s?.submittedAt ?? null,
       mark: s?.mark ?? null,
       graded: s?.mark != null,
+      hasText: s?.hasText ?? false,
+      fileCount: s ? (filesBySubmission.get(s.id) ?? 0) : 0,
     }
   })
   return { assignment: detail, rows }
