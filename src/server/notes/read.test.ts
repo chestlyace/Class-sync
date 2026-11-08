@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { Db } from '@/server/db'
 import { courseTest, revisionGroup, revisionQuestion } from '@/server/db/schema'
 import { createTestDb } from '@/test/db'
+import { ctxFor, makeUser } from '@/test/factories'
 import { createFileItem, createLink, createNote, updateNote } from './items'
 import { getCourseNotes, getItemForEdit, getNote, listCourseTopics, openItem } from './read'
 import { doc, insertResourceFile, setupNotes } from './test-support'
@@ -79,13 +80,25 @@ describe('student reads', () => {
     expect(JSON.stringify(listing)).not.toContain('Secret title')
     await setTopicHidden(fx.lecturer, fx.topicA, false)
     // A student not on the course, and a colleague lecturer.
-    const outsider = fx.dave
     await expect(getCourseNotes(fx.colleague, fx.courseA)).rejects.toMatchObject({ code: 'FORBIDDEN' })
     await expect(getNote(fx.colleague, fx.courseA, n.id)).rejects.toMatchObject({ code: 'FORBIDDEN' })
     // A note of another course asked for through this one.
     const other = await createNote(fx.lecturer, { courseId: fx.courseB, topicId: fx.topicB, title: 'B only', body: doc('b') })
     await expect(getNote(fx.alice, fx.courseA, other.id)).rejects.toMatchObject({ code: 'FORBIDDEN' })
-    expect(outsider).toBeDefined()
+  })
+})
+
+describe('students off the roster', () => {
+  it('are refused everywhere, even for a visible note', async () => {
+    const n = await note('Visible', 'x')
+    const l = await createLink(fx.lecturer, { courseId: fx.courseA, topicId: fx.topicA, title: 'L', url: 'https://x.org' })
+    const stranger = ctxFor(db, await makeUser(db, { role: 'student', name: 'Stranger' }))
+    await expect(getCourseNotes(stranger, fx.courseA)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    await expect(getCourseNotes(stranger, fx.courseA, { q: 'Visible' })).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    await expect(getNote(stranger, fx.courseA, n.id)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    await expect(openItem(stranger, fx.courseA, l.id)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    // The same student reads fine once on the roster (Alice is), proving the note itself is visible.
+    expect((await getNote(fx.alice, fx.courseA, n.id)).title).toBe('Visible')
   })
 })
 
