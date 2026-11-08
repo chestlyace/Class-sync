@@ -2,8 +2,19 @@ import { Download, FileText, Image as ImageIcon } from 'lucide-react'
 import { formatFileSize } from '@/lib/file-size'
 import type { FileInfo } from '@/server/files/service'
 
-/** Uploaded files as links to `/api/files/<id>` (PDFs and images open, Word files download). */
-export function FileList({ files, locale, openLabel }: { files: FileInfo[]; locale: string; openLabel: (name: string) => string }) {
+/**
+ * Uploaded files as links to `/api/files/<id>` (PDFs and images open, Word files download).
+ * `openLabel` also gets the file, e.g. to say "Download" for the ones `displayKind` can't show.
+ */
+export function FileList({
+  files,
+  locale,
+  openLabel,
+}: {
+  files: FileInfo[]
+  locale: string
+  openLabel: (name: string, file: FileInfo) => string
+}) {
   return (
     <ul className="flex flex-col divide-y rounded-2xl border">
       {files.map((f) => {
@@ -14,7 +25,7 @@ export function FileList({ files, locale, openLabel }: { files: FileInfo[]; loca
               href={`/api/files/${encodeURIComponent(f.id)}`}
               target="_blank"
               rel="noopener"
-              aria-label={openLabel(f.name)}
+              aria-label={openLabel(f.name, f)}
               className="flex items-center gap-3 px-3.5 py-2.5 transition-colors hover:bg-muted/60"
             >
               <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />

@@ -835,6 +835,7 @@
       "instructions": "Instructions",
       "noInstructions": "No instructions.",
       "openFile": "Open {name}",
+      "downloadFile": "Download {name}",
       "grade": "Grade",
       "feedback": "Feedback",
       "noFeedback": "No feedback was added.",

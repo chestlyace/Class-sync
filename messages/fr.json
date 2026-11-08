@@ -835,6 +835,7 @@
       "instructions": "Consignes",
       "noInstructions": "Aucune consigne.",
       "openFile": "Ouvrir {name}",
+      "downloadFile": "Télécharger {name}",
       "grade": "Note",
       "feedback": "Commentaire",
       "noFeedback": "Aucun commentaire n'a été ajouté.",

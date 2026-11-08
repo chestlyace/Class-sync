@@ -5,6 +5,7 @@ import { ErrorCodeMessage } from '@/components/action-error'
 import { SectionHeading } from '@/components/page-header'
 import { Badge } from '@/components/ui/badge'
 import { DEFAULT_LOCALE, isLocale, type Locale } from '@/i18n/locale'
+import { formatDecimal } from '@/lib/number-format'
 import { listMyAssignments, type StudentAssignmentSummary } from '@/server/assignments/student'
 import { config } from '@/server/core/config'
 import { loadPage } from '../../load-page'
@@ -78,7 +79,7 @@ export async function AssignmentRows({
               </span>
               <Badge variant={BADGE[a.state]}>
                 {a.state === 'graded' && a.mark !== null
-                  ? t('gradedMark', { mark: String(a.mark), max: String(a.maxMark) })
+                  ? t('gradedMark', { mark: formatDecimal(a.mark, locale), max: formatDecimal(a.maxMark, locale) })
                   : t(`state.${a.state}`)}
               </Badge>
               <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
