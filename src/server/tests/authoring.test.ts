@@ -8,6 +8,7 @@ import {
   classLecturer,
   classStudent,
   course,
+  courseRosterAdjustment,
   courseTest,
   school,
   testAttempt,
@@ -17,7 +18,7 @@ import {
 } from '@/server/db/schema'
 import { createClass, joinClassAsLecturer, joinClassAsStudent } from '@/server/classes/service'
 import { generateJoinCode, JOIN_CODE_ALPHABET } from '@/server/classes/join-code'
-import { createCourse } from '@/server/courses/service'
+import { createCourse, setRosterAdjustment } from '@/server/courses/service'
 import { createSchool } from '@/server/schools/service'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
@@ -102,6 +103,7 @@ describe('test authoring services', () => {
     setNowForTests(null)
     await db.delete(testAttempt)
     await db.delete(courseTest)
+    await db.delete(courseRosterAdjustment)
     await db.delete(course)
     await db.delete(classStudent)
     await db.delete(classLecturer)
@@ -381,6 +383,19 @@ describe('test authoring services', () => {
     expect(await listCourseTests(lecturer, networks.id)).toHaveLength(1)
     const empty = await createCourse(lecturer, { classId: algo.classId, title: 'Empty', semester: 2 })
     expect(await listCourseTests(lecturer, empty.id)).toEqual([])
+  })
+
+  it('joined counts only students on the current roster, as the live view does', async () => {
+    const { lecturer, algo, alice, bob } = await setup()
+    const test = await createTest(lecturer, algo.id, validInput())
+    await join(test.id, alice)
+    await join(test.id, bob)
+    // Bob is taken off this course's roster after opening the test: his attempt stays, uncounted.
+    await setRosterAdjustment(lecturer, algo.id, bob.user.id, 'exclude')
+
+    const [listed] = await listCourseTests(lecturer, algo.id)
+    expect(listed.joined).toBe(1)
+    expect((await getTestForEdit(lecturer, test.id)).summary.joined).toBe(1)
   })
 
   it('copyTest into another course I own gives an independent not_started test with a new code', async () => {

@@ -7,29 +7,11 @@ import { courseRosterQuery } from '@/server/courses/roster'
 import { requireCourseOwner } from '@/server/courses/service'
 import type { Db } from '@/server/db'
 import { courseTest, testAnswer, testAttempt, testExit, testLog, testQuestion } from '@/server/db/schema'
-import { endsAt, testPhase, testState, type TestPhase, type TestState } from './phase'
+import { summarizeTest, type TestSummary } from './authoring'
+import { endsAt, testPhase, type TestPhase } from './phase'
+import { requireOwnedTest, type TestRow } from './queries'
 import { loadTestScores } from './scores'
 
-/**
- * Same shape as `TestSummary` in the authoring services (built in parallel); kept local so this
- * file does not depend on them. Swap for the shared type once both are merged.
- */
-type TestSummary = {
-  id: string
-  courseId: string
-  code: string
-  title: string
-  state: TestState
-  questionCount: number
-  totalMarks: number
-  hasShort: boolean
-  durationMinutes: number
-  startedAt: Date | null
-  endsAt: Date | null
-  joined: number
-}
-
-type TestRow = typeof courseTest.$inferSelect
 type CloseReason = 'handed_in' | 'left'
 
 export type LiveStatus = 'not_joined' | 'waiting' | 'working' | 'away' | 'ended' | 'handed_in'
@@ -84,16 +66,6 @@ function conflict(reason: string, message: string): never {
   throw new AppError('CONFLICT', message, { reason })
 }
 
-/** Owner-only lookup of a test. "No such test" and "not yours" are both FORBIDDEN. Two queries. */
-async function requireOwnedTestRow(ctx: Ctx, testId: string): Promise<TestRow> {
-  requireRole(ctx, 'lecturer')
-  if (typeof testId !== 'string' || testId.length === 0) forbidden()
-  const [row] = await ctx.db.select().from(courseTest).where(eq(courseTest.id, testId))
-  if (!row) forbidden()
-  await requireCourseOwner(ctx, row.courseId)
-  return row
-}
-
 /** Owner-only lookup of an attempt, through its test's course. Nonexistent is FORBIDDEN too. */
 async function requireOwnedAttempt(
   ctx: Ctx,
@@ -109,36 +81,6 @@ async function requireOwnedAttempt(
   if (!found) forbidden()
   await requireCourseOwner(ctx, found.test.courseId)
   return found
-}
-
-/** The test's summary, timing judged against `at`. One query. */
-async function summaryOf(db: Db, row: TestRow, at: Date): Promise<TestSummary> {
-  const [agg] = await db
-    .select({
-      questionCount: sql<number>`count(${testQuestion.id})::int`,
-      totalMarks: sql<string | null>`sum(coalesce(${testQuestion.mark}, ${courseTest.defaultMark}))`,
-      hasShort: sql<boolean>`coalesce(bool_or(${testQuestion.kind} = 'short'), false)`,
-      joined: sql<number>`(select count(*)::int from ${testAttempt} where ${testAttempt.testId} = ${row.id})`,
-    })
-    .from(courseTest)
-    .leftJoin(testQuestion, eq(testQuestion.testId, courseTest.id))
-    .where(eq(courseTest.id, row.id))
-  const totalMarks = Math.round(Number(agg?.totalMarks ?? 0) * 100) / 100
-  const hasShort = agg?.hasShort ?? false
-  return {
-    id: row.id,
-    courseId: row.courseId,
-    code: row.code,
-    title: row.title,
-    state: testState({ ...row, hasShort }, at),
-    questionCount: agg?.questionCount ?? 0,
-    totalMarks,
-    hasShort,
-    durationMinutes: row.durationMinutes,
-    startedAt: row.startedAt,
-    endsAt: endsAt(row),
-    joined: agg?.joined ?? 0,
-  }
 }
 
 type AttemptState = {
@@ -186,7 +128,7 @@ function liveStatus(phase: TestPhase, attempt: AttemptState | undefined): LiveSt
 
 /** Start: the deadline is fixed once, at now + duration. Starting again changes nothing. */
 export async function startTest(ctx: Ctx, testId: string): Promise<TestSummary> {
-  await requireOwnedTestRow(ctx, testId)
+  await requireOwnedTest(ctx, testId)
   const at = now()
   const [started] = await ctx.db
     .update(courseTest)
@@ -199,12 +141,12 @@ export async function startTest(ctx: Ctx, testId: string): Promise<TestSummary> 
     .returning()
   // Already started (a double click, or a retry): the first Start stands.
   const row = started ?? (await ctx.db.select().from(courseTest).where(eq(courseTest.id, testId)))[0]
-  return summaryOf(ctx.db, row, at)
+  return summarizeTest(ctx.db, row)
 }
 
 /** Ends the test for everyone now. Before Start → CONFLICT not_started; once ended, a no-op. */
 export async function endTestForEveryone(ctx: Ctx, testId: string): Promise<void> {
-  const row = await requireOwnedTestRow(ctx, testId)
+  const { test: row } = await requireOwnedTest(ctx, testId)
   const at = now()
   if (testPhase(row, at) === 'not_started') conflict('not_started', 'The test has not started')
   // Only while running: not already ended, deadline not yet passed. Attempts are left as they are.
@@ -216,7 +158,7 @@ export async function endTestForEveryone(ctx: Ctx, testId: string): Promise<void
 
 /** The live view: every roster student with their status. A fixed number of queries. */
 export async function getLiveTest(ctx: Ctx, testId: string): Promise<LiveTest> {
-  const row = await requireOwnedTestRow(ctx, testId)
+  const { test: row } = await requireOwnedTest(ctx, testId)
   const at = now()
   const phase = testPhase(row, at)
   const [roster, [questions], attempts] = await Promise.all([
@@ -315,13 +257,13 @@ export async function getTestResults(
   ctx: Ctx,
   testId: string,
 ): Promise<{ test: TestSummary; rows: ResultRow[]; pending: number }> {
-  const row = await requireOwnedTestRow(ctx, testId)
+  const { test: row } = await requireOwnedTest(ctx, testId)
   const at = now()
   const phase = testPhase(row, at)
   if (phase !== 'ended') conflict('not_ended', 'The test has not ended')
 
   const [summary, roster, attempts] = await Promise.all([
-    summaryOf(ctx.db, row, at),
+    summarizeTest(ctx.db, row),
     courseRosterQuery(ctx.db, { courseId: row.courseId }),
     loadAttemptStates(ctx.db, testId),
   ])
