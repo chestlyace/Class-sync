@@ -102,6 +102,16 @@ Session dates and check-in closing times are shown in one school time zone, set 
 It defaults to `Africa/Douala` and must be a valid IANA zone name (e.g. `Africa/Lagos`, `Europe/Paris`); an invalid name makes the attendance screens fail to render.
 Attendance rules themselves (15-minute check-ins, a session is over 12 hours after it starts) don't depend on it.
 
+## File storage
+
+Assignment attachments and submitted files (PDF, Word, images; 20 MB each, 10 per hand-in) go to [Vercel Blob](https://vercel.com/docs/vercel-blob) in production and to a local folder in development and end-to-end tests.
+
+1. In the Vercel project, open Storage, create a **Blob** store and choose **Private** access. A public store would let anyone with a file's URL read students' work; Clasync never hands out Blob URLs and reads every file through `GET /api/files/<id>`, which checks access on each request.
+2. Connect the store to the project (Production, and Preview if you test there). Vercel then sets `BLOB_READ_WRITE_TOKEN`; redeploy so the functions see it.
+3. Leave `STORAGE_DRIVER` unset in production: with the token present the app uses Blob. Set `STORAGE_DRIVER=local` only for local runs (files go to `LOCAL_UPLOAD_DIR`, default `.uploads/`).
+
+Downloads stream through the `/api/files/<id>` function, which may run for up to 5 minutes (`maxDuration = 300`; check that the Vercel plan allows that duration). A very large file on a slow connection can still hit that limit and stop part way; the browser then shows a failed download and the student or lecturer retries.
+
 ## Reminders (cron)
 
 Students get one email about 24 hours before an assignment is due, if they have not submitted yet.
