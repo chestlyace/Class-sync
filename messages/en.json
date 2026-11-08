@@ -983,6 +983,26 @@
         "network": "The tap could not reach the server. Check your connection and try again.",
         "notOnRoster": "This student is no longer on the course list. Reload the page."
       }
+    },
+    "student": {
+      "title": "My CA",
+      "outOf": "out of {total}",
+      "soFar": "So far: {score} of {max}",
+      "notStarted": "Not started yet",
+      "score": "{score} / {points}",
+      "componentsLabel": "CA by part",
+      "name": {
+        "attendance": "Attendance",
+        "assignments": "Assignments",
+        "participation": "Participation"
+      },
+      "how": {
+        "attendance": "Present counts fully, partial counts half.",
+        "assignments": "Weighted average of released grades; missing work counts 0.",
+        "participation": "Earned in class, full marks at {target} contributions."
+      },
+      "missingWork": "{count, plural, one {# piece of work missing} other {# pieces of work missing}}",
+      "seeAssignments": "See my assignments"
     }
   }
 }

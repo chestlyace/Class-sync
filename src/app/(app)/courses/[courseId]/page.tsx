@@ -12,6 +12,7 @@ import { IncludeSearch } from '../include-search'
 import { RosterButton } from '../roster-button'
 import { MyAssignments } from './my-assignments'
 import { MyAttendance } from './my-attendance'
+import { MyCa } from './my-ca'
 
 type CourseRosterEntry = RosterEntry & { source: 'class' | 'included' }
 
@@ -104,6 +105,7 @@ export default async function CoursePage({ params }: PageProps<'/courses/[course
           </Panel>
           <MyAssignments courseId={course.id} />
           <MyAttendance courseId={course.id} />
+          <MyCa courseId={course.id} />
         </>
       ) : (
         <LecturerRoster

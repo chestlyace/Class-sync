@@ -983,6 +983,26 @@
         "network": "Le point n'a pas atteint le serveur. Vérifiez votre connexion et réessayez.",
         "notOnRoster": "Cet étudiant n'est plus sur la liste du cours. Rechargez la page."
       }
+    },
+    "student": {
+      "title": "Mon CA",
+      "outOf": "sur {total}",
+      "soFar": "Jusqu'ici : {score} sur {max}",
+      "notStarted": "Pas encore commencé",
+      "score": "{score} / {points}",
+      "componentsLabel": "CA par partie",
+      "name": {
+        "attendance": "Présence",
+        "assignments": "Devoirs",
+        "participation": "Participation"
+      },
+      "how": {
+        "attendance": "Présent compte en entier, partiel compte pour moitié.",
+        "assignments": "Moyenne pondérée des notes publiées ; un travail manquant compte 0.",
+        "participation": "Gagnée en classe, note maximale à {target} interventions."
+      },
+      "missingWork": "{count, plural, one {# travail manquant} other {# travaux manquants}}",
+      "seeAssignments": "Voir mes devoirs"
     }
   }
 }
