@@ -25,13 +25,33 @@ export async function requireOwnedTopic(ctx: Ctx, topicId: string): Promise<{ id
   return row
 }
 
+/** The CONFLICT for writing a draft into a topic students can see. */
+export function visibleTopic(): AppError {
+  return new AppError('CONFLICT', 'The topic is visible to students', { reason: 'visible_topic' })
+}
+
+/**
+ * CONFLICT visible_topic unless the topic is hidden. Locks the topic row, so inside a transaction
+ * the topic cannot be shown before the write commits.
+ */
+export async function assertTopicHidden(db: Executor, topicId: string): Promise<void> {
+  const [row] = await db.select({ hidden: courseTopic.hidden }).from(courseTopic).where(eq(courseTopic.id, topicId)).for('update')
+  if (!row) throw new AppError('FORBIDDEN', 'Only the lecturer of this course can do this')
+  if (!row.hidden) throw visibleTopic()
+}
+
 /** FORBIDDEN unless `topicId` is a topic of `courseId` (the caller owns the course already). */
 export async function assertTopicInCourse(db: Executor, topicId: string, courseId: string): Promise<void> {
   const [row] = await db.select({ courseId: courseTopic.courseId }).from(courseTopic).where(eq(courseTopic.id, topicId))
   if (!row || row.courseId !== courseId) throw new AppError('FORBIDDEN', 'That topic is not in this course')
 }
 
-export async function createTopic(ctx: Ctx, courseId: string, input: { title: string }): Promise<{ id: string }> {
+/** A new topic, last in the course; visible unless `hidden` (an assistant's drafts start hidden). */
+export async function createTopic(
+  ctx: Ctx,
+  courseId: string,
+  input: { title: string; hidden?: boolean },
+): Promise<{ id: string }> {
   await requireCourseOwner(ctx, courseId)
   const title = parseTitle(input.title)
   if (!title) badTitle()
@@ -41,7 +61,7 @@ export async function createTopic(ctx: Ctx, courseId: string, input: { title: st
     .where(eq(courseTopic.courseId, courseId))
   const [row] = await ctx.db
     .insert(courseTopic)
-    .values({ courseId, title, position: (last?.position ?? 0) + 1 })
+    .values({ courseId, title, position: (last?.position ?? 0) + 1, hidden: input.hidden === true })
     .returning({ id: courseTopic.id })
   return { id: row.id }
 }

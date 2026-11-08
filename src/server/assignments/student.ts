@@ -299,6 +299,10 @@ export async function submitAssignment(
           feedback: null,
           gradedAt: null,
           gradedBy: null,
+          // A suggestion was about the previous version.
+          suggestedMark: null,
+          suggestedFeedback: null,
+          suggestedAt: null,
         },
       })
       .returning({ id: submission.id })

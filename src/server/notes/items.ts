@@ -10,7 +10,7 @@ import { isUniqueViolation } from '@/server/lib/db-errors'
 import { claimResourceFile, deleteStoredFile } from '@/server/files/service'
 import { richTextPlainText } from '@/lib/rich-text-content'
 import { parseLinkUrl, parseTitle, swapPositions } from './rules'
-import { assertTopicInCourse } from './topics'
+import { assertTopicHidden, assertTopicInCourse } from './topics'
 
 type Executor = Pick<Db, 'select' | 'insert' | 'update' | 'delete'>
 
@@ -53,7 +53,8 @@ async function nextPosition(db: Executor, topicId: string): Promise<number> {
   return (last?.position ?? 0) + 1
 }
 
-type NewItem = { courseId: string; topicId: string }
+/** `hiddenTopicOnly`: CONFLICT visible_topic unless the topic is hidden (an assistant's draft). */
+type NewItem = { courseId: string; topicId: string; hiddenTopicOnly?: boolean }
 
 async function insertItem(
   ctx: Ctx,
@@ -70,6 +71,7 @@ async function insertItem(
   await requireCourseOwner(ctx, input.courseId)
   return ctx.db.transaction(async (tx) => {
     await assertTopicInCourse(tx, input.topicId, input.courseId)
+    if (input.hiddenTopicOnly) await assertTopicHidden(tx, input.topicId)
     const v = await values(tx)
     let row: { id: string }
     try {
@@ -102,7 +104,7 @@ async function insertItem(
 
 export async function createNote(
   ctx: Ctx,
-  input: { courseId: string; topicId: string; title: string; body: unknown },
+  input: { courseId: string; topicId: string; title: string; body: unknown; hiddenTopicOnly?: boolean },
 ): Promise<{ id: string }> {
   return insertItem(ctx, input, async () => {
     const title = titleOf(input.title)
