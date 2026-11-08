@@ -4,7 +4,7 @@ import { now } from '@/server/core/clock'
 import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
 import { requireRole } from '@/server/core/guards'
-import { courseRosterQuery } from '@/server/courses/roster'
+import { courseRosterQuery, isOnCourseRoster } from '@/server/courses/roster'
 import { requireCourseOwner } from '@/server/courses/service'
 import type { Db } from '@/server/db'
 import { courseTest, testAnswer, testAttempt, testQuestion } from '@/server/db/schema'
@@ -343,8 +343,9 @@ export async function suggestMarks(
 
 /**
  * Confirms (or changes) the mark of one real short answer, with an optional comment the student
- * sees beside it. Owner only; final answers only. The mark is 0..the question's mark in 0.25
- * steps; the comment is trimmed, blank → null, at most COMMENT_MAX characters. Also allowed after
+ * sees beside it. Owner only; a student still on the roster only (else FORBIDDEN); final answers
+ * only. The mark is 0..the question's mark in 0.25 steps; the comment is trimmed, blank → null,
+ * at most COMMENT_MAX characters. Also allowed after
  * release: the student then sees the new mark (no new email).
  */
 export async function confirmMark(
@@ -359,6 +360,7 @@ export async function confirmMark(
       kind: testQuestion.kind,
       questionMark: testQuestion.mark,
       text: testAnswer.text,
+      studentId: testAttempt.studentId,
     })
     .from(testQuestion)
     .innerJoin(courseTest, eq(courseTest.id, testQuestion.testId))
@@ -367,6 +369,8 @@ export async function confirmMark(
     .where(eq(testQuestion.id, input.questionId))
   if (!found) forbidden()
   await requireCourseOwner(ctx, found.test.courseId)
+  // Marking only covers students on the roster now, as the marking page lists them.
+  if (!(await isOnCourseRoster(ctx.db, found.test.courseId, found.studentId))) forbidden()
   if (found.kind !== 'short') automatic()
   const at = now()
   requireFinal(found.test, at)
