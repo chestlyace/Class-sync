@@ -52,6 +52,10 @@ export const courseTest = pgTable(
     deadlineAt: timestamp('deadline_at', { withTimezone: true }),
     endedAt: timestamp('ended_at', { withTimezone: true }),
     resultsReleasedAt: timestamp('results_released_at', { withTimezone: true }),
+    // The root of the copied_from chain: every copy shares it. A test inserted without one is its own family.
+    familyId: text('family_id')
+      .notNull()
+      .$defaultFn(() => crypto.randomUUID()),
     copiedFromId: text('copied_from_id').references((): AnyPgColumn => courseTest.id, { onDelete: 'set null' }),
     createdBy: text('created_by')
       .notNull()
@@ -68,6 +72,7 @@ export const courseTest = pgTable(
     // Start and deadline are set together (Start fixes both).
     check('course_test_started_deadline_check', sql`(${t.startedAt} is null) = (${t.deadlineAt} is null)`),
     index('course_test_course_id_idx').on(t.courseId),
+    index('course_test_family_id_idx').on(t.familyId),
   ],
 )
 

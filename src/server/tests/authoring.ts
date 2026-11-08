@@ -114,9 +114,17 @@ async function insertNewTest(
     const at = now()
     try {
       return await ctx.db.transaction(async (tx) => {
+        const id = crypto.randomUUID()
+        let familyId = id
+        if (copiedFromId) {
+          const [source] = await tx.select({ familyId: courseTest.familyId }).from(courseTest).where(eq(courseTest.id, copiedFromId))
+          if (source) familyId = source.familyId
+        }
         const [created] = await tx
           .insert(courseTest)
           .values({
+            id,
+            familyId,
             courseId,
             code,
             ...settingsOf(settings),

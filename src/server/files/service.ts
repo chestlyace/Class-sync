@@ -168,6 +168,21 @@ export async function requestUpload(
   return { fileId, target }
 }
 
+/**
+ * Removes a stored file: the object (a failure is logged, not thrown, so the row still goes) and
+ * its row. Callers delete whatever references the row first.
+ */
+export async function deleteStoredFile(db: Db, fileId: string): Promise<void> {
+  const [row] = await db.select({ storageKey: file.storageKey }).from(file).where(eq(file.id, fileId))
+  if (!row) return
+  try {
+    await getStorage().remove(row.storageKey)
+  } catch (err) {
+    console.error('[files] could not remove a stored object', row.storageKey, err)
+  }
+  await db.delete(file).where(eq(file.id, fileId))
+}
+
 /** The caller's own file row, still waiting for its bytes (or undefined). */
 async function pendingFileByKey(ctx: Ctx, storageKey: string) {
   const [row] = await ctx.db

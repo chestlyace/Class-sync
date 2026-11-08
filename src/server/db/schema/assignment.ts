@@ -16,7 +16,7 @@ import {
 import { user } from './auth'
 import { course } from './course'
 
-export const FILE_PURPOSES = ['assignment', 'submission'] as const
+export const FILE_PURPOSES = ['assignment', 'submission', 'resource'] as const
 export type FilePurpose = (typeof FILE_PURPOSES)[number]
 
 export const SUBMISSION_MODES = ['files', 'text', 'both'] as const
@@ -46,7 +46,7 @@ export const file = pgTable(
     confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
   },
   (t) => [
-    check('file_purpose_check', sql`${t.purpose} in ('assignment', 'submission')`),
+    check('file_purpose_check', sql`${t.purpose} in ('assignment', 'submission', 'resource')`),
     index('file_owner_id_idx').on(t.ownerId),
   ],
 )

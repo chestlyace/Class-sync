@@ -71,6 +71,13 @@
       "when": 1794139776532,
       "tag": "0009_ordinary_shiver_man",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794157977884,
+      "tag": "0010_gigantic_prowler",
+      "breakpoints": true
     }
   ]
 }

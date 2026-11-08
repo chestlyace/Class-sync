@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { setNowForTests } from '@/server/core/clock'
 import type { Ctx } from '@/server/core/context'
@@ -399,6 +399,18 @@ describe('test authoring services', () => {
     const [listed] = await listCourseTests(lecturer, algo.id)
     expect(listed.joined).toBe(1)
     expect((await getTestForEdit(lecturer, test.id)).summary.joined).toBe(1)
+  })
+
+  it('gives a new test its own family and a copy of a copy the root family', async () => {
+    const { lecturer, algo, networks } = await setup()
+    const root = await createTest(lecturer, algo.id, validInput())
+    const first = await copyTest(lecturer, root.id, networks.id)
+    const second = await copyTest(lecturer, first.id, algo.id)
+    const rows = await db.select().from(courseTest).where(inArray(courseTest.id, [root.id, first.id, second.id]))
+    const family = (id: string) => rows.find((r) => r.id === id)!.familyId
+    expect(family(root.id)).toBe(root.id)
+    expect(family(first.id)).toBe(root.id)
+    expect(family(second.id)).toBe(root.id)
   })
 
   it('copyTest into another course I own gives an independent not_started test with a new code', async () => {

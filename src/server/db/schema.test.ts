@@ -19,6 +19,12 @@ import {
   courseTest,
   file,
   participationEvent,
+  resource,
+  revisionGroup,
+  revisionOption,
+  revisionQuestion,
+  resourcePlacement,
+  courseTopic,
   school,
   submission,
   submissionFile,
@@ -809,5 +815,69 @@ describe('schema', () => {
     expect(
       defs.some((d) => d.includes('UNIQUE') && d.includes('ON public.test_option') && d.includes('WHERE is_correct')),
     ).toBe(true)
+  })
+
+  it('rejects a link resource without a url and a url on a note', async () => {
+    const db = await createTestDb()
+    const { owner } = await seedClass(db)
+    const base = { ownerId: owner.id, title: 'Reading' }
+    expect(await sqlState(db.insert(resource).values({ ...base, kind: 'link' }))).toBe('23514')
+    expect(await sqlState(db.insert(resource).values({ ...base, kind: 'note', url: 'https://example.com' }))).toBe('23514')
+    expect(await sqlState(db.insert(resource).values({ ...base, kind: 'file' }))).toBe('23514')
+    await db.insert(resource).values({ ...base, kind: 'link', url: 'https://example.com' })
+    await db.insert(resource).values({ ...base, kind: 'note' })
+  })
+
+  it('rejects two correct revision options for one question', async () => {
+    const db = await createTestDb()
+    const { owner, course: c } = await seedSession(db)
+    const [topic] = await db.insert(courseTopic).values({ courseId: c.id, title: 'Cells', position: 0 }).returning()
+    const [group] = await db
+      .insert(revisionGroup)
+      .values({ courseId: c.id, topicId: topic.id, position: 0 })
+      .returning()
+    const [q] = await db
+      .insert(revisionQuestion)
+      .values({ groupId: group.id, position: 0, kind: 'mcq', prompt: '1+1?' })
+      .returning()
+    await db.insert(revisionOption).values([
+      { questionId: q.id, position: 0, text: '2', isCorrect: true },
+      { questionId: q.id, position: 1, text: '3' },
+    ])
+    expect(
+      await sqlState(db.insert(revisionOption).values({ questionId: q.id, position: 2, text: '4', isCorrect: true })),
+    ).toBe('23505')
+    expect(owner.id).toBeTruthy()
+  })
+
+  it('allows one written-here group per topic and one group per imported test', async () => {
+    const db = await createTestDb()
+    const { course: c } = await seedSession(db)
+    const [topic] = await db.insert(courseTopic).values({ courseId: c.id, title: 'Cells', position: 0 }).returning()
+    await db.insert(revisionGroup).values({ courseId: c.id, topicId: topic.id, position: 0 })
+    expect(
+      await sqlState(db.insert(revisionGroup).values({ courseId: c.id, topicId: topic.id, position: 1 })),
+    ).toBe('23505')
+    // Imported groups (with a source family) are not limited per topic.
+    await db
+      .insert(revisionGroup)
+      .values({ courseId: c.id, topicId: topic.id, position: 1, sourceFamilyId: 'fam-1', sourceTitle: 'CA 1' })
+    await db
+      .insert(revisionGroup)
+      .values({ courseId: c.id, topicId: topic.id, position: 2, sourceFamilyId: 'fam-2', sourceTitle: 'CA 2' })
+  })
+
+  it('removes topics, placements and groups with their course', async () => {
+    const db = await createTestDb()
+    const { owner, course: c } = await seedSession(db)
+    const [topic] = await db.insert(courseTopic).values({ courseId: c.id, title: 'Cells', position: 0 }).returning()
+    const [res] = await db.insert(resource).values({ ownerId: owner.id, kind: 'note', title: 'N' }).returning()
+    await db.insert(resourcePlacement).values({ resourceId: res.id, courseId: c.id, topicId: topic.id, position: 0 })
+    await db.insert(revisionGroup).values({ courseId: c.id, topicId: topic.id, position: 0 })
+    await db.delete(course)
+    for (const table of [courseTopic, resourcePlacement, revisionGroup]) {
+      expect(await db.select().from(table)).toHaveLength(0)
+    }
+    expect(await db.select().from(resource)).toHaveLength(1)
   })
 })
