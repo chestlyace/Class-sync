@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, lte, or, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, lte, or, sql, type Column } from 'drizzle-orm'
 import { isWellFormedJoinCode, normalizeJoinCode } from '@/server/classes/join-code'
 import { now } from '@/server/core/clock'
 import type { Ctx } from '@/server/core/context'
@@ -369,6 +369,16 @@ function isReleased(test: TestRow, phase: TestPhase): boolean {
 }
 
 /**
+ * Whether the student may see their total now: canSeeResult, and only once nothing they send can
+ * change the attempt (a hand-in, or the answers final). Otherwise an answer sent in the grace with
+ * a higher rev would move the total, and repeating that would reveal the answer key.
+ */
+function resultVisible(test: TestRow, attempt: AttemptRow, hasShort: boolean, phase: TestPhase, at: Date): boolean {
+  if (acceptsAnswers(test, attempt, at)) return false
+  return canSeeResult({ hasShort, phase, closedReason: attempt.closedReason, released: isReleased(test, phase) })
+}
+
+/**
  * Whether the device check applies: not once the attempt is handed in or the answers are final,
  * when nothing more can be written and any device may look at the outcome.
  */
@@ -405,7 +415,8 @@ async function claimDevice(db: Db, attemptId: string, deviceId: string, at: Date
 /**
  * Keeps each answer whose rev is higher than the stored one, when the attempt still accepts
  * answers; outside the window they are dropped silently. Returns the revs acknowledged (the server
- * now holds that rev or a later one). A replaced answer loses any mark or suggestion it had.
+ * now holds that rev or a later one). An answer whose option or text changes loses any mark or
+ * suggestion it had; a re-send of the same content keeps them.
  */
 async function saveAnswers(
   db: Db,
@@ -416,6 +427,8 @@ async function saveAnswers(
 ): Promise<Record<string, number>> {
   const acceptedRevs: Record<string, number> = {}
   if (answers.length === 0 || !acceptsAnswers(test, attempt, at)) return acceptedRevs
+  const changed = sql`(${testAnswer.optionId} is distinct from excluded.option_id or ${testAnswer.text} is distinct from excluded.text)`
+  const clearIfChanged = (column: Column) => sql`case when ${changed} then null else ${column} end`
   await db
     .insert(testAnswer)
     .values(
@@ -435,13 +448,13 @@ async function saveAnswers(
         text: sql`excluded.text`,
         rev: sql`excluded.rev`,
         receivedAt: sql`excluded.received_at`,
-        mark: null,
-        comment: null,
-        markedBy: null,
-        markedAt: null,
-        suggestedMark: null,
-        suggestedReason: null,
-        suggestedAt: null,
+        mark: clearIfChanged(testAnswer.mark),
+        comment: clearIfChanged(testAnswer.comment),
+        markedBy: clearIfChanged(testAnswer.markedBy),
+        markedAt: clearIfChanged(testAnswer.markedAt),
+        suggestedMark: clearIfChanged(testAnswer.suggestedMark),
+        suggestedReason: clearIfChanged(testAnswer.suggestedReason),
+        suggestedAt: clearIfChanged(testAnswer.suggestedAt),
       },
       setWhere: sql`excluded.rev > ${testAnswer.rev}`,
     })
@@ -452,7 +465,8 @@ async function saveAnswers(
 /**
  * Applies exit reports in order, only while the attempt is open and the test running. Each exit is
  * counted on its first report (`left`, or `back` when `left` never arrived) and judged with the
- * count; a `back` also stores the absence and judges it. Reports are idempotent per exitId. An
+ * count; a `back` also stores the absence (capped at how long the test has been running) and judges
+ * it. Reports are idempotent per exitId. An
  * ending closes the attempt (`left`) and logs `ended_left`; later reports are ignored.
  */
 async function applyExits(
@@ -464,6 +478,9 @@ async function applyExits(
 ): Promise<AttemptRow> {
   if (exits.length === 0 || attempt.closedAt !== null || testPhase(test, at) !== 'running') return attempt
   const rule: LeavingRule = { maxExits: test.maxExits, maxAbsenceSeconds: test.maxAbsenceSeconds }
+  // Nobody can have been away longer than the test has been running (startedAt is set: running).
+  const runningMs = Math.max(0, at.getTime() - test.startedAt!.getTime())
+  const capAway = (awayMs: number | null) => (awayMs === null ? null : Math.min(awayMs, runningMs))
 
   const known = new Map(
     (
@@ -486,6 +503,7 @@ async function applyExits(
   for (const e of exits) {
     const seen = known.get(e.exitId)
     const back = e.phase === 'back'
+    const awayMs = capAway(e.awayMs)
     if (!seen) {
       exitNumber += 1
       exitsSinceReopen += 1
@@ -494,18 +512,18 @@ async function applyExits(
         exitId: e.exitId,
         exitNumber,
         firstReportedAt: at,
-        awayMs: back ? e.awayMs : null,
+        awayMs: back ? awayMs : null,
         returnedAt: back ? at : null,
       })
       known.set(e.exitId, { returned: back })
-      verdict = judgeExit(rule, exitsSinceReopen, back ? e.awayMs : null)
+      verdict = judgeExit(rule, exitsSinceReopen, back ? awayMs : null)
     } else if (back && !seen.returned) {
       await db
         .update(testExit)
-        .set({ awayMs: e.awayMs, returnedAt: at })
+        .set({ awayMs, returnedAt: at })
         .where(and(eq(testExit.attemptId, attempt.id), eq(testExit.exitId, e.exitId)))
       seen.returned = true
-      verdict = judgeExit(rule, exitsSinceReopen, e.awayMs)
+      verdict = judgeExit(rule, exitsSinceReopen, awayMs)
     }
     if (verdict !== 'continue') break
   }
@@ -561,7 +579,7 @@ async function buildView(
 
   const released = isReleased(test, phase)
   const done = stage === 'handed_in' || stage === 'over'
-  const visible = done && canSeeResult({ hasShort: info.hasShort, phase, closedReason: attempt.closedReason, released })
+  const visible = done && resultVisible(test, attempt, info.hasShort, phase, at)
   return {
     ...base,
     paper: stage === 'answering' ? paperFor(test, attempt.seed, questions) : null,
@@ -763,10 +781,7 @@ export async function listMyTests(ctx: Ctx, courseId: string): Promise<MyTestIte
       else if (attempt.closedReason === 'left') myStatus = 'ended_left'
       else myStatus = 'working'
     }
-    const visible =
-      attempt !== null &&
-      phase !== 'not_started' &&
-      canSeeResult({ hasShort, phase, closedReason: attempt.closedReason, released: isReleased(t, phase) })
+    const visible = attempt !== null && phase !== 'not_started' && resultVisible(t, attempt, hasShort, phase, at)
     return {
       testId: t.id,
       code: t.code,

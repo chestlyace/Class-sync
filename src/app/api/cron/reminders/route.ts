@@ -11,7 +11,7 @@ function authorized(header: string | null, secret: string): boolean {
   return given.length === expected.length && timingSafeEqual(given, expected)
 }
 
-export async function POST(request: Request): Promise<Response> {
+async function handle(request: Request): Promise<Response> {
   const secret = process.env.CRON_SECRET
   if (!secret) return Response.json({ error: 'CRON_SECRET is not configured' }, { status: 503 })
   if (!authorized(request.headers.get('authorization'), secret)) {
@@ -25,6 +25,6 @@ export async function POST(request: Request): Promise<Response> {
   }
 }
 
-export function GET(): Response {
-  return Response.json({ error: 'Method not allowed' }, { status: 405, headers: { Allow: 'POST' } })
-}
+// Vercel Cron calls GET and sends `Authorization: Bearer ${CRON_SECRET}` itself; POST is for manual runs.
+export const GET = handle
+export const POST = handle
