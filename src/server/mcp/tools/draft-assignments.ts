@@ -133,7 +133,7 @@ const suggestAssignmentGrade = defineTool({
   name: 'suggest_assignment_grade',
   title: 'Suggest an assignment grade',
   description:
-    "Suggests a mark and feedback for one submission (submissionId from list_submissions). It is only a SUGGESTION: the lecturer sees it on the grading page in Clasync and decides; the grade is not saved and nothing reaches the student. A submission that already has a grade is refused (CONFLICT). The mark is 0 to the assignment's max mark, in steps of 0.25. A new suggestion replaces the previous one.",
+    "Suggests a mark and feedback for one submission (submissionId from list_submissions). It is only a SUGGESTION: the lecturer sees it on the grading page in Clasync and decides; the grade is not saved and nothing reaches the student. Pass expectedSubmittedAt (the submittedAt from get_submission) so a suggestion never lands on a newer version you have not read; if the student resubmitted, it is refused (CONFLICT) and you should read the submission again. A submission that already has a grade is refused (CONFLICT). The mark is 0 to the assignment's max mark, in steps of 0.25. A new suggestion replaces the previous one.",
   scope: 'clasync:write',
   input: z.object({
     submissionId: z.string().min(1).describe('The submission, from list_submissions.'),
@@ -147,11 +147,16 @@ const suggestAssignmentGrade = defineTool({
       .max(FEEDBACK_MAX)
       .optional()
       .describe(`Suggested feedback for the student, up to ${FEEDBACK_MAX} characters.`),
+    expectedSubmittedAt: z.iso
+      .datetime({ offset: true })
+      .optional()
+      .describe('The submittedAt that get_submission returned: the version this suggestion is about.'),
   }),
   run: async (ctx, input) => {
     const saved = await suggestSubmissionMark(ctx, input.submissionId, {
       mark: input.mark,
       feedback: input.feedback ?? null,
+      expectedSubmittedAt: input.expectedSubmittedAt !== undefined ? new Date(input.expectedSubmittedAt) : undefined,
     })
     return {
       submissionId: input.submissionId,

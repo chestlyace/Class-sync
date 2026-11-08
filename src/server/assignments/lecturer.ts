@@ -561,13 +561,15 @@ export async function gradeSubmission(
  * `suggested_feedback` and `suggested_at`, never `mark`, and nothing is released. Owner only. The
  * mark follows the grading rules (0..maxMark in 0.25 steps), the feedback too (trimmed, blank =
  * none, at most FEEDBACK_MAX characters). A submission that already has a mark is CONFLICT
- * { reason: 'graded' }, also when the lecturer grades it while this runs. A new suggestion replaces
- * the previous one.
+ * { reason: 'graded' }, also when the lecturer grades it while this runs. With
+ * `expectedSubmittedAt` (the version the assistant read), a newer hand-in is CONFLICT
+ * { reason: 'resubmitted' }, so a suggestion never lands on work the assistant has not seen. A new
+ * suggestion replaces the previous one.
  */
 export async function suggestSubmissionMark(
   ctx: Ctx,
   submissionId: string,
-  input: { mark: number; feedback: string | null },
+  input: { mark: number; feedback: string | null; expectedSubmittedAt?: Date },
 ): Promise<{ mark: number; feedback: string | null; at: Date }> {
   const { sub, row } = await requireOwnedSubmission(ctx, submissionId)
   const mark = input?.mark
@@ -576,17 +578,29 @@ export async function suggestSubmissionMark(
   if (raw !== null && raw !== undefined && typeof raw !== 'string') invalidFields(['feedback'])
   const feedback = typeof raw === 'string' && raw.trim() !== '' ? raw.trim() : null
   if (feedback !== null && feedback.length > FEEDBACK_MAX) invalidFields(['feedback'], 'Feedback is too long')
+  const expected = input?.expectedSubmittedAt
+  if (expected !== undefined && (!(expected instanceof Date) || Number.isNaN(expected.getTime()))) {
+    invalidFields(['expectedSubmittedAt'])
+  }
   const graded = () => new AppError('CONFLICT', 'This submission already has a grade', { reason: 'graded' })
+  const resubmitted = () =>
+    new AppError('CONFLICT', 'The student has resubmitted; read the submission again', { reason: 'resubmitted' })
   if (sub.mark !== null) throw graded()
+  if (expected && sub.submittedAt.getTime() !== expected.getTime()) throw resubmitted()
 
   const at = now()
-  // Conditional, so a grade saved meanwhile is never shadowed by a suggestion.
+  // Conditional, so a grade saved (or a new version handed in) meanwhile is never shadowed.
   const updated = await ctx.db
     .update(submission)
     .set({ suggestedMark: mark, suggestedFeedback: feedback, suggestedAt: at })
-    .where(and(eq(submission.id, sub.id), isNull(submission.mark)))
+    .where(
+      and(eq(submission.id, sub.id), isNull(submission.mark), expected ? eq(submission.submittedAt, expected) : undefined),
+    )
     .returning({ id: submission.id })
-  if (updated.length === 0) throw graded()
+  if (updated.length === 0) {
+    const [fresh] = await ctx.db.select({ mark: submission.mark }).from(submission).where(eq(submission.id, sub.id))
+    throw fresh && fresh.mark === null ? resubmitted() : graded()
+  }
   return { mark, feedback, at }
 }
 

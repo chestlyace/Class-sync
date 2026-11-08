@@ -183,4 +183,43 @@ describe('assignment draft tools', () => {
     expect(Object.keys(list[0]).filter((k) => k.startsWith('suggest'))).toEqual([])
     expect(list[0].mark).toBeNull()
   })
+
+  it('suggest_assignment_grade with the submittedAt from get_submission; a newer version → CONFLICT, nothing written', async () => {
+    const fx = await setupCourse(db)
+    const { assignmentId, sub } = await withSubmission(fx)
+    const read = (await callTool('get_submission', fx.lecturer, { submissionId: sub.id })) as { submittedAt: string }
+    await callTool('suggest_assignment_grade', fx.lecturer, {
+      submissionId: sub.id,
+      mark: 11,
+      expectedSubmittedAt: read.submittedAt,
+    })
+    expect((await getSubmissionForLecturer(fx.lecturer, sub.id)).suggestion?.mark).toBe(11)
+
+    // Alice hands in again; the assistant still holds the old version.
+    await new Promise((r) => setTimeout(r, 5))
+    await submitAssignment(fx.alice, assignmentId, { text: para('Second try.'), fileIds: [] })
+    await expect(
+      callTool('suggest_assignment_grade', fx.lecturer, { submissionId: sub.id, mark: 12, expectedSubmittedAt: read.submittedAt }),
+    ).rejects.toMatchObject({ code: 'CONFLICT', details: { reason: 'resubmitted' }, message: /resubmitted; read the submission again/ })
+    const [row] = await db.select().from(submission).where(eq(submission.id, sub.id))
+    expect(row).toMatchObject({ suggestedMark: null, mark: null })
+    expect(parseToolInput('suggest_assignment_grade', { submissionId: sub.id, mark: 1, expectedSubmittedAt: 'yesterday' }).success).toBe(false)
+  })
+
+  it('every assignment draft tool refuses a student (FORBIDDEN)', async () => {
+    const fx = await setupCourse(db)
+    const { id } = await draft(fx)
+    const { sub } = await withSubmission(fx)
+    await expect(
+      callTool('create_assignment_draft', fx.alice, { courseId: fx.bio.id, title: 'Mine', instructions: 'x', dueAt: inAWeek() }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    await expect(callTool('update_assignment_draft', fx.alice, { assignmentId: id, title: 'Mine' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    })
+    await expect(callTool('suggest_assignment_grade', fx.alice, { submissionId: sub.id, mark: 20 })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    })
+    const [row] = await db.select().from(submission).where(eq(submission.id, sub.id))
+    expect(row.suggestedMark).toBeNull()
+  })
 })
