@@ -182,3 +182,19 @@ describe('mcp connections service', () => {
     })
   })
 })
+
+describe('api-key plugin HTTP routes', () => {
+  it('are closed: tokens are created through the service only', async () => {
+    const auth = createTestAuth(await createTestDb())
+    for (const path of ['create', 'update', 'delete', 'list', 'get']) {
+      const res = await auth.handler(
+        new Request(`http://localhost:3000/api/auth/api-key/${path}`, {
+          method: path === 'list' || path === 'get' ? 'GET' : 'POST',
+          headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+          ...(path === 'list' || path === 'get' ? {} : { body: '{}' }),
+        }),
+      )
+      expect(res.status, path).toBe(404)
+    }
+  })
+})

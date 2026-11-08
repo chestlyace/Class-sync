@@ -71,7 +71,10 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
     baseURL: origin,
     ...(options.secret ? { secret: options.secret } : {}),
     // The jwt plugin's /token would hand out session JWTs; MCP uses OAuth access tokens only.
-    disabledPaths: ['/token'],
+    // Personal access tokens are managed through src/server/mcp/connections.ts (lecturers only,
+    // at most 10, named, fixed expiries), so the api-key plugin's HTTP routes stay closed;
+    // `auth.api` calls are not affected.
+    disabledPaths: ['/token', '/api-key/create', '/api-key/update', '/api-key/delete', '/api-key/list', '/api-key/get'],
     database: drizzleAdapter(database, { provider: 'pg', schema }),
     emailAndPassword: {
       enabled: true,
