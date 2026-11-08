@@ -3,6 +3,7 @@ import { getLocale, getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
 import { Eyebrow, PageHeader, Panel, SectionHeading } from '@/components/page-header'
+import { RefreshAt } from '@/components/refresh-at'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -131,6 +132,8 @@ export default async function TestResultsPage({ params }: PageProps<'/courses/[c
                   <Clock aria-hidden="true" className="size-4 shrink-0" />
                   {finalAt ? tm('release.notFinal', { time: formatWhen(finalAt, at, locale) }) : tm('marking.notFinalNoTime')}
                 </p>
+                {/* Release opens by itself at that time: no reload needed. */}
+                {finalAt && <RefreshAt at={finalAt.toISOString()} serverNow={at.toISOString()} />}
               </>
             ) : pending > 0 ? (
               <>

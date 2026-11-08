@@ -3,9 +3,11 @@ import { getLocale, getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
 import { PageHeader, Panel } from '@/components/page-header'
+import { RefreshAt } from '@/components/refresh-at'
 import { buttonVariants } from '@/components/ui/button'
 import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
 import { toActionResult } from '@/lib/action-result'
+import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import { AppError } from '@/server/core/errors'
 import { getMarkingQuestion, type MarkingQuestion } from '@/server/tests/marking'
@@ -16,7 +18,7 @@ import { MarkingPanel } from '../../../../marking-panel'
 
 type MarkView =
   | { state: 'ready'; title: string; question: MarkingQuestion }
-  | { state: 'not_final'; title: string; finalAt: string | null }
+  | { state: 'not_final'; title: string; finalAt: string | null; serverNow: string }
   | { state: 'automatic'; title: string }
 
 export async function generateMetadata() {
@@ -45,7 +47,12 @@ export default async function MarkPage({ params, searchParams }: PageProps<'/cou
     const reason = result.code === 'CONFLICT' ? result.details?.reason : undefined
     if (reason === 'not_final') {
       const finalAt = result.details?.finalAt
-      return { state: 'not_final', title: test.title, finalAt: typeof finalAt === 'string' ? finalAt : null }
+      return {
+        state: 'not_final',
+        title: test.title,
+        finalAt: typeof finalAt === 'string' ? finalAt : null,
+        serverNow: now().toISOString(),
+      }
     }
     if (reason === 'automatic') return { state: 'automatic', title: test.title }
     throw new AppError(result.code, 'Marking unavailable', result.details)
@@ -80,6 +87,8 @@ export default async function MarkPage({ params, searchParams }: PageProps<'/cou
           <Clock aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
           <p>{message}</p>
         </Panel>
+        {/* Marking opens by itself at that time: no reload needed. */}
+        {data.state === 'not_final' && data.finalAt !== null && <RefreshAt at={data.finalAt} serverNow={data.serverNow} />}
       </>
     )
   }
