@@ -85,6 +85,9 @@ export function MarkingPanel({ question }: { question: MarkingQuestion }) {
     needsSuggestions(question.aiAvailable, question.answers) ? 'loading' : 'idle',
   )
   const started = useRef(false)
+  // The refresh that brings new suggestions in still counts as "getting suggestions".
+  const [refreshing, startRefresh] = useTransition()
+  const shownStatus: SuggestStatus = refreshing ? 'loading' : status
   const num = (value: number) => formatDecimal(value, locale)
   const max = num(question.maxMark)
 
@@ -93,7 +96,7 @@ export function MarkingPanel({ question }: { question: MarkingQuestion }) {
     suggestMarksAction(question.questionId)
       .then((result) => {
         setStatus(!result.ok || result.data.failed ? 'failed' : 'idle')
-        if (result.ok && result.data.suggested > 0) router.refresh()
+        if (result.ok && result.data.suggested > 0) startRefresh(() => router.refresh())
       })
       .catch(() => setStatus('failed'))
   }
@@ -123,7 +126,7 @@ export function MarkingPanel({ question }: { question: MarkingQuestion }) {
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <aside
           aria-labelledby="marking-question"
-          className="flex flex-col gap-5 rounded-3xl border bg-card p-5 sm:p-6 lg:sticky lg:top-6"
+          className="flex flex-col gap-5 rounded-3xl border bg-card p-5 sm:p-6 lg:sticky lg:top-24"
         >
           <div className="flex flex-col gap-2">
             <Eyebrow>{t('outOf', { max })}</Eyebrow>
@@ -144,7 +147,7 @@ export function MarkingPanel({ question }: { question: MarkingQuestion }) {
             )}
           </div>
           <NamesSwitch checked={hideNames} onChange={setHideNames} label={t('hideNames')} hint={t('hideNamesHint')} />
-          <SuggestionStatus status={status} aiAvailable={question.aiAvailable} onRetry={retry} />
+          <SuggestionStatus status={shownStatus} aiAvailable={question.aiAvailable} onRetry={retry} />
         </aside>
 
         <section aria-labelledby="marking-answers" className="flex flex-col gap-3">
@@ -162,7 +165,7 @@ export function MarkingPanel({ question }: { question: MarkingQuestion }) {
                 maxMark={question.maxMark}
                 label={hideNames ? t('student', { n: i + 1 }) : answer.name}
                 matricule={hideNames ? null : answer.matricule}
-                suggesting={status === 'loading'}
+                suggesting={shownStatus === 'loading'}
               />
             ))
           )}
@@ -223,6 +226,7 @@ function NamesSwitch({
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-labelledby="marking-hide-names-label"
       aria-describedby="marking-hide-names-hint"
       onClick={() => onChange(!checked)}
       className="flex min-h-11 items-start gap-3 rounded-xl text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -242,7 +246,9 @@ function NamesSwitch({
         />
       </span>
       <span className="flex flex-col gap-0.5">
-        <span className="text-sm font-medium">{label}</span>
+        <span id="marking-hide-names-label" className="text-sm font-medium">
+          {label}
+        </span>
         <span id="marking-hide-names-hint" className="text-sm text-muted-foreground">
           {hint}
         </span>

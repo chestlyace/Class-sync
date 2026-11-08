@@ -104,12 +104,7 @@ export default async function TestResultsPage({ params }: PageProps<'/courses/[c
             <span>{test.hasShort ? t('results.pendingNote', { count: pending }) : t('results.mcqOnly')}</span>
           </span>
         }
-        actions={
-          <>
-            {back}
-            {test.hasShort && final && markLink}
-          </>
-        }
+        actions={back}
       />
 
       {test.hasShort && (
@@ -124,6 +119,7 @@ export default async function TestResultsPage({ params }: PageProps<'/courses/[c
                 </p>
                 <p className="text-sm text-muted-foreground">{tm('release.releasedNote')}</p>
                 {pending > 0 && <p className="text-sm font-medium">{tm('release.toConfirm', { count: pending })}</p>}
+                {markLink}
               </>
             ) : !final ? (
               <>
