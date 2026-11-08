@@ -50,12 +50,9 @@ export async function StructureDiagram({ className }: { className?: string }) {
           </span>
         </div>
       </div>
-      <div
-        aria-hidden="true"
-        className="flex flex-col gap-4 rounded-2xl bg-foreground p-5 text-background sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-8"
-      >
+      <div aria-hidden="true" className="flex flex-col gap-4 rounded-2xl bg-foreground p-5 text-background">
         <span className={cn(label, 'text-background/70')}>{t('student')}</span>
-        <span className="flex flex-wrap gap-x-8 gap-y-3">
+        <span className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-8">
           <span className="flex flex-col gap-1">
             <span className={cn(label, 'text-background/60')}>{t('code')}</span>
             <span className="font-mono text-lg font-semibold tracking-[0.18em]">QX7R4M</span>
@@ -64,10 +61,10 @@ export async function StructureDiagram({ className }: { className?: string }) {
             <span className={cn(label, 'text-background/60')}>{t('matricule')}</span>
             <span className="font-mono text-lg font-semibold tracking-[0.04em]">HND24-0153</span>
           </span>
-        </span>
-        <span className="flex items-center gap-2.5 sm:ml-auto">
-          <CheckCheck className="size-5 shrink-0" strokeWidth={2} />
-          <span className="font-medium">{t('result')}</span>
+          <span className="flex items-center gap-2.5 sm:ml-auto sm:pb-0.5">
+            <CheckCheck className="size-5 shrink-0" strokeWidth={2} />
+            <span className="font-medium">{t('result')}</span>
+          </span>
         </span>
       </div>
     </div>
@@ -121,12 +118,12 @@ export async function TestPhoneExample({ className }: { className?: string }) {
             </span>
           ))}
         </div>
-        <div className="mt-5 flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <CloudCheck className="size-4 text-ok" strokeWidth={2} />
+        <div className="mt-5 flex items-start justify-between gap-3 text-[13px] text-muted-foreground">
+          <span className="flex min-w-0 items-start gap-1.5">
+            <CloudCheck className="mt-px size-4 shrink-0 text-ok" strokeWidth={2} />
             {t('saved')}
           </span>
-          <span className="font-mono">{t('exits')}</span>
+          <span className="shrink-0 font-mono">{t('exits')}</span>
         </div>
         <span className="mt-4 flex h-12 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground">
           {t('next')}
@@ -213,7 +210,7 @@ export async function CaExample({ className }: { className?: string }) {
 
 export async function NotesExample({ className }: { className?: string }) {
   const t = await getTranslations('landing.notes.example')
-  const kind = cn(label, 'w-[74px] shrink-0 rounded-md bg-muted px-1.5 py-1 text-center text-[10px] font-semibold text-muted-foreground')
+  const kind = cn(label, 'w-[72px] shrink-0 rounded-md bg-muted px-1.5 py-1 text-center text-[10px] font-semibold text-muted-foreground')
   return (
     <div role="img" aria-label={t('label')} className={cn('relative mx-auto w-full max-w-[330px]', className)}>
       <div aria-hidden="true" className={cn(phone, 'pb-16')}>

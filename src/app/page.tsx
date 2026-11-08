@@ -325,7 +325,7 @@ export default async function Home() {
             </div>
 
             <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-14">
-              <div className="flex min-w-0 flex-col gap-10 lg:order-2">
+              <div className="flex min-w-0 flex-col gap-10 lg:sticky lg:top-28 lg:order-2">
                 <ExchangeExample />
               </div>
               <div className="flex min-w-0 flex-col gap-12 lg:order-1">

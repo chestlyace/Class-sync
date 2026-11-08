@@ -7,6 +7,7 @@ test('landing page reads in English and links to sign-up', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Attendance, assignments, marks. In one place.')
   await expect(page.getByRole('heading', { name: 'A code that changes every minute' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Start as a lecturer' })).toHaveAttribute('href', '/sign-up')
+  await expect(page.getByRole('heading', { name: 'Your own AI assistant, connected to your classes' })).toBeVisible()
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
   expect(overflow, 'horizontal overflow in px').toBeLessThanOrEqual(0)
