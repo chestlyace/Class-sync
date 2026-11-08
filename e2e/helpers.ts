@@ -169,3 +169,27 @@ export async function submitCode(student: Page, code: string) {
   await student.getByLabel('Code on the screen', { exact: true }).fill(code)
   await student.getByRole('button', { name: 'Check in', exact: true }).click()
 }
+
+/**
+ * Leaving a test page (a tab or app switch) without leaving the browser: overrides
+ * `document.visibilityState` to `hidden` and dispatches `visibilitychange`, waits `awayMs`, then
+ * restores it and dispatches again. Only visibility changes: no blur, so this counts as one exit
+ * on phones and laptops alike.
+ */
+export async function simulateLeave(page: Page, awayMs: number) {
+  const setVisibility = (state: 'hidden' | 'visible') =>
+    page.evaluate((s) => {
+      if (s === 'hidden') {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' })
+        Object.defineProperty(document, 'hidden', { configurable: true, get: () => true })
+      } else {
+        // Drop the overrides: the prototype's real getters (visible) apply again.
+        delete (document as unknown as Record<string, unknown>).visibilityState
+        delete (document as unknown as Record<string, unknown>).hidden
+      }
+      document.dispatchEvent(new Event('visibilitychange'))
+    }, state)
+  await setVisibility('hidden')
+  await page.waitForTimeout(awayMs)
+  await setVisibility('visible')
+}
