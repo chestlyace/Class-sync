@@ -8,6 +8,7 @@ import { courseRosterQuery } from '@/server/courses/roster'
 import { requireCourseOwner } from '@/server/courses/service'
 import type { Db } from '@/server/db'
 import { courseTest, testAnswer, testAttempt, testQuestion } from '@/server/db/schema'
+import { MAX_ANSWERS_PER_CALL, SuggesterError } from './ai/gateway'
 import { getMarkSuggester, type MarkSuggester, type Suggestion } from './ai/suggester'
 import { answersFinalAt } from './phase'
 import { requireOwnedTest, type TestRow } from './queries'
@@ -52,7 +53,7 @@ export type MarkingQuestion = {
 }
 
 /** Answers sent to the AI per call. */
-export const SUGGEST_BATCH = 20
+export const SUGGEST_BATCH = MAX_ANSWERS_PER_CALL
 
 type QuestionRow = { id: string; position: number; kind: QuestionKind; prompt: string; mark: number | null; guide: string | null }
 
@@ -330,8 +331,10 @@ export async function suggestMarks(
       suggested += r.value
     } else {
       failed = true
-      // Only the error's name: a provider's message could quote the request (student answers).
-      const name = r.reason instanceof Error ? r.reason.name : 'UnknownError'
+      // Only the error's name (a SuggesterError's message is name, category and status by design):
+      // a provider's message could quote the request (student answers).
+      const name =
+        r.reason instanceof SuggesterError ? r.reason.message : r.reason instanceof Error ? r.reason.name : 'UnknownError'
       console.error('[suggestMarks] a batch of suggestions failed', name)
     }
   }

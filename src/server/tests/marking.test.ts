@@ -14,6 +14,7 @@ import {
   setupCourse,
 } from '@/test/marking-fixture'
 import { fakeSuggester } from './ai/fake'
+import { SuggesterError } from './ai/gateway'
 import { setMarkSuggesterForTests, type MarkSuggester, type SuggestInput } from './ai/suggester'
 import { confirmMark, getMarkingQuestion, suggestMarks } from './marking'
 import { releaseResults } from './results'
@@ -340,6 +341,17 @@ describe('marking short answers', () => {
     // Trying again only sends what still has no suggestion.
     setMarkSuggesterForTests(fakeSuggester)
     expect(await suggestMarks(s.lecturer, s.q2.id)).toEqual({ suggested: 22 - newlySuggested.length, failed: false })
+  })
+
+  it('suggestMarks logs a gateway failure as name, category and status only', async () => {
+    const s = await scenario()
+    setMarkSuggesterForTests(async () => {
+      throw new SuggesterError('GatewayRateLimitError', 'rate_limit', 429)
+    })
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    setClock(at(40))
+    expect((await suggestMarks(s.lecturer, s.q2.id)).failed).toBe(true)
+    expect(JSON.stringify(logged.mock.calls)).toContain('GatewayRateLimitError, rate_limit, status 429')
   })
 
   it('suggestMarks with the suggester off reports 0 and aiAvailable is false', async () => {
