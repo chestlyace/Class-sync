@@ -493,7 +493,7 @@
     "assistant": {
       "kicker": "Assistant IA · MCP",
       "title": "Votre propre assistant IA, connecté à vos classes",
-      "body": "Clasync fonctionne avec l'assistant que vous utilisez déjà. Connectez Claude, ChatGPT, Cursor ou tout autre client MCP, puis interrogez-le sur vos cours ou demandez-lui de rédiger le travail. Il agit en votre nom, avec exactement vos droits, et tout ce qu'il rédige attend votre validation.",
+      "body": "Clasync fonctionne avec l'assistant que vous utilisez déjà. Connectez Claude, ChatGPT ou un autre outil MCP, puis interrogez-le sur vos classes ou demandez-lui de rédiger le travail. Il agit en votre nom, avec exactement vos droits, et tout ce qu'il rédige reste un brouillon tant que vous ne l'avez pas publié.",
       "exchange": {
         "label": "Exemple : un enseignant demande à son assistant IA de rédiger un test, qui apparaît dans Clasync en brouillon",
         "assistantName": "Votre assistant",
@@ -511,15 +511,15 @@
       "scope": {
         "reads": {
           "title": "Il consulte",
-          "body": "Vos cours, listes d'étudiants, présences, CC et résultats de tests."
+          "body": "Vos cours et listes d'étudiants, présences, CC, devoirs, tests et résultats, notes de cours et questions de révision."
         },
         "drafts": {
           "title": "Il rédige",
-          "body": "Des devoirs, des tests, des notes de cours et des propositions de notes."
+          "body": "Des devoirs, des tests, des notes de cours (dans un thème masqué), des questions de révision et des propositions de notes."
         },
         "never": {
           "title": "Il ne fait jamais",
-          "body": "De publication, de diffusion de notes ni d'envoi aux étudiants. C'est vous qui le faites, dans Clasync."
+          "body": "De publication, de diffusion de notes, de lancement de test ni d'e-mail aux étudiants. C'est vous qui le faites, dans Clasync."
         }
       },
       "asks": {
@@ -527,14 +527,14 @@
         "slipping": "Qui décroche en Réseaux 2 ?",
         "checkIns": "Quels étudiants ont manqué les deux pointages cette semaine ?",
         "assignment": "Rédige un devoir sur les diagrammes E-A, à rendre vendredi prochain.",
-        "notes": "Transforme ce plan en notes pour le thème 3.",
+        "notes": "Transforme ce plan en notes pour la semaine prochaine.",
         "marks": "Propose des notes pour la question 4 à partir de mon barème."
       },
       "connect": {
         "title": "Pour le connecter",
-        "url": "Copiez l'URL du connecteur Clasync dans les Paramètres.",
-        "add": "Ajoutez-la comme connecteur dans Claude, ChatGPT, Cursor ou un autre client MCP.",
-        "signIn": "Connectez-vous avec votre compte Clasync. Pour les outils en ligne de commande, utilisez plutôt un jeton d'accès personnel créé dans les Paramètres."
+        "url": "Copiez l'URL du connecteur dans les Paramètres, rubrique Assistants IA.",
+        "add": "Ajoutez-la comme connecteur personnalisé dans Claude, ChatGPT ou un autre outil MCP.",
+        "signIn": "Connectez-vous avec votre compte Clasync. Pour les outils configurés par un fichier, comme Cursor ou Claude Code, créez-y plutôt un jeton d'accès personnel."
       },
       "marking": {
         "kicker": "Intégré aux tests",
@@ -604,7 +604,7 @@
       },
       "drafts": {
         "q": "L'IA peut-elle envoyer quelque chose à mes étudiants ?",
-        "a": "Non. Ce que rédige votre assistant et chaque note proposée restent des brouillons. Vous seul publiez, lancez un test ou publiez les résultats."
+        "a": "Non. Ce que rédige votre assistant et chaque note proposée restent des brouillons, et il n'envoie jamais d'e-mail à un étudiant. Vous seul publiez, lancez un test ou diffusez les résultats."
       },
       "access": {
         "q": "Que peut voir mon assistant ?",

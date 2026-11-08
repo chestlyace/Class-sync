@@ -35,6 +35,8 @@ const sectionTitle = 'font-display text-6xl leading-[0.9] font-normal text-balan
 const lead = 'max-w-[62ch] text-lg leading-relaxed text-subtle'
 const cardTitle = 'text-lg font-semibold'
 const focusRing = 'outline-none focus-visible:ring-3 focus-visible:ring-ring/50'
+/** The big pill buttons of the hero and the closing call to action. */
+const heroButton = 'h-14 px-7 text-base'
 
 function Points({ items }: { items: string[] }) {
   return (
@@ -145,18 +147,18 @@ export default async function Home() {
             </h1>
             <p className="max-w-2xl text-lg leading-relaxed text-subtle sm:text-xl">{t('hero.body')}</p>
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Link href="/sign-up" className={buttonVariants({ size: 'lg', className: 'h-14 px-7 text-base' })}>
+              <Link href="/sign-up" className={buttonVariants({ size: 'lg', className: heroButton })}>
                 {t('hero.lecturerCta')}
                 <ArrowRight aria-hidden="true" data-icon="inline-end" />
               </Link>
-              <Link href="/sign-up" className={buttonVariants({ size: 'lg', variant: 'outline', className: 'h-14 px-7 text-base' })}>
+              <Link href="/sign-up" className={buttonVariants({ size: 'lg', variant: 'outline', className: heroButton })}>
                 {t('hero.studentCta')}
               </Link>
             </div>
             <a
               href="#assistant"
               className={cn(
-                'group inline-flex w-fit items-center gap-2 rounded-full py-1 text-[15px] font-medium text-foreground underline-offset-4 hover:underline',
+                'group inline-flex w-fit items-center gap-2 rounded-full py-1 text-[15px] font-medium text-pretty text-foreground underline-offset-4 hover:underline',
                 focusRing,
               )}
             >
@@ -184,7 +186,7 @@ export default async function Home() {
                   <a
                     href={href}
                     className={cn(
-                      'inline-flex h-11 items-center gap-2 rounded-full border px-4 text-[15px] font-medium transition-colors duration-150 hover:bg-muted active:scale-[0.98]',
+                      'inline-flex h-11 items-center gap-2 rounded-full border px-4 text-[15px] font-medium transition-[background-color,transform] duration-150 ease-out hover:bg-muted active:scale-[0.97] motion-reduce:active:scale-100',
                       focusRing,
                     )}
                   >
@@ -471,29 +473,16 @@ export default async function Home() {
         </section>
 
         <section aria-labelledby="cta-title" className={cn(container, 'py-24 sm:py-28')}>
-          <div className="flex flex-wrap items-center justify-between gap-7 rounded-[32px] bg-foreground px-8 py-12 text-background sm:px-12 sm:py-14">
-            <h2 id="cta-title" className="font-display text-6xl leading-[0.88] font-normal sm:text-[88px]">
+          <div className="flex flex-wrap items-end justify-between gap-8 rounded-[32px] bg-foreground px-6 py-10 text-background sm:px-12 sm:py-14">
+            <h2 id="cta-title" className="max-w-[18ch] font-display text-6xl leading-[0.88] font-normal text-balance sm:text-[88px]">
               {t('cta.title')}
             </h2>
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/sign-up"
-                className={buttonVariants({
-                  size: 'lg',
-                  className: 'h-14 bg-background px-7 text-base font-semibold text-foreground hover:bg-background/90',
-                })}
-              >
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+              <Link href="/sign-up" className={buttonVariants({ variant: 'inverse', size: 'lg', className: heroButton })}>
                 {t('cta.primary')}
+                <ArrowRight aria-hidden="true" data-icon="inline-end" />
               </Link>
-              <Link
-                href="/sign-in"
-                className={buttonVariants({
-                  size: 'lg',
-                  variant: 'outline',
-                  className:
-                    'h-14 border-muted-foreground bg-transparent px-6 text-base text-background hover:bg-background/10 hover:text-background',
-                })}
-              >
+              <Link href="/sign-in" className={buttonVariants({ variant: 'inverse-outline', size: 'lg', className: heroButton })}>
                 {t('cta.secondary')}
               </Link>
             </div>

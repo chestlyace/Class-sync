@@ -493,7 +493,7 @@
     "assistant": {
       "kicker": "AI assistant · MCP",
       "title": "Your own AI assistant, connected to your classes",
-      "body": "Clasync works with the assistant you already use. Connect Claude, ChatGPT, Cursor or any other MCP client, then ask about your courses or have it draft the work. It acts as you, with exactly your permissions, and everything it writes waits for your approval.",
+      "body": "Clasync works with the assistant you already use. Connect Claude, ChatGPT or another MCP tool, then ask about your classes or have it draft the work. It acts as you, with exactly your permissions, and everything it writes stays a draft until you publish it.",
       "exchange": {
         "label": "Example: a lecturer asks their AI assistant to draft a test, and it appears in Clasync as a draft",
         "assistantName": "Your assistant",
@@ -511,15 +511,15 @@
       "scope": {
         "reads": {
           "title": "It reads",
-          "body": "Your courses, rosters, attendance, CA and test results."
+          "body": "Your courses and rosters, attendance, CA, assignments, tests and results, notes and revision questions."
         },
         "drafts": {
           "title": "It drafts",
-          "body": "Assignments, tests, notes and suggested marks."
+          "body": "Assignments, tests, notes (in a hidden topic), revision questions and suggested marks."
         },
         "never": {
           "title": "It never",
-          "body": "Publishes, releases a mark or reaches a student. You do that, in Clasync."
+          "body": "Publishes, releases marks, starts a test or emails a student. You do that, in Clasync."
         }
       },
       "asks": {
@@ -527,14 +527,14 @@
         "slipping": "Who's slipping in Networks 2?",
         "checkIns": "Which students missed both check-ins this week?",
         "assignment": "Draft an assignment on ER diagrams, due next Friday.",
-        "notes": "Turn this outline into notes for topic 3.",
+        "notes": "Turn this outline into notes for next week.",
         "marks": "Suggest marks for question 4 from my marking guide."
       },
       "connect": {
         "title": "Connecting it",
-        "url": "Copy the Clasync connector URL from Settings.",
-        "add": "Add it as a connector in Claude, ChatGPT, Cursor or another MCP client.",
-        "signIn": "Sign in with your Clasync account. For command-line tools, use a personal access token from Settings instead."
+        "url": "Copy the connector URL from Settings, under AI assistants.",
+        "add": "Add it as a custom connector in Claude, ChatGPT or another MCP tool.",
+        "signIn": "Sign in with your Clasync account. For tools set up with a config file, like Cursor or Claude Code, create a personal access token there instead."
       },
       "marking": {
         "kicker": "Built into tests",
@@ -604,7 +604,7 @@
       },
       "drafts": {
         "q": "Can the AI send anything to my students?",
-        "a": "No. Whatever your assistant writes and every suggested mark is a draft. Only you publish, start a test or release results."
+        "a": "No. Whatever your assistant writes and every suggested mark is a draft, and it never emails a student. Only you publish, start a test or release results."
       },
       "access": {
         "q": "What can my assistant see?",
