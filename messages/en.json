@@ -1722,5 +1722,28 @@
       "notEnded": "This test has not ended yet.",
       "alreadyImported": "This test is already in revision for this course."
     }
+  },
+  "oauthConsent": {
+    "title": "Connect your assistant",
+    "eyebrow": "AI assistant",
+    "unnamed": "An AI assistant",
+    "intro": "{name} wants to act as you ({email}) in Clasync.",
+    "readTitle": "It will be able to read",
+    "readBody": "Your courses, rosters, attendance, CA, assignments and submissions, tests and results, and notes.",
+    "draftTitle": "It will be able to draft",
+    "draftBody": "Assignments, tests, notes, revision questions and suggested marks.",
+    "approval": "Everything it drafts waits for your approval in Clasync. Students see nothing until you approve it.",
+    "neverTitle": "It will never",
+    "neverBody": "Publish, release results, start tests or send emails.",
+    "revoke": "You can disconnect it at any time in Settings.",
+    "allow": "Allow",
+    "allowing": "Allowing…",
+    "deny": "Deny",
+    "denying": "Denying…",
+    "expired": "This request has expired. Start connecting again from your assistant.",
+    "lecturersOnlyTitle": "For lecturers",
+    "lecturersOnlyBody": "Clasync's assistant connection is for lecturers. Your student account can't be connected to an assistant.",
+    "unknownTitle": "Unknown assistant",
+    "unknownBody": "Clasync doesn't recognise the assistant that sent you here. Start connecting again from your assistant."
   }
 }

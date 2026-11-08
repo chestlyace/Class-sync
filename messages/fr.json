@@ -1722,5 +1722,28 @@
       "notEnded": "Ce test n'est pas encore terminé.",
       "alreadyImported": "Ce test est déjà repris en révision pour ce cours."
     }
+  },
+  "oauthConsent": {
+    "title": "Connecter votre assistant",
+    "eyebrow": "Assistant IA",
+    "unnamed": "Un assistant IA",
+    "intro": "{name} souhaite agir en votre nom ({email}) dans Clasync.",
+    "readTitle": "Il pourra consulter",
+    "readBody": "Vos cours, listes d'étudiants, présences, CC, devoirs et rendus, tests et résultats, et notes de cours.",
+    "draftTitle": "Il pourra préparer des brouillons",
+    "draftBody": "Devoirs, tests, notes de cours, questions de révision et notes suggérées.",
+    "approval": "Tout ce qu'il prépare attend votre validation dans Clasync. Les étudiants ne voient rien avant que vous l'approuviez.",
+    "neverTitle": "Il ne pourra jamais",
+    "neverBody": "Publier, diffuser des résultats, lancer des tests ni envoyer des e-mails.",
+    "revoke": "Vous pouvez le déconnecter à tout moment dans les Paramètres.",
+    "allow": "Autoriser",
+    "allowing": "Autorisation…",
+    "deny": "Refuser",
+    "denying": "Refus…",
+    "expired": "Cette demande a expiré. Relancez la connexion depuis votre assistant.",
+    "lecturersOnlyTitle": "Pour les enseignants",
+    "lecturersOnlyBody": "La connexion d'un assistant à Clasync est réservée aux enseignants. Votre compte étudiant ne peut pas être connecté à un assistant.",
+    "unknownTitle": "Assistant inconnu",
+    "unknownBody": "Clasync ne reconnaît pas l'assistant qui vous a envoyé ici. Relancez la connexion depuis votre assistant."
   }
 }
