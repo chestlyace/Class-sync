@@ -27,12 +27,17 @@ const INSTRUCTIONS = 'Configure the router and describe the subnets you chose.'
 const ANSWER = 'The subnet mask is 255.255.255.0 and the gateway is 192.168.1.1.'
 const COMMENT = 'Clear answer. Check the broadcast address next time.'
 
-/** Tomorrow at 08:00 as a `datetime-local` value (YYYY-MM-DDTHH:mm), in the machine's local time. */
+/** The app's time zone (APP_TIME_ZONE is unset for e2e, so the default applies). */
+const APP_TIME_ZONE = 'Africa/Douala'
+
+/**
+ * Tomorrow at 08:00 in the app's time zone, as a `datetime-local` value (YYYY-MM-DDTHH:mm): the
+ * form reads it in that zone, so "tomorrow" must be too, whatever the machine's own zone.
+ */
 function tomorrowAt8(): string {
-  const d = new Date()
-  d.setDate(d.getDate() + 1)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T08:00`
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: APP_TIME_ZONE, dateStyle: 'short' }).format(new Date())
+  const tomorrow = new Date(Date.parse(`${today}T00:00:00Z`) + 24 * 60 * 60 * 1000)
+  return `${tomorrow.toISOString().slice(0, 10)}T08:00`
 }
 
 /** Clicks into a BlockNote editor (found by the aria-label on its contenteditable) and types. */
@@ -169,6 +174,9 @@ test('assignments with uploads, grading and release, end to end', async ({
       const res = await alice.request.get(href!)
       expect(res.status()).toBe(200)
       expect(res.headers()['content-type']).toBe('application/pdf')
+      // Opens in the browser's PDF viewer: inline, and no CSP sandbox (Chrome refuses sandboxed PDFs).
+      expect(res.headers()['content-disposition']).toMatch(/^inline/)
+      expect(res.headers()).not.toHaveProperty('content-security-policy')
       await expectNoHorizontalScroll(alice)
     })
 
@@ -194,6 +202,10 @@ test('assignments with uploads, grading and release, end to end', async ({
       await expect(status).toBeVisible()
       await expect(alice.getByRole('button', { name: 'Remplacer le rendu', exact: true })).toBeVisible()
       await expectNoHorizontalScroll(alice)
+
+      // Replacing it straight away (same minute) is still confirmed, in its own words.
+      await alice.getByRole('button', { name: 'Remplacer le rendu', exact: true }).click()
+      await expect(alice.getByRole('status').filter({ hasText: 'Rendu remplacé à' })).toBeVisible()
 
       // The draft is gone once submitted: a fresh load shows the submitted work, no restore note.
       await alice.goto(studentAssignmentUrl)
