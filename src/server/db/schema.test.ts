@@ -16,11 +16,18 @@ import {
   course,
   courseCaSettings,
   courseRosterAdjustment,
+  courseTest,
   file,
   participationEvent,
   school,
   submission,
   submissionFile,
+  testAnswer,
+  testAttempt,
+  testExit,
+  testLog,
+  testOption,
+  testQuestion,
   user,
 } from './schema'
 
@@ -487,5 +494,295 @@ describe('schema', () => {
         `participation_event(${columns})`,
       ).toBe(true)
     }
+  })
+
+  async function seedTest(db: Awaited<ReturnType<typeof createTestDb>>, code = 'ABC123') {
+    const { owner, course: c } = await seedSession(db)
+    const [t] = await db
+      .insert(courseTest)
+      .values({
+        courseId: c.id,
+        code,
+        title: 'CA 1',
+        durationMinutes: 30,
+        defaultMark: 2,
+        createdBy: owner.id,
+      })
+      .returning()
+    const [q] = await db
+      .insert(testQuestion)
+      .values({ testId: t.id, position: 0, kind: 'mcq', prompt: '1+1?' })
+      .returning()
+    return { owner, course: c, test: t, question: q }
+  }
+
+  it('applies test defaults and keeps numbers as numbers', async () => {
+    const db = await createTestDb()
+    const { test: t, question: q } = await seedTest(db)
+    expect(t).toMatchObject({
+      defaultMark: 2,
+      shuffle: true,
+      maxExits: 3,
+      maxAbsenceSeconds: 10,
+      startedAt: null,
+      deadlineAt: null,
+      endedAt: null,
+      resultsReleasedAt: null,
+      copiedFromId: null,
+    })
+    expect(q.mark).toBeNull()
+  })
+
+  it('rejects a second test with the same code', async () => {
+    const db = await createTestDb()
+    const { owner, course: c } = await seedTest(db, 'SAME01')
+    const row = {
+      courseId: c.id,
+      code: 'SAME01',
+      title: 'CA 2',
+      durationMinutes: 30,
+      defaultMark: 2,
+      createdBy: owner.id,
+    }
+    expect(await sqlState(db.insert(courseTest).values(row))).toBe('23505')
+  })
+
+  it('rejects two correct options on one question, but allows many wrong ones', async () => {
+    const db = await createTestDb()
+    const { question: q } = await seedTest(db)
+    await db.insert(testOption).values([
+      { questionId: q.id, position: 0, text: '2', isCorrect: true },
+      { questionId: q.id, position: 1, text: '3' },
+      { questionId: q.id, position: 2, text: '4' },
+    ])
+    expect(
+      await sqlState(
+        db.insert(testOption).values({
+          questionId: q.id,
+          position: 3,
+          text: '5',
+          isCorrect: true,
+        }),
+      ),
+    ).toBe('23505')
+  })
+
+  it('rejects a second attempt by the same student on a test', async () => {
+    const db = await createTestDb()
+    const { test: t } = await seedTest(db)
+    const st = await makeUser(db, { role: 'student' })
+    const row = {
+      testId: t.id,
+      studentId: st.id,
+      seed: 's',
+      deviceId: 'd',
+      deviceSeenAt: new Date(),
+    }
+    const [a] = await db.insert(testAttempt).values(row).returning()
+    expect(a).toMatchObject({
+      closedAt: null,
+      closedReason: null,
+      exitsSinceReopen: 0,
+    })
+    expect(await sqlState(db.insert(testAttempt).values(row))).toBe('23505')
+  })
+
+  it('rejects a started test without a deadline, and a deadline without a start', async () => {
+    const db = await createTestDb()
+    const { owner, course: c } = await seedTest(db)
+    const base = {
+      courseId: c.id,
+      title: 'CA 2',
+      durationMinutes: 30,
+      defaultMark: 2,
+      createdBy: owner.id,
+    }
+    const now = new Date()
+    expect(await sqlState(db.insert(courseTest).values({ ...base, code: 'AAA111', startedAt: now }))).toBe('23514')
+    expect(await sqlState(db.insert(courseTest).values({ ...base, code: 'BBB222', deadlineAt: now }))).toBe('23514')
+    await db.insert(courseTest).values({
+      ...base,
+      code: 'CCC333',
+      startedAt: now,
+      deadlineAt: new Date(now.getTime() + 1000),
+    })
+  })
+
+  it('rejects out-of-range duration, exits, absence and marks', async () => {
+    const db = await createTestDb()
+    const { owner, course: c, test: t } = await seedTest(db)
+    const base = {
+      courseId: c.id,
+      title: 'CA 2',
+      durationMinutes: 30,
+      defaultMark: 2,
+      createdBy: owner.id,
+    }
+    const bad: Record<string, object> = {
+      duration0: { durationMinutes: 0 },
+      duration301: { durationMinutes: 301 },
+      exits0: { maxExits: 0 },
+      exits11: { maxExits: 11 },
+      absence2: { maxAbsenceSeconds: 2 },
+      absence301: { maxAbsenceSeconds: 301 },
+      defaultMark0: { defaultMark: 0 },
+    }
+    let n = 0
+    for (const [name, over] of Object.entries(bad)) {
+      n += 1
+      expect(await sqlState(db.insert(courseTest).values({ ...base, code: `RNG${n}`, ...over })), name).toBe('23514')
+    }
+    expect(
+      await sqlState(
+        db.insert(testQuestion).values({
+          testId: t.id,
+          position: 1,
+          kind: 'short',
+          prompt: 'p',
+          mark: 0,
+        }),
+      ),
+    ).toBe('23514')
+  })
+
+  it('rejects a question kind other than mcq/short and a close reason other than handed_in/left', async () => {
+    const db = await createTestDb()
+    const { test: t } = await seedTest(db)
+    expect(
+      await sqlState(
+        db.insert(testQuestion).values({
+          testId: t.id,
+          position: 1,
+          kind: 'essay' as never,
+          prompt: 'p',
+        }),
+      ),
+    ).toBe('23514')
+    const st = await makeUser(db, { role: 'student' })
+    const row = {
+      testId: t.id,
+      studentId: st.id,
+      seed: 's',
+      deviceId: 'd',
+      deviceSeenAt: new Date(),
+    }
+    expect(await sqlState(db.insert(testAttempt).values({ ...row, closedReason: 'quit' as never }))).toBe('23514')
+    const [a] = await db
+      .insert(testAttempt)
+      .values({ ...row, closedAt: new Date(), closedReason: 'left' })
+      .returning()
+    expect(await sqlState(db.insert(testLog).values({ attemptId: a.id, kind: 'cheated' as never }))).toBe('23514')
+  })
+
+  it('keeps one answer per question per attempt, and nulls the option when it is deleted', async () => {
+    const db = await createTestDb()
+    const { test: t, question: q } = await seedTest(db)
+    const st = await makeUser(db, { role: 'student' })
+    const [a] = await db
+      .insert(testAttempt)
+      .values({
+        testId: t.id,
+        studentId: st.id,
+        seed: 's',
+        deviceId: 'd',
+        deviceSeenAt: new Date(),
+      })
+      .returning()
+    const [o] = await db.insert(testOption).values({ questionId: q.id, position: 0, text: '2' }).returning()
+    const ans = {
+      attemptId: a.id,
+      questionId: q.id,
+      optionId: o.id,
+      rev: 1,
+      receivedAt: new Date(),
+    }
+    await db.insert(testAnswer).values(ans)
+    expect(await sqlState(db.insert(testAnswer).values(ans))).toBe('23505')
+    await db.delete(testOption)
+    const [row] = await db.select().from(testAnswer)
+    expect(row.optionId).toBeNull()
+    expect(row.mark).toBeNull()
+  })
+
+  it('sets copied_from to null when the source test is deleted', async () => {
+    const db = await createTestDb()
+    const { owner, course: c, test: t } = await seedTest(db)
+    const [copy] = await db
+      .insert(courseTest)
+      .values({
+        courseId: c.id,
+        code: 'COPY01',
+        title: 'CA 1',
+        durationMinutes: 30,
+        defaultMark: 2,
+        createdBy: owner.id,
+        copiedFromId: t.id,
+      })
+      .returning()
+    await db.delete(courseTest).where(sql`${courseTest.id} = ${t.id}`)
+    const [after] = await db.select().from(courseTest)
+    expect(after.id).toBe(copy.id)
+    expect(after.copiedFromId).toBeNull()
+  })
+
+  it('deleting a course removes its tests, questions, options, attempts, answers, exits and log', async () => {
+    const db = await createTestDb()
+    const { owner, test: t, question: q } = await seedTest(db)
+    const st = await makeUser(db, { role: 'student' })
+    const [o] = await db
+      .insert(testOption)
+      .values({ questionId: q.id, position: 0, text: '2', isCorrect: true })
+      .returning()
+    const [a] = await db
+      .insert(testAttempt)
+      .values({
+        testId: t.id,
+        studentId: st.id,
+        seed: 's',
+        deviceId: 'd',
+        deviceSeenAt: new Date(),
+      })
+      .returning()
+    await db.insert(testAnswer).values({
+      attemptId: a.id,
+      questionId: q.id,
+      optionId: o.id,
+      rev: 1,
+      receivedAt: new Date(),
+    })
+    await db.insert(testExit).values({
+      attemptId: a.id,
+      exitId: crypto.randomUUID(),
+      exitNumber: 1,
+      firstReportedAt: new Date(),
+    })
+    await db.insert(testLog).values({ attemptId: a.id, kind: 'reopened', byUserId: owner.id })
+    await db.delete(course)
+    for (const table of [courseTest, testQuestion, testOption, testAttempt, testAnswer, testExit, testLog]) {
+      expect(await db.select().from(table)).toHaveLength(0)
+    }
+    expect(await db.select().from(user)).toHaveLength(2)
+  })
+
+  it('has the test lookup indexes', async () => {
+    const db = await createTestDb()
+    const res = await db.execute(sql`select indexdef from pg_indexes where schemaname = 'public'`)
+    const defs = (res as unknown as { rows: { indexdef: string }[] }).rows.map((r) => r.indexdef.replace(/"/g, ''))
+    const wanted: [string, string][] = [
+      ['course_test', 'course_id'],
+      ['test_question', 'test_id, position'],
+      ['test_attempt', 'student_id'],
+      ['test_answer', 'question_id'],
+      ['test_log', 'attempt_id'],
+    ]
+    for (const [table, columns] of wanted) {
+      expect(
+        defs.some((d) => d.includes(` ON public.${table} USING btree (${columns})`)),
+        `${table}(${columns})`,
+      ).toBe(true)
+    }
+    expect(
+      defs.some((d) => d.includes('UNIQUE') && d.includes('ON public.test_option') && d.includes('WHERE is_correct')),
+    ).toBe(true)
   })
 })
