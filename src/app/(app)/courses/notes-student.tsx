@@ -125,6 +125,7 @@ export async function StudentNotes({
                           aria-label={t(item.kind === 'file' ? 'openFile' : 'openLink', {
                             title: item.title,
                             isNew: String(item.isNew),
+                            hasMeta: String(meta(item) !== ''),
                             meta: meta(item),
                           })}
                           className={ROW}

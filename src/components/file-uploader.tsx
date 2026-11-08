@@ -118,6 +118,9 @@ export function FileUploader(props: FileUploaderProps) {
   const t = useTranslations('assignments.files')
   const maxMb = Math.round(MAX_FILE_BYTES / (1024 * 1024))
   const locale = useLocale()
+  /** The message for a failed upload; a resource file may also be PowerPoint, so its type error says so. */
+  const errorText = (key: ErrorKey) =>
+    key === 'type' && isResource ? t('errors.typeResource') : t(`errors.${key}`, { max, maxMb })
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploads, setUploads] = useState<UploadState[]>([])
   /** One polite status line for screen readers: started, added, failed, removed. */
@@ -222,7 +225,7 @@ export function FileUploader(props: FileUploaderProps) {
       if (!mountedRef.current) return
       const reason = err instanceof UploadFailed ? err.key : 'upload'
       update(key, { error: reason, progress: null })
-      setAnnouncement(t('announce.failed', { name: original.name, reason: t(`errors.${reason}`, { max, maxMb }) }))
+      setAnnouncement(t('announce.failed', { name: original.name, reason: errorText(reason) }))
     } finally {
       controllersRef.current.delete(controller)
     }
@@ -325,7 +328,7 @@ export function FileUploader(props: FileUploaderProps) {
               </div>
               {u.error ? (
                 <p className="text-sm text-destructive">
-                  {t(`errors.${u.error}`, { max, maxMb })}
+                  {errorText(u.error)}
                 </p>
               ) : (
                 <div

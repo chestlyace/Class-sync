@@ -819,6 +819,7 @@
       "progressLabel": "Uploading {name}",
       "errors": {
         "type": "Only PDF, Word documents (.doc, .docx) and images (JPEG, PNG, WebP, HEIC).",
+        "typeResource": "Only PDF, Word documents (.doc, .docx), PowerPoint (.ppt, .pptx) and images (JPEG, PNG, WebP, HEIC).",
         "size": "This file is larger than {maxMb} MB.",
         "mismatch": "The upload didn't arrive complete. Try again.",
         "count": "You can add at most {max} files.",
@@ -1603,8 +1604,8 @@
       },
       "practiceTitle": "Practise this topic",
       "practiceMeta": "{count, plural, one {# question} other {# questions}} · doesn't count for marks",
-      "openFile": "Open {title}{isNew, select, true {, new} other {}}, {meta}",
-      "openLink": "Open {title}{isNew, select, true {, new} other {}}, {meta} (new tab)",
+      "openFile": "Open {title}{isNew, select, true {, new} other {}}{hasMeta, select, true {, {meta}} other {}}",
+      "openLink": "Open {title}{isNew, select, true {, new} other {}}{hasMeta, select, true {, {meta}} other {}} (new tab)",
       "updated": "{lecturer} · updated {date}",
       "allNotes": "All notes",
       "practise": "Practise this topic",

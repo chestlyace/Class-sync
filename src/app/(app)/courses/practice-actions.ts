@@ -24,9 +24,11 @@ function requireId(value: unknown, field: string): string {
   return value
 }
 
-/** The lecturer's practice page of every topic. */
+/** The lecturer's practice page of every topic, plus the notes pages that show its question count. */
 function revalidatePractice() {
   revalidatePath('/courses/[courseId]/notes/topics/[topicId]/practice', 'page')
+  revalidatePath('/courses/[courseId]/notes', 'page')
+  revalidatePath('/courses/[courseId]/notes/[resourceId]', 'page')
 }
 
 export async function addPracticeQuestionAction(

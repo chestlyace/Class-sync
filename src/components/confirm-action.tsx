@@ -75,6 +75,7 @@ export function ConfirmAction({
         <DialogTrigger asChild>
           <Button
             type="button"
+            size="lg"
             variant={destructive ? 'destructive' : primary ? 'default' : 'outline'}
             aria-label={triggerAriaLabel}
             title={triggerAriaLabel}
@@ -103,11 +104,11 @@ export function ConfirmAction({
           {renderError ? renderError(state) : <ActionError state={state} />}
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline">
+              <Button type="button" size="lg" variant="outline">
                 {t('cancel')}
               </Button>
             </DialogClose>
-            <Button type="submit" variant={destructive ? 'destructive' : 'default'} disabled={pending}>
+            <Button type="submit" size="lg" variant={destructive ? 'destructive' : 'default'} disabled={pending}>
               {confirmLabel}
             </Button>
           </DialogFooter>

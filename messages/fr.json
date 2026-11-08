@@ -819,6 +819,7 @@
       "progressLabel": "Envoi de {name}",
       "errors": {
         "type": "Uniquement des PDF, des documents Word (.doc, .docx) et des images (JPEG, PNG, WebP, HEIC).",
+        "typeResource": "Uniquement des PDF, des documents Word (.doc, .docx), des présentations PowerPoint (.ppt, .pptx) et des images (JPEG, PNG, WebP, HEIC).",
         "size": "Ce fichier dépasse {maxMb} Mo.",
         "mismatch": "L'envoi n'est pas arrivé en entier. Réessayez.",
         "count": "Vous pouvez ajouter {max} fichiers au plus.",
@@ -1603,8 +1604,8 @@
       },
       "practiceTitle": "Réviser ce thème",
       "practiceMeta": "{count, plural, one {# question} other {# questions}} · ne compte pas pour les notes",
-      "openFile": "Ouvrir {title}{isNew, select, true {, nouveau} other {}}, {meta}",
-      "openLink": "Ouvrir {title}{isNew, select, true {, nouveau} other {}}, {meta} (nouvel onglet)",
+      "openFile": "Ouvrir {title}{isNew, select, true {, nouveau} other {}}{hasMeta, select, true {, {meta}} other {}}",
+      "openLink": "Ouvrir {title}{isNew, select, true {, nouveau} other {}}{hasMeta, select, true {, {meta}} other {}} (nouvel onglet)",
       "updated": "{lecturer} · mis à jour le {date}",
       "allNotes": "Toutes les notes",
       "practise": "Réviser ce thème",

@@ -29,6 +29,7 @@ export function parseLinkUrl(raw: unknown): string | null {
     return null
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return null
+  if (url.username !== '' || url.password !== '') return null
   return url.href.length <= URL_MAX ? url.href : null
 }
 

@@ -27,6 +27,12 @@ describe('parseLinkUrl', () => {
     expect(parseLinkUrl('http://example.com')).toBe('http://example.com/')
   })
 
+  it('refuses a URL that carries a username or password', () => {
+    expect(parseLinkUrl('https://user:pass@example.com/x')).toBeNull()
+    expect(parseLinkUrl('https://user@example.com/x')).toBeNull()
+    expect(parseLinkUrl('http://:pw@example.com')).toBeNull()
+  })
+
   it('refuses a URL over 2000 characters', () => {
     expect(parseLinkUrl('https://example.com/' + 'a'.repeat(1980))).not.toBeNull()
     expect(parseLinkUrl('https://example.com/' + 'a'.repeat(2000))).toBeNull()

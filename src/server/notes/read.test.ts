@@ -68,7 +68,7 @@ describe('student reads', () => {
     await expect(getNote(fx.alice, fx.courseA, id)).rejects.toMatchObject({ code: 'FORBIDDEN' })
   })
 
-  it('forbids a hidden topic’s items and an unrostered student, leaking nothing', async () => {
+  it('forbids a hidden topic’s items, a colleague and another course’s note, leaking nothing', async () => {
     const n = await note('Secret title', 'x')
     const l = await createLink(fx.lecturer, { courseId: fx.courseA, topicId: fx.topicA, title: 'L', url: 'https://x.org' })
     await setTopicHidden(fx.lecturer, fx.topicA, true)
@@ -79,7 +79,7 @@ describe('student reads', () => {
     const listing = await getCourseNotes(fx.alice, fx.courseA, { q: 'Secret' })
     expect(JSON.stringify(listing)).not.toContain('Secret title')
     await setTopicHidden(fx.lecturer, fx.topicA, false)
-    // A student not on the course, and a colleague lecturer.
+    // A colleague lecturer who does not own the course.
     await expect(getCourseNotes(fx.colleague, fx.courseA)).rejects.toMatchObject({ code: 'FORBIDDEN' })
     await expect(getNote(fx.colleague, fx.courseA, n.id)).rejects.toMatchObject({ code: 'FORBIDDEN' })
     // A note of another course asked for through this one.

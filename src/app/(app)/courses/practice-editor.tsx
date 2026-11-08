@@ -238,12 +238,14 @@ function QuestionCard({
           ))}
         </ul>
       ) : (
-        <div className="flex flex-col gap-1.5 rounded-xl bg-muted/60 px-3.5 py-3">
-          <span className="font-mono text-xs font-medium tracking-[0.1em] text-muted-foreground uppercase">
-            {t('guideLabel')}
-          </span>
-          <p className="text-sm break-words whitespace-pre-line">{question.guide}</p>
-        </div>
+        question.guide && (
+          <div className="flex flex-col gap-1.5 rounded-xl bg-muted/60 px-3.5 py-3">
+            <span className="font-mono text-xs font-medium tracking-[0.1em] text-muted-foreground uppercase">
+              {t('guideLabel')}
+            </span>
+            <p className="text-sm break-words whitespace-pre-line">{question.guide}</p>
+          </div>
+        )
       )}
 
       {question.explanation && (

@@ -413,7 +413,7 @@ export async function assertConfirmedFilesOwnedBy(
  * For a resource item of kind file: the file must be confirmed, uploaded for `resource` by
  * `ownerId`, and not already used by another item. Otherwise VALIDATION { fields: ['file'] }.
  */
-export async function claimResourceFile(db: Db, fileId: string, ownerId: string): Promise<FileInfo> {
+export async function claimResourceFile(db: Pick<Db, 'select'>, fileId: string, ownerId: string): Promise<FileInfo> {
   const bad = () => new AppError('VALIDATION', 'This file is not available', { fields: ['file'] })
   if (typeof fileId !== 'string' || fileId.length === 0 || fileId.length > 100) throw bad()
   const [row] = await db

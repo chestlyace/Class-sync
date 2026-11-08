@@ -87,6 +87,19 @@ describe('creating items', () => {
     })
   })
 
+  it('two items racing for one file: one wins, the other is a VALIDATION on the file', async () => {
+    const base = { courseId: fx.courseA, topicId: fx.topicA }
+    const fileId = await insertResourceFile(db, fx.lecturer)
+    const results = await Promise.allSettled([
+      createFileItem(fx.lecturer, { ...base, title: 'One', fileId }),
+      createFileItem(fx.lecturer, { ...base, title: 'Two', fileId }),
+    ])
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
+    const lost = results.find((r) => r.status === 'rejected') as PromiseRejectedResult
+    expect(lost.reason).toMatchObject({ code: 'VALIDATION', details: { fields: ['file'] } })
+    expect(await db.select().from(resource).where(eq(resource.fileId, fileId))).toHaveLength(1)
+  })
+
   it('refuses a topic of another course, a colleague, and a student', async () => {
     await expect(
       createLink(fx.lecturer, { courseId: fx.courseA, topicId: fx.topicB, title: 'L', url: 'https://x.org' }),
@@ -203,5 +216,36 @@ describe('updating links and files', () => {
     await expect(updateFileItem(fx.lecturer, id, { title: 'x', fileId: 'nope' })).rejects.toMatchObject({
       details: { fields: ['file'] },
     })
+  })
+
+  it('a replace that races a removal fails FORBIDDEN and keeps the new file unclaimed', async () => {
+    const first = await insertResourceFile(db, fx.lecturer, 'a.pdf')
+    const { id } = await createFileItem(fx.lecturer, { courseId: fx.courseA, topicId: fx.topicA, title: 'F', fileId: first })
+    const second = await insertResourceFile(db, fx.lecturer, 'b.pdf')
+    await removeItem(fx.lecturer, { resourceId: id, courseId: fx.courseA })
+    await expect(updateFileItem(fx.lecturer, id, { title: 'F', fileId: second })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    })
+    expect(await db.select().from(file).where(eq(file.id, second))).toHaveLength(1)
+    expect(await db.select().from(resource).where(eq(resource.fileId, second))).toHaveLength(0)
+  })
+
+  it('two replaces of one item with different files leave no orphan', async () => {
+    const first = await insertResourceFile(db, fx.lecturer, 'a.pdf')
+    const { id } = await createFileItem(fx.lecturer, { courseId: fx.courseA, topicId: fx.topicA, title: 'F', fileId: first })
+    const b = await insertResourceFile(db, fx.lecturer, 'b.pdf')
+    const c = await insertResourceFile(db, fx.lecturer, 'c.pdf')
+    await Promise.all([
+      updateFileItem(fx.lecturer, id, { title: 'F', fileId: b }),
+      updateFileItem(fx.lecturer, id, { title: 'F', fileId: c }),
+    ])
+    const [row] = await db.select().from(resource).where(eq(resource.id, id))
+    const kept = row.fileId!
+    expect([b, c]).toContain(kept)
+    // The old file and the file that lost the overwrite are both deleted; only the winner remains.
+    const left = (await db.select({ id: file.id }).from(file)).map((f) => f.id)
+    expect(left).toContain(kept)
+    expect(left).not.toContain(first)
+    expect(left).not.toContain(kept === b ? c : b)
   })
 })

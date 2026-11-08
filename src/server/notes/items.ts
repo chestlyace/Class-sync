@@ -1,12 +1,13 @@
-import { and, asc, eq, isNotNull, max, ne } from 'drizzle-orm'
+import { and, asc, eq, max, ne } from 'drizzle-orm'
 import { sanitizeRichText } from '@/server/assignments/rich-text'
 import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
 import { requireRole } from '@/server/core/guards'
 import { requireCourseOwner } from '@/server/courses/service'
 import type { Db } from '@/server/db'
-import { file, resource, resourcePlacement, type ResourceKind } from '@/server/db/schema'
-import { deleteStoredFile, type FileInfo } from '@/server/files/service'
+import { resource, resourcePlacement, type ResourceKind } from '@/server/db/schema'
+import { isUniqueViolation } from '@/server/lib/db-errors'
+import { claimResourceFile, deleteStoredFile } from '@/server/files/service'
 import { richTextPlainText } from '@/lib/rich-text-content'
 import { parseLinkUrl, parseTitle, swapPositions } from './rules'
 import { assertTopicInCourse } from './topics'
@@ -23,24 +24,6 @@ function forbidden(): never {
 
 function titleOf(raw: unknown): string {
   return parseTitle(raw) ?? invalid('title')
-}
-
-/**
- * Same behaviour as Task 2's `claimResourceFile`: a confirmed `resource` file of `ownerId` that no
- * item uses yet; otherwise VALIDATION { fields: ['file'] }.
- */
-async function claimResourceFile(db: Executor, fileId: string, ownerId: string): Promise<FileInfo> {
-  if (typeof fileId !== 'string' || fileId.length === 0) invalid('file')
-  const [row] = await db
-    .select({ id: file.id, name: file.name, mimeType: file.mimeType, sizeBytes: file.sizeBytes })
-    .from(file)
-    .where(
-      and(eq(file.id, fileId), eq(file.ownerId, ownerId), eq(file.purpose, 'resource'), isNotNull(file.confirmedAt)),
-    )
-  if (!row) invalid('file')
-  const [used] = await db.select({ id: resource.id }).from(resource).where(eq(resource.fileId, fileId))
-  if (used) invalid('file')
-  return row
 }
 
 /** The item's resource when the caller owns it; missing and not-yours are both FORBIDDEN. */
@@ -88,18 +71,25 @@ async function insertItem(
   return ctx.db.transaction(async (tx) => {
     await assertTopicInCourse(tx, input.topicId, input.courseId)
     const v = await values(tx)
-    const [row] = await tx
-      .insert(resource)
-      .values({
-        ownerId: ctx.user.id,
-        kind: v.kind,
-        title: v.title,
-        body: v.body ?? null,
-        bodyText: v.bodyText ?? null,
-        url: v.url ?? null,
-        fileId: v.fileId ?? null,
-      })
-      .returning({ id: resource.id })
+    let row: { id: string }
+    try {
+      ;[row] = await tx
+        .insert(resource)
+        .values({
+          ownerId: ctx.user.id,
+          kind: v.kind,
+          title: v.title,
+          body: v.body ?? null,
+          bodyText: v.bodyText ?? null,
+          url: v.url ?? null,
+          fileId: v.fileId ?? null,
+        })
+        .returning({ id: resource.id })
+    } catch (err) {
+      // Two items racing for one file: the loser of the unique index is a bad file, not a crash.
+      if (isUniqueViolation(err, 'resource_file_id_unique')) invalid('file')
+      throw err
+    }
     await tx.insert(resourcePlacement).values({
       resourceId: row.id,
       courseId: input.courseId,
@@ -176,16 +166,28 @@ export async function updateFileItem(
   if (row.kind !== 'file') invalid('kind')
   const title = titleOf(input.title)
   const replaced = await ctx.db.transaction(async (tx) => {
-    if (input.fileId === undefined || input.fileId === row.fileId) {
+    // Lock the resource: the old file is whatever it holds now, and a removed item rolls the claim back.
+    const [locked] = await tx
+      .select({ fileId: resource.fileId })
+      .from(resource)
+      .where(eq(resource.id, resourceId))
+      .for('update')
+    if (!locked) forbidden()
+    if (input.fileId === undefined || input.fileId === locked.fileId) {
       await tx.update(resource).set({ title, updatedAt: new Date() }).where(eq(resource.id, resourceId))
       return null
     }
     const next = await claimResourceFile(tx, input.fileId, ctx.user.id)
-    await tx
-      .update(resource)
-      .set({ title, fileId: next.id, updatedAt: new Date() })
-      .where(eq(resource.id, resourceId))
-    return row.fileId
+    try {
+      await tx
+        .update(resource)
+        .set({ title, fileId: next.id, updatedAt: new Date() })
+        .where(eq(resource.id, resourceId))
+    } catch (err) {
+      if (isUniqueViolation(err, 'resource_file_id_unique')) invalid('file')
+      throw err
+    }
+    return locked.fileId
   })
   if (replaced) await deleteStoredFile(ctx.db, replaced)
 }

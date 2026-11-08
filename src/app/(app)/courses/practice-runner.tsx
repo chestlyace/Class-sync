@@ -311,16 +311,22 @@ function PhonePracticeShort({
         </Button>
       ) : (
         <div className="flex flex-col gap-4">
-          <div role="status" className="flex flex-col gap-3 rounded-2xl bg-muted/60 px-4 py-4">
-            <span className="font-mono text-xs font-medium tracking-[0.1em] text-muted-foreground uppercase">{t('lookFor')}</span>
-            <p className="break-words whitespace-pre-line">{question.guide}</p>
-            {question.explanation && (
-              <>
-                <span className="font-mono text-xs font-medium tracking-[0.1em] text-muted-foreground uppercase">{t('explanation')}</span>
-                <p className="break-words whitespace-pre-line text-muted-foreground">{question.explanation}</p>
-              </>
-            )}
-          </div>
+          {(question.guide || question.explanation) && (
+            <div role="status" className="flex flex-col gap-3 rounded-2xl bg-muted/60 px-4 py-4">
+              {question.guide && (
+                <>
+                  <span className="font-mono text-xs font-medium tracking-[0.1em] text-muted-foreground uppercase">{t('lookFor')}</span>
+                  <p className="break-words whitespace-pre-line">{question.guide}</p>
+                </>
+              )}
+              {question.explanation && (
+                <>
+                  <span className="font-mono text-xs font-medium tracking-[0.1em] text-muted-foreground uppercase">{t('explanation')}</span>
+                  <p className="break-words whitespace-pre-line text-muted-foreground">{question.explanation}</p>
+                </>
+              )}
+            </div>
+          )}
           <p className="text-sm text-muted-foreground">{t('selfCheck')}</p>
           <div className="grid grid-cols-2 gap-2.5">
             <Button size="lg" onClick={() => onAnswer(true)}>
