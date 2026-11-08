@@ -347,9 +347,13 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
 
   // Out of answering (ended, handed in, time up): an exit still open no longer counts, and full
   // screen is released. Otherwise a stale exit would be judged if the lecturer lets the student back in.
+  // Full screen mode ends with it: a student let back in taps Begin again to re-enter full screen,
+  // rather than the reopened tracker counting "out of full screen" as a fresh exit.
   const onStopTracking = useEffectEvent(() => {
     if (localRef.current.openExit) commit({ ...localRef.current, openExit: null })
     setWarning(null)
+    setFullscreenMode(false)
+    setBegun(false)
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
   })
   useEffect(() => {
