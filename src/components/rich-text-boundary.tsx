@@ -24,11 +24,23 @@ function RichTextFallback({ value }: { value: unknown }) {
  * Catches a rendering error of the rich-text editor or view (e.g. a malformed stored document), so
  * the rest of the page (a grade form, a submit button) keeps working.
  */
-export class RichTextBoundary extends Component<{ value: unknown; children: ReactNode }, { failed: boolean }> {
-  state = { failed: false }
+type BoundaryState = { failed: boolean; value: unknown }
 
-  static getDerivedStateFromError() {
+export class RichTextBoundary extends Component<{ value: unknown; children: ReactNode }, BoundaryState> {
+  state: BoundaryState = { failed: false, value: this.props.value }
+
+  static getDerivedStateFromError(): Partial<BoundaryState> {
     return { failed: true }
+  }
+
+  /**
+   * A new document gets a fresh try: without this, one malformed document would keep the fallback
+   * for the life of the instance (e.g. on the next submission, which reuses this component), even
+   * after the value becomes valid. A reference compare is enough: pages pass a new object only
+   * when the stored document changes.
+   */
+  static getDerivedStateFromProps(props: { value: unknown }, state: BoundaryState): Partial<BoundaryState> | null {
+    return props.value !== state.value ? { failed: false, value: props.value } : null
   }
 
   componentDidCatch(error: unknown) {

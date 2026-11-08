@@ -726,7 +726,7 @@
         "releaseUngraded": "{count, plural, one {# submission isn't graded yet; its mark will show as soon as you grade it.} other {# submissions aren't graded yet; their marks will show as soon as you grade them.}}",
         "releaseConfirm": "Release grades",
         "releasedOn": "Grades released {date}. Marks you change now are visible to students right away.",
-        "gradedCount": "{graded, plural, one {# of {total} submissions graded.} other {# of {total} submissions graded.}}",
+        "gradedCount": "Graded: {graded} of {total}.",
         "instructions": "Instructions",
         "noInstructions": "No instructions.",
         "openFile": "Open {name}",
