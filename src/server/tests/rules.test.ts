@@ -107,6 +107,7 @@ describe('validateTestInput', () => {
       shuffle: true,
       maxExits: 3,
       maxAbsenceSeconds: 10,
+      weight: 1,
       questions: [
         {
           kind: 'mcq',
@@ -120,6 +121,18 @@ describe('validateTestInput', () => {
         { kind: 'short', prompt: 'Define osmosis.', mark: 3, guide: 'Water across a membrane.' },
       ],
     })
+  })
+
+  it('takes the weight in CA, 0.25 to 100 in steps of 0.25, and 1 when left out', () => {
+    expect(validateTestInput(valid)).toMatchObject({ weight: 1 })
+    for (const weight of [0.25, 1, 2.5, 100]) {
+      expect(validateTestInput({ ...valid, weight }), String(weight)).toMatchObject({ weight })
+    }
+    for (const weight of [0, 0.1, 0.3, -1, 100.25, 101, NaN, Infinity]) {
+      expect(validateTestInput({ ...valid, weight }), String(weight)).toEqual({ error: 'weight' })
+    }
+    expect(validateTestInput({ ...valid, weight: '2' })).toEqual({ error: 'shape' })
+    expect(validateTestInput({ ...valid, weight: null })).toEqual({ error: 'shape' })
   })
 
   it('refuses a blank or too long title', () => {

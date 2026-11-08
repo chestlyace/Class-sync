@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { type CaInput, computeCa, isSlipping, rankRows } from './compute'
-import { DEFAULT_SETTINGS } from './rules'
+import { type CaSettings, DEFAULT_SETTINGS } from './rules'
 
 const EMPTY: CaInput = {
   attendance: { present: 0, partial: 0, absent: 0 },
   assignments: [],
   participationNet: 0,
-  classStarted: { attendance: false, assignments: false, participation: false },
+  tests: [],
+  classStarted: { attendance: false, assignments: false, participation: false, tests: false },
 }
 
-const ALL_STARTED: CaInput['classStarted'] = { attendance: true, assignments: true, participation: true }
+const ALL_STARTED: CaInput['classStarted'] = { attendance: true, assignments: true, participation: true, tests: true }
 
 const part = (r: ReturnType<typeof computeCa>, key: string) => r.components.find((c) => c.key === key)!
 
@@ -120,7 +121,7 @@ describe('computeCa', () => {
       ...EMPTY,
       attendance: { present: 1, partial: 0, absent: 0 },
       participationNet: 5,
-      classStarted: { attendance: true, assignments: false, participation: true },
+      classStarted: { attendance: true, assignments: false, participation: true, tests: false },
     })
     expect(part(r, 'assignments')).toEqual({ key: 'assignments', points: 20, ratio: null, score: null, status: 'not_started' })
     expect(r.soFar).toBe(10)
@@ -173,7 +174,7 @@ describe('computeCa', () => {
     const r = computeCa(DEFAULT_SETTINGS, {
       ...EMPTY,
       participationNet: 5,
-      classStarted: { attendance: true, assignments: false, participation: true },
+      classStarted: { attendance: true, assignments: false, participation: true, tests: false },
     })
     expect(r.components.map((c) => c.status)).toEqual(['not_applicable', 'not_started', 'scored'])
     // 5 x 30 / (30 - 5) = 6
@@ -195,11 +196,12 @@ describe('computeCa', () => {
   it('parts add up: the final is the sum of the rounded parts', () => {
     // Each third of 5 is 1.67, so the CA is 1.67 x 3 = 5.01.
     const thirds = computeCa(
-      { total: 15, attendancePoints: 5, assignmentPoints: 5, participationPoints: 5, testPoints: 0, participationTarget: 3 },
+      { total: 15, attendancePoints: 5, assignmentPoints: 5, participationPoints: 5, testPoints: 0, participationTarget: 3, testsBestOf: null },
       {
         attendance: { present: 1, partial: 0, absent: 2 },
         assignments: [{ weight: 1, mark: 1, maxMark: 3 }],
         participationNet: 1,
+        tests: [],
         classStarted: ALL_STARTED,
       },
     )
@@ -209,11 +211,12 @@ describe('computeCa', () => {
     expect(thirds.scaled).toBe(false)
     // Each half point is 0.505, shown 0.51: the CA is 0.51 x 3 = 1.53.
     const halves = computeCa(
-      { total: 3.03, attendancePoints: 1.01, assignmentPoints: 1.01, participationPoints: 1.01, testPoints: 0, participationTarget: 2 },
+      { total: 3.03, attendancePoints: 1.01, assignmentPoints: 1.01, participationPoints: 1.01, testPoints: 0, participationTarget: 2, testsBestOf: null },
       {
         attendance: { present: 1, partial: 0, absent: 1 },
         assignments: [{ weight: 1, mark: 1, maxMark: 2 }],
         participationNet: 1,
+        tests: [],
         classStarted: ALL_STARTED,
       },
     )
@@ -230,6 +233,62 @@ describe('computeCa', () => {
       classStarted: { ...EMPTY.classStarted, attendance: true },
     })
     expect(part(r, 'attendance').score).toBe(1.01)
+  })
+})
+
+describe('computeCa: tests', () => {
+  // 10 points for tests: 5 + 10 + 5 + 10 = 30.
+  const s: CaSettings = { ...DEFAULT_SETTINGS, assignmentPoints: 10, testPoints: 10 }
+  const t = (weight: number, ratio: number) => ({ weight, ratio })
+  const testsStarted = { ...EMPTY, classStarted: { ...EMPTY.classStarted, tests: true } }
+  const testsScore = (settings: CaSettings, tests: CaInput['tests']) =>
+    computeCa(settings, { ...testsStarted, tests }).components.find((c) => c.key === 'tests')?.score
+
+  it('lists tests after the other parts when they have points', () => {
+    expect(computeCa(s, EMPTY).components.map((c) => c.key)).toEqual(['attendance', 'assignments', 'participation', 'tests'])
+    expect(part(computeCa(s, EMPTY), 'tests')).toEqual({ key: 'tests', points: 10, ratio: null, score: null, status: 'not_started' })
+  })
+
+  it('combines tests by weight, keeping the best N when the course says so', () => {
+    expect(testsScore(s, [])).toBeNull()
+    // Best 2 of 3 with only one released: that one test's ratio.
+    expect(testsScore({ ...s, testsBestOf: 2 }, [t(1, 0.5)])).toBe(5)
+    // Keeps 0.9 and 0.6: (0.9 + 1.2) / 3 = 0.7.
+    expect(testsScore({ ...s, testsBestOf: 2 }, [t(1, 0.9), t(1, 0.4), t(2, 0.6)])).toBe(7)
+    // All: (0.9 + 0.4 + 1.2) / 4 = 0.625.
+    expect(testsScore({ ...s, testsBestOf: null }, [t(1, 0.9), t(1, 0.4), t(2, 0.6)])).toBe(6.25)
+    // Best N larger than the number of tests: all of them.
+    expect(testsScore({ ...s, testsBestOf: 5 }, [t(1, 0.9), t(1, 0.4), t(2, 0.6)])).toBe(6.25)
+  })
+
+  it('omits tests worth 0 points', () => {
+    expect(testsScore({ ...s, assignmentPoints: 20, testPoints: 0 }, [t(1, 1)])).toBeUndefined()
+  })
+
+  it('a student who never joined scores 0 on the test (ratio 0), not a missing part', () => {
+    const r = computeCa({ ...s, testsBestOf: 2 }, { ...testsStarted, tests: [t(1, 0)] })
+    expect(part(r, 'tests')).toEqual({ key: 'tests', points: 10, ratio: 0, score: 0, status: 'scored' })
+    expect(r.scaled).toBe(false)
+  })
+
+  it('tests started for the class but none counting for the student are not applicable, and scale the rest', () => {
+    const r = computeCa(s, { ...EMPTY, participationNet: 5, classStarted: { ...EMPTY.classStarted, participation: true, tests: true } })
+    expect(part(r, 'tests')).toMatchObject({ ratio: null, score: null, status: 'not_applicable' })
+    // Participation 5, assignments and attendance not started (0): 5 x 30 / (30 - 10) = 7.5.
+    expect(r.final).toBe(7.5)
+    expect(r.scaled).toBe(true)
+  })
+
+  it('adds the rounded tests part to the others', () => {
+    // Tests: (1/3) of 10 = 3.33; participation 5/5.
+    const r = computeCa(s, {
+      ...EMPTY,
+      participationNet: 5,
+      tests: [t(1, 1 / 3)],
+      classStarted: { ...EMPTY.classStarted, participation: true, tests: true },
+    })
+    expect(part(r, 'tests').score).toBe(3.33)
+    expect(r.final).toBe(8.33)
   })
 })
 

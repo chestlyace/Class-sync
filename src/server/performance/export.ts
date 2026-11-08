@@ -19,6 +19,7 @@ const COMPONENTS: { key: ComponentKey; points: (s: CaSettings) => number }[] = [
   { key: 'attendance', points: (s) => s.attendancePoints },
   { key: 'assignments', points: (s) => s.assignmentPoints },
   { key: 'participation', points: (s) => s.participationPoints },
+  { key: 'tests', points: (s) => s.testPoints },
 ]
 
 /**
@@ -36,7 +37,7 @@ export async function buildCaWorkbook(input: {
 }): Promise<Buffer> {
   const { settings, rows, locale, courseLabel } = input
   const t = createTranslator({ locale, messages: messages[locale], namespace: 'performance.export' })
-  const label = (key: 'attendance' | 'assignments' | 'participation' | 'total', points: number) =>
+  const label = (key: ComponentKey | 'total', points: number) =>
     t(key, { points: formatDecimal(points, locale) })
   const list = new Intl.ListFormat(locale, { type: 'conjunction' })
   const noteOf = (result: StudentCa['result']): string | null => {

@@ -96,7 +96,11 @@ export async function MyCa({ courseId }: { courseId: string }) {
                     ? t("how.participation", {
                         target: result.data.settings.participationTarget,
                       })
-                    : t(`how.${c.key}`)}
+                    : c.key === "tests" && result.data.settings.testsBestOf !== null
+                      ? t("how.testsBest", {
+                          count: result.data.settings.testsBestOf,
+                        })
+                      : t(`how.${c.key}`)}
                 </p>
               </li>
             ))}

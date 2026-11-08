@@ -50,6 +50,7 @@ function validInput(over: Partial<TestInput> = {}): TestInput {
     shuffle: true,
     maxExits: 3,
     maxAbsenceSeconds: 10,
+    weight: 1,
     questions: [
       {
         kind: 'mcq',
@@ -335,6 +336,7 @@ describe('test authoring services', () => {
       shuffle: true,
       maxExits: 3,
       maxAbsenceSeconds: 10,
+      weight: 1,
     })
     // Same shape as the input, with an id per question; mark stays null where the default applies.
     expect(questions.every((q) => typeof q.id === 'string' && q.id.length > 0)).toBe(true)
@@ -440,6 +442,28 @@ describe('test authoring services', () => {
     // Copying into the same course is allowed too.
     const again = await copyTest(lecturer, original.id, algo.id)
     expect(again).toMatchObject({ courseId: algo.id, state: 'not_started' })
+  })
+
+  it('stores the weight in CA, returns it to the editor, changes it before Start and copies it', async () => {
+    const { lecturer, algo, networks } = await setup()
+    const test = await createTest(lecturer, algo.id, validInput({ weight: 2.5 }))
+    const [row] = await db.select().from(courseTest).where(eq(courseTest.id, test.id))
+    expect(row.weight).toBe(2.5)
+    expect((await getTestForEdit(lecturer, test.id)).input.weight).toBe(2.5)
+
+    // Left out of the input: the default, 1.
+    const { weight: _ignored, ...withoutWeight } = validInput()
+    void _ignored
+    const plain = await createTest(lecturer, algo.id, withoutWeight)
+    expect((await getTestForEdit(lecturer, plain.id)).input.weight).toBe(1)
+
+    await updateTest(lecturer, test.id, validInput({ weight: 0.75 }))
+    expect((await getTestForEdit(lecturer, test.id)).input.weight).toBe(0.75)
+    await expectAppError(updateTest(lecturer, test.id, validInput({ weight: 0.3 })), 'VALIDATION', { reason: 'weight' })
+    expect((await getTestForEdit(lecturer, test.id)).input.weight).toBe(0.75)
+
+    const copy = await copyTest(lecturer, test.id, networks.id)
+    expect((await getTestForEdit(lecturer, copy.id)).input.weight).toBe(0.75)
   })
 
   it("copyTest into a colleague's course is FORBIDDEN", async () => {

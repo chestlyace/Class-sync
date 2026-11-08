@@ -9,6 +9,7 @@ import {
   DEFAULT_MAX_ABSENCE_SECONDS,
   DEFAULT_MAX_EXITS,
   DEFAULT_QUESTION_MARK,
+  DEFAULT_TEST_WEIGHT,
   MCQ_OPTIONS_MIN,
 } from '@/server/tests/rules'
 
@@ -31,6 +32,8 @@ export type EditorValues = {
   shuffle: boolean
   maxExits: string
   maxAbsenceSeconds: string
+  /** Weight in CA, shown as "1×". */
+  weight: string
   questions: EditorQuestion[]
 }
 
@@ -67,6 +70,7 @@ export function emptyEditorValues(): EditorValues {
     shuffle: true,
     maxExits: String(DEFAULT_MAX_EXITS),
     maxAbsenceSeconds: String(DEFAULT_MAX_ABSENCE_SECONDS),
+    weight: String(DEFAULT_TEST_WEIGHT),
     questions: [blankQuestion('mcq')],
   }
 }
@@ -85,6 +89,7 @@ export function toEditorValues(input: SavedTestInput, locale: string): EditorVal
     shuffle: input.shuffle,
     maxExits: String(input.maxExits),
     maxAbsenceSeconds: String(input.maxAbsenceSeconds),
+    weight: numberText(input.weight, locale),
     questions: input.questions.map((q) => ({
       key: newKey(),
       kind: q.kind,
@@ -145,6 +150,7 @@ export function parseTestForm(value: unknown): unknown {
     shuffle: value.shuffle,
     maxExits: toNumber(value.maxExits),
     maxAbsenceSeconds: toNumber(value.maxAbsenceSeconds),
+    weight: toNumber(value.weight),
     questions: Array.isArray(value.questions) ? value.questions.map(toQuestion) : value.questions,
   }
 }
@@ -178,10 +184,14 @@ function isEditorQuestion(value: unknown): value is EditorQuestion {
   )
 }
 
-/** A stored draft read back (it may be stale or edited by hand): null unless it has the editor shape. */
+/**
+ * A stored draft read back (it may be stale or edited by hand): null unless it has the editor
+ * shape. A draft from before tests had a weight gets the default one.
+ */
 export function toEditorDraft(value: unknown): EditorValues | null {
   if (!isRecord(value)) return null
-  const texts = [value.title, value.durationMinutes, value.defaultMark, value.maxExits, value.maxAbsenceSeconds]
+  const weight = value.weight === undefined ? String(DEFAULT_TEST_WEIGHT) : value.weight
+  const texts = [value.title, value.durationMinutes, value.defaultMark, value.maxExits, value.maxAbsenceSeconds, weight]
   if (!texts.every((t) => typeof t === 'string') || typeof value.shuffle !== 'boolean') return null
   if (!Array.isArray(value.questions) || !value.questions.every(isEditorQuestion)) return null
   return {
@@ -191,6 +201,7 @@ export function toEditorDraft(value: unknown): EditorValues | null {
     shuffle: value.shuffle,
     maxExits: value.maxExits as string,
     maxAbsenceSeconds: value.maxAbsenceSeconds as string,
+    weight: weight as string,
     questions: value.questions,
   }
 }

@@ -44,6 +44,8 @@ export const courseTest = pgTable(
       mode: 'number',
     }).notNull(),
     shuffle: boolean('shuffle').notNull().default(true),
+    // How much the test counts among the course's tests in the CA (like an assignment's weight).
+    weight: numeric('weight', { precision: 6, scale: 2, mode: 'number' }).notNull().default(1),
     maxExits: smallint('max_exits').notNull().default(3),
     maxAbsenceSeconds: smallint('max_absence_seconds').notNull().default(10),
     startedAt: timestamp('started_at', { withTimezone: true }),
@@ -62,6 +64,7 @@ export const courseTest = pgTable(
     check('course_test_max_exits_check', sql`${t.maxExits} between 1 and 10`),
     check('course_test_max_absence_check', sql`${t.maxAbsenceSeconds} between 3 and 300`),
     check('course_test_default_mark_check', sql`${t.defaultMark} > 0`),
+    check('course_test_weight_check', sql`${t.weight} between 0.25 and 100`),
     // Start and deadline are set together (Start fixes both).
     check('course_test_started_deadline_check', sql`(${t.startedAt} is null) = (${t.deadlineAt} is null)`),
     index('course_test_course_id_idx').on(t.courseId),

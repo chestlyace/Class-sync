@@ -8,7 +8,7 @@ import { AppError } from '@/server/core/errors'
 import { tapParticipation, undoLastTap, type UndoneTap } from '@/server/performance/participation'
 import type { CaSettings } from '@/server/performance/rules'
 import { updateCaSettings } from '@/server/performance/settings'
-import { parseDecimalInput, parseWholeInput, POINT_FIELDS, type SettingsField } from './performance-form'
+import { parseBestOfInput, parseDecimalInput, parseWholeInput, POINT_FIELDS, type SettingsField } from './performance-form'
 
 function invalid(fields: string[]): never {
   throw new AppError('VALIDATION', 'Invalid input', { fields })
@@ -20,22 +20,25 @@ function requireId(value: unknown, field: string): string {
 }
 
 /**
- * Reads the settings form: every box must hold a number (all bad ones reported together). The
- * service then checks ranges, decimals and that the parts add up to the total. Test points come
- * with phase 3, so they are always 0 here.
+ * Reads the settings form: every box must hold a number (all bad ones reported together), except
+ * the best tests, where blank means every test. The service then checks ranges, decimals and
+ * that the parts add up to the total.
  */
 function parseSettingsForm(data: FormData): CaSettings {
   const bad: SettingsField[] = []
-  const read = (field: SettingsField, parse: (raw: string) => number) => {
+  const read = <T extends number | null>(field: SettingsField, parse: (raw: string) => T): T => {
     const value = parse(formString(data, field))
-    if (!Number.isFinite(value)) bad.push(field)
+    if (value !== null && !Number.isFinite(value)) bad.push(field)
     return value
   }
   const total = read('total', parseDecimalInput)
-  const [attendancePoints, assignmentPoints, participationPoints] = POINT_FIELDS.map((f) => read(f, parseDecimalInput))
+  const [attendancePoints, assignmentPoints, participationPoints, testPoints] = POINT_FIELDS.map((f) =>
+    read(f, parseDecimalInput),
+  )
   const participationTarget = read('participationTarget', parseWholeInput)
+  const testsBestOf = read('testsBestOf', parseBestOfInput)
   if (bad.length > 0) invalid(bad)
-  return { total, attendancePoints, assignmentPoints, participationPoints, testPoints: 0, participationTarget }
+  return { total, attendancePoints, assignmentPoints, participationPoints, testPoints, participationTarget, testsBestOf }
 }
 
 export async function updateCaSettingsAction(

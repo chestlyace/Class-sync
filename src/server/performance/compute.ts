@@ -1,12 +1,13 @@
 import { type CaSettings, SLIP_ATTENDANCE, SLIP_MIN_SESSIONS, SLIP_MIN_SHARE, SLIP_RATIO } from './rules'
 
-export type ComponentKey = 'attendance' | 'assignments' | 'participation'
+export type ComponentKey = 'attendance' | 'assignments' | 'participation' | 'tests'
 
 /**
  * - `scored`: the part has started for the class and counts for this student.
  * - `not_started`: nobody in the class has anything counted there yet; it counts 0 for everyone.
  * - `not_applicable`: it has started for the class, but nothing counts for this student yet (only
- *   work waiting for a grade, only work due before they joined, or no session since they joined).
+ *   work waiting for a grade, only work due or tests ended before they joined, or no session since
+ *   they joined).
  *   Left out of their final, whose other parts are scaled up to the total.
  */
 export type PartStatus = 'scored' | 'not_started' | 'not_applicable'
@@ -26,9 +27,14 @@ export type CaInput = {
   assignments: { weight: number; mark: number | null; maxMark: number }[]
   participationNet: number
   /**
+   * Released tests that count for the student: score / out of, never joined = 0. `weight` is the
+   * test's weight in the CA.
+   */
+  tests: { weight: number; ratio: number }[]
+  /**
    * Which parts have started for the class (the current roster): attendance once anyone has a
    * counted session, assignments once a published assignment has its grades released,
-   * participation once anyone on the roster has a tap.
+   * participation once anyone on the roster has a tap, tests once any test is released.
    */
   classStarted: Record<ComponentKey, boolean>
 }
@@ -66,6 +72,17 @@ function assignmentsRatio(list: CaInput['assignments']): number | null {
   return earned / totalWeight
 }
 
+/**
+ * Best N of M: keeps the `bestOf` highest ratios (all when null), then their weighted mean
+ * Σ w·r / Σ w. Equal ratios keep the earlier test. Null when no test counts.
+ */
+export function testsRatio(list: CaInput['tests'], bestOf: number | null): number | null {
+  const kept = bestOf === null ? list : [...list].sort((a, b) => b.ratio - a.ratio).slice(0, bestOf)
+  const totalWeight = kept.reduce((sum, t) => sum + t.weight, 0)
+  if (kept.length === 0 || totalWeight <= 0) return null
+  return kept.reduce((sum, t) => sum + t.weight * t.ratio, 0) / totalWeight
+}
+
 function participationRatio(net: number, target: number): number {
   return Math.min(1, Math.max(0, net) / target)
 }
@@ -86,6 +103,7 @@ export function computeCa(settings: CaSettings, input: CaInput): CaResult {
       points: settings.participationPoints,
       ratio: participationRatio(input.participationNet, settings.participationTarget),
     },
+    { key: 'tests', points: settings.testPoints, ratio: testsRatio(input.tests, settings.testsBestOf) },
   ]
 
   let earned = 0

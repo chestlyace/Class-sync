@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseDecimalInput, parseWholeInput, sumInCents } from './performance-form'
+import { parseBestOfInput, parseDecimalInput, parseWholeInput, POINT_FIELDS, sumInCents } from './performance-form'
 
 describe('parseDecimalInput', () => {
   it('reads English and French decimals', () => {
@@ -20,6 +20,24 @@ describe('parseWholeInput', () => {
     expect(parseWholeInput('5')).toBe(5)
     expect(parseWholeInput('5.5')).toBeNaN()
     expect(parseWholeInput('')).toBeNaN()
+  })
+})
+
+describe('parseBestOfInput', () => {
+  it('reads blank as every test (null) and a whole number as itself', () => {
+    expect(parseBestOfInput('')).toBeNull()
+    expect(parseBestOfInput('  ')).toBeNull()
+    expect(parseBestOfInput(' 3 ')).toBe(3)
+  })
+
+  it('reads anything else as NaN, for the form to flag', () => {
+    for (const raw of ['two', '2.5', '-1']) expect(parseBestOfInput(raw)).toBeNaN()
+  })
+})
+
+describe('POINT_FIELDS', () => {
+  it('lists test points with the other parts', () => {
+    expect(POINT_FIELDS).toEqual(['attendancePoints', 'assignmentPoints', 'participationPoints', 'testPoints'])
   })
 })
 

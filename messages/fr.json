@@ -912,6 +912,7 @@
       "attendance": "Présence (/{points})",
       "assignments": "Devoirs (/{points})",
       "participation": "Participation (/{points})",
+      "tests": "Tests (/{points})",
       "total": "CC (/{points})",
       "note": "Remarque",
       "scaledNote": "Mis à l'échelle : {parts}",
@@ -919,7 +920,8 @@
       "notApplicable": {
         "attendance": "Présence non applicable",
         "assignments": "Devoirs non applicables",
-        "participation": "Participation non applicable"
+        "participation": "Participation non applicable",
+        "tests": "Tests non applicables"
       }
     },
     "lecturer": {
@@ -932,11 +934,12 @@
       "studentCount": "{count, plural, one {# étudiant} other {# étudiants}}",
       "noStudents": "Aucun étudiant dans ce cours pour l'instant.",
       "summary": "{slipping, plural, =0 {Personne ne décroche} one {# étudiant décroche} other {# étudiants décrochent}} · {missing, plural, =0 {aucun travail manquant} one {# avec du travail manquant} other {# avec du travail manquant}}",
-      "legend": "« En cours » ne compte que les parties commencées. « Final » compte les autres pour 0 : c'est la note de l'export. « — » signifie pas encore commencé. « N/A » signifie que la partie ne s'applique pas encore à cet étudiant (seulement du travail en attente de note, du travail dû avant son arrivée, ou aucune séance depuis son arrivée) : ses autres parties sont alors mises à l'échelle sur le total.",
+      "legend": "« En cours » ne compte que les parties commencées. « Final » compte les autres pour 0 : c'est la note de l'export. « — » signifie pas encore commencé. « N/A » signifie que la partie ne s'applique pas encore à cet étudiant (seulement du travail en attente de note, du travail dû ou des tests terminés avant son arrivée, ou aucune séance depuis son arrivée) : ses autres parties sont alors mises à l'échelle sur le total.",
       "component": {
         "attendance": "Présence",
         "assignments": "Devoirs",
-        "participation": "Participation"
+        "participation": "Participation",
+        "tests": "Tests"
       },
       "table": {
         "caption": "La classe classée par CC, avec chaque partie, le CC en cours, le CC final, le travail manquant et qui décroche.",
@@ -967,19 +970,24 @@
         "attendance": "Présence",
         "assignments": "Devoirs",
         "participation": "Participation",
+        "tests": "Tests",
         "sumHelper": "Les parties font {sum} sur {total}",
         "sumHelperNoTotal": "Les parties font {sum}",
         "dropHint": "Donnez 0 point à une partie pour la retirer.",
         "target": "Objectif de participation",
         "targetHint": "Nombre net de points de participation pour obtenir tous les points.",
+        "bestOfLegend": "Tests comptés",
+        "bestOfBefore": "Compter les",
+        "bestOf": "Nombre de tests comptés",
+        "bestOfAfter": "meilleurs tests",
+        "bestOfHint": "Laissez vide pour compter tous les tests. Un test compte une fois ses résultats publiés ; un étudiant qui ne l'a pas passé a 0. Le coefficient de chaque test se règle dans son éditeur.",
         "save": "Enregistrer les réglages",
         "saving": "Enregistrement…",
         "saved": "Réglages enregistrés.",
         "errors": {
           "sum": "Les parties doivent faire exactement le total du CC.",
-          "range": "Le total doit être entre 1 et 100, chaque partie entre 0 et 100, et l'objectif un nombre entier de 1 à 100.",
+          "range": "Le total doit être entre 1 et 100, chaque partie entre 0 et 100, l'objectif un nombre entier de 1 à 100, et les meilleurs tests un nombre entier de 1 à 50 (ou vide).",
           "decimals": "Utilisez au plus 2 décimales (par exemple {example}).",
-          "tests": "Les points de tests ne sont pas encore disponibles.",
           "shape": "Les réglages sont illisibles. Rechargez la page et réessayez.",
           "fields": "Saisissez un nombre dans chaque case signalée."
         }
@@ -1008,7 +1016,8 @@
       "notStartedNotice": {
         "attendance": "La présence n'a pas commencé : elle compte 0 pour tout le monde. Mettez-la à 0 point si vous ne l'utilisez pas.",
         "assignments": "Les devoirs n'ont pas commencé (aucune note publiée) : ils comptent 0 pour tout le monde. Mettez-les à 0 point si vous ne les utilisez pas.",
-        "participation": "La participation n'a pas commencé : elle compte 0 pour tout le monde. Mettez-la à 0 point si vous ne l'utilisez pas."
+        "participation": "La participation n'a pas commencé : elle compte 0 pour tout le monde. Mettez-la à 0 point si vous ne l'utilisez pas.",
+        "tests": "Les tests n'ont pas commencé (aucun résultat publié) : ils comptent 0 pour tout le monde. Mettez-les à 0 point si vous ne les utilisez pas."
       }
     },
     "student": {
@@ -1025,12 +1034,15 @@
       "name": {
         "attendance": "Présence",
         "assignments": "Devoirs",
-        "participation": "Participation"
+        "participation": "Participation",
+        "tests": "Tests"
       },
       "how": {
         "attendance": "Une présence compte en entier, une présence partielle compte pour moitié.",
         "assignments": "Moyenne pondérée des notes publiées ; un travail manquant compte 0. Un travail en attente de note, ou dû avant votre arrivée, n'est pas compté.",
-        "participation": "Gagnée en classe, note maximale à {target, plural, one {# intervention} other {# interventions}}."
+        "participation": "Gagnée en classe, note maximale à {target, plural, one {# intervention} other {# interventions}}.",
+        "tests": "Moyenne pondérée de vos résultats de tests publiés ; un test que vous n'avez pas passé compte 0. Un test terminé avant votre arrivée n'est pas compté.",
+        "testsBest": "{count, plural, one {Votre meilleur test compte} other {Vos # meilleurs tests comptent}}, pondérés, parmi les résultats publiés ; un test que vous n'avez pas passé compte 0. Un test terminé avant votre arrivée n'est pas compté."
       },
       "missingWork": "{count, plural, one {# travail manquant} other {# travaux manquants}}",
       "seeAssignments": "Voir mes devoirs"
@@ -1092,6 +1104,9 @@
         "settings": "Réglages",
         "duration": "Durée (min)",
         "defaultMark": "Points par question",
+        "weight": "Coefficient dans le CC",
+        "weightSuffix": "×",
+        "weightHint": "Son poids parmi les tests du cours dans le CC.",
         "total": "Total : {total} {count, plural, one {point} other {points}}",
         "totalUnknown": "Total : —",
         "shuffle": "Mélanger les questions et les choix",
@@ -1202,6 +1217,7 @@
           "duration": "vérifiez la durée.",
           "mark": "les points vont de 0,25 à 100, par pas de 0,25.",
           "leaving": "vérifiez la règle de sortie.",
+          "weight": "le coefficient dans le CC va de 0,25 à 100, par pas de 0,25.",
           "questions": "un test compte de 1 à 100 questions.",
           "prompt": "rédigez la question (2 000 caractères au plus).",
           "options": "donnez de 2 à 6 choix, aucun vide.",
@@ -1214,6 +1230,7 @@
           "duration": "La durée est un nombre entier de minutes, de 1 à 300.",
           "mark": "Les points par question vont de 0,25 à 100, par pas de 0,25.",
           "leaving": "Les sorties vont de 1 à 10, et l'absence de 3 à 300 secondes.",
+          "weight": "Le coefficient dans le CC va de 0,25 à 100, par pas de 0,25.",
           "questions": "Un test compte de 1 à 100 questions.",
           "prompt": "Rédigez chaque question.",
           "options": "Donnez de 2 à 6 choix à chaque question à choix multiple.",

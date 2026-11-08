@@ -7,7 +7,7 @@ import type { StudentCa } from './service'
 
 const XLSX_MAGIC = [0x50, 0x4b] // "PK": an .xlsx is a zip
 
-const ALL_STARTED: CaInput['classStarted'] = { attendance: true, assignments: true, participation: true }
+const ALL_STARTED: CaInput['classStarted'] = { attendance: true, assignments: true, participation: true, tests: true }
 
 /** A student with every component started: attendance 3/5, assignments 10/20, participation 5/5. */
 function student(over: Partial<StudentCa> & { name: string; matricule: string }, settings: CaSettings = DEFAULT_SETTINGS): StudentCa {
@@ -15,6 +15,7 @@ function student(over: Partial<StudentCa> & { name: string; matricule: string },
     attendance: { present: 3, partial: 0, absent: 2 },
     assignments: [{ weight: 1, mark: 10, maxMark: 20 }],
     participationNet: 5,
+    tests: [{ weight: 1, ratio: 0.75 }],
     classStarted: ALL_STARTED,
   })
   return {
@@ -128,11 +129,13 @@ describe('buildCaWorkbook', () => {
       participationPoints: 5,
       testPoints: 0,
       participationTarget: 3,
+      testsBestOf: null,
     }
     const result = computeCa(settings, {
       attendance: { present: 1, partial: 0, absent: 2 },
       assignments: [{ weight: 1, mark: 1, maxMark: 3 }],
       participationNet: 1,
+      tests: [],
       classStarted: ALL_STARTED,
     })
     const ada = student({ name: 'Ada', matricule: '007', result }, settings)
@@ -153,7 +156,8 @@ describe('buildCaWorkbook', () => {
       attendance: { present: 4, partial: 0, absent: 0 },
       assignments: [],
       participationNet: 0,
-      classStarted: { attendance: true, assignments: false, participation: false },
+      tests: [],
+      classStarted: { attendance: true, assignments: false, participation: false, tests: false },
     })
     expect(empty.components.find((c) => c.key === 'assignments')!.score).toBeNull()
     const ws = (
@@ -176,6 +180,7 @@ describe('buildCaWorkbook', () => {
       attendance: { present: 1, partial: 0, absent: 0 },
       assignments: [],
       participationNet: 5,
+      tests: [],
       classStarted: ALL_STARTED,
     })
     const rows = [student({ name: 'Ada', matricule: 'UB1', result: scaled }), student({ name: 'Bea', matricule: 'UB2' })]
@@ -206,6 +211,7 @@ describe('buildCaWorkbook', () => {
       attendance: { present: 0, partial: 0, absent: 0 },
       assignments: [],
       participationNet: 0,
+      tests: [],
       classStarted: ALL_STARTED,
     })
     const ws = (
@@ -220,6 +226,46 @@ describe('buildCaWorkbook', () => {
     ).getWorksheet('CA')!
     const row = ws.getRow(2)
     expect([3, 4, 5, 6].map((c) => row.getCell(c).value)).toEqual([null, null, 0, 'Not assessed: no part applies to this student yet'])
+  })
+
+  it('adds a "Tests (/pts)" column with numbers when tests have points, and N/A tests stay empty', async () => {
+    const settings: CaSettings = { ...DEFAULT_SETTINGS, assignmentPoints: 10, testPoints: 10 }
+    const naTests = computeCa(settings, {
+      attendance: { present: 3, partial: 0, absent: 2 },
+      assignments: [{ weight: 1, mark: 10, maxMark: 20 }],
+      participationNet: 5,
+      tests: [],
+      classStarted: ALL_STARTED,
+    })
+    const rows = [
+      student({ name: 'Ada', matricule: 'UB1' }, settings),
+      student({ name: 'Bea', matricule: 'UB2', result: naTests }, settings),
+    ]
+    const sheet = async (locale: 'en' | 'fr') =>
+      (await read(await buildCaWorkbook({ settings, rows, locale, courseLabel: 'x' }))).getWorksheet('CA')!
+    const en = await sheet('en')
+    expect(cellsOf(en.getRow(1))).toEqual([
+      'Matricule',
+      'Name',
+      'Attendance (/5)',
+      'Assignments (/10)',
+      'Participation (/5)',
+      'Tests (/10)',
+      'CA (/30)',
+      'Note',
+    ])
+    // Ada: 3 + 5 + 5 + 7.5 = 20.5.
+    const ada = en.getRow(2)
+    expect([3, 4, 5, 6, 7].map((c) => ada.getCell(c).value)).toEqual([3, 5, 5, 7.5, 20.5])
+    expect(typeof ada.getCell(6).value).toBe('number')
+    expect(ada.getCell(6).numFmt).toBe('0.00')
+    // Bea: tests don't apply to her yet: empty, and the note says so.
+    expect(en.getRow(3).getCell(6).value).toBeNull()
+    expect(en.getRow(3).getCell(8).value).toBe('Scaled: Tests not applicable')
+
+    const fr = await sheet('fr')
+    expect(fr.getRow(1).getCell(6).value).toBe('Tests (/10)')
+    expect(fr.getRow(3).getCell(8).value).toBe("Mis à l'échelle : Tests non applicables")
   })
 
   it('does not turn a spreadsheet formula in a name into a formula', async () => {

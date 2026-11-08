@@ -65,6 +65,7 @@ function settingsOf(t: TestSettings): TestSettings {
     shuffle: t.shuffle,
     maxExits: t.maxExits,
     maxAbsenceSeconds: t.maxAbsenceSeconds,
+    weight: t.weight,
   }
 }
 
@@ -256,7 +257,7 @@ export async function listCourseTests(ctx: Ctx, courseId: string): Promise<TestS
 }
 
 /**
- * Copies a test (settings and questions) into a course I own, the same one included, as a new
+ * Copies a test (settings, weight in CA included, and questions) into a course I own, the same one included, as a new
  * not-started test with a new code. Nothing of the original's run (timing, attempts) comes along.
  */
 export async function copyTest(ctx: Ctx, testId: string, targetCourseId: string): Promise<TestSummary> {
