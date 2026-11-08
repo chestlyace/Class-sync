@@ -25,8 +25,8 @@ import {
   submission,
   user,
 } from '@/server/db/schema'
-import { createClass, joinClassAsLecturer, joinClassAsStudent } from '@/server/classes/service'
-import { createCourse } from '@/server/courses/service'
+import { createClass, joinClassAsLecturer, joinClassAsStudent, removeStudentFromClass } from '@/server/classes/service'
+import { createCourse, setRosterAdjustment } from '@/server/courses/service'
 import { createSchool } from '@/server/schools/service'
 import { closeWindow, createSession, openWindow } from '@/server/attendance/sessions'
 import {
@@ -173,7 +173,12 @@ describe('CA service', () => {
   }
 
   /** A hand-in, graded when a mark is given. */
-  async function handIn(lecturer: Ctx, student: Ctx, assignmentId: string, mark?: number) {
+  async function handIn(
+    lecturer: Ctx,
+    student: Ctx,
+    assignmentId: string,
+    mark?: number,
+  ): Promise<{ id: string; submittedAt: Date }> {
     const submittedAt = new Date(clock.getTime())
     const [row] = await db
       .insert(submission)
@@ -182,6 +187,7 @@ describe('CA service', () => {
     if (mark !== undefined) {
       await gradeSubmission(lecturer, row.id, { mark, feedback: null, expectedSubmittedAt: submittedAt })
     }
+    return { id: row.id, submittedAt }
   }
 
   async function tap(lecturer: Ctx, courseId: string, student: Ctx, delta: 1 | -1, times = 1) {
@@ -241,7 +247,7 @@ describe('CA service', () => {
     expect((await getMyCa(dave, algo.id)).result.final).toBe(5)
   })
 
-  it('only released grades count; a missing hand-in on a released assignment is 0 and missing work, as is one past due', async () => {
+  it('only released grades count; no hand-in on a released assignment is 0 and missing work, as is one past due', async () => {
     const { lecturer, algo, alice, bob } = await setup()
 
     // Released, weight 1 / 20: Alice 15, Bob 10.
@@ -255,9 +261,9 @@ describe('CA service', () => {
     await handIn(lecturer, alice, pending.id, 8)
     await handIn(lecturer, bob, pending.id)
 
-    // Released: Alice never handed in, Bob handed in but was never graded. Both count 0.
+    // Released: Alice never handed in (0, missing); Bob's hand-in was never graded (pending).
     const skipped = await publishedAssignment(lecturer, algo.id, { title: 'Skipped', weight: 1 })
-    await handIn(lecturer, bob, skipped.id)
+    const bobsSkipped = await handIn(lecturer, bob, skipped.id)
     await releaseGrades(lecturer, skipped.id)
 
     // Published, unreleased, about to pass its deadline: Bob handed in, Alice didn't.
@@ -270,7 +276,7 @@ describe('CA service', () => {
     // Before the deadlines nothing unreleased is missing.
     let rows = (await getCourseCa(lecturer, algo.id)).rows
     expect(rowOf(rows, alice).missingWork).toBe(1)
-    expect(rowOf(rows, bob).missingWork).toBe(1)
+    expect(rowOf(rows, bob).missingWork).toBe(0)
 
     advance(2 * DAY) // every deadline has passed; "Skipped" is both released and past due: counted once
     rows = (await getCourseCa(lecturer, algo.id)).rows
@@ -283,13 +289,67 @@ describe('CA service', () => {
       score: 7.5,
     })
     expect(rowOf(rows, alice).missingWork).toBe(2) // Skipped + Overdue
-    // Bob: (10/20 + 0) / 2 = 0.25 → 5 of 20.
-    expect(component(rowOf(rows, bob), 'assignments')).toMatchObject({ ratio: 0.25, score: 5 })
-    expect(rowOf(rows, bob).missingWork).toBe(1) // Skipped (ungraded); Overdue was handed in
+    // Bob: the ungraded hand-in is left out → 10/20 = 0.5 → 10 of 20, and nothing is missing.
+    expect(component(rowOf(rows, bob), 'assignments')).toMatchObject({ ratio: 0.5, score: 10 })
+    expect(rowOf(rows, bob).missingWork).toBe(0)
 
     const mine = await getMyCa(alice, algo.id)
     expect(mine.missingWork).toBe(2)
     expect(mine.result).toEqual(rowOf(rows, alice).result)
+
+    // Once graded, Bob's hand-in counts: (10/20 + 4/20) / 2 = 0.35 → 7 of 20.
+    await gradeSubmission(lecturer, bobsSkipped.id, { mark: 4, feedback: null, expectedSubmittedAt: bobsSkipped.submittedAt })
+    rows = (await getCourseCa(lecturer, algo.id)).rows
+    expect(component(rowOf(rows, bob), 'assignments')).toMatchObject({ ratio: 0.35, score: 7 })
+    expect(rowOf(rows, bob).missingWork).toBe(0)
+  })
+
+  it("assignments due before a student joined don't count against them, while a classmate's do", async () => {
+    const { lecturer, algo, alice, cls } = await setup()
+    const dave = await addStudent(cls, 'Dave', 'UB4')
+
+    // Due before Dave joined: one released (Alice 10/20), one unreleased past due (nobody handed in).
+    const early = await publishedAssignment(lecturer, algo.id, { title: 'Early' })
+    await handIn(lecturer, alice, early.id, 10)
+    await releaseGrades(lecturer, early.id)
+    const earlyUnreleased = await publishedAssignment(lecturer, algo.id, { title: 'Early unreleased' })
+    advance(2 * DAY)
+    await db
+      .update(classStudent)
+      .set({ joinedAt: new Date(earlyUnreleased.dueAt.getTime() + MIN) })
+      .where(eq(classStudent.userId, dave.user.id))
+
+    let rows = (await getCourseCa(lecturer, algo.id)).rows
+    expect(component(rowOf(rows, dave), 'assignments')).toMatchObject({ ratio: null, score: null })
+    expect(rowOf(rows, dave).missingWork).toBe(0)
+    expect(component(rowOf(rows, alice), 'assignments')).toMatchObject({ ratio: 0.5, score: 10 })
+    expect(rowOf(rows, alice).missingWork).toBe(1) // Early unreleased
+    expect((await getMyCa(dave, algo.id)).missingWork).toBe(0)
+
+    // Due after Dave joined, released, nobody handed in: counts for both.
+    const later = await publishedAssignment(lecturer, algo.id, { title: 'Later' })
+    await releaseGrades(lecturer, later.id)
+    rows = (await getCourseCa(lecturer, algo.id)).rows
+    expect(component(rowOf(rows, dave), 'assignments')).toMatchObject({ ratio: 0, score: 0 })
+    expect(rowOf(rows, dave).missingWork).toBe(1)
+    expect(component(rowOf(rows, alice), 'assignments')).toMatchObject({ ratio: 0.25, score: 5 })
+    expect(rowOf(rows, alice).missingWork).toBe(2)
+  })
+
+  it('a student excluded from the course or removed from the class is left out and refused', async () => {
+    const { lecturer, algo, alice, bob, cls } = await setup()
+    const carol = await addStudent(cls, 'Carol', 'UB3')
+    await heldSession(lecturer, algo.id, [[alice, 'both'], [bob, 'both'], [carol, 'both']])
+    await tap(lecturer, algo.id, bob, 1)
+
+    await setRosterAdjustment(lecturer, algo.id, bob.user.id, 'exclude')
+    await removeStudentFromClass(lecturer, cls.id, carol.user.id)
+
+    const { rows } = await getCourseCa(lecturer, algo.id)
+    expect(rows.map((r) => r.studentId)).toEqual([alice.user.id])
+    await expect(getMyCa(bob, algo.id)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    await expect(getMyCa(carol, algo.id)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    expect((await getMyCa(alice, algo.id)).result.final).toBeGreaterThan(0)
   })
 
   it('applies the participation net (floored at 0) against the course target and the stored settings', async () => {

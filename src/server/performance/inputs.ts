@@ -3,9 +3,10 @@ import { now } from '@/server/core/clock'
 import type { Db } from '@/server/db'
 import { assignment, courseCaSettings, participationEvent, submission } from '@/server/db/schema'
 import type { CourseRosterRow } from '@/server/courses/roster'
+import { enrollmentStartsFor } from '@/server/attendance/enrollment'
 import { loadStatusMatrixForRoster } from '@/server/attendance/matrix'
 import { summarize, type AttendanceStatus } from '@/server/attendance/status'
-import type { CaInput } from './compute'
+import { attendanceRatio, type CaInput } from './compute'
 import { DEFAULT_SETTINGS, type CaSettings } from './rules'
 
 /** Everything `computeCa` and the slipping flag need about one student. */
@@ -15,7 +16,11 @@ export type StudentCaInputs = {
   attendanceRatio: number | null
   /** Sessions with a present, partial or absent status (not "not taken", not not_enrolled). */
   countedSessions: number
-  /** Released assignments without a graded hand-in + unreleased ones past due with no hand-in. */
+  /**
+   * Assignments with no hand-in at all: released ones, plus unreleased ones past due. A hand-in
+   * still waiting for its mark is pending, not missing; assignments due before the student
+   * joined the course don't count against them.
+   */
   missingWork: number
 }
 
@@ -37,8 +42,13 @@ export async function getCaSettings(db: Db, courseId: string): Promise<CaSetting
 
 /**
  * Loads the CA inputs of every given roster student at once. The number of queries is fixed per
- * course — settings, the status matrix (a fixed handful), published assignments, their
- * submissions, participation sums — never one per student.
+ * course — settings, the status matrix (a fixed handful), enrolment starts, published
+ * assignments, their submissions, participation sums — never one per student.
+ *
+ * Per student, an assignment due before they joined the course (class `joined_at` or include
+ * date, as attendance uses) is left out entirely. On a released assignment: a graded hand-in
+ * counts its mark; no hand-in counts 0 and is missing work; a hand-in not graded yet is pending
+ * and left out.
  */
 export async function loadCaInputs(
   db: Db,
@@ -48,9 +58,10 @@ export async function loadCaInputs(
   const studentIds = roster.map((r) => r.studentId)
   const at = now()
 
-  const [settings, matrix, assignments, submissions, participation] = await Promise.all([
+  const [settings, matrix, starts, assignments, submissions, participation] = await Promise.all([
     getCaSettings(db, courseId),
     loadStatusMatrixForRoster(db, courseId, roster),
+    enrollmentStartsFor(db, courseId, roster),
     db
       .select({
         id: assignment.id,
@@ -88,7 +99,7 @@ export async function loadCaInputs(
 
   const classHasParticipation = participation.length > 0
   const netOf = new Map(participation.map((p) => [p.studentId, p.net]))
-  // assignmentId:studentId → the hand-in's mark (null: handed in, not graded).
+  // assignmentId:studentId → the hand-in's mark (null: handed in, not graded yet).
   const handIns = new Map(submissions.map((s) => [`${s.assignmentId}:${s.studentId}`, s.mark]))
   const released = assignments.filter((a) => a.gradesReleasedAt !== null)
   const overdue = assignments.filter((a) => a.gradesReleasedAt === null && a.dueAt.getTime() < at.getTime())
@@ -100,13 +111,24 @@ export async function loadCaInputs(
     const attendance = summarize(statuses)
     const countedSessions = attendance.present + attendance.partial + attendance.absent
 
+    // No known enrolment date: everything counts (as attendance treats them as enrolled).
+    const start = starts.get(studentId)
+    const counts = (a: { dueAt: Date }) => start === undefined || a.dueAt.getTime() >= start.getTime()
+
     let missingWork = 0
-    const assignmentInputs = released.map((a) => {
-      const mark = handIns.get(`${a.id}:${studentId}`) ?? null
-      if (mark === null) missingWork++
-      return { weight: a.weight, mark, maxMark: a.maxMark }
-    })
-    for (const a of overdue) if (!handIns.has(`${a.id}:${studentId}`)) missingWork++
+    const assignmentInputs: CaInput['assignments'] = []
+    for (const a of released) {
+      if (!counts(a)) continue
+      const key = `${a.id}:${studentId}`
+      if (!handIns.has(key)) {
+        missingWork++
+        assignmentInputs.push({ weight: a.weight, mark: null, maxMark: a.maxMark })
+        continue
+      }
+      const mark = handIns.get(key) ?? null
+      if (mark !== null) assignmentInputs.push({ weight: a.weight, mark, maxMark: a.maxMark })
+    }
+    for (const a of overdue) if (counts(a) && !handIns.has(`${a.id}:${studentId}`)) missingWork++
 
     students.set(studentId, {
       input: {
@@ -115,7 +137,7 @@ export async function loadCaInputs(
         participationNet: netOf.get(studentId) ?? 0,
         classHasParticipation,
       },
-      attendanceRatio: countedSessions > 0 ? (attendance.present + 0.5 * attendance.partial) / countedSessions : null,
+      attendanceRatio: attendanceRatio(attendance),
       countedSessions,
       missingWork,
     })
