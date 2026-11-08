@@ -690,7 +690,45 @@
     "openCourse": "Ouvrir le cours",
     "startCheckIn": "Lancer un pointage",
     "lastSession": "à la dernière séance",
-    "noSessions": "Aucune séance pour l'instant"
+    "noSessions": "Aucune séance pour l'instant",
+    "setup": {
+      "eyebrow": "Premiers pas",
+      "progress": "{done, plural, one {# étape terminée} other {# étapes terminées}} sur {total}",
+      "lecturerTitle": "Préparez votre première classe",
+      "studentTitle": "Rejoignez votre classe",
+      "dismiss": "Masquer la liste de démarrage",
+      "done": "Fait",
+      "todo": "À faire",
+      "steps": {
+        "school": {
+          "title": "Ajoutez votre établissement",
+          "body": "Cherchez d'abord : un collègue l'a peut-être déjà ajouté. Sinon, ajoutez-le avec sa ville.",
+          "action": "Ajouter l'établissement"
+        },
+        "class": {
+          "title": "Créez une classe",
+          "body": "Un groupe d'étudiants pour une année académique, par exemple Info L3. Un collègue l'a déjà créée ? Rejoignez-la avec son code enseignant.",
+          "action": "Créer la classe"
+        },
+        "course": {
+          "title": "Créez un cours",
+          "body": "Présences, supports de cours, tests et devoirs se trouvent dans un cours. Tous les étudiants de la classe y sont inscrits.",
+          "action": "Créer le cours"
+        },
+        "share": {
+          "title": "Transmettez le code à vos étudiants",
+          "body": "Les étudiants choisissent « Rejoindre une classe », puis saisissent ce code et leur matricule. L'étape se coche dès que le premier a rejoint la classe.",
+          "action": "Ouvrir la classe",
+          "codeLabel": "Code étudiant de {className}",
+          "copy": "Copier le code étudiant"
+        },
+        "join": {
+          "title": "Rejoignez une classe",
+          "body": "Demandez le code de la classe à votre enseignant, puis saisissez-le avec votre matricule.",
+          "action": "Saisir le code"
+        }
+      }
+    }
   },
   "settings": {
     "title": "Profil et paramètres",

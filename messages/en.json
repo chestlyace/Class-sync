@@ -690,7 +690,45 @@
     "openCourse": "Open course",
     "startCheckIn": "Start check-in",
     "lastSession": "at the last session",
-    "noSessions": "No sessions yet"
+    "noSessions": "No sessions yet",
+    "setup": {
+      "eyebrow": "Getting started",
+      "progress": "{done} of {total} done",
+      "lecturerTitle": "Set up your first class",
+      "studentTitle": "Join your class",
+      "dismiss": "Hide the setup checklist",
+      "done": "Done",
+      "todo": "To do",
+      "steps": {
+        "school": {
+          "title": "Add your school",
+          "body": "Search first: a colleague may already have added it. If not, add it with its town.",
+          "action": "Add school"
+        },
+        "class": {
+          "title": "Create a class",
+          "body": "One group of students for one academic year, such as CS L3. A colleague already made it? Join it with their lecturer code.",
+          "action": "Create class"
+        },
+        "course": {
+          "title": "Create a course",
+          "body": "Attendance, notes, tests and assignments all live in a course. Every student in the class is enrolled.",
+          "action": "Create course"
+        },
+        "share": {
+          "title": "Share the join code with students",
+          "body": "Students choose Join a class, then enter this code and their matricule. This ticks off when the first one joins.",
+          "action": "Open class",
+          "codeLabel": "Student code for {className}",
+          "copy": "Copy the student code"
+        },
+        "join": {
+          "title": "Join a class",
+          "body": "Ask your lecturer for the class code, then enter it with your matricule.",
+          "action": "Enter the code"
+        }
+      }
+    }
   },
   "settings": {
     "title": "Profile and settings",

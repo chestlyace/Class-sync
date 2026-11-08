@@ -56,7 +56,8 @@ test('classes, joining and courses, end to end', async ({
       await signUp(a, { name: 'Ada Lovelace', email: emailOf('a'), role: 'lecturer' }, FR)
       await expect(a.getByRole('heading', { name: 'Bonjour, Ada' })).toBeVisible()
       await expect(a.locator('html')).toHaveAttribute('lang', 'fr')
-      await expect(a.getByText("Aucune classe pour l'instant")).toBeVisible()
+      // A new lecturer gets the setup checklist (it stands in for the empty-dashboard panel).
+      await expect(a.getByRole('region', { name: 'Préparez votre première classe' })).toBeVisible()
       await expectNoHorizontalScroll(a)
     })
 

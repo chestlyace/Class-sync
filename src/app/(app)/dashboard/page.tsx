@@ -1,5 +1,6 @@
 import { ArrowRight, KeyRound, Plus } from 'lucide-react'
 import { getLocale, getTranslations } from 'next-intl/server'
+import { cookies } from 'next/headers'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
 import { Eyebrow, PageHeader, Panel, SectionHeading } from '@/components/page-header'
@@ -15,6 +16,7 @@ import { config } from '@/server/core/config'
 import type { Locale } from '@/server/core/context'
 import { isVerificationPending } from '@/server/core/guards'
 import { listLecturerCourses, listStudentCourses, type CourseSummary } from '@/server/courses/service'
+import { getOnboardingStatus } from '@/server/onboarding/service'
 import { toOpenCheckInView } from '../check-in/view'
 import { formatSessionDate } from '../courses/attendance-format'
 import { loadPage } from '../load-page'
@@ -23,6 +25,8 @@ import { orEmptyOnError } from './fallback'
 import { groupDashboard } from './group'
 import { DueSoon } from './due-soon'
 import { OpenCheckIns } from './open-check-ins'
+import { SetupChecklist } from './setup-checklist'
+import { SETUP_DISMISSED_COOKIE } from './setup-cookie'
 
 export async function generateMetadata() {
   const t = await getTranslations('dashboard')
@@ -61,14 +65,17 @@ export default async function DashboardPage() {
     />
   )
   if (pending) return header
+  const setupDismissed = (await cookies()).get(SETUP_DISMISSED_COOKIE)?.value === '1'
 
   const data = await loadPage(async (ctx) => {
-    const [classes, courses, openCheckIns, dueSoon] = await Promise.all([
+    const [classes, courses, openCheckIns, dueSoon, setup] = await Promise.all([
       listMyClasses(ctx),
       isLecturer ? listLecturerCourses(ctx) : listStudentCourses(ctx),
       // A failing check-in list must not take the whole dashboard down: show it without.
       isLecturer ? [] : orEmptyOnError('open check-ins', () => listOpenCheckIns(ctx)),
       isLecturer ? [] : orEmptyOnError('assignments due soon', () => listMyAssignments(ctx, { dueWithinDays: 7 })),
+      // The first-run checklist is a nicety too: skipped once hidden, left out if it fails.
+      setupDismissed ? [] : orEmptyOnError('setup checklist', async () => [await getOnboardingStatus(ctx)]),
     ])
     // Lecturers see last session's turnout per course. If it fails, the cards simply show none.
     const grids = isLecturer
@@ -76,7 +83,7 @@ export default async function DashboardPage() {
           Promise.all(courses.map(async (c) => ({ courseId: c.id, ...(await getAttendanceGrid(ctx, c.id)) }))),
         )
       : []
-    return { classes, courses, openCheckIns: openCheckIns.map(toOpenCheckInView), grids, dueSoon }
+    return { classes, courses, openCheckIns: openCheckIns.map(toOpenCheckInView), grids, dueSoon, setup: setup[0] }
   })
   if (!data.ok) return <ErrorState code={data.code} />
   const { classes, courses, grids } = data.data
@@ -88,15 +95,21 @@ export default async function DashboardPage() {
     now,
   )
   const likelyCourse = likely && courses.find((c) => c.id === likely.courseId)
+  // Shown until every step is done, so users who were already set up never see it.
+  const setupStatus = data.data.setup
+  const setup = setupStatus && !setupStatus.complete ? <SetupChecklist status={setupStatus} /> : null
 
   if (schools.length === 0 && otherCourses.length === 0) {
     return (
       <>
         {header}
-        <Panel className="flex flex-col items-start gap-2">
-          <h2 className="text-lg font-semibold">{isLecturer ? t('lecturerEmptyTitle') : t('studentEmptyTitle')}</h2>
-          <p className="text-muted-foreground">{isLecturer ? t('lecturerEmptyBody') : t('studentEmptyBody')}</p>
-        </Panel>
+        {/* The checklist already says what to do first; the empty panel is for those who hid it. */}
+        {setup ?? (
+          <Panel className="flex flex-col items-start gap-2">
+            <h2 className="text-lg font-semibold">{isLecturer ? t('lecturerEmptyTitle') : t('studentEmptyTitle')}</h2>
+            <p className="text-muted-foreground">{isLecturer ? t('lecturerEmptyBody') : t('studentEmptyBody')}</p>
+          </Panel>
+        )}
       </>
     )
   }
@@ -104,6 +117,7 @@ export default async function DashboardPage() {
   return (
     <>
       {header}
+      {setup}
       {!isLecturer && <OpenCheckIns initial={data.data.openCheckIns} />}
       {!isLecturer && <DueSoon items={data.data.dueSoon} locale={locale} now={now} />}
       {likely && likelyCourse && (
