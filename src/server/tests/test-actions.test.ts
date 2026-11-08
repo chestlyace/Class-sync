@@ -51,6 +51,7 @@ function editor(over: Partial<EditorValues> = {}): EditorValues {
     shuffle: true,
     maxExits: '3',
     maxAbsenceSeconds: '10',
+    weight: '1',
     questions: [
       {
         key: 'a',
@@ -117,9 +118,13 @@ describe('test actions', () => {
     expect(created.summary).toMatchObject({ courseId: algo.id, questionCount: 2, totalMarks: 4.5 })
     expect(created.input.questions.map((q) => q.mark)).toEqual([null, 2.5])
 
-    const result = await saveTestAction(algo.id, testId, editor({ title: 'CA 1 (v2)', defaultMark: '1,5' }))
+    expect(created.input.weight).toBe(1)
+
+    const result = await saveTestAction(algo.id, testId, editor({ title: 'CA 1 (v2)', defaultMark: '1,5', weight: '2,5' }))
     expect(result).toEqual({ ok: true, data: { testId } })
-    expect((await getTestForEdit(lecturer, testId)).summary).toMatchObject({ title: 'CA 1 (v2)', totalMarks: 4 })
+    const updated = await getTestForEdit(lecturer, testId)
+    expect(updated.summary).toMatchObject({ title: 'CA 1 (v2)', totalMarks: 4 })
+    expect(updated.input.weight).toBe(2.5)
   })
 
   it('saveTestAction passes the service\'s reason and question index through', async () => {

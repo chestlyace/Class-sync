@@ -12,6 +12,7 @@ const INPUT_REASONS = {
   duration: 'duration',
   mark: 'mark',
   leaving: 'leaving',
+  weight: 'weight',
   questions: 'questions',
   prompt: 'prompt',
   options: 'options',

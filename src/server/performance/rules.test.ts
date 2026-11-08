@@ -10,6 +10,7 @@ describe('constants', () => {
       participationPoints: 5,
       testPoints: 0,
       participationTarget: 5,
+      testsBestOf: null,
     })
     expect(SLIP_RATIO).toBe(0.5)
     expect(SLIP_ATTENDANCE).toBe(0.75)
@@ -44,6 +45,28 @@ describe('validateSettings', () => {
       assignmentPoints: 19,
       testPoints: 1,
     })
+  })
+
+  it('accepts test points that add up (10 + 10 + 5 + 5 for 30)', () => {
+    const input = { ...DEFAULT_SETTINGS, attendancePoints: 10, assignmentPoints: 10, participationPoints: 5, testPoints: 5 }
+    expect(validateSettings(input)).toEqual(input)
+  })
+
+  it('accepts best-of as empty (all tests) or a whole number from 1 to 50', () => {
+    for (const testsBestOf of [null, 1, 3, 50]) {
+      expect(validateSettings({ ...DEFAULT_SETTINGS, testsBestOf })).toEqual({ ...DEFAULT_SETTINGS, testsBestOf })
+    }
+    // Left out entirely: all tests count.
+    const withoutBestOf: Record<string, unknown> = { ...DEFAULT_SETTINGS }
+    delete withoutBestOf.testsBestOf
+    expect(validateSettings(withoutBestOf)).toEqual(DEFAULT_SETTINGS)
+  })
+
+  it('refuses a best-of that is not a whole number from 1 to 50', () => {
+    for (const testsBestOf of [0, 2.5, -1, 51, NaN, Infinity]) {
+      expect(validateSettings({ ...DEFAULT_SETTINGS, testsBestOf }), String(testsBestOf)).toEqual({ error: 'range' })
+    }
+    expect(validateSettings({ ...DEFAULT_SETTINGS, testsBestOf: '3' })).toEqual({ error: 'shape' })
   })
 
   it('refuses more than 2 decimals', () => {

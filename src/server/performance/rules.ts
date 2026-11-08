@@ -1,13 +1,27 @@
-export const DEFAULT_SETTINGS = {
+export type CaSettings = {
+  total: number
+  attendancePoints: number
+  assignmentPoints: number
+  participationPoints: number
+  testPoints: number
+  participationTarget: number
+  /** Count only the best N tests of each student; null = every test. */
+  testsBestOf: number | null
+}
+
+export const DEFAULT_SETTINGS: CaSettings = {
   total: 30,
   attendancePoints: 5,
   assignmentPoints: 20,
   participationPoints: 5,
   testPoints: 0,
   participationTarget: 5,
+  testsBestOf: null,
 }
 
-export type CaSettings = typeof DEFAULT_SETTINGS
+/** "Best N of M": N is a whole number in this range. */
+export const TESTS_BEST_OF_MIN = 1
+export const TESTS_BEST_OF_MAX = 50
 
 export type SettingsError = { error: 'sum' | 'range' | 'decimals' | 'shape' }
 
@@ -29,6 +43,7 @@ const hasAtMostTwoDecimals = (n: number) => Math.abs(n * 100 - cents(n)) < 1e-6
 
 /**
  * Checks a course's CA settings. Numbers only: the action layer converts form strings first.
+ * `testsBestOf` is null (or left out) for every test, else a whole number from 1 to 50.
  * Returns the parsed settings (known fields only) or why they were refused.
  */
 export function validateSettings(input: unknown): CaSettings | SettingsError {
@@ -37,6 +52,8 @@ export function validateSettings(input: unknown): CaSettings | SettingsError {
   for (const key of ['total', ...POINT_KEYS, 'participationTarget']) {
     if (typeof o[key] !== 'number' || !Number.isFinite(o[key])) return { error: 'shape' }
   }
+  const bestOf = o.testsBestOf ?? null
+  if (bestOf !== null && typeof bestOf !== 'number') return { error: 'shape' }
   const s: CaSettings = {
     total: o.total as number,
     attendancePoints: o.attendancePoints as number,
@@ -44,11 +61,18 @@ export function validateSettings(input: unknown): CaSettings | SettingsError {
     participationPoints: o.participationPoints as number,
     testPoints: o.testPoints as number,
     participationTarget: o.participationTarget as number,
+    testsBestOf: bestOf,
   }
 
   if (s.total < 1 || s.total > MAX_POINTS) return { error: 'range' }
   if (POINT_KEYS.some((k) => s[k] < 0 || s[k] > MAX_POINTS)) return { error: 'range' }
   if (!Number.isInteger(s.participationTarget) || s.participationTarget < 1 || s.participationTarget > MAX_POINTS) {
+    return { error: 'range' }
+  }
+  if (
+    s.testsBestOf !== null &&
+    (!Number.isInteger(s.testsBestOf) || s.testsBestOf < TESTS_BEST_OF_MIN || s.testsBestOf > TESTS_BEST_OF_MAX)
+  ) {
     return { error: 'range' }
   }
   if (!hasAtMostTwoDecimals(s.total) || POINT_KEYS.some((k) => !hasAtMostTwoDecimals(s[k]))) {

@@ -18,6 +18,7 @@ function values(over: Partial<EditorValues> = {}): EditorValues {
     shuffle: true,
     maxExits: '3',
     maxAbsenceSeconds: '10',
+    weight: '1',
     questions: [
       {
         key: 'a',
@@ -38,7 +39,7 @@ function values(over: Partial<EditorValues> = {}): EditorValues {
 
 describe('parseTestForm', () => {
   it('turns "2,5" and "2.5" into 2.5 and a blank question mark into null (the default)', () => {
-    const parsed = parseTestForm(values({ defaultMark: '2.5' })) as Record<string, unknown>
+    const parsed = parseTestForm(values({ defaultMark: '2.5', weight: '1,5' })) as Record<string, unknown>
     expect(parsed).toEqual({
       title: 'CA 1',
       durationMinutes: 30,
@@ -46,6 +47,7 @@ describe('parseTestForm', () => {
       shuffle: true,
       maxExits: 3,
       maxAbsenceSeconds: 10,
+      weight: 1.5,
       questions: [
         {
           kind: 'mcq',
@@ -73,6 +75,12 @@ describe('parseTestForm', () => {
     junk.questions[1] = { ...junk.questions[1], mark: 'two' }
     expect(validateTestInput(parseTestForm(junk))).toEqual({ error: 'mark', question: 1 })
     expect(validateTestInput(parseTestForm(values({ defaultMark: '' })))).toEqual({ error: 'mark' })
+  })
+
+  it('a junk or blank weight is refused as weight', () => {
+    expect(validateTestInput(parseTestForm(values({ weight: 'heavy' })))).toEqual({ error: 'weight' })
+    expect(validateTestInput(parseTestForm(values({ weight: '' })))).toEqual({ error: 'weight' })
+    expect(validateTestInput(parseTestForm(values({ weight: '0,3' })))).toEqual({ error: 'weight' })
   })
 
   it('a junk leaving rule is refused as leaving', () => {
@@ -117,6 +125,7 @@ describe('editor values', () => {
       shuffle: true,
       maxExits: '3',
       maxAbsenceSeconds: '10',
+      weight: '1',
     })
     expect(empty.questions).toHaveLength(1)
     expect(empty.questions[0]).toMatchObject({ kind: 'mcq', mark: '' })
@@ -133,6 +142,7 @@ describe('editor values', () => {
         shuffle: false,
         maxExits: 2,
         maxAbsenceSeconds: 20,
+        weight: 2.5,
         questions: [
           { kind: 'mcq', prompt: 'P', mark: null, options: [{ text: 'A', correct: true }, { text: 'B', correct: false }] },
           { kind: 'short', prompt: 'S', mark: 2.5, guide: 'G' },
@@ -140,7 +150,14 @@ describe('editor values', () => {
       },
       'fr',
     )
-    expect(editor).toMatchObject({ durationMinutes: '45', defaultMark: '1,5', shuffle: false, maxExits: '2', maxAbsenceSeconds: '20' })
+    expect(editor).toMatchObject({
+      durationMinutes: '45',
+      defaultMark: '1,5',
+      shuffle: false,
+      maxExits: '2',
+      maxAbsenceSeconds: '20',
+      weight: '2,5',
+    })
     expect(editor.questions.map((q) => [q.kind, q.mark, q.guide])).toEqual([
       ['mcq', '', ''],
       ['short', '2,5', 'G'],
@@ -150,7 +167,11 @@ describe('editor values', () => {
       ['B', false],
     ])
     // Round trip: what the editor sends back is the same test.
-    expect(validateTestInput(parseTestForm(editor))).toMatchObject({ defaultMark: 1.5, questions: [{ mark: null }, { mark: 2.5 }] })
+    expect(validateTestInput(parseTestForm(editor))).toMatchObject({
+      defaultMark: 1.5,
+      weight: 2.5,
+      questions: [{ mark: null }, { mark: 2.5 }],
+    })
   })
 
   it('a stored draft is read back only when it has the editor shape', () => {
@@ -159,6 +180,11 @@ describe('editor values', () => {
     expect(toEditorDraft(null)).toBeNull()
     expect(toEditorDraft({ ...draft, questions: 'x' })).toBeNull()
     expect(toEditorDraft({ ...draft, title: 3 })).toBeNull()
+    expect(toEditorDraft({ ...draft, weight: 2 })).toBeNull()
+    // A draft saved before tests had a weight opens with the default.
+    const { weight: _old, ...beforeWeights } = draft
+    void _old
+    expect(toEditorDraft(beforeWeights)).toEqual({ ...draft, weight: '1' })
     expect(toEditorDraft({ ...draft, questions: [{ ...draft.questions[0], kind: 'essay' }] })).toBeNull()
     expect(toEditorDraft({ ...draft, questions: [{ ...draft.questions[0], options: [{ text: 1 }] }] })).toBeNull()
   })

@@ -912,6 +912,7 @@
       "attendance": "Attendance (/{points})",
       "assignments": "Assignments (/{points})",
       "participation": "Participation (/{points})",
+      "tests": "Tests (/{points})",
       "total": "CA (/{points})",
       "note": "Note",
       "scaledNote": "Scaled: {parts}",
@@ -919,7 +920,8 @@
       "notApplicable": {
         "attendance": "Attendance not applicable",
         "assignments": "Assignments not applicable",
-        "participation": "Participation not applicable"
+        "participation": "Participation not applicable",
+        "tests": "Tests not applicable"
       }
     },
     "lecturer": {
@@ -932,11 +934,12 @@
       "studentCount": "{count, plural, one {# student} other {# students}}",
       "noStudents": "No students on this course yet.",
       "summary": "{slipping, plural, =0 {Nobody is slipping} one {# student slipping} other {# students slipping}} · {missing, plural, =0 {no missing work} one {# with missing work} other {# with missing work}}",
-      "legend": "\"So far\" counts only the parts that have started. \"Final\" counts the rest as 0 and is the mark in the export. \"—\" means not started yet. \"N/A\" means the part doesn't apply to that student yet (only work waiting for a grade, work due before they joined, or no session since they joined), so their other parts are scaled up to the total.",
+      "legend": "\"So far\" counts only the parts that have started. \"Final\" counts the rest as 0 and is the mark in the export. \"—\" means not started yet. \"N/A\" means the part doesn't apply to that student yet (only work waiting for a grade, work due or tests ended before they joined, or no session since they joined), so their other parts are scaled up to the total.",
       "component": {
         "attendance": "Attendance",
         "assignments": "Assignments",
-        "participation": "Participation"
+        "participation": "Participation",
+        "tests": "Tests"
       },
       "table": {
         "caption": "The class ranked by CA, with each part, the CA so far, the final CA, missing work and who is slipping.",
@@ -967,19 +970,24 @@
         "attendance": "Attendance",
         "assignments": "Assignments",
         "participation": "Participation",
+        "tests": "Tests",
         "sumHelper": "Parts add up to {sum} of {total}",
         "sumHelperNoTotal": "Parts add up to {sum}",
         "dropHint": "Give a part 0 points to leave it out.",
         "target": "Participation target",
         "targetHint": "Net taps a student needs for full participation points.",
+        "bestOfLegend": "Which tests count",
+        "bestOfBefore": "Count the best",
+        "bestOf": "Number of tests to count",
+        "bestOfAfter": "tests",
+        "bestOfHint": "Leave empty to count every test. A test counts once its results are released; a student who never joined it scores 0. Set each test's weight in its editor.",
         "save": "Save settings",
         "saving": "Saving…",
         "saved": "Settings saved.",
         "errors": {
           "sum": "The parts must add up exactly to the CA total.",
-          "range": "The total must be between 1 and 100, each part between 0 and 100, and the target a whole number from 1 to 100.",
+          "range": "The total must be between 1 and 100, each part between 0 and 100, the target a whole number from 1 to 100, and the best tests a whole number from 1 to 50 (or empty).",
           "decimals": "Use at most 2 decimals (for example {example}).",
-          "tests": "Test points aren't available yet.",
           "shape": "The settings couldn't be read. Reload the page and try again.",
           "fields": "Enter a number in each highlighted box."
         }
@@ -1008,7 +1016,8 @@
       "notStartedNotice": {
         "attendance": "Attendance hasn't started, so it counts 0 for everyone. Set it to 0 points if you won't use it.",
         "assignments": "Assignments haven't started (no grades released yet), so they count 0 for everyone. Set them to 0 points if you won't use them.",
-        "participation": "Participation hasn't started, so it counts 0 for everyone. Set it to 0 points if you won't use it."
+        "participation": "Participation hasn't started, so it counts 0 for everyone. Set it to 0 points if you won't use it.",
+        "tests": "Tests haven't started (no results released yet), so they count 0 for everyone. Set them to 0 points if you won't use them."
       }
     },
     "student": {
@@ -1025,12 +1034,15 @@
       "name": {
         "attendance": "Attendance",
         "assignments": "Assignments",
-        "participation": "Participation"
+        "participation": "Participation",
+        "tests": "Tests"
       },
       "how": {
         "attendance": "Present counts fully, partial counts half.",
         "assignments": "Weighted average of released grades; missing work counts 0. Work still waiting for a grade, or due before you joined, isn't counted.",
-        "participation": "Earned in class, full marks at {target, plural, one {# contribution} other {# contributions}}."
+        "participation": "Earned in class, full marks at {target, plural, one {# contribution} other {# contributions}}.",
+        "tests": "Weighted average of your released test results; a test you didn't take counts 0. A test that ended before you joined isn't counted.",
+        "testsBest": "Your best {count, plural, one {test counts} other {# tests count}}, weighted, among the released results; a test you didn't take counts 0. A test that ended before you joined isn't counted."
       },
       "missingWork": "{count, plural, one {# piece of work missing} other {# pieces of work missing}}",
       "seeAssignments": "See my assignments"
@@ -1092,6 +1104,9 @@
         "settings": "Settings",
         "duration": "Duration (min)",
         "defaultMark": "Mark per question",
+        "weight": "Weight in CA",
+        "weightSuffix": "×",
+        "weightHint": "How much this test counts among the course's tests in the CA.",
         "total": "Total: {total} {count, plural, one {mark} other {marks}}",
         "totalUnknown": "Total: —",
         "shuffle": "Shuffle questions and options",
@@ -1202,6 +1217,7 @@
           "duration": "check the duration.",
           "mark": "marks go from 0.25 to 100, in steps of 0.25.",
           "leaving": "check the leaving rule.",
+          "weight": "the weight in CA goes from 0.25 to 100, in steps of 0.25.",
           "questions": "a test has 1 to 100 questions.",
           "prompt": "write the question (up to 2,000 characters).",
           "options": "give 2 to 6 options, none of them empty.",
@@ -1214,6 +1230,7 @@
           "duration": "The duration is a whole number of minutes, from 1 to 300.",
           "mark": "The mark per question goes from 0.25 to 100, in steps of 0.25.",
           "leaving": "Exits go from 1 to 10, and the absence from 3 to 300 seconds.",
+          "weight": "The weight in CA goes from 0.25 to 100, in steps of 0.25.",
           "questions": "A test has 1 to 100 questions.",
           "prompt": "Write every question.",
           "options": "Give each multiple-choice question 2 to 6 options.",

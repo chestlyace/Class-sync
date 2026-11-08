@@ -93,12 +93,23 @@ describe('CA settings', () => {
     expect(await stored(algo.id)).toHaveLength(0)
   })
 
-  it('refuses test points in this phase', async () => {
+  it('saves test points and the best-of', async () => {
     const { lecturer, algo } = await setup()
-    const withTests = { ...DEFAULT_SETTINGS, assignmentPoints: 15, testPoints: 5 }
-    await expect(updateCaSettings(lecturer, algo.id, withTests)).rejects.toMatchObject({
+    const withTests = { ...DEFAULT_SETTINGS, assignmentPoints: 15, testPoints: 5, testsBestOf: 3 }
+    expect(await updateCaSettings(lecturer, algo.id, withTests)).toEqual(withTests)
+    expect((await stored(algo.id))[0]).toMatchObject({ testPoints: 5, testsBestOf: 3 })
+
+    // Back to every test.
+    const all = { ...withTests, testsBestOf: null }
+    expect(await updateCaSettings(lecturer, algo.id, all)).toEqual(all)
+    expect((await stored(algo.id))[0].testsBestOf).toBeNull()
+  })
+
+  it('refuses a best-of out of range and stores nothing', async () => {
+    const { lecturer, algo } = await setup()
+    await expect(updateCaSettings(lecturer, algo.id, { ...DEFAULT_SETTINGS, testsBestOf: 0 })).rejects.toMatchObject({
       code: 'VALIDATION',
-      details: { reason: 'tests' },
+      details: { reason: 'range' },
     })
     expect(await stored(algo.id)).toHaveLength(0)
   })

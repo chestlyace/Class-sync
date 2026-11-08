@@ -13,8 +13,9 @@ export const courseCaSettings = pgTable(
     attendancePoints: numeric('attendance_points', { precision: 6, scale: 2, mode: 'number' }).notNull(),
     assignmentPoints: numeric('assignment_points', { precision: 6, scale: 2, mode: 'number' }).notNull(),
     participationPoints: numeric('participation_points', { precision: 6, scale: 2, mode: 'number' }).notNull(),
-    // Reserved for phase 3 (tests); kept at 0 until then.
     testPoints: numeric('test_points', { precision: 6, scale: 2, mode: 'number' }).notNull(),
+    // Count only the best N tests; null = every test.
+    testsBestOf: smallint('tests_best_of'),
     participationTarget: smallint('participation_target').notNull().default(5),
     updatedBy: text('updated_by')
       .notNull()
@@ -28,6 +29,7 @@ export const courseCaSettings = pgTable(
     check('course_ca_settings_participation_points_check', sql`${t.participationPoints} >= 0`),
     check('course_ca_settings_test_points_check', sql`${t.testPoints} >= 0`),
     check('course_ca_settings_participation_target_check', sql`${t.participationTarget} between 1 and 100`),
+    check('course_ca_settings_tests_best_of_check', sql`${t.testsBestOf} between 1 and 50`),
   ],
 )
 

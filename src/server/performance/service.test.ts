@@ -20,6 +20,7 @@ import {
   course,
   courseCaSettings,
   courseRosterAdjustment,
+  courseTest,
   participationEvent,
   school,
   submission,
@@ -37,10 +38,17 @@ import {
   type AssignmentInput,
 } from '@/server/assignments/lecturer'
 import { setAfterResponseForTests } from '@/server/lib/after-response'
+import { createTest } from '@/server/tests/authoring'
+import { loadStoredQuestions } from '@/server/tests/queries'
+import { releaseResults } from '@/server/tests/results'
+import { ANSWER_GRACE_MS, type QuestionInput } from '@/server/tests/rules'
+import { endTestForEveryone, startTest } from '@/server/tests/run'
 import { ctxFor, makeUser } from '@/test/factories'
+import { joinTest, putAnswer } from '@/test/marking-fixture'
 import { DEFAULT_SETTINGS } from './rules'
 import { getCaSettings } from './inputs'
 import { getCourseCa, getMyCa, type StudentCa } from './service'
+import { updateCaSettings } from './settings'
 
 const MIN = 60_000
 const DAY = 24 * 60 * MIN
@@ -91,6 +99,7 @@ describe('CA service', () => {
     vi.unstubAllEnvs()
     await db.delete(participationEvent)
     await db.delete(courseCaSettings)
+    await db.delete(courseTest)
     await db.delete(submission)
     await db.delete(assignment)
     await db.delete(attendanceOverride)
@@ -194,6 +203,61 @@ describe('CA service', () => {
     for (let i = 0; i < times; i++) {
       await db.insert(participationEvent).values({ courseId, studentId: student.user.id, delta, createdBy: lecturer.user.id })
     }
+  }
+
+  /**
+   * A test written in the editor and started now: an MCQ worth 2 and, unless MCQ-only, a short
+   * answer worth 2. `weight` is the editor's "Weight in CA" (left out: the default).
+   */
+  async function givenTest(lecturer: Ctx, courseId: string, opts: { weight?: number; mcqOnly?: boolean; title?: string } = {}) {
+    const questions: QuestionInput[] = [
+      {
+        kind: 'mcq',
+        prompt: 'Which sort is stable?',
+        mark: null,
+        options: [
+          { text: 'Merge sort', correct: true },
+          { text: 'Heap sort', correct: false },
+        ],
+      },
+    ]
+    if (!opts.mcqOnly) questions.push({ kind: 'short', prompt: 'Why?', mark: null, guide: 'Equal keys keep their order.' })
+    const created = await createTest(lecturer, courseId, {
+      title: opts.title ?? 'CA 1',
+      durationMinutes: 30,
+      defaultMark: 2,
+      shuffle: false,
+      maxExits: 3,
+      maxAbsenceSeconds: 10,
+      questions,
+      ...(opts.weight === undefined ? {} : { weight: opts.weight }),
+    })
+    await startTest(lecturer, created.id)
+    const [mcq, short] = await loadStoredQuestions(db, created.id)
+    const right = mcq.options.find((o) => o.isCorrect)!.id
+    const wrong = mcq.options.find((o) => !o.isCorrect)!.id
+    return { id: created.id, mcq, short, right, wrong }
+  }
+
+  type GivenTest = Awaited<ReturnType<typeof givenTest>>
+
+  /** A student sits the test: the MCQ right or wrong, and the short answer (with a confirmed mark). */
+  async function sit(test: GivenTest, student: Ctx, answers: { mcq: 'right' | 'wrong'; short?: { text: string; mark?: number } }) {
+    const attempt = await joinTest(db, test.id, student, clock)
+    await putAnswer(db, attempt.id, test.mcq.id, { optionId: answers.mcq === 'right' ? test.right : test.wrong }, clock)
+    if (answers.short && test.short) await putAnswer(db, attempt.id, test.short.id, answers.short, clock)
+    return attempt
+  }
+
+  /** Ends the test now and waits until answers are final. */
+  async function finish(lecturer: Ctx, test: GivenTest) {
+    await endTestForEveryone(lecturer, test.id)
+    advance(ANSWER_GRACE_MS + MIN)
+  }
+
+  /** 5 attendance, 10 assignments, 5 participation, 10 tests. */
+  async function withTestPoints(lecturer: Ctx, courseId: string, testsBestOf: number | null = null) {
+    await updateCaSettings(lecturer, courseId, { ...DEFAULT_SETTINGS, assignmentPoints: 10, testPoints: 10, testsBestOf })
   }
 
   const rowOf = (rows: StudentCa[], who: Ctx) => rows.find((r) => r.studentId === who.user.id)!
@@ -416,6 +480,7 @@ describe('CA service', () => {
       participationPoints: 5,
       testPoints: 0,
       participationTarget: 4,
+      testsBestOf: null,
     }
     await db.insert(courseCaSettings).values({ courseId: algo.id, ...custom, updatedBy: lecturer.user.id })
 
@@ -554,6 +619,108 @@ describe('CA service', () => {
     expect(component(rowOf(after, alice), 'participation')).toMatchObject({ score: 1, status: 'scored' })
   })
 
+  it('an unreleased test with short answers does not count; after release it does', async () => {
+    const { lecturer, algo, alice, bob } = await setup()
+    await withTestPoints(lecturer, algo.id)
+    const test = await givenTest(lecturer, algo.id)
+    // Alice: MCQ right (2) + short answer marked 1 = 3 / 4. Bob: MCQ wrong, short answer blank = 0 / 4.
+    await sit(test, alice, { mcq: 'right', short: { text: 'Equal keys stay in order', mark: 1 } })
+    await sit(test, bob, { mcq: 'wrong', short: { text: '  ' } })
+    await finish(lecturer, test)
+
+    let rows = (await getCourseCa(lecturer, algo.id)).rows
+    for (const who of [alice, bob]) {
+      expect(component(rowOf(rows, who), 'tests')).toEqual({ key: 'tests', points: 10, ratio: null, score: null, status: 'not_started' })
+    }
+    expect(component(await getMyCa(alice, algo.id), 'tests')).toMatchObject({ status: 'not_started' })
+
+    await releaseResults(lecturer, test.id)
+    rows = (await getCourseCa(lecturer, algo.id)).rows
+    expect(component(rowOf(rows, alice), 'tests')).toEqual({ key: 'tests', points: 10, ratio: 0.75, score: 7.5, status: 'scored' })
+    expect(component(rowOf(rows, bob), 'tests')).toMatchObject({ ratio: 0, score: 0, status: 'scored' })
+    expect(rowOf(rows, alice).result.final).toBe(7.5)
+    expect((await getMyCa(alice, algo.id)).result).toEqual(rowOf(rows, alice).result)
+  })
+
+  it('an MCQ-only test counts once it has ended and its answers are final', async () => {
+    const { lecturer, algo, alice } = await setup()
+    await withTestPoints(lecturer, algo.id)
+    const test = await givenTest(lecturer, algo.id, { mcqOnly: true })
+    await sit(test, alice, { mcq: 'right' })
+
+    // Running: not counted.
+    expect(component(rowOf((await getCourseCa(lecturer, algo.id)).rows, alice), 'tests')).toMatchObject({ status: 'not_started' })
+    // Ended, but an answer could still arrive in the grace: not counted yet.
+    await endTestForEveryone(lecturer, test.id)
+    advance(ANSWER_GRACE_MS - 1000)
+    expect(component(rowOf((await getCourseCa(lecturer, algo.id)).rows, alice), 'tests')).toMatchObject({ status: 'not_started' })
+    // Answers final: counted, with no release needed.
+    advance(1000)
+    expect(component(rowOf((await getCourseCa(lecturer, algo.id)).rows, alice), 'tests')).toMatchObject({
+      ratio: 1,
+      score: 10,
+      status: 'scored',
+    })
+  })
+
+  it('a student who never joined a released test scores 0 on it (best 2 of 3 with one released)', async () => {
+    const { lecturer, algo, alice, bob } = await setup()
+    await withTestPoints(lecturer, algo.id, 2)
+    const test = await givenTest(lecturer, algo.id, { mcqOnly: true })
+    await sit(test, alice, { mcq: 'right' })
+    await finish(lecturer, test)
+
+    const { rows } = await getCourseCa(lecturer, algo.id)
+    expect(component(rowOf(rows, alice), 'tests')).toMatchObject({ ratio: 1, score: 10, status: 'scored' })
+    // Bob never joined: 0, not "doesn't apply", so nothing is scaled.
+    expect(component(rowOf(rows, bob), 'tests')).toEqual({ key: 'tests', points: 10, ratio: 0, score: 0, status: 'scored' })
+    expect(rowOf(rows, bob).result).toMatchObject({ final: 0, scaled: false })
+  })
+
+  it('test weight from the editor is used, and best N keeps the highest ratios', async () => {
+    const { lecturer, algo, alice } = await setup()
+    await withTestPoints(lecturer, algo.id)
+    // Weight 3: Alice right (1). Weight 1: Alice wrong (0). Default weight 1: Alice right (1).
+    const heavy = await givenTest(lecturer, algo.id, { mcqOnly: true, weight: 3, title: 'Heavy' })
+    await sit(heavy, alice, { mcq: 'right' })
+    await finish(lecturer, heavy)
+    const light = await givenTest(lecturer, algo.id, { mcqOnly: true, weight: 1, title: 'Light' })
+    await sit(light, alice, { mcq: 'wrong' })
+    await finish(lecturer, light)
+    const plain = await givenTest(lecturer, algo.id, { mcqOnly: true, title: 'Plain' })
+    await sit(plain, alice, { mcq: 'right' })
+    await finish(lecturer, plain)
+
+    // All three: (3 + 0 + 1) / 5 = 0.8 → 8.
+    expect(component(rowOf((await getCourseCa(lecturer, algo.id)).rows, alice), 'tests')).toMatchObject({ ratio: 0.8, score: 8 })
+    // Best 2: the two right ones → 1 → 10.
+    await withTestPoints(lecturer, algo.id, 2)
+    expect(component(rowOf((await getCourseCa(lecturer, algo.id)).rows, alice), 'tests')).toMatchObject({ ratio: 1, score: 10 })
+  })
+
+  it("a test that ended before a student joined doesn't count for them, unless they took it", async () => {
+    const { lecturer, algo, alice, cls } = await setup()
+    await withTestPoints(lecturer, algo.id)
+    const dave = await addStudent(cls, 'Dave', 'UB4')
+    const erin = await addStudent(cls, 'Erin', 'UB5')
+    const test = await givenTest(lecturer, algo.id, { mcqOnly: true })
+    await sit(test, alice, { mcq: 'right' })
+    await sit(test, erin, { mcq: 'right' })
+    await finish(lecturer, test)
+    for (const late of [dave, erin]) {
+      await db.update(classStudent).set({ joinedAt: clock }).where(eq(classStudent.userId, late.user.id))
+    }
+
+    const { rows } = await getCourseCa(lecturer, algo.id)
+    // Dave: tests have started for the class but none counts for him: not applicable, scaled.
+    expect(component(rowOf(rows, dave), 'tests')).toMatchObject({ ratio: null, score: null, status: 'not_applicable' })
+    expect(rowOf(rows, dave).result.scaled).toBe(true)
+    // Erin took it before her recorded start: it counts.
+    expect(component(rowOf(rows, erin), 'tests')).toMatchObject({ ratio: 1, score: 10, status: 'scored' })
+    expect(component(rowOf(rows, alice), 'tests')).toMatchObject({ ratio: 1, score: 10, status: 'scored' })
+    expect((await getMyCa(dave, algo.id)).result).toEqual(rowOf(rows, dave).result)
+  })
+
   it('getCourseCa is the owner only: a colleague, a student or a nonexistent course get FORBIDDEN', async () => {
     const { lecturer, colleague, algo, alice } = await setup()
     await expect(getCourseCa(colleague, algo.id)).rejects.toMatchObject({ code: 'FORBIDDEN' })
@@ -594,6 +761,14 @@ describe('CA service', () => {
     await handIn(lecturer, alice, a.id, 12)
     await releaseGrades(lecturer, a.id)
     await tap(lecturer, algo.id, alice, 1)
+    await withTestPoints(lecturer, algo.id, 2)
+    const mcqTest = await givenTest(lecturer, algo.id, { mcqOnly: true, title: 'Quiz' })
+    await sit(mcqTest, alice, { mcq: 'right' })
+    await finish(lecturer, mcqTest)
+    const shortTest = await givenTest(lecturer, algo.id, { title: 'CA 1' })
+    await sit(shortTest, alice, { mcq: 'right', short: { text: 'Stable', mark: 2 } })
+    await finish(lecturer, shortTest)
+    await releaseResults(lecturer, shortTest.id)
 
     async function countQueries(fn: () => Promise<unknown>) {
       const before = queryCount
@@ -611,14 +786,19 @@ describe('CA service', () => {
     for (const o of others) {
       await handIn(lecturer, o, b.id, 10)
       await tap(lecturer, algo.id, o, 1, 2)
+      await sit(mcqTest, o, { mcq: 'wrong' })
+      await sit(shortTest, o, { mcq: 'right', short: { text: 'Because', mark: 1 } })
     }
     await releaseGrades(lecturer, b.id)
     for (let i = 0; i < 5; i++) await addStudent(cls, `Late ${i}`, `UB${20 + i}`)
 
     const { rows } = await getCourseCa(lecturer, algo.id)
     expect(rows).toHaveLength(10)
+    // Best 2 of the two released tests: the quiz (0) and CA 1 (3 / 4) → (0 + 0.75) / 2 → 3.75.
+    expect(component(rowOf(rows, others[0]), 'tests')).toMatchObject({ score: 3.75, status: 'scored' })
     expect(await countQueries(() => getCourseCa(lecturer, algo.id))).toBe(smallCourse)
     expect(await countQueries(() => getMyCa(alice, algo.id))).toBe(smallMine)
-    expect(smallCourse).toBeLessThanOrEqual(15)
+    // Tests add four: the course's tests, their attempts and the two score queries.
+    expect(smallCourse).toBeLessThanOrEqual(18)
   })
 })

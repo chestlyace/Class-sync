@@ -5,12 +5,20 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useActionState, useState } from 'react'
 import { ActionError, isInvalidField } from '@/components/action-error'
 import { Button } from '@/components/ui/button'
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import type { ActionResult } from '@/lib/action-result'
 import { submitWith } from '@/lib/form-submit'
 import { formatDecimal } from '@/lib/number-format'
-import type { CaSettings } from '@/server/performance/rules'
+import { TESTS_BEST_OF_MAX, TESTS_BEST_OF_MIN, type CaSettings } from '@/server/performance/rules'
 import { updateCaSettingsAction } from './performance-actions'
 import {
   parseDecimalInput,
@@ -22,13 +30,14 @@ import {
 } from './performance-form'
 
 /** VALIDATION reasons of `updateCaSettings`. */
-const REASONS = ['sum', 'range', 'decimals', 'tests', 'shape'] as const
+const REASONS = ['sum', 'range', 'decimals', 'shape'] as const
 type Reason = (typeof REASONS)[number]
 
-const LABELS: Record<PointField, 'attendance' | 'assignments' | 'participation'> = {
+const LABELS: Record<PointField, 'attendance' | 'assignments' | 'participation' | 'tests'> = {
   attendancePoints: 'attendance',
   assignmentPoints: 'assignments',
   participationPoints: 'participation',
+  testPoints: 'tests',
 }
 
 function reasonOf(state: ActionResult<unknown> | null): Reason | undefined {
@@ -49,9 +58,9 @@ function SettingsError({ state }: { state: ActionResult<unknown> | null }) {
 }
 
 /**
- * The course's CA split: total, points per component and the participation target. A live
- * helper adds the parts up (in cents, like the server); Save stays enabled, the server decides.
- * Test points arrive with phase 3 and are always sent as 0.
+ * The course's CA split: total, points per component, the participation target and how many
+ * tests count ("best N", blank for all). A live helper adds the parts up (in cents, like the
+ * server); Save stays enabled, the server decides.
  */
 export function CaSettingsForm({ courseId, initial }: { courseId: string; initial: CaSettings }) {
   const t = useTranslations('performance.lecturer.settings')
@@ -61,7 +70,9 @@ export function CaSettingsForm({ courseId, initial }: { courseId: string; initia
     attendancePoints: String(initial.attendancePoints),
     assignmentPoints: String(initial.assignmentPoints),
     participationPoints: String(initial.participationPoints),
+    testPoints: String(initial.testPoints),
     participationTarget: String(initial.participationTarget),
+    testsBestOf: initial.testsBestOf === null ? '' : String(initial.testsBestOf),
   }))
   const [edited, setEdited] = useState(false)
   const [state, dispatch, pending] = useActionState(
@@ -74,7 +85,7 @@ export function CaSettingsForm({ courseId, initial }: { courseId: string; initia
   const reason = reasonOf(state)
   const invalid = (field: SettingsField) => {
     if (isInvalidField(state, field)) return true
-    if (reason === 'sum') return field !== 'participationTarget' || undefined
+    if (reason === 'sum') return (field !== 'participationTarget' && field !== 'testsBestOf') || undefined
     return undefined
   }
 
@@ -110,7 +121,7 @@ export function CaSettingsForm({ courseId, initial }: { courseId: string; initia
 
         <fieldset className="flex flex-col gap-3" aria-describedby="ca-sum-helper">
           <legend className="mb-3 font-medium">{t('parts')}</legend>
-          <div className="grid gap-5 sm:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {POINT_FIELDS.map((field) => (
               <Field key={field} data-invalid={invalid(field)}>
                 <FieldLabel htmlFor={`ca-${field}`}>{t(LABELS[field])}</FieldLabel>
@@ -161,6 +172,30 @@ export function CaSettingsForm({ courseId, initial }: { courseId: string; initia
           />
           <FieldDescription id="ca-target-hint">{t('targetHint')}</FieldDescription>
         </Field>
+
+        <FieldSet data-invalid={invalid('testsBestOf')}>
+          <FieldLegend variant="label">{t('bestOfLegend')}</FieldLegend>
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-2 text-sm leading-relaxed">
+            <span>{t('bestOfBefore')}</span>
+            <Input
+              id="ca-tests-best-of"
+              name="testsBestOf"
+              type="number"
+              inputMode="numeric"
+              min={TESTS_BEST_OF_MIN}
+              max={TESTS_BEST_OF_MAX}
+              step={1}
+              value={values.testsBestOf}
+              onChange={(e) => set('testsBestOf', e.target.value)}
+              aria-label={t('bestOf')}
+              aria-invalid={invalid('testsBestOf')}
+              aria-describedby="ca-tests-best-of-hint"
+              className="h-11 w-20 text-center font-mono"
+            />
+            <span>{t('bestOfAfter')}</span>
+          </p>
+          <FieldDescription id="ca-tests-best-of-hint">{t('bestOfHint')}</FieldDescription>
+        </FieldSet>
       </FieldGroup>
 
       <SettingsError state={state} />

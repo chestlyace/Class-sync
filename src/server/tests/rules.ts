@@ -19,6 +19,9 @@ export const COMMENT_MAX = 1000
 export const DEFAULT_MAX_EXITS = 3
 export const MAX_EXITS_MIN = 1
 export const MAX_EXITS_MAX = 10
+/** A test's weight in the CA, like an assignment's: 0.25 to 100 in 0.25 steps. */
+export const DEFAULT_TEST_WEIGHT = 1
+export const TEST_WEIGHT_MAX = 100
 export const DEFAULT_MAX_ABSENCE_SECONDS = 10
 export const MAX_ABSENCE_MIN = 3
 export const MAX_ABSENCE_MAX = 300
@@ -46,6 +49,8 @@ export type TestInput = {
   shuffle: boolean
   maxExits: number
   maxAbsenceSeconds: number
+  /** How much the test counts among the course's tests in the CA. */
+  weight: number
   questions: QuestionInput[]
 }
 
@@ -57,6 +62,7 @@ export type TestInputError = {
     | 'duration'
     | 'mark'
     | 'leaving'
+    | 'weight'
     | 'questions'
     | 'prompt'
     | 'options'
@@ -82,6 +88,11 @@ function isIntegerWithin(value: number, min: number, max: number): boolean {
 /** A question mark is 0.25 to 100 in 0.25 steps (0 is not a mark a question can carry). */
 function isQuestionMark(mark: number): boolean {
   return mark >= MARK_STEP && isValidMark(mark, QUESTION_MARK_MAX)
+}
+
+/** A weight is 0.25 to 100 in 0.25 steps, like a question mark. */
+function isTestWeight(weight: number): boolean {
+  return weight >= MARK_STEP && isValidMark(weight, TEST_WEIGHT_MAX)
 }
 
 /** Checks types only and trims strings; `null` when anything has the wrong type. */
@@ -111,8 +122,10 @@ function parseShape(input: unknown): TestInput | null {
   if (!isRecord(input)) return null
   const { title, durationMinutes, defaultMark, shuffle, maxExits, maxAbsenceSeconds, questions } =
     input
+  // Left out: the default weight.
+  const weight = input.weight === undefined ? DEFAULT_TEST_WEIGHT : input.weight
   if (typeof title !== 'string' || typeof shuffle !== 'boolean') return null
-  for (const n of [durationMinutes, defaultMark, maxExits, maxAbsenceSeconds]) {
+  for (const n of [durationMinutes, defaultMark, maxExits, maxAbsenceSeconds, weight]) {
     if (typeof n !== 'number') return null
   }
   if (!Array.isArray(questions)) return null
@@ -129,6 +142,7 @@ function parseShape(input: unknown): TestInput | null {
     shuffle,
     maxExits: maxExits as number,
     maxAbsenceSeconds: maxAbsenceSeconds as number,
+    weight: weight as number,
     questions: parsed,
   }
 }
@@ -153,7 +167,7 @@ function questionError(q: QuestionInput, index: number): TestInputError | null {
 
 /**
  * Validates a whole test as the editor saves it. Strings are trimmed and unknown fields dropped;
- * numbers must already be numbers (the actions convert form strings).
+ * numbers must already be numbers (the actions convert form strings). A missing weight is 1.
  */
 export function validateTestInput(input: unknown): TestInput | TestInputError {
   const test = parseShape(input)
@@ -168,6 +182,7 @@ export function validateTestInput(input: unknown): TestInput | TestInputError {
   ) {
     return { error: 'leaving' }
   }
+  if (!isTestWeight(test.weight)) return { error: 'weight' }
   if (test.questions.length < 1 || test.questions.length > MAX_QUESTIONS) {
     return { error: 'questions' }
   }

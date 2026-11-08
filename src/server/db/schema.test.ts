@@ -404,6 +404,7 @@ describe('schema', () => {
     expect(row.total).toBe(30)
     expect(row.attendancePoints).toBe(5)
     expect(row.participationTarget).toBe(5)
+    expect(row.testsBestOf).toBeNull()
     expect(row.updatedAt).toBeInstanceOf(Date)
   })
 
@@ -427,6 +428,8 @@ describe('schema', () => {
       { testPoints: -1 },
       { participationTarget: 0 },
       { participationTarget: 101 },
+      { testsBestOf: 0 },
+      { testsBestOf: 51 },
     ]) {
       expect(await sqlState(db.insert(courseCaSettings).values({ ...ok, ...bad })), JSON.stringify(bad)).toBe('23514')
     }
@@ -521,6 +524,7 @@ describe('schema', () => {
     const { test: t, question: q } = await seedTest(db)
     expect(t).toMatchObject({
       defaultMark: 2,
+      weight: 1,
       shuffle: true,
       maxExits: 3,
       maxAbsenceSeconds: 10,
@@ -626,6 +630,8 @@ describe('schema', () => {
       absence2: { maxAbsenceSeconds: 2 },
       absence301: { maxAbsenceSeconds: 301 },
       defaultMark0: { defaultMark: 0 },
+      weight0: { weight: 0.24 },
+      weight101: { weight: 100.01 },
     }
     let n = 0
     for (const [name, over] of Object.entries(bad)) {
