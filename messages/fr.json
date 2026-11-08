@@ -782,7 +782,10 @@
         "feedbackHint": "Facultatif, {max} caractères au plus. L'étudiant la voit une fois les notes publiées.",
         "saving": "Enregistrement…",
         "save": "Enregistrer la note",
-        "saved": "Enregistré"
+        "saved": "Enregistré",
+        "suggestionTitle": "Suggéré par votre assistant",
+        "useSuggestion": "Utiliser la suggestion",
+        "suggestionHint": "Remplit le formulaire. Rien n'est enregistré avant que vous enregistriez la note."
       },
       "errors": {
         "modeLocked": "Un étudiant a déjà rendu son travail : le type de rendu ne peut plus changer.",

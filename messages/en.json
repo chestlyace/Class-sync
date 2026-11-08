@@ -782,7 +782,10 @@
         "feedbackHint": "Optional, up to {max} characters. The student sees it once grades are released.",
         "saving": "Saving…",
         "save": "Save grade",
-        "saved": "Saved"
+        "saved": "Saved",
+        "suggestionTitle": "Suggested by your assistant",
+        "useSuggestion": "Use suggestion",
+        "suggestionHint": "Fills the form. Nothing is saved until you save the grade."
       },
       "errors": {
         "modeLocked": "A student has already submitted, so the submission type can't change.",

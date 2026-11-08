@@ -46,7 +46,7 @@ export default async function SubmissionPage({
     return { ...sub, rows }
   })
   if (!view.ok) return <ErrorState code={view.code} />
-  const { assignment, student, text, files, submittedAt, isLate, mark, feedback, rows } = view.data
+  const { assignment, student, text, files, submittedAt, isLate, mark, feedback, suggestion, rows } = view.data
   const href = `/courses/${encodeURIComponent(assignment.courseId)}/assignments/${encodeURIComponent(assignment.id)}`
 
   // Previous / next submitted work, in roster order.
@@ -115,6 +115,7 @@ export default async function SubmissionPage({
             maxMark={assignment.maxMark}
             mark={mark}
             feedback={feedback}
+            suggestion={suggestion && { mark: suggestion.mark, feedback: suggestion.feedback }}
           />
         </Panel>
       </section>
