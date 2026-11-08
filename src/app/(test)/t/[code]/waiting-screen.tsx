@@ -21,7 +21,7 @@ export function WaitingScreen({ info, status }: { info: TestInfo; status: SyncSt
       <PageHeader eyebrow={`${t('waiting.eyebrow')} · ${info.courseTitle}`} title={info.title} />
       <dl className="grid grid-cols-3 divide-x rounded-3xl border">
         {facts.map((f) => (
-          <div key={f.label} className="flex min-w-0 flex-col gap-1 px-3 py-4 sm:px-5">
+          <div key={f.label} className="flex min-w-0 flex-col justify-between gap-1 px-3 py-4 sm:px-5">
             <dt>
               <Eyebrow className="text-[11px]">{f.label}</Eyebrow>
             </dt>

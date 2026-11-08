@@ -311,9 +311,10 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
       if (event) onLeaveEvent(event)
     }
     const visibility = (): LeaveSignal => (document.visibilityState === 'hidden' ? 'hidden' : 'visible')
-    // The state right now (a tab closed mid-test is judged here, on reopening).
+    // The state right now (a tab closed mid-test is judged here, on reopening). Focus is not read
+    // here: a page often loads without focus (address bar, a link opened from another app), and
+    // counting that as leaving would be unfair; only a real `blur` after this counts.
     feed(visibility())
-    if (device.laptop) feed(document.hasFocus() ? 'focus' : 'blur')
     if (fullscreenMode) feed(document.fullscreenElement ? 'fullscreen_enter' : 'fullscreen_exit')
 
     const onVisibility = () => feed(visibility())
