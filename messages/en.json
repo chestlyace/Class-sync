@@ -896,5 +896,15 @@
         "forbidden": "You're not on this course's list, so you can't hand in work here."
       }
     }
+  },
+  "performance": {
+    "export": {
+      "matricule": "Matricule",
+      "name": "Name",
+      "attendance": "Attendance (/{points})",
+      "assignments": "Assignments (/{points})",
+      "participation": "Participation (/{points})",
+      "total": "CA (/{points})"
+    }
   }
 }

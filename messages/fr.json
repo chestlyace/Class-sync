@@ -896,5 +896,15 @@
         "forbidden": "Vous n'êtes pas sur la liste de ce cours, vous ne pouvez donc pas rendre de travail ici."
       }
     }
+  },
+  "performance": {
+    "export": {
+      "matricule": "Matricule",
+      "name": "Nom",
+      "attendance": "Présence (/{points})",
+      "assignments": "Devoirs (/{points})",
+      "participation": "Participation (/{points})",
+      "total": "CA (/{points})"
+    }
   }
 }
