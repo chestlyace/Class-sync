@@ -14,6 +14,7 @@ const CONFLICT_REASONS = {
   not_published: 'notPublished',
   closed: 'closed',
   too_many_pending: 'tooManyPending',
+  resubmitted: 'resubmitted',
 } as const
 
 /** VALIDATION fields of the assignment form and the grade form. */
@@ -28,6 +29,7 @@ const FIELDS = {
   attachments: 'attachments',
   mark: 'mark',
   feedback: 'feedback',
+  submittedAt: 'staleSubmission',
 } as const
 
 /** VALIDATION reasons of the files service (attachments that can't be used). */

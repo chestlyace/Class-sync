@@ -773,6 +773,8 @@
         "notPublished": "Publiez le devoir avant de publier les notes.",
         "closed": "Les rendus sont fermés pour ce devoir.",
         "tooManyPending": "Trop d'envois inachevés. Patientez un instant, puis réessayez.",
+        "resubmitted": "L'étudiant a rendu une nouvelle version : rechargez la page pour la voir.",
+        "staleSubmission": "Cette page n'est plus à jour. Rechargez-la, puis enregistrez la note de nouveau.",
         "title": "Saisissez un titre de 2 à 200 caractères.",
         "instructions": "Les consignes sont trop longues ou illisibles.",
         "dueAt": "Choisissez une date et une heure limites dans le futur.",

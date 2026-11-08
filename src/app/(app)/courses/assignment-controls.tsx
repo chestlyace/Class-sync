@@ -84,14 +84,19 @@ export function ReleaseGradesButton({
   )
 }
 
-/** Mark (0..maxMark in steps of 0.25) and feedback for one submission. */
+/**
+ * Mark (0..maxMark in steps of 0.25) and feedback for one submission. `submittedAt` (ISO) is the
+ * version shown on the page; saving is refused if the student has handed in a new one since.
+ */
 export function GradeForm({
   submissionId,
+  submittedAt,
   maxMark,
   mark,
   feedback,
 }: {
   submissionId: string
+  submittedAt: string
   maxMark: number
   mark: number | null
   feedback: string | null
@@ -107,6 +112,7 @@ export function GradeForm({
 
   return (
     <form onSubmit={submitWith(dispatch)} noValidate className="flex flex-col gap-5">
+      <input type="hidden" name="submittedAt" value={submittedAt} />
       <FieldGroup>
         <Field data-invalid={invalid('mark')}>
           <FieldLabel htmlFor="grade-mark">{t('mark')}</FieldLabel>

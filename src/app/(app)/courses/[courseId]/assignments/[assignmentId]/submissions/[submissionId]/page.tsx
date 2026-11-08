@@ -108,8 +108,10 @@ export default async function SubmissionPage({
         <SectionHeading id="submission-grade">{t('grade')}</SectionHeading>
         <Panel>
           <GradeForm
-            key={submissionId}
+            // A new version from the student starts a fresh form (its grade was cleared).
+            key={`${submissionId}:${submittedAt.toISOString()}`}
             submissionId={submissionId}
+            submittedAt={submittedAt.toISOString()}
             maxMark={assignment.maxMark}
             mark={mark}
             feedback={feedback}

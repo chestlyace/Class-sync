@@ -476,11 +476,14 @@ export async function getSubmissionForLecturer(ctx: Ctx, submissionId: string): 
 /**
  * Sets the mark (a multiple of 0.25 within 0..maxMark) and the feedback (trimmed, blank = none,
  * at most 5,000 characters). Allowed after grades are released too: it is an edit, with no email.
+ * `expectedSubmittedAt` is the `submittedAt` the lecturer's page showed: if the student has handed
+ * in a new version since, nothing is saved (CONFLICT { reason: 'resubmitted' }), so a grade never
+ * lands on work the lecturer has not seen.
  */
 export async function gradeSubmission(
   ctx: Ctx,
   submissionId: string,
-  input: { mark: number; feedback: string | null },
+  input: { mark: number; feedback: string | null; expectedSubmittedAt: Date },
 ): Promise<void> {
   const { sub, row } = await requireOwnedSubmission(ctx, submissionId)
   const mark = input?.mark
@@ -489,11 +492,18 @@ export async function gradeSubmission(
   if (raw !== null && raw !== undefined && typeof raw !== 'string') invalidFields(['feedback'])
   const feedback = typeof raw === 'string' && raw.trim() !== '' ? raw.trim() : null
   if (feedback !== null && feedback.length > FEEDBACK_MAX) invalidFields(['feedback'], 'Feedback is too long')
+  const expected = input?.expectedSubmittedAt
+  if (!(expected instanceof Date) || Number.isNaN(expected.getTime())) invalidFields(['submittedAt'])
 
-  await ctx.db
+  // Conditional on the version, so a resubmission racing this grade is never graded unseen.
+  const updated = await ctx.db
     .update(submission)
     .set({ mark, feedback, gradedAt: now(), gradedBy: ctx.user.id })
-    .where(eq(submission.id, sub.id))
+    .where(and(eq(submission.id, sub.id), eq(submission.submittedAt, expected)))
+    .returning({ id: submission.id })
+  if (updated.length === 0) {
+    throw new AppError('CONFLICT', 'The student handed in a new version', { reason: 'resubmitted' })
+  }
 }
 
 /**

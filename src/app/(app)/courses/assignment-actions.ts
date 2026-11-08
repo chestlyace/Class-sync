@@ -163,8 +163,15 @@ export async function gradeSubmissionAction(
     if (!Number.isFinite(mark)) bad.push('mark')
     const feedback = formString(data, 'feedback')
     if (feedback.trim().length > FEEDBACK_MAX) bad.push('feedback')
+    // The version the page showed (ISO); the service refuses it once the student has resubmitted.
+    const expectedSubmittedAt = new Date(formString(data, 'submittedAt'))
+    if (Number.isNaN(expectedSubmittedAt.getTime())) bad.push('submittedAt')
     if (bad.length > 0) invalid(bad)
-    await gradeSubmission(await getCtx(), id, { mark, feedback: feedback.trim() === '' ? null : feedback })
+    await gradeSubmission(await getCtx(), id, {
+      mark,
+      feedback: feedback.trim() === '' ? null : feedback,
+      expectedSubmittedAt,
+    })
     revalidateAssignments()
     return null
   })

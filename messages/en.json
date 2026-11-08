@@ -773,6 +773,8 @@
         "notPublished": "Publish the assignment before releasing grades.",
         "closed": "Submissions are closed for this assignment.",
         "tooManyPending": "Too many unfinished uploads. Wait a moment, then try again.",
+        "resubmitted": "The student handed in a new version — reload to see it.",
+        "staleSubmission": "This page is out of date. Reload it, then save the grade again.",
         "title": "Enter a title of 2 to 200 characters.",
         "instructions": "The instructions are too long or couldn't be read.",
         "dueAt": "Choose a due date and time in the future.",

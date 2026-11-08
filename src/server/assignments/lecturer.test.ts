@@ -153,6 +153,12 @@ describe('lecturer assignment services', () => {
     return row.id
   }
 
+  /** The version a grading page was loaded with: the submission's current `submittedAt`. */
+  async function versionOf(submissionId: string): Promise<Date> {
+    const [row] = await db.select({ at: submission.submittedAt }).from(submission).where(eq(submission.id, submissionId))
+    return row.at
+  }
+
   async function published(lecturer: Ctx, courseId: string, over: Partial<AssignmentInput> = {}) {
     const a = await createAssignment(lecturer, courseId, baseInput(over))
     await publishAssignment(lecturer, a.id)
@@ -175,7 +181,7 @@ describe('lecturer assignment services', () => {
         () => listCourseAssignments(who, algo.id),
         () => listSubmissions(who, a.id),
         () => getSubmissionForLecturer(who, subId),
-        () => gradeSubmission(who, subId, { mark: 10, feedback: null }),
+        () => gradeSubmission(who, subId, { mark: 10, feedback: null, expectedSubmittedAt: new Date() }),
         () => releaseGrades(who, a.id),
       ]
       for (const call of calls) await expect(call()).rejects.toMatchObject({ code: 'FORBIDDEN' })
@@ -188,7 +194,7 @@ describe('lecturer assignment services', () => {
       () => listCourseAssignments(lecturer, 'nope'),
       () => listSubmissions(lecturer, 'nope'),
       () => getSubmissionForLecturer(lecturer, 'nope'),
-      () => gradeSubmission(lecturer, 'nope', { mark: 10, feedback: null }),
+      () => gradeSubmission(lecturer, 'nope', { mark: 10, feedback: null, expectedSubmittedAt: new Date() }),
       () => releaseGrades(lecturer, 'nope'),
     ]
     for (const call of missing) await expect(call()).rejects.toMatchObject({ code: 'FORBIDDEN' })
@@ -538,24 +544,52 @@ describe('lecturer assignment services', () => {
     const subId = await addSubmission(alice, a.id)
 
     for (const mark of [20.3, 21, -1, Number.NaN, '15' as unknown as number]) {
-      await expect(gradeSubmission(lecturer, subId, { mark, feedback: null })).rejects.toMatchObject({
+      await expect(gradeSubmission(lecturer, subId, { mark, feedback: null, expectedSubmittedAt: await versionOf(subId) })).rejects.toMatchObject({
         code: 'VALIDATION',
         details: { fields: ['mark'] },
       })
     }
-    await expect(gradeSubmission(lecturer, subId, { mark: 10, feedback: 'x'.repeat(5001) })).rejects.toMatchObject({
+    await expect(gradeSubmission(lecturer, subId, { mark: 10, feedback: 'x'.repeat(5001), expectedSubmittedAt: await versionOf(subId) })).rejects.toMatchObject({
       code: 'VALIDATION',
       details: { fields: ['feedback'] },
     })
 
-    await gradeSubmission(lecturer, subId, { mark: 17.75, feedback: '  Well argued.  ' })
+    await gradeSubmission(lecturer, subId, { mark: 17.75, feedback: '  Well argued.  ', expectedSubmittedAt: await versionOf(subId) })
     const [row] = await db.select().from(submission).where(eq(submission.id, subId))
     expect(row).toMatchObject({ mark: 17.75, feedback: 'Well argued.', gradedBy: lecturer.user.id })
     expect(row.gradedAt).toBeInstanceOf(Date)
 
-    await gradeSubmission(lecturer, subId, { mark: 20, feedback: '   ' })
+    await gradeSubmission(lecturer, subId, { mark: 20, feedback: '   ', expectedSubmittedAt: await versionOf(subId) })
     const [again] = await db.select().from(submission).where(eq(submission.id, subId))
     expect(again).toMatchObject({ mark: 20, feedback: null })
+  })
+
+  it('refuses a grade for a version the student has since replaced (CONFLICT resubmitted)', async () => {
+    const { lecturer, algo, alice } = await setup()
+    const a = await published(lecturer, algo.id)
+    const loadedAt = new Date('2026-11-10T08:00:00.123Z')
+    const subId = await addSubmission(alice, a.id, { submittedAt: loadedAt })
+
+    // The student hands in a new version while the lecturer's page still shows the first one.
+    const replacedAt = new Date('2026-11-10T09:30:00.456Z')
+    await db.update(submission).set({ submittedAt: replacedAt }).where(eq(submission.id, subId))
+    await expect(
+      gradeSubmission(lecturer, subId, { mark: 15, feedback: 'For the old version', expectedSubmittedAt: loadedAt }),
+    ).rejects.toMatchObject({ code: 'CONFLICT', details: { reason: 'resubmitted' } })
+    const [row] = await db.select().from(submission).where(eq(submission.id, subId))
+    expect(row).toMatchObject({ mark: null, feedback: null, gradedAt: null, gradedBy: null })
+
+    // A missing or invalid version is a VALIDATION error, never a silent overwrite.
+    for (const expectedSubmittedAt of [new Date(Number.NaN), undefined, '2026-11-10T09:30:00.456Z']) {
+      await expect(
+        gradeSubmission(lecturer, subId, { mark: 15, feedback: null, expectedSubmittedAt: expectedSubmittedAt as Date }),
+      ).rejects.toMatchObject({ code: 'VALIDATION', details: { fields: ['submittedAt'] } })
+    }
+
+    // Reloaded: the current version grades.
+    await gradeSubmission(lecturer, subId, { mark: 15, feedback: null, expectedSubmittedAt: replacedAt })
+    const [graded] = await db.select().from(submission).where(eq(submission.id, subId))
+    expect(graded).toMatchObject({ mark: 15, gradedBy: lecturer.user.id })
   })
 
   it('releasing grades emails graded students once; ungraded students are not emailed', async () => {
@@ -563,7 +597,7 @@ describe('lecturer assignment services', () => {
     const a = await published(lecturer, algo.id)
     const aliceSub = await addSubmission(alice, a.id)
     await addSubmission(bob, a.id)
-    await gradeSubmission(lecturer, aliceSub, { mark: 16, feedback: null })
+    await gradeSubmission(lecturer, aliceSub, { mark: 16, feedback: null, expectedSubmittedAt: await versionOf(aliceSub) })
     expect(carol.user.id).toBeTruthy()
 
     await expect(releaseGrades(lecturer, a.id)).resolves.toEqual({ released: 1 })
@@ -584,8 +618,8 @@ describe('lecturer assignment services', () => {
 
     // Grading after release is an edit: allowed, no new email.
     const bobSub = (await db.select().from(submission).where(eq(submission.studentId, bob.user.id)))[0].id
-    await gradeSubmission(lecturer, bobSub, { mark: 11, feedback: null })
-    await gradeSubmission(lecturer, aliceSub, { mark: 17, feedback: 'Updated' })
+    await gradeSubmission(lecturer, bobSub, { mark: 11, feedback: null, expectedSubmittedAt: await versionOf(bobSub) })
+    await gradeSubmission(lecturer, aliceSub, { mark: 17, feedback: 'Updated', expectedSubmittedAt: await versionOf(aliceSub) })
     await runScheduled()
     expect(send).toHaveBeenCalledTimes(1)
   })
