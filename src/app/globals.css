@@ -170,3 +170,7 @@ body:has(main[data-taking-test]) {
   font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
   font-size: 0.85rem;
 }
+/* BlockNote sets pre-wrap on all inline content: a code line must stay one line and scroll in its box. */
+.clasync-rich-text .bn-block-content[data-content-type='codeBlock'] > pre .bn-inline-content {
+  white-space: pre;
+}
