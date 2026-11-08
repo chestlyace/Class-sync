@@ -27,7 +27,8 @@ function round2(x: number): number {
   return Math.round(x * 100 + 1e-7) / 100
 }
 
-function attendanceRatio(a: CaInput['attendance']): number | null {
+/** (present + 0.5 × partial) / counted sessions; null when no session counts yet. */
+export function attendanceRatio(a: CaInput['attendance']): number | null {
   const counted = a.present + a.partial + a.absent
   return counted > 0 ? (a.present + 0.5 * a.partial) / counted : null
 }
