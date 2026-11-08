@@ -34,10 +34,13 @@ export function ConfirmAction({
   destructive = false,
   primary = false,
   renderError,
+  open: openProp,
+  onOpenChange,
 }: {
   action: FormAction
   fields: Record<string, string>
-  triggerLabel: string
+  /** Not needed when `open` is given: the caller opens the dialog (e.g. from a menu item). */
+  triggerLabel?: string
   triggerAriaLabel?: string
   triggerIcon?: React.ReactNode
   title: string
@@ -51,9 +54,15 @@ export function ConfirmAction({
   primary?: boolean
   /** Replaces the generic error message (e.g. to explain a service `reason`). */
   renderError?: (state: ActionResult<unknown> | null) => React.ReactNode
+  /** Controls the dialog from outside; the trigger button is then not shown. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
   const t = useTranslations('common')
-  const [open, setOpen] = useState(false)
+  const [innerOpen, setInnerOpen] = useState(false)
+  const controlled = openProp !== undefined
+  const open = controlled ? openProp : innerOpen
+  const setOpen = controlled ? (onOpenChange ?? (() => undefined)) : setInnerOpen
   const [state, dispatch, pending] = useActionState(async (prev: ActionResult<unknown> | null, data: FormData) => {
     const result = await action(prev, data)
     if (result.ok) setOpen(false)
@@ -62,17 +71,19 @@ export function ConfirmAction({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          type="button"
-          variant={destructive ? 'destructive' : primary ? 'default' : 'outline'}
-          aria-label={triggerAriaLabel}
-          title={triggerAriaLabel}
-        >
-          {triggerIcon}
-          {triggerLabel}
-        </Button>
-      </DialogTrigger>
+      {!controlled && (
+        <DialogTrigger asChild>
+          <Button
+            type="button"
+            variant={destructive ? 'destructive' : primary ? 'default' : 'outline'}
+            aria-label={triggerAriaLabel}
+            title={triggerAriaLabel}
+          >
+            {triggerIcon}
+            {triggerLabel}
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent closeLabel={t('close')}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

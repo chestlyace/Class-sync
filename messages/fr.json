@@ -1450,5 +1450,136 @@
       "mcqCount": "{count, plural, one {# question} other {# questions}}",
       "mcqNote": "Affiché en un seul total, pour que les réponses restent privées."
     }
+  },
+  "notes": {
+    "lecturer": {
+      "courseLink": "Notes",
+      "breadcrumb": "Notes",
+      "title": "Notes et ressources",
+      "description": "Notes, fichiers et liens de ce cours, par thème. Les étudiants voient un thème dès que vous le leur montrez.",
+      "empty": "Aucun thème pour le moment. Créez un thème, puis ajoutez-y des notes, des fichiers et des liens.",
+      "topicLabel": "Thème {n}",
+      "itemCount": "{count, plural, =0 {Vide} one {# élément} other {# éléments}}",
+      "hiddenPill": "Masqué aux étudiants",
+      "hiddenNote": "Les étudiants ne voient pas encore ce thème.",
+      "show": "Montrer aux étudiants",
+      "kind": {
+        "note": "Note",
+        "file": "Fichier",
+        "link": "Lien",
+        "revision": "Révision"
+      },
+      "meta": {
+        "note": "Écrite ici · modifiée le {date}"
+      },
+      "alsoIn": "{count, plural, one {Aussi dans # autre cours} other {Aussi dans # autres cours}}",
+      "practiceRow": "{count, plural, one {Questions d'entraînement · # question} other {Questions d'entraînement · # questions}}",
+      "practiceMeta": "Les étudiants s'entraînent seuls et voient leur propre progression.",
+      "practiceHeld": "En attente de la publication des résultats du test.",
+      "waitingPill": "En attente",
+      "addPractice": "Ajouter des questions d'entraînement",
+      "add": {
+        "note": "Écrire une note",
+        "file": "Téléverser un fichier",
+        "link": "Ajouter un lien"
+      },
+      "newTopic": {
+        "open": "Nouveau thème",
+        "title": "Nouveau thème",
+        "body": "Un thème regroupe des notes, des fichiers, des liens et des questions d'entraînement. Il vient en dernier dans la liste.",
+        "field": "Titre du thème",
+        "placeholder": "Semaine 3 · Algorithmes de tri",
+        "submit": "Créer le thème"
+      },
+      "rename": {
+        "title": "Renommer le thème",
+        "body": "Les étudiants voient le nouveau titre tout de suite.",
+        "submit": "Renommer"
+      },
+      "topicMenu": {
+        "label": "Options du thème {title}",
+        "rename": "Renommer",
+        "moveUp": "Monter",
+        "moveDown": "Descendre",
+        "hide": "Masquer aux étudiants",
+        "show": "Montrer aux étudiants",
+        "delete": "Supprimer le thème"
+      },
+      "deleteTopic": {
+        "title": "Supprimer ce thème ?",
+        "body": "Le thème « {title} » sera supprimé.",
+        "note": "Seul un thème vide peut être supprimé : retirez d'abord ses notes, fichiers, liens et questions d'entraînement.",
+        "confirm": "Supprimer le thème"
+      },
+      "itemMenu": {
+        "label": "Options de {title}",
+        "edit": "Modifier",
+        "moveUp": "Monter",
+        "moveDown": "Descendre",
+        "moveToTopic": "Déplacer vers un autre thème",
+        "share": "Partager avec un autre cours",
+        "remove": "Retirer"
+      },
+      "move": {
+        "title": "Déplacer vers un autre thème",
+        "body": "Choisissez où va « {title} ». Il est ajouté en dernier dans ce thème.",
+        "topic": "Thème",
+        "submit": "Déplacer"
+      },
+      "share": {
+        "title": "Partager avec un autre cours",
+        "body": "« {title} » apparaîtra aussi dans le cours que vous choisissez. Cela reste un seul élément : le modifier le change dans tous les cours.",
+        "course": "Cours",
+        "topic": "Thème",
+        "hint": "Il est ajouté en dernier dans ce thème, et la visibilité du thème décide qui le voit.",
+        "loading": "Chargement des thèmes…",
+        "loadFailed": "Les thèmes n'ont pas pu être chargés. Fermez cette fenêtre et réessayez.",
+        "noTopics": "Ce cours n'a pas encore de thème. Créez-en un d'abord.",
+        "noCourses": "Vous n'avez aucun autre cours avec lequel le partager.",
+        "submit": "Partager"
+      },
+      "remove": {
+        "title": "Retirer cet élément ?",
+        "body": "« {title} » sera retiré de ce cours.",
+        "shared": "{count, plural, one {Le retire de ce cours seulement. # autre cours le garde.} other {Le retire de ce cours seulement. # autres cours le gardent.}}",
+        "alone": "Le supprime définitivement.",
+        "confirm": "Retirer"
+      },
+      "form": {
+        "newTitle": {
+          "note": "Nouvelle note",
+          "file": "Téléverser un fichier",
+          "link": "Ajouter un lien"
+        },
+        "editTitle": "Modifier l'élément",
+        "inTopic": "Dans le thème « {topic} »",
+        "sharedNote": "Cet élément est aussi dans : {courses}. Vos modifications s'appliquent dans chacun de ces cours.",
+        "title": "Titre",
+        "titlePlaceholder": {
+          "note": "Semaine 3 · Algorithmes de tri",
+          "file": "Diapositives du cours 3",
+          "link": "Visualgo, algorithmes de tri"
+        },
+        "body": "Note",
+        "bodyHint": "Titres, listes et blocs de code fonctionnent. Les étudiants peuvent la lire sur leur téléphone.",
+        "file": "Fichier",
+        "fileReplaceHint": "Téléversez un nouveau fichier pour remplacer celui-ci. Il est remplacé dans tous les cours qui l'ont.",
+        "url": "Adresse web",
+        "urlHint": "Elle doit commencer par http:// ou https://.",
+        "save": "Enregistrer",
+        "saving": "Enregistrement…",
+        "waitForUploads": "Attendez la fin du téléversement."
+      }
+    },
+    "errors": {
+      "title": "Donnez-lui un titre de 1 à 200 caractères.",
+      "body": "La note ne peut pas être enregistrée. Elle est peut-être trop longue : raccourcissez-la et réessayez.",
+      "file": "Téléversez d'abord un fichier. Un fichier déjà utilisé par un autre élément ne peut pas servir de nouveau.",
+      "url": "Saisissez une adresse web qui commence par http:// ou https://.",
+      "topic": "Choisissez un thème.",
+      "course": "Choisissez un cours.",
+      "notEmpty": "Ce thème contient encore des notes, des fichiers, des liens ou des questions d'entraînement. Retirez-les d'abord.",
+      "alreadyThere": "Cet élément est déjà dans ce cours."
+    }
   }
 }
