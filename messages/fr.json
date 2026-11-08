@@ -824,7 +824,7 @@
       "backToCourse": "Retour au cours",
       "due": "À rendre le",
       "maxMark": "Note maximale",
-      "handIn": "Rendu",
+      "handIn": "Mode de rendu",
       "mode": {
         "files": "Envoyer des fichiers",
         "text": "Rédiger la réponse",
