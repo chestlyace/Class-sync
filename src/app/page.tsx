@@ -473,11 +473,11 @@ export default async function Home() {
         </section>
 
         <section aria-labelledby="cta-title" className={cn(container, 'py-24 sm:py-28')}>
-          <div className="flex flex-wrap items-end justify-between gap-8 rounded-[32px] bg-foreground px-6 py-10 text-background sm:px-12 sm:py-14">
+          <div className="flex flex-wrap items-end justify-between gap-8 rounded-[32px] bg-foreground lg:flex-nowrap px-6 py-10 text-background sm:px-12 sm:py-14">
             <h2 id="cta-title" className="max-w-[18ch] font-display text-6xl leading-[0.88] font-normal text-balance sm:text-[88px]">
               {t('cta.title')}
             </h2>
-            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+            <div className="flex w-full shrink-0 flex-col gap-3 sm:w-auto sm:flex-row">
               <Link href="/sign-up" className={buttonVariants({ variant: 'inverse', size: 'lg', className: heroButton })}>
                 {t('cta.primary')}
                 <ArrowRight aria-hidden="true" data-icon="inline-end" />
