@@ -22,6 +22,7 @@ import { createCourse, setRosterAdjustment } from '@/server/courses/service'
 import { createSchool } from '@/server/schools/service'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
+import { racing } from '@/test/race'
 import {
   copyTest,
   createTest,
@@ -472,6 +473,40 @@ describe('test authoring services', () => {
     await expectAppError(copyTest(lecturer, test.id, theirs.id), 'FORBIDDEN')
     await expectAppError(copyTest(lecturer, test.id, crypto.randomUUID()), 'FORBIDDEN')
     expect(await countRows()).toEqual({ tests: 1, questions: 3, options: 5 })
+  })
+
+  it('copyTest checks the copied test like a new one: a stored test the rules now refuse is VALIDATION, nothing copied', async () => {
+    const { lecturer, algo, networks } = await setup()
+    const original = await createTest(lecturer, algo.id, validInput())
+    // A stored MCQ that lost its correct option (e.g. written before a rule changed).
+    const [mcq] = await db.select().from(testQuestion).where(eq(testQuestion.testId, original.id)).orderBy(testQuestion.position)
+    await db.update(testOption).set({ isCorrect: false }).where(eq(testOption.questionId, mcq.id))
+
+    await expectAppError(copyTest(lecturer, original.id, networks.id), 'VALIDATION', { reason: 'correct', question: 0 })
+    expect(await countRows()).toEqual({ tests: 1, questions: 3, options: 5 })
+  })
+
+  it('a test deleted between the owner check and the write is FORBIDDEN, not CONFLICT started', async () => {
+    const { lecturer, algo } = await setup()
+    const gone = async (id: string) => db.delete(courseTest).where(eq(courseTest.id, id))
+
+    const one = await createTest(lecturer, algo.id, validInput())
+    await expectAppError(updateTest(racing(lecturer, 'transaction', () => gone(one.id)), one.id, validInput()), 'FORBIDDEN')
+
+    const two = await createTest(lecturer, algo.id, validInput())
+    await expectAppError(deleteTest(racing(lecturer, 'delete', () => gone(two.id)), two.id), 'FORBIDDEN')
+    expect(await countRows()).toEqual({ tests: 0, questions: 0, options: 0 })
+
+    // Started in between is still CONFLICT started.
+    const three = await createTest(lecturer, algo.id, validInput())
+    await expectAppError(
+      updateTest(racing(lecturer, 'transaction', () => start(three.id)), three.id, validInput()),
+      'CONFLICT',
+      { reason: 'started' },
+    )
+    await expectAppError(deleteTest(racing(lecturer, 'delete', () => start(three.id)), three.id), 'CONFLICT', {
+      reason: 'started',
+    })
   })
 
   it('deleteTest works before Start and is CONFLICT started after', async () => {
