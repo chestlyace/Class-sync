@@ -1247,9 +1247,9 @@
       "sync": {
         "saved": "Saved",
         "saving": "Saving…",
-        "offline": "Saved on this phone · waiting for connection",
-        "signedOut": "Saved on this phone · sign in again to send your answers",
-        "failed": "Saved on this phone · trying again"
+        "offline": "Saved on this device · waiting for connection",
+        "signedOut": "Saved on this device · sign in again to send your answers",
+        "failed": "Saved on this device · trying again"
       },
       "facts": {
         "duration": "Duration",
@@ -1262,12 +1262,12 @@
         "status": "Your lecturer starts the test for everyone. The first question opens here by itself.",
         "rule": "The test ends for you after {exits, plural, one {# exit} other {# exits}} from this page, or one absence longer than {seconds, plural, one {# second} other {# seconds}}.",
         "ruleWhat": "Leaving means switching to another tab or app; on a laptop, also another window or leaving full screen.",
-        "saved": "Your answers are saved on this phone as you go.",
+        "saved": "Your answers are saved on this device as you go.",
         "notice": "Clasync notices when you leave this page; it does not lock your phone."
       },
       "begin": {
         "title": "The test has started",
-        "body": "Tap Begin to open the questions in full screen. The timer is already running.",
+        "body": "Click Begin to open the questions in full screen. The timer is already running.",
         "note": "Leaving full screen counts as leaving the test.",
         "button": "Begin"
       },
@@ -1288,8 +1288,8 @@
         "handInUnanswered": "{count, plural, one {# question is} other {# questions are}} still unanswered.",
         "handInFinal": "You can't change your answers after handing in.",
         "handingIn": "Handing in…",
-        "handInOffline": "No connection. Your answers are saved on this phone; hand in again once you are back online.",
-        "handInFailed": "We couldn't hand in your answers. They are saved on this phone; please try again."
+        "handInOffline": "No connection. Your answers are saved on this device; hand in again once you are back online.",
+        "handInFailed": "We couldn't hand in your answers. They are saved on this device; please try again."
       },
       "warning": {
         "title": "You left the test ({n} of {max})",
@@ -1341,8 +1341,7 @@
           "ended_left": "Ended for leaving",
           "handed_in": "Handed in"
         },
-        "score": "{score} / {outOf}",
-        "openLabel": "Open the test {title}"
+        "score": "{score} / {outOf}"
       }
     }
   }

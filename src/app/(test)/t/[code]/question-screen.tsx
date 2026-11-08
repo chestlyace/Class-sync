@@ -38,6 +38,7 @@ export function QuestionScreen({
   onHandIn,
   handingIn,
   handInProblem,
+  onHandInOpen,
 }: {
   paper: PaperQuestion[]
   index: number
@@ -51,6 +52,8 @@ export function QuestionScreen({
   onHandIn: () => Promise<boolean>
   handingIn: boolean
   handInProblem: HandInProblem
+  /** The hand-in dialog opens: a problem from an earlier try no longer applies. */
+  onHandInOpen: () => void
 }) {
   const t = useTranslations('tests.student.question')
   const tc = useTranslations('common')
@@ -163,7 +166,10 @@ export function QuestionScreen({
             size="lg"
             variant={last ? 'default' : 'outline'}
             className="w-full"
-            onClick={() => setConfirming(true)}
+            onClick={() => {
+              onHandInOpen()
+              setConfirming(true)
+            }}
           >
             <Send aria-hidden="true" data-icon="inline-start" />
             {t('handIn')}

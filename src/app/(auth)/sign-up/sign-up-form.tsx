@@ -17,7 +17,8 @@ const roles = [
   { value: 'lecturer', icon: School },
 ] as const
 
-export function SignUpForm({ defaultLocale }: { defaultLocale: Locale }) {
+/** `next`: a same-site path (already checked with safeNextPath) to open once signed in. */
+export function SignUpForm({ defaultLocale, next = null }: { defaultLocale: Locale; next?: string | null }) {
   const t = useTranslations('auth.signUp')
   const tCommon = useTranslations('common')
   const tRoot = useTranslations()
@@ -46,6 +47,8 @@ export function SignUpForm({ defaultLocale }: { defaultLocale: Locale }) {
         password: String(form.get('password') ?? ''),
         role,
         locale,
+        // Where the verification link lands (it then asks to sign in, keeping `next`).
+        ...(next ? { callbackURL: next } : {}),
       })
       if (authError) {
         setError(tRoot(authErrorKey(authError.code, authError.status)))
@@ -53,10 +56,12 @@ export function SignUpForm({ defaultLocale }: { defaultLocale: Locale }) {
       }
       // No session token means the account must be verified by email first.
       if (data?.token) {
-        router.push('/')
+        router.push(next ?? '/')
         router.refresh()
       } else {
-        router.push(`/verify-email?email=${encodeURIComponent(email)}`)
+        const query = new URLSearchParams({ email })
+        if (next) query.set('next', next)
+        router.push(`/verify-email?${query}`)
       }
     } catch {
       setError(tRoot('common.genericError'))

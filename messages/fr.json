@@ -1247,9 +1247,9 @@
       "sync": {
         "saved": "Enregistré",
         "saving": "Enregistrement…",
-        "offline": "Enregistré sur ce téléphone · en attente de connexion",
-        "signedOut": "Enregistré sur ce téléphone · reconnectez-vous pour envoyer vos réponses",
-        "failed": "Enregistré sur ce téléphone · nouvel essai en cours"
+        "offline": "Enregistré sur cet appareil · en attente de connexion",
+        "signedOut": "Enregistré sur cet appareil · reconnectez-vous pour envoyer vos réponses",
+        "failed": "Enregistré sur cet appareil · nouvel essai en cours"
       },
       "facts": {
         "duration": "Durée",
@@ -1262,12 +1262,12 @@
         "status": "Votre enseignant lance le test pour tout le monde. La première question s'ouvre ici d'elle-même.",
         "rule": "Le test se termine pour vous après {exits, plural, one {# sortie} other {# sorties}} de cette page, ou une absence de plus de {seconds, plural, one {# seconde} other {# secondes}}.",
         "ruleWhat": "Sortir, c'est passer à un autre onglet ou une autre application ; sur un ordinateur, aussi à une autre fenêtre ou quitter le plein écran.",
-        "saved": "Vos réponses sont enregistrées sur ce téléphone au fur et à mesure.",
+        "saved": "Vos réponses sont enregistrées sur cet appareil au fur et à mesure.",
         "notice": "Clasync remarque quand vous quittez cette page ; il ne verrouille pas votre téléphone."
       },
       "begin": {
         "title": "Le test a commencé",
-        "body": "Touchez Commencer pour ouvrir les questions en plein écran. Le chrono tourne déjà.",
+        "body": "Cliquez sur Commencer pour ouvrir les questions en plein écran. Le chrono tourne déjà.",
         "note": "Quitter le plein écran compte comme quitter le test.",
         "button": "Commencer"
       },
@@ -1288,8 +1288,8 @@
         "handInUnanswered": "{count, plural, one {# question est encore sans réponse.} other {# questions sont encore sans réponse.}}",
         "handInFinal": "Vous ne pourrez plus modifier vos réponses après les avoir remises.",
         "handingIn": "Remise en cours…",
-        "handInOffline": "Pas de connexion. Vos réponses sont enregistrées sur ce téléphone ; remettez-les à nouveau une fois reconnecté.",
-        "handInFailed": "Impossible de remettre vos réponses. Elles sont enregistrées sur ce téléphone ; veuillez réessayer."
+        "handInOffline": "Pas de connexion. Vos réponses sont enregistrées sur cet appareil ; remettez-les à nouveau quand la connexion revient.",
+        "handInFailed": "Impossible de remettre vos réponses. Elles sont enregistrées sur cet appareil ; veuillez réessayer."
       },
       "warning": {
         "title": "Vous avez quitté le test ({n} sur {max})",
@@ -1305,7 +1305,7 @@
         "eyebrow": "Test terminé",
         "title": "Votre test est terminé",
         "exits": "Vous avez quitté le test {count, plural, one {# fois} other {# fois}}, la limite fixée par votre enseignant.",
-        "absence": "Vous vous êtes absenté plus de {seconds, plural, one {# seconde} other {# secondes}}.",
+        "absence": "Votre absence a duré plus de {seconds, plural, one {# seconde} other {# secondes}}.",
         "handedIn": "{count, plural, =0 {Aucune réponse n'a été remise.} one {# réponse a été remise.} other {# réponses ont été remises.}}",
         "reopen": "Si votre enseignant vous laisse revenir, cette page se rouvre d'elle-même.",
         "totalLater": "Votre total s'affiche quand le test est terminé pour tout le monde."
@@ -1341,8 +1341,7 @@
           "ended_left": "Terminé pour sortie",
           "handed_in": "Remis"
         },
-        "score": "{score} / {outOf}",
-        "openLabel": "Ouvrir le test {title}"
+        "score": "{score} / {outOf}"
       }
     }
   }

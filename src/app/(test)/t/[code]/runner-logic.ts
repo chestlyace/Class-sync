@@ -39,9 +39,20 @@ export function retryDelayMs(failures: number): number {
 }
 
 /**
+ * When the next sync is due (epoch ms). A new timer replaces the current one (typing pushes the
+ * send back), except with `keepSooner`: then a timer already due sooner (an answer changed while
+ * a sync was in flight) is kept.
+ */
+export function syncDueAt(currentDueAt: number | null, nowMs: number, delayMs: number, keepSooner: boolean): number {
+  const due = nowMs + delayMs
+  return keepSooner && currentDueAt !== null && currentDueAt < due ? currentDueAt : due
+}
+
+/**
  * Whether the runner keeps talking to the server: while waiting, answering or ended for leaving
  * (the lecturer may let the student back in); after that only while answers are still queued
- * (the grace) or an MCQ-only total is still to come.
+ * (the grace) or an MCQ-only total is still to come. A result only shows once the answers are
+ * final, so then nothing queued can still go in.
  */
 export function keepSyncing(
   view: { stage: AttemptStage; attemptId: string | null; hasShort: boolean; result: QuickResult | null; awaitingRelease: boolean },
@@ -49,8 +60,36 @@ export function keepSyncing(
 ): boolean {
   if (view.attemptId === null) return false
   if (view.stage === 'waiting' || view.stage === 'answering' || view.stage === 'ended_left') return true
+  if (view.result !== null) return false
   if (hasPending) return true
   return resultState(view) === 'pending'
+}
+
+/**
+ * Answers that stay queued although they can never go in, marked as sent so the runner stops
+ * resending them and shows "Saved". The server drops answers silently once the attempt no longer
+ * takes them (it acknowledges either every answer of a request or none). So after a successful
+ * request answered with `handed_in` or `over`, an answer sent and not acknowledged at that rev is
+ * final; one changed since it was sent goes out once more. Once a result shows, every answer is
+ * final. Never while waiting, answering or ended for leaving (the lecturer may let the student
+ * back in): those answers are kept and sent.
+ */
+export function settleFinalAnswers(
+  state: LocalAttempt,
+  view: { stage: AttemptStage; result: QuickResult | null },
+  sent: AnswerInput[],
+): LocalAttempt {
+  const all = view.result !== null
+  if (!all && view.stage !== 'handed_in' && view.stage !== 'over') return state
+  const sentRev = new Map(sent.map((a) => [a.questionId, a.rev]))
+  let answers: LocalAttempt['answers'] | null = null
+  for (const [questionId, a] of Object.entries(state.answers)) {
+    if (a.rev <= a.sentRev) continue
+    if (!all && sentRev.get(questionId) !== a.rev) continue
+    answers ??= { ...state.answers }
+    answers[questionId] = { ...a, sentRev: a.rev }
+  }
+  return answers ? { ...state, answers } : state
 }
 
 // ---------------------------------------------------------------------------------------------

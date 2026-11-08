@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
+import { safeNextPath } from '@/lib/next-path'
 
 export async function generateMetadata() {
   const t = await getTranslations('auth.verify')
@@ -10,10 +11,11 @@ export async function generateMetadata() {
 export default async function VerifyEmailPage({
   searchParams,
 }: {
-  searchParams: Promise<{ email?: string | string[] }>
+  searchParams: Promise<{ email?: string | string[]; next?: string | string[] }>
 }) {
   const t = await getTranslations('auth.verify')
-  const { email } = await searchParams
+  const { email, next: rawNext } = await searchParams
+  const next = safeNextPath(rawNext)
   const address = typeof email === 'string' && email.length <= 254 ? email : null
   return (
     <>
@@ -24,7 +26,7 @@ export default async function VerifyEmailPage({
         </p>
         <p className="text-sm text-muted-foreground">{t('hint')}</p>
       </div>
-      <Link href="/sign-in" className={buttonVariants({ variant: 'outline', size: 'lg' })}>
+      <Link href={next ? `/sign-in?next=${encodeURIComponent(next)}` : '/sign-in'} className={buttonVariants({ variant: 'outline', size: 'lg' })}>
         {t('backToSignIn')}
       </Link>
     </>

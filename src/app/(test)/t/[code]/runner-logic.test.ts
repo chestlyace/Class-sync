@@ -11,6 +11,8 @@ import {
   resultState,
   retryDelayMs,
   screenFor,
+  settleFinalAnswers,
+  syncDueAt,
   type ScreenInput,
 } from './runner-logic'
 
@@ -154,8 +156,65 @@ describe('keepSyncing', () => {
     expect(keepSyncing({ ...v, stage: 'over' }, false)).toBe(true) // total still to come
     const score = { score: 1, outOf: 2, mcqCorrect: 1, mcqCount: 1 }
     expect(keepSyncing({ ...v, stage: 'over', result: score }, false)).toBe(false)
-    expect(keepSyncing({ ...v, stage: 'over', result: score }, true)).toBe(true)
     expect(keepSyncing({ ...v, stage: 'handed_in', hasShort: true, awaitingRelease: true }, false)).toBe(false)
     expect(keepSyncing({ ...v, stage: 'over', attemptId: null }, false)).toBe(false)
+  })
+
+  it('stops once a result shows, even with answers still queued (the server no longer takes them)', () => {
+    const score = { score: 1, outOf: 2, mcqCorrect: 1, mcqCount: 1 }
+    expect(keepSyncing({ ...v, stage: 'over', result: score }, true)).toBe(false)
+    expect(keepSyncing({ ...v, stage: 'handed_in', result: score }, true)).toBe(false)
+  })
+
+  it('keeps sending queued answers after the end while no result shows (the grace)', () => {
+    expect(keepSyncing({ ...v, stage: 'over' }, true)).toBe(true)
+    expect(keepSyncing({ ...v, stage: 'handed_in', hasShort: true, awaitingRelease: true }, true)).toBe(true)
+  })
+})
+
+describe('settleFinalAnswers', () => {
+  const pending = (rev: number, sentRev = 0) => ({ optionId: 'o1', text: null, rev, sentRev })
+  const state = { answers: { q1: pending(2), q2: pending(3, 1), q3: pending(1, 1) }, exits: [], openExit: null }
+  const sent = [
+    { questionId: 'q1', optionId: 'o1', text: null, rev: 2 },
+    { questionId: 'q2', optionId: 'o1', text: null, rev: 2 },
+  ]
+  const noResult = { result: null }
+  const score = { score: 1, outOf: 2, mcqCorrect: 1, mcqCount: 1 }
+
+  it('after the end or a hand-in: answers sent and not taken are final (the server dropped them)', () => {
+    for (const stage of ['over', 'handed_in'] as const) {
+      const settled = settleFinalAnswers(state, { stage, ...noResult }, sent)
+      expect(settled.answers.q1).toEqual(pending(2, 2))
+      // Changed since it was sent: still goes out once more.
+      expect(settled.answers.q2).toEqual(pending(3, 1))
+      expect(settled.answers.q3).toEqual(pending(1, 1))
+    }
+  })
+
+  it('never while the attempt may still take them', () => {
+    for (const stage of ['waiting', 'answering', 'ended_left'] as const) {
+      expect(settleFinalAnswers(state, { stage, ...noResult }, sent)).toBe(state)
+    }
+  })
+
+  it('once a result shows, every queued answer is final, sent or not', () => {
+    const settled = settleFinalAnswers(state, { stage: 'over', result: score }, [])
+    expect(Object.values(settled.answers).every((a) => a.sentRev === a.rev)).toBe(true)
+  })
+
+  it('returns the same state when nothing changes', () => {
+    const done = { ...state, answers: { q3: pending(1, 1) } }
+    expect(settleFinalAnswers(done, { stage: 'over', result: score }, [])).toBe(done)
+  })
+})
+
+describe('syncDueAt', () => {
+  it('a new timer replaces the current one, or keeps the sooner when asked', () => {
+    expect(syncDueAt(null, 1000, 5000, true)).toBe(6000)
+    expect(syncDueAt(1600, 1000, 5000, false)).toBe(6000)
+    // An answer timer due in 600 ms is not pushed back by the regular 5 s sync.
+    expect(syncDueAt(1600, 1000, 5000, true)).toBe(1600)
+    expect(syncDueAt(9000, 1000, 5000, true)).toBe(6000)
   })
 })

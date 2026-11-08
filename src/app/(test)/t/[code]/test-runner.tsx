@@ -33,6 +33,8 @@ import {
   pickClockSample,
   retryDelayMs,
   screenFor,
+  settleFinalAnswers,
+  syncDueAt,
   type ClockSample,
 } from './runner-logic'
 import type { SyncStatus } from './screen-parts'
@@ -80,7 +82,7 @@ function isOpenElsewhere(result: ActionResult<unknown>): boolean {
  * answer and leave report on the device first (localStorage, written synchronously), sends them
  * with `syncAttemptAction` (every STUDENT_SYNC_MS, soon after each answer, at once after each exit,
  * on `online` and on return), and judges leaving locally too so an ended student sees it offline.
- * A failed request is never leaving: it only changes the "saved on this phone" line.
+ * A failed request is never leaving: it only changes the "saved on this device" line.
  */
 export function TestRunner({ userId, code }: { userId: string; code: string }) {
   const [view, setView] = useState<AttemptViewDto | null>(null)
@@ -110,6 +112,8 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
   const deviceIdRef = useRef('')
   const clockRef = useRef<ClockSample | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /** When the pending timer fires (epoch ms), null when none is pending. */
+  const dueAtRef = useRef<number | null>(null)
   const syncRef = useRef<() => Promise<void>>(async () => {})
   const inFlightRef = useRef(false)
   const againRef = useRef(false)
@@ -136,6 +140,8 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
   const stop = useCallback((reason: Fatal) => {
     stoppedRef.current = true
     if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = null
+    dueAtRef.current = null
     setFatal(reason)
   }, [])
 
@@ -143,10 +149,23 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
   // Talking to the server
   // ------------------------------------------------------------------------------------------
 
-  const schedule = useCallback((delayMs: number) => {
+  /** Sets the one sync timer; `keepSooner` keeps a timer already due sooner (see syncDueAt). */
+  const schedule = useCallback((delayMs: number, keepSooner = false) => {
+    const now = Date.now()
+    const dueAt = syncDueAt(dueAtRef.current, now, delayMs, keepSooner)
     if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = null
+    dueAtRef.current = null
     if (stoppedRef.current) return
-    timerRef.current = setTimeout(() => void syncRef.current(), delayMs)
+    dueAtRef.current = dueAt
+    timerRef.current = setTimeout(
+      () => {
+        timerRef.current = null
+        dueAtRef.current = null
+        void syncRef.current()
+      },
+      Math.max(0, dueAt - now),
+    )
   }, [])
 
   const sync = useCallback(async (): Promise<void> => {
@@ -170,8 +189,10 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
       if (result.ok) {
         ok = true
         failuresRef.current = 0
-        // Exactly the reports sent: one id per report (a left and its back share an id).
-        commit(acknowledge(localRef.current, result.data.acceptedRevs, exits.map((e) => e.exitId)))
+        // Exactly the reports sent: one id per report (a left and its back share an id). Answers
+        // the server no longer takes (after the end or a hand-in) are final, not pending forever.
+        const acknowledged = acknowledge(localRef.current, result.data.acceptedRevs, exits.map((e) => e.exitId))
+        commit(settleFinalAnswers(acknowledged, result.data, answers))
         applyView(result.data, sentAt, receivedAt)
         setStatus(hasQueued(localRef.current) ? 'saving' : 'saved')
       } else if (isOpenElsewhere(result)) {
@@ -194,7 +215,8 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
       schedule(0)
     } else {
       againRef.current = false
-      schedule(retryDelayMs(failuresRef.current))
+      // An answer changed during the request has a sooner timer: it is not pushed back.
+      schedule(retryDelayMs(failuresRef.current), true)
     }
   }, [applyView, commit, schedule, stop])
   useEffect(() => {
@@ -217,7 +239,7 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
       if (dto.attemptId) {
         keyRef.current = attemptKey(userId, dto.attemptId)
         // The server's copy first, before any answer can be recorded: a newer local answer is kept.
-        commit(mergeServerCopy(loadLocalAttempt(keyRef.current), dto.saved))
+        commit(settleFinalAnswers(mergeServerCopy(loadLocalAttempt(keyRef.current), dto.saved), dto, []))
       }
       applyView(dto, sentAt, receivedAt)
       setStatus(hasQueued(localRef.current) ? 'saving' : 'saved')
@@ -345,11 +367,15 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
     }
   }, [tracking, device, fullscreenMode])
 
-  // Out of answering (ended, handed in, time up): an exit still open no longer counts, and full
-  // screen is released. Otherwise a stale exit would be judged if the lecturer lets the student back in.
+  // Out of answering (ended, handed in, time up, open elsewhere): an exit still open no longer
+  // counts, and full screen is released. Otherwise a stale exit would be judged if the lecturer lets
+  // the student back in. Begin shows again then, so full screen is re-entered with a click before
+  // leaving it counts (a tracker that counted it at once would log a false exit).
   const onStopTracking = useEffectEvent(() => {
     if (localRef.current.openExit) commit({ ...localRef.current, openExit: null })
     setWarning(null)
+    setFullscreenMode(false)
+    setBegun(false)
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
   })
   useEffect(() => {
@@ -386,7 +412,11 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
       const result = await handInAction(v.attemptId, { deviceId: deviceIdRef.current, answers: allAnswers(state), exits })
       const receivedAt = Date.now()
       if (result.ok) {
-        commit(mergeServerCopy(acknowledge(localRef.current, result.data.acceptedRevs, exits.map((e) => e.exitId)), result.data.saved))
+        const merged = mergeServerCopy(
+          acknowledge(localRef.current, result.data.acceptedRevs, exits.map((e) => e.exitId)),
+          result.data.saved,
+        )
+        commit(settleFinalAnswers(merged, result.data, allAnswers(state)))
         applyView(result.data, sentAt, receivedAt)
         setStatus('saved')
         schedule(retryDelayMs(0))
@@ -481,6 +511,7 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
           onHandIn={onHandIn}
           handingIn={handingIn}
           handInProblem={handInProblem}
+          onHandInOpen={() => setHandInProblem(null)}
         />
       ) : (
         <LoadingScreen />
