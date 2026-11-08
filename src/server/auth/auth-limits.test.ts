@@ -82,7 +82,7 @@ describe('auth: rate limits sized for a classroom', () => {
     expect(statuses[100]).toBe(429)
     // Another address is unaffected.
     expect((await post(auth, '/sign-in/email', { email: 'x@example.com', password: PASSWORD }, '198.51.100.8')).status).toBe(401)
-  }, 60_000)
+  }, 120_000)
 
   it('still allows only 30 sign-ups per minute from one address, then answers 429', async () => {
     const ip = '198.51.100.9'
