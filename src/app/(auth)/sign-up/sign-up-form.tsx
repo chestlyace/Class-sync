@@ -10,6 +10,7 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegen
 import { Input } from '@/components/ui/input'
 import { authClient } from '@/lib/auth-client'
 import { authErrorKey } from '@/lib/auth-errors'
+import { needsFullNavigation } from '@/lib/oauth-resume'
 import type { Locale } from '@/i18n/locale'
 
 const roles = [
@@ -55,7 +56,10 @@ export function SignUpForm({ defaultLocale, next = null }: { defaultLocale: Loca
         return
       }
       // No session token means the account must be verified by email first.
-      if (data?.token) {
+      if (data?.token && next && needsFullNavigation(next)) {
+        // e.g. resuming an assistant's authorization: a route handler, not a page.
+        window.location.assign(next)
+      } else if (data?.token) {
         router.push(next ?? '/')
         router.refresh()
       } else {

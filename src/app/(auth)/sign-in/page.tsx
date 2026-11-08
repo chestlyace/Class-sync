@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { safeNextPath } from '@/lib/next-path'
+import { oauthResumePath } from '@/lib/oauth-resume'
 import { redirectIfSignedIn } from '../redirect-if-signed-in'
 import { SignInForm } from './sign-in-form'
 
@@ -10,8 +11,13 @@ export async function generateMetadata() {
 }
 
 export default async function SignInPage({ searchParams }: PageProps<'/sign-in'>) {
-  const next = safeNextPath((await searchParams).next)
-  await redirectIfSignedIn(next)
+  const search = await searchParams
+  // Opened by an assistant's authorization (Better Auth's signed query): signing in here resumes it
+  // (the auth client sends the query along); sign-up and verification carry it on as `next`.
+  const oauthResume = oauthResumePath(search)
+  const next = oauthResume ?? safeNextPath(search.next)
+  // During an authorization the provider may ask to sign in again (prompt=login): show the form.
+  if (!oauthResume) await redirectIfSignedIn(next)
   const t = await getTranslations('auth.signIn')
   return (
     <>

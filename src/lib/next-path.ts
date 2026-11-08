@@ -1,4 +1,5 @@
-const MAX_NEXT_LENGTH = 512
+// Room for an assistant's OAuth authorization request (src/lib/oauth-resume.ts).
+const MAX_NEXT_LENGTH = 2048
 
 /**
  * The `next` parameter of the sign-in page, when it is safe to send the user there: a path on this
