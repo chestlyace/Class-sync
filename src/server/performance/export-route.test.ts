@@ -91,7 +91,8 @@ describe('GET /courses/[courseId]/performance/export', () => {
       'Présence (/5)',
       'Devoirs (/20)',
       'Participation (/5)',
-      'CA (/30)',
+      'CC (/30)',
+      'Remarque',
     ])
     expect([2, 3].map((r) => [ws.getRow(r).getCell(1).value, ws.getRow(r).getCell(2).value])).toEqual([
       ['UB1', 'Bob'],

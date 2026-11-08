@@ -21,15 +21,12 @@ const COMPONENTS: { key: ComponentKey; points: (s: CaSettings) => number }[] = [
   { key: 'participation', points: (s) => s.participationPoints },
 ]
 
-/** Rounds to 2 decimals so float noise (3.1300000000000003) never reaches the sheet. */
-function round2(x: number): number {
-  return Math.round(x * 100 + 1e-7) / 100
-}
-
 /**
  * The lecturer's CA sheet as an .xlsx: Matricule, Name, one column per component that has points,
- * then the final CA (a not-started component counts 0). Headers are in `locale`; scores are real
- * numbers rounded to 2 decimals; rows are in matricule order, then name.
+ * the final CA, then a note. Headers are in `locale`; scores are real numbers written exactly as
+ * `computeCa` gave them (already 2 decimals, so the parts add up to the final); rows are in
+ * matricule order, then name. A part the class hasn't started is 0; a part that doesn't apply to
+ * the student is left empty, and the note says their CA was scaled.
  */
 export async function buildCaWorkbook(input: {
   settings: CaSettings
@@ -41,6 +38,13 @@ export async function buildCaWorkbook(input: {
   const t = createTranslator({ locale, messages: messages[locale], namespace: 'performance.export' })
   const label = (key: 'attendance' | 'assignments' | 'participation' | 'total', points: number) =>
     t(key, { points: formatDecimal(points, locale) })
+  const list = new Intl.ListFormat(locale, { type: 'conjunction' })
+  const noteOf = (result: StudentCa['result']): string | null => {
+    if (result.notAssessed) return t('notAssessedNote')
+    if (!result.scaled) return null
+    const parts = result.components.filter((c) => c.status === 'not_applicable').map((c) => t(`notApplicable.${c.key}`))
+    return t('scaledNote', { parts: list.format(parts) })
+  }
 
   const components = COMPONENTS.filter((c) => c.points(settings) > 0)
   const collator = new Intl.Collator(locale, { numeric: true })
@@ -61,15 +65,18 @@ export async function buildCaWorkbook(input: {
       style: { numFmt: NUMBER_FORMAT },
     })),
     { header: label('total', settings.total), key: 'total', width: 14, style: { numFmt: NUMBER_FORMAT } },
+    { header: t('note'), key: 'note', width: 40 },
   ]
   sheet.getRow(1).font = { bold: true }
 
   for (const row of sorted) {
-    const values: Record<string, string | number> = { matricule: row.matricule, name: row.name }
+    const values: Record<string, string | number | null> = { matricule: row.matricule, name: row.name }
     for (const c of components) {
-      values[c.key] = round2(row.result.components.find((s) => s.key === c.key)?.score ?? 0)
+      const part = row.result.components.find((s) => s.key === c.key)
+      values[c.key] = part?.status === 'not_applicable' ? null : (part?.score ?? 0)
     }
-    values.total = round2(row.result.final)
+    values.total = row.result.final
+    values.note = noteOf(row.result)
     sheet.addRow(values)
   }
   return Buffer.from(await workbook.xlsx.writeBuffer())

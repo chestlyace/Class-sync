@@ -13,6 +13,8 @@ export type SettingsError = { error: 'sum' | 'range' | 'decimals' | 'shape' }
 
 /** A student whose CA so far is below this share of its points is slipping. */
 export const SLIP_RATIO = 0.5
+/** ...but only once the parts so far are worth at least this share of the CA total. */
+export const SLIP_MIN_SHARE = 0.25
 /** Attendance ratio below this (with enough counted sessions) is slipping. */
 export const SLIP_ATTENDANCE = 0.75
 export const SLIP_MIN_SESSIONS = 3

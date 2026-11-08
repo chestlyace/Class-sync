@@ -904,7 +904,15 @@
       "attendance": "Attendance (/{points})",
       "assignments": "Assignments (/{points})",
       "participation": "Participation (/{points})",
-      "total": "CA (/{points})"
+      "total": "CA (/{points})",
+      "note": "Note",
+      "scaledNote": "Scaled: {parts}",
+      "notAssessedNote": "Not assessed: no part applies to this student yet",
+      "notApplicable": {
+        "attendance": "Attendance not applicable",
+        "assignments": "Assignments not applicable",
+        "participation": "Participation not applicable"
+      }
     },
     "lecturer": {
       "courseLink": "CA",

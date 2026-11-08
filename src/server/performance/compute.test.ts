@@ -6,8 +6,10 @@ const EMPTY: CaInput = {
   attendance: { present: 0, partial: 0, absent: 0 },
   assignments: [],
   participationNet: 0,
-  classHasParticipation: false,
+  classStarted: { attendance: false, assignments: false, participation: false },
 }
+
+const ALL_STARTED: CaInput['classStarted'] = { attendance: true, assignments: true, participation: true }
 
 const part = (r: ReturnType<typeof computeCa>, key: string) => r.components.find((c) => c.key === key)!
 
@@ -15,21 +17,28 @@ describe('computeCa', () => {
   it('shows every component as not started, 0 so far and 0 / 30 final for empty input', () => {
     const r = computeCa(DEFAULT_SETTINGS, EMPTY)
     expect(r.components).toEqual([
-      { key: 'attendance', points: 5, ratio: null, score: null },
-      { key: 'assignments', points: 20, ratio: null, score: null },
-      { key: 'participation', points: 5, ratio: null, score: null },
+      { key: 'attendance', points: 5, ratio: null, score: null, status: 'not_started' },
+      { key: 'assignments', points: 20, ratio: null, score: null, status: 'not_started' },
+      { key: 'participation', points: 5, ratio: null, score: null, status: 'not_started' },
     ])
     expect(r.soFar).toBe(0)
     expect(r.soFarOutOf).toBe(0)
     expect(r.final).toBe(0)
     expect(r.total).toBe(30)
+    expect(r.scaled).toBe(false)
+    expect(r.notAssessed).toBe(false)
   })
 
   it('scores attendance as (present + half partial) over counted sessions', () => {
-    const r = computeCa(DEFAULT_SETTINGS, { ...EMPTY, attendance: { present: 4, partial: 2, absent: 2 } })
+    const r = computeCa(DEFAULT_SETTINGS, {
+      ...EMPTY,
+      attendance: { present: 4, partial: 2, absent: 2 },
+      classStarted: { ...EMPTY.classStarted, attendance: true },
+    })
     const a = part(r, 'attendance')
     expect(a.ratio).toBe(0.625)
     expect(a.score).toBe(3.13)
+    expect(a.status).toBe('scored')
     expect(r.soFar).toBe(3.13)
     expect(r.soFarOutOf).toBe(5)
     expect(r.final).toBe(3.13)
@@ -38,6 +47,8 @@ describe('computeCa', () => {
   it('scores assignments by weight, counting a missing mark as 0', () => {
     const r = computeCa(DEFAULT_SETTINGS, {
       ...EMPTY,
+      classStarted: ALL_STARTED,
+      attendance: { present: 1, partial: 0, absent: 0 },
       assignments: [
         { weight: 1, mark: 15, maxMark: 20 },
         { weight: 2, mark: 8, maxMark: 10 },
@@ -50,86 +61,174 @@ describe('computeCa', () => {
   })
 
   it('counts a released assignment with only missing marks as started at 0', () => {
-    const r = computeCa(DEFAULT_SETTINGS, { ...EMPTY, assignments: [{ weight: 1, mark: null, maxMark: 20 }] })
-    expect(part(r, 'assignments')).toMatchObject({ ratio: 0, score: 0 })
+    const r = computeCa(DEFAULT_SETTINGS, {
+      ...EMPTY,
+      classStarted: { ...EMPTY.classStarted, assignments: true },
+      assignments: [{ weight: 1, mark: null, maxMark: 20 }],
+    })
+    expect(part(r, 'assignments')).toMatchObject({ ratio: 0, score: 0, status: 'scored' })
     expect(r.soFarOutOf).toBe(20)
+    expect(r.scaled).toBe(false)
   })
 
   it('does not divide by zero on zero weights or zero max marks', () => {
-    const zeroWeight = computeCa(DEFAULT_SETTINGS, { ...EMPTY, assignments: [{ weight: 0, mark: 5, maxMark: 10 }] })
+    const started = { ...EMPTY.classStarted, assignments: true }
+    const zeroWeight = computeCa(DEFAULT_SETTINGS, {
+      ...EMPTY,
+      classStarted: started,
+      assignments: [{ weight: 0, mark: 5, maxMark: 10 }],
+    })
     expect(part(zeroWeight, 'assignments').ratio).toBeNull()
-    const zeroMax = computeCa(DEFAULT_SETTINGS, { ...EMPTY, assignments: [{ weight: 1, mark: 0, maxMark: 0 }] })
+    const zeroMax = computeCa(DEFAULT_SETTINGS, {
+      ...EMPTY,
+      classStarted: started,
+      assignments: [{ weight: 1, mark: 0, maxMark: 0 }],
+    })
     expect(part(zeroMax, 'assignments').score).toBe(0)
   })
 
   it('caps participation at the target and floors it at 0', () => {
-    const over = computeCa(DEFAULT_SETTINGS, { ...EMPTY, participationNet: 7, classHasParticipation: true })
+    const started = { ...EMPTY, classStarted: { ...EMPTY.classStarted, participation: true } }
+    const over = computeCa(DEFAULT_SETTINGS, { ...started, participationNet: 7 })
     expect(part(over, 'participation')).toMatchObject({ ratio: 1, score: 5 })
-    const under = computeCa(DEFAULT_SETTINGS, { ...EMPTY, participationNet: -2, classHasParticipation: true })
+    const under = computeCa(DEFAULT_SETTINGS, { ...started, participationNet: -2 })
     expect(part(under, 'participation')).toMatchObject({ ratio: 0, score: 0 })
-    const half = computeCa({ ...DEFAULT_SETTINGS, participationTarget: 10 }, { ...EMPTY, participationNet: 4, classHasParticipation: true })
+    const half = computeCa({ ...DEFAULT_SETTINGS, participationTarget: 10 }, { ...started, participationNet: 4 })
     expect(part(half, 'participation')).toMatchObject({ ratio: 0.4, score: 2 })
   })
 
   it('treats participation as started for everyone once the class has any taps, not before', () => {
-    const notYet = computeCa(DEFAULT_SETTINGS, { ...EMPTY, participationNet: 0, classHasParticipation: false })
-    expect(part(notYet, 'participation')).toMatchObject({ ratio: null, score: null })
-    const started = computeCa(DEFAULT_SETTINGS, { ...EMPTY, participationNet: 0, classHasParticipation: true })
-    expect(part(started, 'participation')).toMatchObject({ ratio: 0, score: 0 })
+    const notYet = computeCa(DEFAULT_SETTINGS, { ...EMPTY, participationNet: 0 })
+    expect(part(notYet, 'participation')).toMatchObject({ ratio: null, score: null, status: 'not_started' })
+    const started = computeCa(DEFAULT_SETTINGS, {
+      ...EMPTY,
+      participationNet: 0,
+      classStarted: { ...EMPTY.classStarted, participation: true },
+    })
+    expect(part(started, 'participation')).toMatchObject({ ratio: 0, score: 0, status: 'scored' })
     expect(started.soFarOutOf).toBe(5)
   })
 
   it('omits components with 0 points', () => {
     const settings = { ...DEFAULT_SETTINGS, assignmentPoints: 25, participationPoints: 0 }
-    const r = computeCa(settings, { ...EMPTY, participationNet: 3, classHasParticipation: true })
+    const r = computeCa(settings, { ...EMPTY, participationNet: 3, classStarted: ALL_STARTED })
     expect(r.components.map((c) => c.key)).toEqual(['attendance', 'assignments'])
   })
 
-  it('sums started components for so-far and treats unstarted ones as 0 in final', () => {
+  it('counts a part the class has not started as 0 for everyone, without scaling', () => {
     const r = computeCa(DEFAULT_SETTINGS, {
       ...EMPTY,
       attendance: { present: 1, partial: 0, absent: 0 },
       participationNet: 5,
-      classHasParticipation: true,
+      classStarted: { attendance: true, assignments: false, participation: true },
     })
+    expect(part(r, 'assignments')).toEqual({ key: 'assignments', points: 20, ratio: null, score: null, status: 'not_started' })
     expect(r.soFar).toBe(10)
     expect(r.soFarOutOf).toBe(10)
     expect(r.final).toBe(10)
     expect(r.total).toBe(30)
+    expect(r.scaled).toBe(false)
   })
 
-  it('rounds only at the end', () => {
-    // Each half-point score is 0.505 (shown 0.51); summed unrounded they make 1.515 -> 1.52, not 0.51 * 3 = 1.53.
-    const half = computeCa(
-      { total: 3.03, attendancePoints: 1.01, assignmentPoints: 1.01, participationPoints: 1.01, testPoints: 0, participationTarget: 2 },
-      {
-        attendance: { present: 1, partial: 0, absent: 1 },
-        assignments: [{ weight: 1, mark: 1, maxMark: 2 }],
-        participationNet: 1,
-        classHasParticipation: true,
-      },
-    )
-    expect(half.components.map((c) => c.score)).toEqual([0.51, 0.51, 0.51])
-    expect(half.soFar).toBe(1.52)
-    expect(half.final).toBe(1.52)
-    // three ratios of 1/3 each score 1.67 (sum 5.01 if rounded first) but 5 in total
+  it('scales the other parts up to the total when a started part does not apply to the student', () => {
+    // Assignments have started for the class, but this student has nothing counted there yet.
+    const r = computeCa(DEFAULT_SETTINGS, {
+      ...EMPTY,
+      attendance: { present: 1, partial: 0, absent: 1 },
+      participationNet: 3,
+      classStarted: ALL_STARTED,
+    })
+    expect(part(r, 'assignments')).toEqual({
+      key: 'assignments',
+      points: 20,
+      ratio: null,
+      score: null,
+      status: 'not_applicable',
+    })
+    expect(part(r, 'attendance')).toMatchObject({ score: 2.5, status: 'scored' })
+    expect(part(r, 'participation')).toMatchObject({ score: 3, status: 'scored' })
+    // (2.5 + 3) x 30 / (30 - 20) = 16.5
+    expect(r.final).toBe(16.5)
+    expect(r.scaled).toBe(true)
+    expect(r.notAssessed).toBe(false)
+    // So far is not scaled: the scored parts out of their own points.
+    expect(r.soFar).toBe(5.5)
+    expect(r.soFarOutOf).toBe(10)
+  })
+
+  it('scales the sum of the rounded parts, rounding once more at the end', () => {
+    // Attendance 1/3 of 5 = 1.67; participation 5; assignments not applicable: 6.67 x 3 = 20.01.
+    const r = computeCa(DEFAULT_SETTINGS, {
+      ...EMPTY,
+      attendance: { present: 1, partial: 0, absent: 2 },
+      participationNet: 5,
+      classStarted: ALL_STARTED,
+    })
+    expect(r.components.map((c) => c.score)).toEqual([1.67, null, 5])
+    expect(r.final).toBe(20.01)
+  })
+
+  it('scales over a not-applicable part while a not-started part still counts 0', () => {
+    // Attendance not applicable (no counted session since joining), assignments not started.
+    const r = computeCa(DEFAULT_SETTINGS, {
+      ...EMPTY,
+      participationNet: 5,
+      classStarted: { attendance: true, assignments: false, participation: true },
+    })
+    expect(r.components.map((c) => c.status)).toEqual(['not_applicable', 'not_started', 'scored'])
+    // 5 x 30 / (30 - 5) = 6
+    expect(r.final).toBe(6)
+    expect(r.scaled).toBe(true)
+  })
+
+  it('gives 0, scaled and not assessed, when no part applies to the student', () => {
+    const settings = { ...DEFAULT_SETTINGS, total: 25, participationPoints: 0 }
+    const r = computeCa(settings, { ...EMPTY, classStarted: ALL_STARTED })
+    expect(r.components.map((c) => c.status)).toEqual(['not_applicable', 'not_applicable'])
+    expect(r.final).toBe(0)
+    expect(r.scaled).toBe(true)
+    expect(r.notAssessed).toBe(true)
+    expect(r.soFar).toBe(0)
+    expect(r.soFarOutOf).toBe(0)
+  })
+
+  it('parts add up: the final is the sum of the rounded parts', () => {
+    // Each third of 5 is 1.67, so the CA is 1.67 x 3 = 5.01.
     const thirds = computeCa(
       { total: 15, attendancePoints: 5, assignmentPoints: 5, participationPoints: 5, testPoints: 0, participationTarget: 3 },
       {
         attendance: { present: 1, partial: 0, absent: 2 },
         assignments: [{ weight: 1, mark: 1, maxMark: 3 }],
         participationNet: 1,
-        classHasParticipation: true,
+        classStarted: ALL_STARTED,
       },
     )
     expect(thirds.components.map((c) => c.score)).toEqual([1.67, 1.67, 1.67])
-    expect(thirds.soFar).toBe(5)
-    expect(thirds.final).toBe(5)
+    expect(thirds.soFar).toBe(5.01)
+    expect(thirds.final).toBe(5.01)
+    expect(thirds.scaled).toBe(false)
+    // Each half point is 0.505, shown 0.51: the CA is 0.51 x 3 = 1.53.
+    const halves = computeCa(
+      { total: 3.03, attendancePoints: 1.01, assignmentPoints: 1.01, participationPoints: 1.01, testPoints: 0, participationTarget: 2 },
+      {
+        attendance: { present: 1, partial: 0, absent: 1 },
+        assignments: [{ weight: 1, mark: 1, maxMark: 2 }],
+        participationNet: 1,
+        classStarted: ALL_STARTED,
+      },
+    )
+    expect(halves.components.map((c) => c.score)).toEqual([0.51, 0.51, 0.51])
+    expect(halves.soFar).toBe(1.53)
+    expect(halves.final).toBe(1.53)
   })
 
   it('rounds .005 cases up despite float representation', () => {
     const settings = { ...DEFAULT_SETTINGS, attendancePoints: 1.005, assignmentPoints: 18.995, participationPoints: 5 }
-    const r = computeCa(settings, { ...EMPTY, attendance: { present: 1, partial: 0, absent: 0 } })
+    const r = computeCa(settings, {
+      ...EMPTY,
+      attendance: { present: 1, partial: 0, absent: 0 },
+      classStarted: { ...EMPTY.classStarted, attendance: true },
+    })
     expect(part(r, 'attendance').score).toBe(1.01)
   })
 })
@@ -159,11 +258,27 @@ describe('rankRows', () => {
 })
 
 describe('isSlipping', () => {
-  const result = (soFar: number, soFarOutOf: number) => ({ components: [], soFar, soFarOutOf, final: soFar, total: 30 })
+  const result = (soFar: number, soFarOutOf: number) => ({
+    components: [],
+    soFar,
+    soFarOutOf,
+    final: soFar,
+    total: 30,
+    scaled: false,
+    notAssessed: false,
+  })
 
   it('flags CA so far below half of its points', () => {
     expect(isSlipping(result(4.999, 10), null, 0)).toBe(true)
     expect(isSlipping(result(5, 10), null, 0)).toBe(false)
+  })
+
+  it('flags on CA so far only once its parts are worth at least a quarter of the total', () => {
+    // A quarter of 30 is 7.5.
+    expect(isSlipping(result(0, 7.49), null, 0)).toBe(false)
+    expect(isSlipping(result(0, 7.5), null, 0)).toBe(true)
+    expect(isSlipping(result(3.74, 7.5), null, 0)).toBe(true)
+    expect(isSlipping(result(3.75, 7.5), null, 0)).toBe(false)
   })
 
   it('never flags on CA when nothing has started', () => {

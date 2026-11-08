@@ -55,9 +55,12 @@ export async function getMyCa(
 ): Promise<{ settings: CaSettings; result: ReturnType<typeof computeCa>; missingWork: number }> {
   requireRole(ctx, 'student')
   await getCourse(ctx, courseId) // FORBIDDEN unless I am on the roster now
-  const roster = await courseRosterQuery(ctx.db, { courseId, studentId: ctx.user.id })
+  // The whole roster: whether a part has started is decided for the class, not for me alone.
+  const roster = await courseRosterQuery(ctx.db, { courseId })
   // Dropped from the roster since the check above.
-  if (roster.length === 0) throw new AppError('FORBIDDEN', 'You do not have access to this course')
+  if (!roster.some((r) => r.studentId === ctx.user.id)) {
+    throw new AppError('FORBIDDEN', 'You do not have access to this course')
+  }
 
   const { settings, students } = await loadCaInputs(ctx.db, courseId, roster)
   const { input, missingWork } = students.get(ctx.user.id)!

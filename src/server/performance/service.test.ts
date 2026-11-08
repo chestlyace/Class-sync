@@ -209,14 +209,16 @@ describe('CA service', () => {
     for (const row of rows) {
       expect(row.result).toEqual({
         components: [
-          { key: 'attendance', points: 5, ratio: null, score: null },
-          { key: 'assignments', points: 20, ratio: null, score: null },
-          { key: 'participation', points: 5, ratio: null, score: null },
+          { key: 'attendance', points: 5, ratio: null, score: null, status: 'not_started' },
+          { key: 'assignments', points: 20, ratio: null, score: null, status: 'not_started' },
+          { key: 'participation', points: 5, ratio: null, score: null, status: 'not_started' },
         ],
         soFar: 0,
         soFarOutOf: 0,
         final: 0,
         total: 30,
+        scaled: false,
+        notAssessed: false,
       })
       expect(row).toMatchObject({ attendanceRatio: null, countedSessions: 0, missingWork: 0, slipping: false, rank: 1 })
     }
@@ -242,7 +244,13 @@ describe('CA service', () => {
 
     const { rows } = await getCourseCa(lecturer, algo.id)
     expect(rowOf(rows, dave)).toMatchObject({ countedSessions: 1, attendanceRatio: 1 })
-    expect(component(rowOf(rows, dave), 'attendance')).toEqual({ key: 'attendance', points: 5, ratio: 1, score: 5 })
+    expect(component(rowOf(rows, dave), 'attendance')).toEqual({
+      key: 'attendance',
+      points: 5,
+      ratio: 1,
+      score: 5,
+      status: 'scored',
+    })
     expect(rowOf(rows, alice)).toMatchObject({ countedSessions: 3, attendanceRatio: 1 })
     expect((await getMyCa(dave, algo.id)).result.final).toBe(5)
   })
@@ -287,6 +295,7 @@ describe('CA service', () => {
       points: 20,
       ratio: 0.375,
       score: 7.5,
+      status: 'scored',
     })
     expect(rowOf(rows, alice).missingWork).toBe(2) // Skipped + Overdue
     // Bob: the ungraded hand-in is left out → 10/20 = 0.5 → 10 of 20, and nothing is missing.
@@ -320,7 +329,14 @@ describe('CA service', () => {
       .where(eq(classStudent.userId, dave.user.id))
 
     let rows = (await getCourseCa(lecturer, algo.id)).rows
-    expect(component(rowOf(rows, dave), 'assignments')).toMatchObject({ ratio: null, score: null })
+    // Assignments have started for the class, but nothing counts for Dave: not applicable, so his
+    // other parts are scaled up to 30 (here they haven't started, so 0).
+    expect(component(rowOf(rows, dave), 'assignments')).toMatchObject({
+      ratio: null,
+      score: null,
+      status: 'not_applicable',
+    })
+    expect(rowOf(rows, dave).result).toMatchObject({ final: 0, scaled: true, notAssessed: false })
     expect(rowOf(rows, dave).missingWork).toBe(0)
     expect(component(rowOf(rows, alice), 'assignments')).toMatchObject({ ratio: 0.5, score: 10 })
     expect(rowOf(rows, alice).missingWork).toBe(1) // Early unreleased
@@ -330,7 +346,8 @@ describe('CA service', () => {
     const later = await publishedAssignment(lecturer, algo.id, { title: 'Later' })
     await releaseGrades(lecturer, later.id)
     rows = (await getCourseCa(lecturer, algo.id)).rows
-    expect(component(rowOf(rows, dave), 'assignments')).toMatchObject({ ratio: 0, score: 0 })
+    expect(component(rowOf(rows, dave), 'assignments')).toMatchObject({ ratio: 0, score: 0, status: 'scored' })
+    expect(rowOf(rows, dave).result.scaled).toBe(false)
     expect(rowOf(rows, dave).missingWork).toBe(1)
     expect(component(rowOf(rows, alice), 'assignments')).toMatchObject({ ratio: 0.25, score: 5 })
     expect(rowOf(rows, alice).missingWork).toBe(2)
@@ -360,9 +377,16 @@ describe('CA service', () => {
     // Erin: only the graded hand-in counts → 16/20 = 0.8 → 16 of 20; nothing missing.
     expect(component(rowOf(rows, erin), 'assignments')).toMatchObject({ ratio: 0.8, score: 16 })
     expect(rowOf(rows, erin).missingWork).toBe(0)
-    // Frank handed in nothing: not started, nothing missing.
-    expect(component(rowOf(rows, frank), 'assignments')).toMatchObject({ ratio: null, score: null })
+    expect(rowOf(rows, erin).result.scaled).toBe(false)
+    // Frank handed in nothing: not applicable to him (started for the class), nothing missing.
+    expect(component(rowOf(rows, frank), 'assignments')).toMatchObject({
+      ratio: null,
+      score: null,
+      status: 'not_applicable',
+    })
+    expect(rowOf(rows, frank).result.scaled).toBe(true)
     expect(rowOf(rows, frank).missingWork).toBe(0)
+    expect((await getMyCa(frank, algo.id)).result).toEqual(rowOf(rows, frank).result)
     expect((await getMyCa(erin, algo.id)).result).toEqual(rowOf(rows, erin).result)
   })
 
@@ -408,6 +432,7 @@ describe('CA service', () => {
       points: 5,
       ratio: 0.75,
       score: 3.75,
+      status: 'scored',
     })
     // Bob: net −1 → 0. Carol: no taps, but the class has participation → started at 0.
     expect(component(rowOf(rows, bob), 'participation')).toMatchObject({ ratio: 0, score: 0 })
@@ -438,8 +463,19 @@ describe('CA service', () => {
       .where(eq(classStudent.userId, erin.user.id))
     await heldSession(lecturer, algo.id, [[alice, 'both'], [bob, 'both'], [dave, 'both'], [erin, 'start']])
     await heldSession(lecturer, algo.id, [[alice, 'both']])
+    // Attendance is a quarter of the total: enough for the CA-so-far rule to apply.
+    await db.insert(courseCaSettings).values({
+      courseId: algo.id,
+      total: 20,
+      attendancePoints: 5,
+      assignmentPoints: 10,
+      participationPoints: 5,
+      testPoints: 0,
+      participationTarget: 5,
+      updatedBy: lecturer.user.id,
+    })
 
-    const { rows } = await getCourseCa(lecturer, algo.id)
+    let { rows } = await getCourseCa(lecturer, algo.id)
     const summary = rows.map((r) => [r.name, r.rank, r.attendanceRatio, r.countedSessions, r.result.final, r.slipping])
     expect(summary).toEqual([
       // 4 / 4 present.
@@ -453,6 +489,69 @@ describe('CA service', () => {
       // 0.5 / 2 = 0.25: CA so far below 50 % → slipping even with 2 sessions.
       ['Erin', 5, 0.25, 2, 1.25, true],
     ])
+
+    // With the default total of 30, attendance (5) is under a quarter of it: too early to flag
+    // Erin on her CA so far. Carol is still flagged on attendance.
+    await db.delete(courseCaSettings)
+    rows = (await getCourseCa(lecturer, algo.id)).rows
+    expect(rows.filter((r) => r.slipping).map((r) => r.name)).toEqual(['Carol'])
+  })
+
+  it('a student whose only released work is waiting for a grade has assignments not applicable, and is scaled', async () => {
+    const { lecturer, algo, alice, bob } = await setup()
+    await heldSession(lecturer, algo.id, [[alice, 'both'], [bob, 'both']])
+    const a = await publishedAssignment(lecturer, algo.id, { maxMark: 20 })
+    await handIn(lecturer, alice, a.id, 10)
+    await handIn(lecturer, bob, a.id) // not graded yet
+    await releaseGrades(lecturer, a.id)
+
+    const { rows } = await getCourseCa(lecturer, algo.id)
+    // Alice: attendance 5 + assignments 10 = 15; participation hasn't started (0).
+    expect(rowOf(rows, alice).result).toMatchObject({ final: 15, scaled: false })
+    // Bob: attendance 5 of the 10 points that apply to him, scaled to 30 → 15.
+    expect(component(rowOf(rows, bob), 'assignments')).toMatchObject({ score: null, status: 'not_applicable' })
+    expect(component(rowOf(rows, bob), 'participation')).toMatchObject({ score: null, status: 'not_started' })
+    expect(rowOf(rows, bob).result).toMatchObject({ soFar: 5, soFarOutOf: 5, final: 15, scaled: true })
+    expect(rowOf(rows, bob).missingWork).toBe(0)
+    expect((await getMyCa(bob, algo.id)).result).toEqual(rowOf(rows, bob).result)
+  })
+
+  it('a late joiner with no session since joining has attendance not applicable, and is scaled', async () => {
+    const { lecturer, algo, alice, bob, cls } = await setup()
+    const dave = await addStudent(cls, 'Dave', 'UB4')
+    const held = await heldSession(lecturer, algo.id, [[alice, 'both'], [bob, 'start']])
+    await db
+      .update(classStudent)
+      .set({ joinedAt: new Date(held.createdAt.getTime() + MIN / 2) })
+      .where(eq(classStudent.userId, dave.user.id))
+    await tap(lecturer, algo.id, dave, 1, 4)
+
+    const { rows } = await getCourseCa(lecturer, algo.id)
+    expect(component(rowOf(rows, dave), 'attendance')).toMatchObject({ score: null, status: 'not_applicable' })
+    // Participation 4 of 5 → 4; assignments not started (0); scaled by 30 / 25 → 4.8.
+    expect(rowOf(rows, dave).result).toMatchObject({ soFar: 4, soFarOutOf: 5, final: 4.8, scaled: true })
+    // Bob is not affected: half present → 2.5, participation 0.
+    expect(rowOf(rows, bob).result).toMatchObject({ final: 2.5, scaled: false })
+    // Dave's own view sees the class's started parts too.
+    expect((await getMyCa(dave, algo.id)).result).toEqual(rowOf(rows, dave).result)
+  })
+
+  it("taps on students no longer on the roster don't start participation for the class", async () => {
+    const { lecturer, algo, alice, bob, cls } = await setup()
+    const carol = await addStudent(cls, 'Carol', 'UB3')
+    await tap(lecturer, algo.id, bob, 1, 2)
+    await tap(lecturer, algo.id, carol, 1)
+    await setRosterAdjustment(lecturer, algo.id, bob.user.id, 'exclude')
+    await removeStudentFromClass(lecturer, cls.id, carol.user.id)
+
+    const { rows } = await getCourseCa(lecturer, algo.id)
+    expect(component(rowOf(rows, alice), 'participation')).toMatchObject({ score: null, status: 'not_started' })
+    expect(component(await getMyCa(alice, algo.id), 'participation')).toMatchObject({ status: 'not_started' })
+
+    // A tap on a student still on the roster starts it for everyone.
+    await tap(lecturer, algo.id, alice, 1)
+    const after = (await getCourseCa(lecturer, algo.id)).rows
+    expect(component(rowOf(after, alice), 'participation')).toMatchObject({ score: 1, status: 'scored' })
   })
 
   it('getCourseCa is the owner only: a colleague, a student or a nonexistent course get FORBIDDEN', async () => {

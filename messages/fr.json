@@ -904,7 +904,15 @@
       "attendance": "Présence (/{points})",
       "assignments": "Devoirs (/{points})",
       "participation": "Participation (/{points})",
-      "total": "CA (/{points})"
+      "total": "CC (/{points})",
+      "note": "Remarque",
+      "scaledNote": "Mis à l'échelle : {parts}",
+      "notAssessedNote": "Non évalué : aucune partie ne s'applique encore à cet étudiant",
+      "notApplicable": {
+        "attendance": "Présence non applicable",
+        "assignments": "Devoirs non applicables",
+        "participation": "Participation non applicable"
+      }
     },
     "lecturer": {
       "courseLink": "CC",

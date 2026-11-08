@@ -41,7 +41,8 @@ export async function getCaSettings(db: Db, courseId: string): Promise<CaSetting
 }
 
 /**
- * Loads the CA inputs of every given roster student at once. The number of queries is fixed per
+ * Loads the CA inputs of every given roster student at once. Pass the course's whole current
+ * roster: whether a part has started for the class is worked out from it. The number of queries is fixed per
  * course — settings, the status matrix (a fixed handful), enrolment starts, published
  * assignments, their submissions, participation sums — never one per student.
  *
@@ -49,6 +50,10 @@ export async function getCaSettings(db: Db, courseId: string): Promise<CaSetting
  * pending and left out; no hand-in counts 0 and is missing work. An assignment due before the
  * student joined the course (class `joined_at` or include date, as attendance uses) is left out
  * and never missing, unless they handed it in and it was graded: work done counts.
+ *
+ * A part has started for the class when: attendance — a roster student has a counted session;
+ * assignments — a published assignment has its grades released; participation — a roster student
+ * has a tap (taps on students who have left the roster don't count).
  */
 export async function loadCaInputs(
   db: Db,
@@ -85,8 +90,7 @@ export async function loadCaInputs(
               inArray(submission.studentId, studentIds),
             ),
           ),
-    // Every student with a tap in the course (on the roster or not): any row means the class has
-    // participation.
+    // Every student with a tap in the course; only those on the roster start participation.
     db
       .select({
         studentId: participationEvent.studentId,
@@ -97,18 +101,29 @@ export async function loadCaInputs(
       .groupBy(participationEvent.studentId),
   ])
 
-  const classHasParticipation = participation.length > 0
-  const netOf = new Map(participation.map((p) => [p.studentId, p.net]))
+  const onRoster = new Set(studentIds)
+  const netOf = new Map(participation.filter((p) => onRoster.has(p.studentId)).map((p) => [p.studentId, p.net]))
   // assignmentId:studentId → the hand-in's mark (null: handed in, not graded yet).
   const handIns = new Map(submissions.map((s) => [`${s.assignmentId}:${s.studentId}`, s.mark]))
   const released = assignments.filter((a) => a.gradesReleasedAt !== null)
   const overdue = assignments.filter((a) => a.gradesReleasedAt === null && a.dueAt.getTime() < at.getTime())
 
+  const summaries = new Map(
+    studentIds.map((studentId) => {
+      const statuses: (AttendanceStatus | null)[] = []
+      for (const row of matrix.values()) statuses.push(row.get(studentId)?.status ?? null)
+      return [studentId, summarize(statuses)] as const
+    }),
+  )
+  const classStarted: CaInput['classStarted'] = {
+    attendance: [...summaries.values()].some((a) => a.present + a.partial + a.absent > 0),
+    assignments: released.length > 0,
+    participation: netOf.size > 0,
+  }
+
   const students = new Map<string, StudentCaInputs>()
   for (const studentId of studentIds) {
-    const statuses: (AttendanceStatus | null)[] = []
-    for (const row of matrix.values()) statuses.push(row.get(studentId)?.status ?? null)
-    const attendance = summarize(statuses)
+    const attendance = summaries.get(studentId)!
     const countedSessions = attendance.present + attendance.partial + attendance.absent
 
     // No known enrolment date: everything counts (as attendance treats them as enrolled).
@@ -136,7 +151,7 @@ export async function loadCaInputs(
         attendance,
         assignments: assignmentInputs,
         participationNet: netOf.get(studentId) ?? 0,
-        classHasParticipation,
+        classStarted,
       },
       attendanceRatio: attendanceRatio(attendance),
       countedSessions,
