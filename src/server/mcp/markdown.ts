@@ -30,18 +30,19 @@ type InlineState = {
   out: Inline[]
   i: number
   textStart: number
-  /** Last index found per closing marker (-1: none left); searches only ever move forward. */
-  found: Map<string, number> | null
+  /** Last index found per closing marker (-1: none left, -2: not searched yet); searches only move forward. */
+  found: Record<Needle, number>
   /** Where a link URL after `](` ends (its `)`), or -1; keyed by the `]`, so each is scanned once. */
   urlEnds: Map<number, number> | null
 }
 
-function nextIndex(st: InlineState, needle: string, from: number): number {
-  st.found ??= new Map()
-  const hit = st.found.get(needle)
-  if (hit === -1 || (hit !== undefined && hit >= from)) return hit
+type Needle = '**' | '__' | '~~' | '*' | '_' | '`' | ']'
+
+function nextIndex(st: InlineState, needle: Needle, from: number): number {
+  const hit = st.found[needle]
+  if (hit === -1 || hit >= from) return hit
   const at = st.source.indexOf(needle, from)
-  st.found.set(needle, at)
+  st.found[needle] = at
   return at
 }
 
@@ -50,7 +51,7 @@ function flushTo(st: InlineState, end: number): void {
 }
 
 /** `marker` text `marker` → styled inline items; false when unclosed or empty. */
-function pair(st: InlineState, marker: string, style: keyof Styles): boolean {
+function pair(st: InlineState, marker: Needle, style: keyof Styles): boolean {
   const { source, i } = st
   if (st.styles[style] || !source.startsWith(marker, i)) return false
   const from = i + marker.length
@@ -102,8 +103,24 @@ function link(st: InlineState): boolean {
  */
 export function parseInline(source: string, styles: Styles = {}): Inline[] {
   if (!SPECIAL.test(source)) return source ? [{ type: 'text', text: source, styles: { ...styles } }] : []
-  const st: InlineState = { source, styles, out: [], i: 0, textStart: 0, found: null, urlEnds: null }
+  const st: InlineState = {
+    source,
+    styles,
+    out: [],
+    i: 0,
+    textStart: 0,
+    found: { '**': -2, __: -2, '~~': -2, '*': -2, _: -2, '`': -2, ']': -2 },
+    urlEnds: null,
+  }
   while (st.i < source.length) {
+    const c = source[st.i]
+    if (c !== '\\' && c !== '[' && source[st.i + 1] === c) {
+      // Inside a run of one marker (`*****`), any pair opened before its last three characters
+      // would be empty, so it is plain text: jump there instead of trying each position.
+      let end = st.i + 2
+      while (end < source.length && source[end] === c) end++
+      if (end - 3 > st.i) st.i = end - 3
+    }
     const i = st.i
     switch (source[i]) {
       case '\\':

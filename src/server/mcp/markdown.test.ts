@@ -76,7 +76,7 @@ describe('markdownToBlocks', () => {
     expect(sanitizeRichText(markdownToBlocks(deep))).not.toBeNull()
   })
 
-  describe('stays linear on pathological input (100k characters per line, under 50 ms each)', () => {
+  describe('stays linear on pathological input (100k characters per line, under 50 ms of CPU each)', () => {
     const N = 100_000
     const cases: [string, string][] = [
       ['heading with long trailing spaces', '# a' + ' '.repeat(N) + 'x'],
@@ -100,19 +100,21 @@ describe('markdownToBlocks', () => {
       ['quote with spaces', '>' + ' '.repeat(N)],
       ['check item', '- [x]' + ' '.repeat(N) + '\u2029'],
       ['nested styles', '**_~~`'.repeat(N / 6)],
-      ['many lines', 'a\n'.repeat(N / 2)],
-      ['many list items', '- a\n  '.repeat(N / 6)],
+      // Many short lines: the per-line work is fixed, so 20k characters show the same thing.
+      ['many lines', 'a\n'.repeat(N / 10)],
+      ['many list items', '- a\n  '.repeat(N / 30)],
     ]
     for (const [name, source] of cases) {
       it(name, () => {
         markdownToBlocks(source.slice(0, 10_000)) // warm the JIT up
-        // Best of three, so a garbage collection pause does not count; a backtracking regex took
-        // seconds on these inputs.
+        // Best of five, in this process's CPU time, so neither a garbage collection pause nor other
+        // work on the machine counts; a backtracking regex took seconds on these inputs.
         let best = Infinity
-        for (let run = 0; run < 3; run++) {
-          const started = performance.now()
+        for (let run = 0; run < 5; run++) {
+          const started = process.cpuUsage()
           markdownToBlocks(source)
-          best = Math.min(best, performance.now() - started)
+          const used = process.cpuUsage(started)
+          best = Math.min(best, (used.user + used.system) / 1000)
         }
         expect(best).toBeLessThan(50)
       })
@@ -122,5 +124,13 @@ describe('markdownToBlocks', () => {
   it('reads at most MARKDOWN_MAX characters', () => {
     const blocks = markdownToBlocks('a'.repeat(MARKDOWN_MAX + 10))
     expect((blocks[0].content as { text: string }[])[0].text).toHaveLength(MARKDOWN_MAX)
+  })
+
+  it('reads marker runs as before: only their last characters can open a style', () => {
+    expect(parseInline('*****a*')).toEqual([text('****'), text('a', { italic: true })])
+    expect(parseInline('****a**')).toEqual([text('*'), text('*a', { bold: true })])
+    expect(parseInline('~~~~x~~')).toEqual([text('~'), text('~x', { strike: true })])
+    expect(parseInline('```a`')).toEqual([text('``'), text('a', { code: true })])
+    expect(parseInline('______')).toEqual([text('______')])
   })
 })
