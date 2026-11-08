@@ -27,7 +27,7 @@ vi.mock('@/server/auth/session', () => ({
 }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 
-import { confirmMarkAction, releaseResultsAction, suggestMarksAction } from '@/app/(app)/courses/test-marking-actions'
+import { confirmMarkAction, releaseResultsAction } from '@/app/(app)/courses/test-marking-actions'
 
 describe('test marking actions', () => {
   let db: Db
@@ -98,30 +98,8 @@ describe('test marking actions', () => {
     setClock(at(31))
     current = s.lecturer
     const notFinal = { ok: false, code: 'CONFLICT', details: { reason: 'not_final', finalAt: at(32).toISOString() } }
-    expect(await suggestMarksAction(s.q2.id)).toEqual(notFinal)
     expect(await confirmMarkAction(s.aliceAt.id, s.q2.id, '3', '')).toEqual(notFinal)
     expect(await releaseResultsAction(s.test.id)).toEqual(notFinal)
-  })
-
-  it('suggestMarksAction stores suggestions only, and reports when suggestions are off', async () => {
-    const s = await scenario()
-    setClock(at(40))
-    current = s.lecturer
-
-    setMarkSuggesterForTests(null)
-    expect(await suggestMarksAction(s.q2.id)).toEqual({ ok: true, data: { suggested: 0, failed: false } })
-
-    setMarkSuggesterForTests(fakeSuggester)
-    expect(await suggestMarksAction(s.q2.id)).toEqual({ ok: true, data: { suggested: 1, failed: false } })
-    expect(await answerRow(db, s.aliceAt.id, s.q2.id)).toMatchObject({ suggestedMark: 4, mark: null })
-
-    const failing = vi.fn(async () => {
-      throw new Error('provider down')
-    })
-    setMarkSuggesterForTests(failing)
-    vi.spyOn(console, 'error').mockImplementation(() => {})
-    expect(await suggestMarksAction(s.q3.id)).toEqual({ ok: true, data: { suggested: 0, failed: true } })
-    vi.restoreAllMocks()
   })
 
   it('releaseResultsAction is CONFLICT unmarked with the count, then releases once everything is confirmed', async () => {
@@ -145,7 +123,6 @@ describe('test marking actions', () => {
     setClock(at(40))
     for (const who of [s.colleague, s.alice]) {
       current = who
-      expect(await suggestMarksAction(s.q2.id)).toMatchObject({ ok: false, code: 'FORBIDDEN' })
       expect(await confirmMarkAction(s.aliceAt.id, s.q2.id, '4', '')).toMatchObject({ ok: false, code: 'FORBIDDEN' })
       expect(await releaseResultsAction(s.test.id)).toMatchObject({ ok: false, code: 'FORBIDDEN' })
     }
@@ -154,8 +131,7 @@ describe('test marking actions', () => {
     // Junk ids never reach the database as anything but a refusal.
     current = s.lecturer
     expect(await confirmMarkAction('', s.q2.id, '4', '')).toMatchObject({ ok: false, code: 'VALIDATION' })
-    expect(await suggestMarksAction('x'.repeat(200))).toMatchObject({ ok: false, code: 'VALIDATION' })
     const row = await answerRow(db, s.aliceAt.id, s.q2.id)
-    expect(row).toMatchObject({ mark: null, suggestedAt: null })
+    expect(row).toMatchObject({ mark: null })
   })
 })

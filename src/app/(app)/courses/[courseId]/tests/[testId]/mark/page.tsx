@@ -14,9 +14,6 @@ import { loadPage } from '../../../../../load-page'
 import { formatSessionDate } from '../../../../attendance-format'
 import { MarkingPanel } from '../../../../marking-panel'
 
-/** AI suggestions for a question run in this request's Server Action (batches in parallel, 30 s each). */
-export const maxDuration = 60
-
 type MarkView =
   | { state: 'ready'; title: string; question: MarkingQuestion }
   | { state: 'not_final'; title: string; finalAt: string | null }
