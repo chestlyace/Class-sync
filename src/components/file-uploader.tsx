@@ -9,6 +9,7 @@ import type { ActionResult } from '@/lib/action-result'
 import { compressImage } from '@/lib/compress-image'
 import { formatFileSize } from '@/lib/file-size'
 import { ALLOWED_MIME_TYPES, extensionsFor, isAllowedFile, MAX_FILE_BYTES, MAX_FILES } from '@/server/assignments/rules'
+import { isAllowedResourceFile, RESOURCE_MIME_EXTRA } from '@/server/notes/rules'
 import type { FileInfo } from '@/server/files/service'
 import type { UploadTarget } from '@/server/files/storage'
 
@@ -36,17 +37,20 @@ type ErrorKey =
   | 'session'
   | 'upload'
 
-const ACCEPT = [...ALLOWED_MIME_TYPES, ...ALLOWED_MIME_TYPES.flatMap((m) => extensionsFor(m).map((e) => `.${e}`))].join(
-  ',',
-)
+const RESOURCE_MIME_TYPES = [...ALLOWED_MIME_TYPES, ...Object.keys(RESOURCE_MIME_EXTRA)]
+const extensionsOf = (m: string) => [...extensionsFor(m), ...(RESOURCE_MIME_EXTRA[m] ?? [])]
+const acceptFor = (types: readonly string[]) =>
+  [...types, ...types.flatMap((m) => extensionsOf(m).map((e) => `.${e}`))].join(',')
+const ACCEPT = acceptFor(ALLOWED_MIME_TYPES)
+const ACCEPT_RESOURCE = acceptFor(RESOURCE_MIME_TYPES)
 
 /** The declared type: the browser's, or (often empty for HEIC) the one its extension stands for. */
-function mimeTypeOf(file: File): string {
+function mimeTypeOf(file: File, types: readonly string[] = ALLOWED_MIME_TYPES): string {
   const declared = file.type.trim().toLowerCase()
   if (declared) return declared
   const dot = file.name.lastIndexOf('.')
   const ext = dot >= 0 ? file.name.slice(dot + 1).toLowerCase() : ''
-  return ALLOWED_MIME_TYPES.find((m) => extensionsFor(m).includes(ext)) ?? ''
+  return types.find((m) => extensionsOf(m).includes(ext)) ?? ''
 }
 
 /** Maps a failed files action to the message key (service reasons first). */
@@ -83,33 +87,34 @@ function FileTypeIcon({ mimeType, className }: { mimeType: string; className?: s
   return <Icon aria-hidden="true" className={className} />
 }
 
-/**
- * Uploads files for an assignment (lecturer attachments, `purpose="assignment"`) or a submission
- * (`purpose="submission"`): request → send the bytes (local PUT, or Vercel Blob client upload) →
- * confirm. Large photos are compressed first. `value` is the list of confirmed files; `onChange`
- * receives the new list after an upload or a removal (removing only detaches the file).
- */
-export function FileUploader({
-  purpose,
-  assignmentId,
-  value,
-  onChange,
-  max = MAX_FILES,
-  disabled = false,
-  labelledBy,
-  onBusyChange,
-}: {
-  purpose: 'assignment' | 'submission'
-  assignmentId: string
+type FileUploaderProps = (
+  | { purpose: 'resource' }
+  | { purpose: 'assignment' | 'submission'; assignmentId: string }
+) & {
   value: FileInfo[]
   onChange: (files: FileInfo[]) => void
+  /** How many files at most; 1 for a resource, MAX_FILES otherwise. */
   max?: number
   disabled?: boolean
   /** Id of the visible label of this field (for the file picker button group). */
   labelledBy?: string
   /** Told when uploads start and finish, so a form can wait before saving. */
   onBusyChange?: (busy: boolean) => void
-}) {
+}
+
+/**
+ * Uploads files for an assignment (lecturer attachments, `purpose="assignment"`) or a submission
+ * (`purpose="submission"`) or a course note resource (`purpose="resource"`, no assignment, one
+ * file by default, PowerPoint allowed): request → send the bytes (local PUT, or Vercel Blob client upload) →
+ * confirm. Large photos are compressed first. `value` is the list of confirmed files; `onChange`
+ * receives the new list after an upload or a removal (removing only detaches the file).
+ */
+export function FileUploader(props: FileUploaderProps) {
+  const { value, onChange, disabled = false, labelledBy, onBusyChange } = props
+  const purpose = props.purpose
+  const assignmentId = props.purpose === 'resource' ? undefined : props.assignmentId
+  const isResource = purpose === 'resource'
+  const max = props.max ?? (isResource ? 1 : MAX_FILES)
   const t = useTranslations('assignments.files')
   const maxMb = Math.round(MAX_FILE_BYTES / (1024 * 1024))
   const locale = useLocale()
@@ -190,11 +195,17 @@ export function FileUploader({
     controllersRef.current.add(controller)
     try {
       const file = await compressImage(original)
-      const mimeType = mimeTypeOf(file)
-      const allowed = isAllowedFile(file.name, mimeType, file.size)
+      const mimeType = mimeTypeOf(file, isResource ? RESOURCE_MIME_TYPES : ALLOWED_MIME_TYPES)
+      const allowed = isResource
+        ? isAllowedResourceFile(file.name, mimeType, file.size)
+        : isAllowedFile(file.name, mimeType, file.size)
       if (allowed !== 'ok') throw new UploadFailed(allowed)
 
-      const requested = await requestUploadAction({ purpose, assignmentId, name: file.name, mimeType, size: file.size })
+      const requested = await requestUploadAction(
+        assignmentId === undefined
+          ? { purpose: 'resource', name: file.name, mimeType, size: file.size }
+          : { purpose: purpose as 'assignment' | 'submission', assignmentId, name: file.name, mimeType, size: file.size },
+      )
       if (!requested.ok) throw new UploadFailed(errorKeyOf(requested))
       const { fileId, target } = requested.data
       update(key, { progress: target.kind === 'blob' ? 0 : null })
@@ -341,7 +352,7 @@ export function FileUploader({
           ref={inputRef}
           type="file"
           multiple
-          accept={ACCEPT}
+          accept={isResource ? ACCEPT_RESOURCE : ACCEPT}
           className="sr-only"
           tabIndex={-1}
           aria-hidden="true"
@@ -357,7 +368,7 @@ export function FileUploader({
           <Upload aria-hidden="true" data-icon="inline-start" />
           {t('add')}
         </Button>
-        <span className="text-sm text-muted-foreground">{t('hint', { max, maxMb })}</span>
+        <span className="text-sm text-muted-foreground">{t(isResource ? 'hintResource' : 'hint', { max, maxMb })}</span>
       </div>
     </div>
   )

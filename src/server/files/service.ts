@@ -1,6 +1,7 @@
 import { and, count, eq, gt, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { canSubmit, isAllowedFile, MAX_FILES } from '@/server/assignments/rules'
+import { isAllowedResourceFile } from '@/server/notes/rules'
 import { now } from '@/server/core/clock'
 import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
@@ -11,9 +12,11 @@ import {
   assignment,
   assignmentAttachment,
   course,
+  courseTopic,
   file,
-  FILE_PURPOSES,
   type FilePurpose,
+  resource,
+  resourcePlacement,
   submission,
   submissionFile,
 } from '@/server/db/schema'
@@ -28,13 +31,16 @@ const MAX_PENDING_UPLOADS = 2 * MAX_FILES
 /** Ruling B10: one hour, so a stuck client recovers soon while a loop can't pile up rows. */
 const PENDING_WINDOW_MS = 60 * 60 * 1000
 
-const requestSchema = z.object({
-  purpose: z.enum(FILE_PURPOSES),
-  assignmentId: z.string().min(1).max(100),
-  name: z.string().max(1000),
-  mimeType: z.string().max(200),
-  size: z.number(),
-})
+const fileFields = { name: z.string().max(1000), mimeType: z.string().max(200), size: z.number() }
+const requestSchema = z.discriminatedUnion('purpose', [
+  z.object({ purpose: z.enum(['assignment', 'submission']), assignmentId: z.string().min(1).max(100), ...fileFields }),
+  z.object({ purpose: z.literal('resource'), ...fileFields }),
+])
+
+/** What a caller sends to start an upload; a resource file needs no parent, so it carries no assignment. */
+export type UploadInput =
+  | { purpose: 'assignment' | 'submission'; assignmentId: string; name: string; mimeType: string; size: number }
+  | { purpose: 'resource'; name: string; mimeType: string; size: number }
 
 function forbidden(message = 'You do not have access to this file'): never {
   throw new AppError('FORBIDDEN', message)
@@ -54,8 +60,12 @@ function cleanName(raw: string): string {
     .trim()
 }
 
-/** Where files of each purpose for an assignment live; a file belongs to the assignment in its key. */
+/**
+ * Where files of each purpose live; an assignment or submission file belongs to the assignment in
+ * its key, a resource file to its owner (it is uploaded before the item exists).
+ */
 function keyPrefix(purpose: FilePurpose, assignmentId: string, ownerId: string): string {
+  if (purpose === 'resource') return `resources/${ownerId}/`
   return purpose === 'assignment' ? `assignments/${assignmentId}/` : `submissions/${assignmentId}/${ownerId}/`
 }
 
@@ -98,11 +108,12 @@ async function loadAssignment(db: Db, assignmentId: string) {
  * - `assignment` (an attachment): the caller owns the assignment's course.
  * - `submission`: the caller is a rostered student and the assignment takes submissions now
  *   (CONFLICT { reason: 'closed' } past a hard deadline, { reason: 'released' } once grades are out).
+ * - `resource` (a file for course notes): a verified lecturer; no parent needed.
  * "No such assignment" and "not yours" are both FORBIDDEN.
  */
 export async function requestUpload(
   ctx: Ctx,
-  input: { purpose: FilePurpose; assignmentId: string; name: string; mimeType: string; size: number },
+  input: UploadInput,
 ): Promise<{ fileId: string; target: UploadTarget }> {
   const parsed = requestSchema.safeParse(input)
   if (!parsed.success) {
@@ -116,13 +127,21 @@ export async function requestUpload(
   }
   const mimeType = data.mimeType.trim().toLowerCase()
 
-  const asg = await loadAssignment(ctx.db, data.assignmentId)
-  if (data.purpose === 'assignment') {
+  let allowed: 'ok' | 'type' | 'size'
+  let asgId = ''
+  if (data.purpose === 'resource') {
     requireRole(ctx, 'lecturer')
+    allowed = isAllowedResourceFile(name, mimeType, data.size)
+  } else if (data.purpose === 'assignment') {
+    requireRole(ctx, 'lecturer')
+    const asg = await loadAssignment(ctx.db, data.assignmentId)
     if (!asg) forbidden('Only the lecturer of this course can do this')
     await requireCourseOwner(ctx, asg.courseId)
+    asgId = asg.id
+    allowed = isAllowedFile(name, mimeType, data.size)
   } else {
     requireRole(ctx, 'student')
+    const asg = await loadAssignment(ctx.db, data.assignmentId)
     if (!asg || !(await isOnCourseRoster(ctx.db, asg.courseId, ctx.user.id))) forbidden('Not on this course')
     const verdict = canSubmit({ ...asg, now: now() })
     if (verdict === 'not_published') forbidden('Not on this course')
@@ -130,9 +149,10 @@ export async function requestUpload(
       throw new AppError('CONFLICT', 'Grades are released, so submissions are closed', { reason: 'released' })
     }
     if (verdict === 'closed') throw new AppError('CONFLICT', 'Submissions are closed', { reason: 'closed' })
+    asgId = asg.id
+    allowed = isAllowedFile(name, mimeType, data.size)
   }
 
-  const allowed = isAllowedFile(name, mimeType, data.size)
   if (allowed !== 'ok') throw new AppError('VALIDATION', 'File not accepted', { reason: allowed })
   // isAllowedFile accepts any finite size in range; the column is an integer.
   if (!Number.isSafeInteger(data.size)) throw new AppError('VALIDATION', 'File not accepted', { reason: 'size' })
@@ -153,7 +173,7 @@ export async function requestUpload(
   }
 
   const fileId = crypto.randomUUID()
-  const storageKey = `${keyPrefix(data.purpose, asg.id, ctx.user.id)}${fileId}-${safeName(name)}`
+  const storageKey = `${keyPrefix(data.purpose, asgId, ctx.user.id)}${fileId}-${safeName(name)}`
   const target = await getStorage().uploadTarget(storageKey, mimeType)
   await ctx.db.insert(file).values({
     id: fileId,
@@ -270,7 +290,8 @@ export async function authorizeBlobUpload(
  * - its uploader (even before it is confirmed);
  * - for an assignment attachment: the course owner, or a rostered student once the assignment
  *   is published;
- * - for a submission file: the submitting student or the course owner.
+ * - for a submission file: the submitting student or the course owner;
+ * - for a resource file: a student rostered on a course that places it in a visible topic.
  * A link only counts in the link table that matches the file's purpose, and only when the file was
  * uploaded for that assignment (and, for a submission, by that student), per its storage key. So a
  * file wrongly linked elsewhere never becomes visible there. Everything else, including other
@@ -303,6 +324,19 @@ async function mayRead(
         return true
       }
     }
+    return false
+  }
+
+  if (row.purpose === 'resource') {
+    if (ctx.user.role !== 'student' || !row.storageKey.startsWith(keyPrefix('resource', '', row.ownerId))) return false
+    // Only through a placement in a visible topic of a course the student is on.
+    const placed = await ctx.db
+      .select({ courseId: resourcePlacement.courseId })
+      .from(resource)
+      .innerJoin(resourcePlacement, eq(resourcePlacement.resourceId, resource.id))
+      .innerJoin(courseTopic, eq(courseTopic.id, resourcePlacement.topicId))
+      .where(and(eq(resource.fileId, row.id), eq(courseTopic.hidden, false)))
+    for (const p of placed) if (await isOnCourseRoster(ctx.db, p.courseId, me)) return true
     return false
   }
 
@@ -347,7 +381,7 @@ export async function assertConfirmedFilesOwnedBy(
   db: Db,
   fileIds: string[],
   ownerId: string,
-  purpose: FilePurpose,
+  purpose: 'assignment' | 'submission',
   assignmentId: string,
 ): Promise<void> {
   if (!Array.isArray(fileIds) || fileIds.length > MAX_FILES) {
@@ -373,4 +407,21 @@ export async function assertConfirmedFilesOwnedBy(
   if (rows.length !== fileIds.length) {
     throw new AppError('VALIDATION', 'Some files are not available', { reason: 'files' })
   }
+}
+
+/**
+ * For a resource item of kind file: the file must be confirmed, uploaded for `resource` by
+ * `ownerId`, and not already used by another item. Otherwise VALIDATION { fields: ['file'] }.
+ */
+export async function claimResourceFile(db: Db, fileId: string, ownerId: string): Promise<FileInfo> {
+  const bad = () => new AppError('VALIDATION', 'This file is not available', { fields: ['file'] })
+  if (typeof fileId !== 'string' || fileId.length === 0 || fileId.length > 100) throw bad()
+  const [row] = await db
+    .select()
+    .from(file)
+    .where(and(eq(file.id, fileId), eq(file.ownerId, ownerId), eq(file.purpose, 'resource'), isNotNull(file.confirmedAt)))
+  if (!row) throw bad()
+  const [used] = await db.select({ id: resource.id }).from(resource).where(eq(resource.fileId, fileId))
+  if (used) throw bad()
+  return toInfo(row)
 }

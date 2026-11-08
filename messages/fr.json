@@ -812,6 +812,7 @@
     "files": {
       "add": "Ajouter des fichiers",
       "hint": "PDF, Word ou images, {maxMb} Mo maximum chacun, {max} fichiers au plus.",
+      "hintResource": "PDF, Word, PowerPoint ou images, {maxMb} Mo maximum.",
       "remove": "Retirer {name}",
       "dismiss": "Masquer le message concernant {name}",
       "uploading": "Envoi…",

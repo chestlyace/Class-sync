@@ -14,7 +14,10 @@ import {
   classStudent,
   course,
   courseRosterAdjustment,
+  courseTopic,
   file,
+  resource,
+  resourcePlacement,
   school,
   submission,
   submissionFile,
@@ -28,6 +31,7 @@ import { ctxFor, makeUser } from '@/test/factories'
 import {
   assertConfirmedFilesOwnedBy,
   authorizeBlobUpload,
+  claimResourceFile,
   confirmUpload,
   getFileForDownload,
   receiveLocalUpload,
@@ -91,6 +95,9 @@ describe('files service', () => {
     await db.delete(submission)
     await db.delete(assignmentAttachment)
     await db.delete(assignment)
+    await db.delete(resourcePlacement)
+    await db.delete(resource)
+    await db.delete(courseTopic)
     await db.delete(file)
     await db.delete(courseRosterAdjustment)
     await db.delete(course)
@@ -546,5 +553,100 @@ describe('files service', () => {
     expect(await nameOf('x\u0085y\u009Fz\u0080.pdf')).toBe('xyz.pdf')
     expect(await nameOf('lone\uD800half.pdf')).toBe('lone\uFFFDhalf.pdf')
     expect(await nameOf('ok \uD83D\uDCDA.pdf')).toBe('ok \uD83D\uDCDA.pdf')
+  })
+
+  describe('resource files', () => {
+    const PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+
+    async function uploadResource(ctx: Ctx, name = 'slides.pptx', mimeType = PPTX, data = new Uint8Array([7, 8, 9])) {
+      const { fileId, target } = await requestUpload(ctx, { purpose: 'resource', name, mimeType, size: data.length })
+      await receiveLocalUpload(ctx, keyOf(target), streamOf(data))
+      await confirmUpload(ctx, fileId)
+      return { fileId, key: keyOf(target) }
+    }
+
+    /** A file resource placed in a topic of the course, as Task 3's services will leave it. */
+    async function place(courseId: string, owner: Ctx, fileId: string, hidden = false) {
+      const [topic] = await db
+        .insert(courseTopic)
+        .values({ courseId, title: 'Week 1', position: 0, hidden })
+        .returning({ id: courseTopic.id })
+      const [res] = await db
+        .insert(resource)
+        .values({ ownerId: owner.user.id, kind: 'file', title: 'Slides', fileId })
+        .returning({ id: resource.id })
+      await db.insert(resourcePlacement).values({ resourceId: res.id, courseId, topicId: topic.id, position: 0 })
+      return { topicId: topic.id, resourceId: res.id }
+    }
+
+    it('a lecturer requests and confirms a resource upload under resources/<owner>/', async () => {
+      const { lecturer } = await setup()
+      const { fileId, key } = await uploadResource(lecturer)
+      expect(key).toBe(`resources/${lecturer.user.id}/${fileId}-slides.pptx`)
+      const [row] = await db.select().from(file).where(eq(file.id, fileId))
+      expect(row).toMatchObject({ purpose: 'resource', ownerId: lecturer.user.id, name: 'slides.pptx' })
+      expect(row.confirmedAt).not.toBeNull()
+      await expect(
+        requestUpload(lecturer, { purpose: 'resource', name: 'x.pptx', mimeType: 'application/pdf', size: 5 }),
+      ).rejects.toMatchObject({ code: 'VALIDATION', details: { reason: 'type' } })
+      await expect(
+        requestUpload(lecturer, { purpose: 'resource', name: 'x.pdf', mimeType: PDF, size: MAX_FILE_BYTES + 1 }),
+      ).rejects.toMatchObject({ code: 'VALIDATION', details: { reason: 'size' } })
+    })
+
+    it('a student requesting a resource upload is FORBIDDEN', async () => {
+      const { alice } = await setup()
+      await expect(
+        requestUpload(alice, { purpose: 'resource', name: 'slides.pptx', mimeType: PPTX, size: 5 }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' })
+      expect(await fileCount()).toBe(0)
+    })
+
+    it('claimResourceFile refuses another lecturer, an unconfirmed file, other purposes and a claimed file', async () => {
+      const { lecturer, colleague, algo, published } = await setup()
+      const { fileId } = await uploadResource(lecturer)
+      const info = await claimResourceFile(db, fileId, lecturer.user.id)
+      expect(info).toMatchObject({ id: fileId, name: 'slides.pptx', mimeType: PPTX, sizeBytes: 3 })
+      await expect(claimResourceFile(db, fileId, colleague.user.id)).rejects.toMatchObject({
+        code: 'VALIDATION',
+        details: { fields: ['file'] },
+      })
+      await expect(claimResourceFile(db, 'no-such-file', lecturer.user.id)).rejects.toMatchObject({ code: 'VALIDATION' })
+
+      const pending = await requestUpload(lecturer, { purpose: 'resource', name: 'a.pdf', mimeType: PDF, size: 4 })
+      await expect(claimResourceFile(db, pending.fileId, lecturer.user.id)).rejects.toMatchObject({ code: 'VALIDATION' })
+      const attachment = await upload(lecturer, 'assignment', published)
+      await expect(claimResourceFile(db, attachment, lecturer.user.id)).rejects.toMatchObject({ code: 'VALIDATION' })
+
+      await place(algo.id, lecturer, fileId)
+      await expect(claimResourceFile(db, fileId, lecturer.user.id)).rejects.toMatchObject({
+        code: 'VALIDATION',
+        details: { fields: ['file'] },
+      })
+    })
+
+    it('download: owner and rostered student read a placed file; hidden topic and other courses are FORBIDDEN', async () => {
+      const { lecturer, colleague, algo, alice, outsider } = await setup()
+      const { fileId } = await uploadResource(lecturer)
+      const { topicId } = await place(algo.id, lecturer, fileId)
+
+      expect((await getFileForDownload(lecturer, fileId)).info.id).toBe(fileId)
+      expect(await readAll((await getFileForDownload(alice, fileId)).stream)).toEqual([7, 8, 9])
+      await expect(getFileForDownload(outsider, fileId)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+      await expect(getFileForDownload(colleague, fileId)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+
+      await db.update(courseTopic).set({ hidden: true }).where(eq(courseTopic.id, topicId))
+      await expect(getFileForDownload(alice, fileId)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+      expect((await getFileForDownload(lecturer, fileId)).info.id).toBe(fileId)
+    })
+
+    it('download: an unplaced resource file is the owner only; a student off the roster stays out', async () => {
+      const { lecturer, algo, alice } = await setup()
+      const { fileId } = await uploadResource(lecturer)
+      await expect(getFileForDownload(alice, fileId)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+      await place(algo.id, lecturer, fileId)
+      await setRosterAdjustment(lecturer, algo.id, alice.user.id, 'exclude')
+      await expect(getFileForDownload(alice, fileId)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    })
   })
 })

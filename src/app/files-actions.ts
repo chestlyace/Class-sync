@@ -3,20 +3,13 @@
 import { toActionResult, type ActionResult } from '@/lib/action-result'
 import { getCtx } from '@/server/auth/session'
 import { AppError } from '@/server/core/errors'
-import { confirmUpload, requestUpload, type FileInfo } from '@/server/files/service'
+import { confirmUpload, requestUpload, type FileInfo, type UploadInput } from '@/server/files/service'
 import type { UploadTarget } from '@/server/files/storage'
 
-const PURPOSES = ['assignment', 'submission'] as const
-type FilePurpose = (typeof PURPOSES)[number]
+const PURPOSES = ['assignment', 'submission', 'resource'] as const
 
-/** Shared by lecturers (assignment attachments) and students (submission files). */
-export type UploadRequest = {
-  purpose: FilePurpose
-  assignmentId: string
-  name: string
-  mimeType: string
-  size: number
-}
+/** Shared by lecturers (assignment attachments, resource files) and students (submission files). */
+export type UploadRequest = UploadInput
 
 function invalid(fields: string[]): never {
   throw new AppError('VALIDATION', 'Invalid input', { fields })
@@ -25,20 +18,17 @@ function invalid(fields: string[]): never {
 function parseRequest(raw: unknown): UploadRequest {
   const input = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>
   const bad: string[] = []
-  const purpose = input.purpose as FilePurpose
+  const purpose = input.purpose as (typeof PURPOSES)[number]
   if (!PURPOSES.includes(purpose)) bad.push('purpose')
-  if (typeof input.assignmentId !== 'string' || input.assignmentId === '') bad.push('assignmentId')
+  const needsAssignment = purpose !== 'resource'
+  if (needsAssignment && (typeof input.assignmentId !== 'string' || input.assignmentId === '')) bad.push('assignmentId')
   if (typeof input.name !== 'string') bad.push('name')
   if (typeof input.mimeType !== 'string') bad.push('mimeType')
   if (typeof input.size !== 'number' || !Number.isFinite(input.size)) bad.push('size')
   if (bad.length > 0) invalid(bad)
-  return {
-    purpose,
-    assignmentId: input.assignmentId as string,
-    name: input.name as string,
-    mimeType: input.mimeType as string,
-    size: input.size as number,
-  }
+  const file = { name: input.name as string, mimeType: input.mimeType as string, size: input.size as number }
+  if (purpose === 'resource') return { purpose, ...file }
+  return { purpose, assignmentId: input.assignmentId as string, ...file }
 }
 
 /** Step 1: registers the file and says where the browser sends its bytes. */

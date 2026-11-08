@@ -812,6 +812,7 @@
     "files": {
       "add": "Add files",
       "hint": "PDF, Word or images, up to {maxMb} MB each, {max} files at most.",
+      "hintResource": "PDF, Word, PowerPoint or images, up to {maxMb} MB.",
       "remove": "Remove {name}",
       "dismiss": "Dismiss the message about {name}",
       "uploading": "Uploading…",
