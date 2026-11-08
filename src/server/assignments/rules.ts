@@ -3,6 +3,8 @@ export const MAX_FILES = 10
 export const MAX_RICH_TEXT_BYTES = 200_000
 export const MARK_STEP = 0.25
 export const REMINDER_LEAD_HOURS = 24
+/** Feedback on a submission is at most this many characters (after trimming). */
+export const FEEDBACK_MAX = 5000
 
 /** Accepted upload types and the file extensions (lowercase, no dot) each may carry. */
 const EXTENSIONS_BY_MIME = {

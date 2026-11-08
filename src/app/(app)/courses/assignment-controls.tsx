@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input'
 import type { ActionResult } from '@/lib/action-result'
 import { submitWith } from '@/lib/form-submit'
 import { formatDecimal } from '@/lib/number-format'
-import { MARK_STEP } from '@/server/assignments/rules'
+import { FEEDBACK_MAX, MARK_STEP } from '@/server/assignments/rules'
 import {
   deleteDraftAssignmentAction,
   gradeSubmissionAction,
@@ -19,8 +19,6 @@ import {
   releaseGradesAction,
 } from './assignment-actions'
 import { AssignmentError } from './assignment-error'
-
-const FEEDBACK_MAX = 5000
 
 const renderError = (state: ActionResult<unknown> | null) => <AssignmentError state={state} />
 

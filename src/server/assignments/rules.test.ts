@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   ALLOWED_MIME_TYPES,
+  FEEDBACK_MAX,
   MARK_STEP,
   MAX_FILE_BYTES,
   MAX_FILES,
@@ -24,6 +25,7 @@ describe('constants', () => {
     expect(MAX_RICH_TEXT_BYTES).toBe(200_000)
     expect(MARK_STEP).toBe(0.25)
     expect(REMINDER_LEAD_HOURS).toBe(24)
+    expect(FEEDBACK_MAX).toBe(5000)
     expect(ALLOWED_MIME_TYPES).toHaveLength(8)
   })
 })

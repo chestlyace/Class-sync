@@ -13,13 +13,12 @@ import {
   updateAssignment,
   type AssignmentInput,
 } from '@/server/assignments/lecturer'
-import { MAX_FILES, MAX_RICH_TEXT_BYTES } from '@/server/assignments/rules'
+import { FEEDBACK_MAX, MAX_FILES, MAX_RICH_TEXT_BYTES } from '@/server/assignments/rules'
 import { getCtx } from '@/server/auth/session'
 import { config } from '@/server/core/config'
 import { AppError } from '@/server/core/errors'
 import { parseLocalDateTime } from '@/server/lib/local-time'
 
-const FEEDBACK_MAX = 5000
 const SUBMISSION_MODES: readonly AssignmentInput['submissionMode'][] = ['files', 'text', 'both']
 const LATE_POLICIES: readonly AssignmentInput['latePolicy'][] = ['accept', 'close']
 

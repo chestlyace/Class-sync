@@ -36,7 +36,7 @@ import {
   type AssignmentRow,
 } from './queries'
 import { sanitizeRichText, type Block } from './rich-text'
-import { isValidMark } from './rules'
+import { FEEDBACK_MAX, isValidMark } from './rules'
 
 export type { AssignmentDetail } from './queries'
 
@@ -84,7 +84,6 @@ const TITLE_MIN = 2
 const TITLE_MAX = 200
 const MAX_MARK_RANGE = [1, 1000] as const
 const WEIGHT_RANGE = [0.25, 100] as const
-const FEEDBACK_MAX = 5000
 
 type SubmissionMode = AssignmentInput['submissionMode']
 type LatePolicy = AssignmentInput['latePolicy']
