@@ -18,6 +18,7 @@ import {
   loadDraft,
   sameDraft,
   saveDraft,
+  settleDraftAfterSubmit,
   toSubmissionDraft,
   type SubmissionDraft,
 } from '@/lib/draft-store'
@@ -97,7 +98,9 @@ export function SubmitForm({
   const [uploading, setUploading] = useState(false)
   const [pending, setPending] = useState(false)
   const [failure, setFailure] = useState<Failure | 'unexpected' | null>(null)
-  const [done, setDone] = useState<{ at: Date; isLate: boolean } | null>(null)
+  // `replaced`: this submit replaced earlier work (worded differently, so a same-minute replacement
+  // is still announced).
+  const [done, setDone] = useState<{ at: Date; isLate: boolean; replaced: boolean } | null>(null)
   const status = done ?? submitted
 
   // The latest values, for the autosave timer and blur handler.
@@ -170,14 +173,18 @@ export function SubmitForm({
     if (pending || uploading) return
     setPending(true)
     setFailure(null)
+    // What is sent; the editor stays editable meanwhile, so the answer may move on before the reply.
+    const sent: SubmissionDraft = { text: textRef.current, files: filesRef.current }
+    const replacing = status !== null
     try {
-      const fileIds = hasFiles ? filesRef.current.map((f) => f.id) : []
-      const result = await submitAssignmentAction(assignmentId, hasText ? textRef.current : null, fileIds)
+      const fileIds = hasFiles ? sent.files.map((f) => f.id) : []
+      const result = await submitAssignmentAction(assignmentId, hasText ? sent.text : null, fileIds)
       if (result.ok) {
-        dirty.current = false
-        clearDraft(key)
+        // Only what was sent is handed in: anything changed since stays a draft (and unsaved-dirty).
+        const current: SubmissionDraft = { text: textRef.current, files: filesRef.current }
+        dirty.current = settleDraftAfterSubmit(key, sent, current) === 'kept'
         setRestored(false)
-        setDone({ at: new Date(result.data.submittedAt), isLate: result.data.isLate })
+        setDone({ at: new Date(result.data.submittedAt), isLate: result.data.isLate, replaced: replacing })
         router.refresh()
       } else {
         setFailure(result)
@@ -215,17 +222,20 @@ export function SubmitForm({
         (Array.isArray(failure.details?.fields) && failure.details.fields.includes('text')))) ||
     undefined
 
+  const replaced = done?.replaced ?? false
   const statusText = status
     ? sameDay(status.at, new Date(), timeZone)
-      ? t('submittedAt', { time: formatSessionDate(status.at, locale, timeZone, 'time') })
-      : t('submittedOn', { date: formatSessionDate(status.at, locale, timeZone) })
+      ? t(replaced ? 'replacedAt' : 'submittedAt', { time: formatSessionDate(status.at, locale, timeZone, 'time') })
+      : t(replaced ? 'replacedOn' : 'submittedOn', { date: formatSessionDate(status.at, locale, timeZone) })
     : null
 
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-6">
       {restored && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3">
-          <p className="text-sm font-medium">{t('restored')}</p>
+          <p role="status" className="text-sm font-medium">
+            {t('restored')}
+          </p>
           <Button type="button" variant="outline" size="sm" onClick={discard}>
             <Undo2 aria-hidden="true" data-icon="inline-start" />
             {t('discard')}
@@ -270,11 +280,7 @@ export function SubmitForm({
             />
           </Field>
         )}
-        {failure && (
-          <FieldError>
-            <span role="alert">{failureMessage(failure)}</span>
-          </FieldError>
-        )}
+        {failure && <FieldError>{failureMessage(failure)}</FieldError>}
       </FieldGroup>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -283,14 +289,15 @@ export function SubmitForm({
           {pending ? t('submitting') : status ? t('replace') : t('submit')}
         </Button>
         {uploading && <span className="text-sm text-muted-foreground">{t('waitForUploads')}</span>}
-        {/* Always rendered, so the confirmation is announced when it appears. */}
+        {/* Always rendered, so the confirmation is announced when it appears. Its content is keyed
+            by the submission time, so a second submit in the same minute is announced again. */}
         <p role="status" className="flex flex-wrap items-center gap-2 text-sm">
-          {statusText && (
-            <>
+          {statusText && status && (
+            <span key={status.at.toISOString()} className="contents">
               <Check aria-hidden="true" className="size-4 text-primary" />
               <span className="font-medium">{statusText}</span>
-              {status?.isLate && <Badge variant="destructive">{t('late')}</Badge>}
-            </>
+              {status.isLate && <Badge variant="destructive">{t('late')}</Badge>}
+            </span>
           )}
         </p>
       </div>

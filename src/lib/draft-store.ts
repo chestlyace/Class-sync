@@ -95,3 +95,21 @@ export function sameDraft(a: SubmissionDraft, b: SubmissionDraft): boolean {
   if (normalisedText(a.text) !== normalisedText(b.text)) return false
   return a.files.length === b.files.length && a.files.every((f, i) => f.id === b.files[i].id)
 }
+
+/**
+ * After a successful submit: when the answer still matches what was `sent`, the draft is cleared;
+ * when the student changed it while the submit was in flight, the `current` answer is kept as the
+ * draft (it was not handed in), so it survives a reload.
+ */
+export function settleDraftAfterSubmit(
+  key: string,
+  sent: SubmissionDraft,
+  current: SubmissionDraft,
+): 'cleared' | 'kept' {
+  if (sameDraft(sent, current)) {
+    clearDraft(key)
+    return 'cleared'
+  }
+  saveDraft(key, current)
+  return 'kept'
+}

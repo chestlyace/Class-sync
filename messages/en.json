@@ -853,6 +853,8 @@
       "waitForUploads": "Wait for the uploads to finish.",
       "submittedAt": "Submitted at {time}",
       "submittedOn": "Submitted {date}",
+      "replacedAt": "Submission replaced at {time}",
+      "replacedOn": "Submission replaced {date}",
       "late": "Late",
       "nothingHandedIn": "You didn't hand anything in.",
       "myAssignments": "My assignments",

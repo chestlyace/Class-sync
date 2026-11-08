@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { clearDraft, draftKey, loadDraft, sameDraft, saveDraft, toSubmissionDraft } from './draft-store'
+import {
+  clearDraft,
+  draftKey,
+  loadDraft,
+  sameDraft,
+  saveDraft,
+  settleDraftAfterSubmit,
+  toSubmissionDraft,
+} from './draft-store'
 
 /** A minimal in-memory Storage. */
 function memoryStorage(): Storage {
@@ -158,5 +166,31 @@ describe('sameDraft', () => {
 
   it('is false when the files differ', () => {
     expect(sameDraft({ text: null, files: [FILE] }, { text: null, files: [] })).toBe(false)
+  })
+})
+
+describe('settleDraftAfterSubmit', () => {
+  const sent = { text: [{ type: 'paragraph', content: [{ type: 'text', text: 'Sent', styles: {} }] }], files: [FILE] }
+
+  it('clears the draft when nothing changed while sending', () => {
+    vi.stubGlobal('localStorage', memoryStorage())
+    saveDraft('k', sent)
+    expect(settleDraftAfterSubmit('k', sent, structuredClone(sent))).toBe('cleared')
+    expect(loadDraft('k')).toBeNull()
+  })
+
+  it('keeps what was typed while sending as the draft', () => {
+    vi.stubGlobal('localStorage', memoryStorage())
+    const typed = { ...sent, text: [{ type: 'paragraph', content: [{ type: 'text', text: 'Sent and more', styles: {} }] }] }
+    saveDraft('k', sent)
+    expect(settleDraftAfterSubmit('k', sent, typed)).toBe('kept')
+    expect(loadDraft('k')).toEqual(typed)
+  })
+
+  it('keeps a changed file list as the draft', () => {
+    vi.stubGlobal('localStorage', memoryStorage())
+    const current = { text: sent.text, files: [] }
+    expect(settleDraftAfterSubmit('k', sent, current)).toBe('kept')
+    expect(loadDraft('k')).toEqual(current)
   })
 })
