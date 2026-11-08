@@ -3,7 +3,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { defineConfig, devices } from '@playwright/test'
 
-const PORT = 3000
+/** Set E2E_PORT when something else already listens on 3000. */
+const PORT = Number(process.env.E2E_PORT ?? 3000)
 const BASE_URL = `http://localhost:${PORT}`
 
 /**
@@ -19,7 +20,7 @@ const DATABASE_URL = process.env.E2E_DATABASE_URL ?? 'postgres://postgres@127.0.
 export default defineConfig({
   testDir: './e2e',
   // One serial scenario per project, one project after the other. Sign-ups are rate-limited to
-  // 30 per minute per IP under `next start` (src/server/auth/auth.ts); a full run (all scenarios, both projects) signs up 24 users.
+  // 30 per minute per IP under `next start` (src/server/auth/auth.ts); a full run (all scenarios, both projects) signs up 26 users.
   workers: 1,
   fullyParallel: false,
   retries: 0,
@@ -37,9 +38,9 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['Pixel 7'], viewport: { width: 360, height: 780 } } },
   ],
   webServer: {
-    command: 'npm run build && npm start',
+    command: `npm run build && npm start -- --port ${PORT}`,
     url: BASE_URL,
-    // Never reuse: a stray dev server on :3000 would run against the wrong database.
+    // Never reuse: a stray dev server on the port would run against the wrong database.
     reuseExistingServer: false,
     timeout: 300_000,
     env: {
