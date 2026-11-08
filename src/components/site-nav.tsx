@@ -76,7 +76,7 @@ export async function SiteNav({ user, sections }: { user: SessionUser | null; se
                 <Link href="/sign-in" className={buttonVariants({ variant: 'ghost', className: 'max-sm:hidden' })}>
                   {t('nav.signIn')}
                 </Link>
-                <Link href="/sign-up" className={buttonVariants({ className: 'bg-foreground text-background hover:bg-foreground/85' })}>
+                <Link href="/sign-up" className={buttonVariants({ variant: 'contrast' })}>
                   {t('landing.nav.getStarted')}
                 </Link>
               </>
