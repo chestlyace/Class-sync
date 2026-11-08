@@ -69,4 +69,13 @@ describe('validateSettings', () => {
       expect(validateSettings(bad), String(JSON.stringify(bad))).toEqual({ error: 'shape' })
     }
   })
+
+  it('returns points normalised to whole cents', () => {
+    const sum = validateSettings({ ...DEFAULT_SETTINGS, total: 0.1 + 0.2 + 29.7, attendancePoints: 0.1 + 0.2, assignmentPoints: 29.7, participationPoints: 0 })
+    expect(sum).toMatchObject({ attendancePoints: 0.3, assignmentPoints: 29.7, total: 30 })
+    const tiny = validateSettings({ ...DEFAULT_SETTINGS, testPoints: 1e-9 })
+    expect(tiny).toEqual(DEFAULT_SETTINGS)
+    expect(Object.is((tiny as { testPoints: number }).testPoints, 0)).toBe(true)
+    expect(validateSettings({ ...DEFAULT_SETTINGS, testPoints: -0 })).toEqual(DEFAULT_SETTINGS)
+  })
 })

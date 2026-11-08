@@ -21,6 +21,8 @@ const POINT_KEYS = ['attendancePoints', 'assignmentPoints', 'participationPoints
 const MAX_POINTS = 100
 
 const cents = (n: number) => Math.round(n * 100)
+/** Rounds to whole cents; `+ 0` turns -0 into 0. */
+const toCents = (n: number) => cents(n) / 100 + 0
 const hasAtMostTwoDecimals = (n: number) => Math.abs(n * 100 - cents(n)) < 1e-6
 
 /**
@@ -51,5 +53,13 @@ export function validateSettings(input: unknown): CaSettings | SettingsError {
     return { error: 'decimals' }
   }
   if (POINT_KEYS.reduce((sum, k) => sum + cents(s[k]), 0) !== cents(s.total)) return { error: 'sum' }
-  return s
+  // Within tolerance of whole cents: hand back exactly the cents, so 0.1 + 0.2 is 0.3 and 1e-9 is 0.
+  return {
+    ...s,
+    total: toCents(s.total),
+    attendancePoints: toCents(s.attendancePoints),
+    assignmentPoints: toCents(s.assignmentPoints),
+    participationPoints: toCents(s.participationPoints),
+    testPoints: toCents(s.testPoints),
+  }
 }
