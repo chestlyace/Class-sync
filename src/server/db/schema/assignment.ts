@@ -96,7 +96,8 @@ export const assignmentAttachment = pgTable(
       .references(() => file.id, { onDelete: 'cascade' }),
     position: smallint('position').notNull(),
   },
-  (t) => [primaryKey({ columns: [t.assignmentId, t.fileId] })],
+  // file_id: access checks look links up by file (mayRead), and file deletes cascade through it.
+  (t) => [primaryKey({ columns: [t.assignmentId, t.fileId] }), index('assignment_attachment_file_id_idx').on(t.fileId)],
 )
 
 export const submission = pgTable(
@@ -136,7 +137,8 @@ export const submissionFile = pgTable(
       .references(() => file.id, { onDelete: 'cascade' }),
     position: smallint('position').notNull(),
   },
-  (t) => [primaryKey({ columns: [t.submissionId, t.fileId] })],
+  // file_id: access checks look links up by file (mayRead), and file deletes cascade through it.
+  (t) => [primaryKey({ columns: [t.submissionId, t.fileId] }), index('submission_file_file_id_idx').on(t.fileId)],
 )
 
 export const assignmentReminder = pgTable(

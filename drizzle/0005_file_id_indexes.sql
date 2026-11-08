@@ -1,0 +1,2 @@
+CREATE INDEX "assignment_attachment_file_id_idx" ON "assignment_attachment" USING btree ("file_id");--> statement-breakpoint
+CREATE INDEX "submission_file_file_id_idx" ON "submission_file" USING btree ("file_id");
