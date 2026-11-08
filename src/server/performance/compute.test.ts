@@ -261,6 +261,13 @@ describe('computeCa: tests', () => {
     expect(testsScore({ ...s, testsBestOf: 5 }, [t(1, 0.9), t(1, 0.4), t(2, 0.6)])).toBe(6.25)
   })
 
+  it('best N: of tests tied on ratio, the earlier one is kept, whatever their weights', () => {
+    // Best 2: 0.8, then the first 0.5 (weight 1) → (0.8 + 0.5) / 2 = 0.65.
+    expect(testsScore({ ...s, testsBestOf: 2 }, [t(1, 0.8), t(1, 0.5), t(3, 0.5)])).toBe(6.5)
+    // Same tests, the weight-3 one earlier: it is kept → (0.8 + 1.5) / 4 = 0.575.
+    expect(testsScore({ ...s, testsBestOf: 2 }, [t(1, 0.8), t(3, 0.5), t(1, 0.5)])).toBe(5.75)
+  })
+
   it('omits tests worth 0 points', () => {
     expect(testsScore({ ...s, assignmentPoints: 20, testPoints: 0 }, [t(1, 1)])).toBeUndefined()
   })

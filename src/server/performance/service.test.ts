@@ -798,7 +798,9 @@ describe('CA service', () => {
     expect(component(rowOf(rows, others[0]), 'tests')).toMatchObject({ score: 3.75, status: 'scored' })
     expect(await countQueries(() => getCourseCa(lecturer, algo.id))).toBe(smallCourse)
     expect(await countQueries(() => getMyCa(alice, algo.id))).toBe(smallMine)
-    // Tests add four: the course's tests, their attempts and the two score queries.
-    expect(smallCourse).toBeLessThanOrEqual(18)
+    // Exact, so a new query is a deliberate change. Tests add four of these: the course's tests,
+    // their attempts and the two score queries.
+    expect(smallCourse).toBe(18)
+    expect(smallMine).toBe(19)
   })
 })
