@@ -1450,5 +1450,136 @@
       "mcqCount": "{count, plural, one {# question} other {# questions}}",
       "mcqNote": "Shown as one total, so the answers stay private."
     }
+  },
+  "notes": {
+    "lecturer": {
+      "courseLink": "Notes",
+      "breadcrumb": "Notes",
+      "title": "Notes and resources",
+      "description": "Notes, files and links for this course, by topic. Students see a topic once it is shown to them.",
+      "empty": "No topics yet. Create a topic, then add notes, files and links to it.",
+      "topicLabel": "Topic {n}",
+      "itemCount": "{count, plural, =0 {Empty} one {# item} other {# items}}",
+      "hiddenPill": "Hidden from students",
+      "hiddenNote": "Students can't see this topic yet.",
+      "show": "Show to students",
+      "kind": {
+        "note": "Note",
+        "file": "File",
+        "link": "Link",
+        "revision": "Revision"
+      },
+      "meta": {
+        "note": "Written here · updated {date}"
+      },
+      "alsoIn": "{count, plural, one {Also in # other course} other {Also in # other courses}}",
+      "practiceRow": "{count, plural, one {Practice questions · # question} other {Practice questions · # questions}}",
+      "practiceMeta": "Students practise on their own and see their own progress.",
+      "practiceHeld": "Held until the test results are released.",
+      "waitingPill": "Waiting",
+      "addPractice": "Add practice questions",
+      "add": {
+        "note": "Write a note",
+        "file": "Upload a file",
+        "link": "Add a link"
+      },
+      "newTopic": {
+        "open": "New topic",
+        "title": "New topic",
+        "body": "A topic groups notes, files, links and practice questions. It is last in the list.",
+        "field": "Topic title",
+        "placeholder": "Week 3 · Sorting algorithms",
+        "submit": "Create topic"
+      },
+      "rename": {
+        "title": "Rename topic",
+        "body": "Students see the new title straight away.",
+        "submit": "Rename"
+      },
+      "topicMenu": {
+        "label": "Options for the topic {title}",
+        "rename": "Rename",
+        "moveUp": "Move up",
+        "moveDown": "Move down",
+        "hide": "Hide from students",
+        "show": "Show to students",
+        "delete": "Delete topic"
+      },
+      "deleteTopic": {
+        "title": "Delete this topic?",
+        "body": "The topic \"{title}\" will be deleted.",
+        "note": "Only an empty topic can be deleted: remove its notes, files, links and practice questions first.",
+        "confirm": "Delete topic"
+      },
+      "itemMenu": {
+        "label": "Options for {title}",
+        "edit": "Edit",
+        "moveUp": "Move up",
+        "moveDown": "Move down",
+        "moveToTopic": "Move to another topic",
+        "share": "Share to another course",
+        "remove": "Remove"
+      },
+      "move": {
+        "title": "Move to another topic",
+        "body": "Choose where \"{title}\" goes. It is added last in that topic.",
+        "topic": "Topic",
+        "submit": "Move"
+      },
+      "share": {
+        "title": "Share to another course",
+        "body": "\"{title}\" will also appear in the course you choose. It stays one item: editing it changes it in every course.",
+        "course": "Course",
+        "topic": "Topic",
+        "hint": "It is added last in this topic, and the topic's visibility decides who sees it.",
+        "loading": "Loading topics…",
+        "loadFailed": "The topics could not be loaded. Close this window and try again.",
+        "noTopics": "This course has no topics yet. Create one there first.",
+        "noCourses": "You have no other course to share it with.",
+        "submit": "Share"
+      },
+      "remove": {
+        "title": "Remove this item?",
+        "body": "\"{title}\" will be removed from this course.",
+        "shared": "{count, plural, one {Removes it from this course only. # other course keeps it.} other {Removes it from this course only. # other courses keep it.}}",
+        "alone": "Deletes it for good.",
+        "confirm": "Remove"
+      },
+      "form": {
+        "newTitle": {
+          "note": "New note",
+          "file": "Upload a file",
+          "link": "Add a link"
+        },
+        "editTitle": "Edit item",
+        "inTopic": "In the topic \"{topic}\"",
+        "sharedNote": "This item is also in: {courses}. Your changes apply in every one of these courses.",
+        "title": "Title",
+        "titlePlaceholder": {
+          "note": "Week 3 · Sorting algorithms",
+          "file": "Lecture 3 slides",
+          "link": "Visualgo, sorting algorithms"
+        },
+        "body": "Note",
+        "bodyHint": "Headings, lists and code blocks work. Students can read it on their phone.",
+        "file": "File",
+        "fileReplaceHint": "Upload a new file to replace this one. It is replaced in every course that has it.",
+        "url": "Web address",
+        "urlHint": "It must start with http:// or https://.",
+        "save": "Save",
+        "saving": "Saving…",
+        "waitForUploads": "Wait for the upload to finish."
+      }
+    },
+    "errors": {
+      "title": "Give it a title of 1 to 200 characters.",
+      "body": "The note can't be saved. It may be too long: shorten it and try again.",
+      "file": "Upload a file first. A file already used by another item can't be used again.",
+      "url": "Enter a web address that starts with http:// or https://.",
+      "topic": "Choose a topic.",
+      "course": "Choose a course.",
+      "notEmpty": "This topic still has notes, files, links or practice questions. Remove them first.",
+      "alreadyThere": "This item is already in that course."
+    }
   }
 }
