@@ -107,13 +107,28 @@ export function TestLive({
         if (cancelled || mine !== request) return
         setProblem({ kind: 'network' })
       }
+      schedule()
+    }
+
+    // A hidden tab stops polling; coming back polls at once.
+    function schedule() {
+      clearTimeout(timer)
+      if (document.visibilityState === 'hidden') return
       timer = setTimeout(poll, TEST_LIVE_POLL_MS)
     }
 
-    timer = setTimeout(poll, TEST_LIVE_POLL_MS)
+    function onVisibility() {
+      if (document.visibilityState !== 'visible') return
+      clearTimeout(timer)
+      void poll()
+    }
+
+    schedule()
+    document.addEventListener('visibilitychange', onVisibility)
     return () => {
       cancelled = true
       clearTimeout(timer)
+      document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [testId, initialPhase, router])
 
@@ -380,7 +395,7 @@ function LetBackInButton({ attemptId, name, onDone }: { attemptId: string; name:
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <Button type="button" variant="outline" size="sm" disabled={pending} onClick={letIn} aria-label={t('letBackInLabel', { name })}>
+      <Button type="button" variant="outline" size="sm" className="h-11 sm:h-8" disabled={pending} onClick={letIn} aria-label={t('letBackInLabel', { name })}>
         <DoorOpen aria-hidden="true" data-icon="inline-start" />
         {pending ? t('lettingIn') : t('letBackIn')}
       </Button>
