@@ -14,8 +14,10 @@ import {
   class_,
   classStudent,
   course,
+  courseCaSettings,
   courseRosterAdjustment,
   file,
+  participationEvent,
   school,
   submission,
   submissionFile,
@@ -373,6 +375,116 @@ describe('schema', () => {
       expect(
         defs.some((d) => d.includes(` ON public.${table} USING btree (${columns})`)),
         `${table}(${columns})`,
+      ).toBe(true)
+    }
+  })
+
+  it('applies CA settings defaults and keeps numbers as numbers', async () => {
+    const db = await createTestDb()
+    const { owner, course: c } = await seedSession(db)
+    const [row] = await db
+      .insert(courseCaSettings)
+      .values({
+        courseId: c.id,
+        total: 30,
+        attendancePoints: 5,
+        assignmentPoints: 20,
+        participationPoints: 5,
+        testPoints: 0,
+        updatedBy: owner.id,
+      })
+      .returning()
+    expect(row.total).toBe(30)
+    expect(row.attendancePoints).toBe(5)
+    expect(row.participationTarget).toBe(5)
+    expect(row.updatedAt).toBeInstanceOf(Date)
+  })
+
+  it('rejects CA settings that break the CHECKs (total 0, negative points, target out of range)', async () => {
+    const db = await createTestDb()
+    const { owner, course: c } = await seedSession(db)
+    const ok = {
+      courseId: c.id,
+      total: 30,
+      attendancePoints: 5,
+      assignmentPoints: 20,
+      participationPoints: 5,
+      testPoints: 0,
+      updatedBy: owner.id,
+    }
+    for (const bad of [
+      { total: 0 },
+      { attendancePoints: -1 },
+      { assignmentPoints: -1 },
+      { participationPoints: -1 },
+      { testPoints: -1 },
+      { participationTarget: 0 },
+      { participationTarget: 101 },
+    ]) {
+      expect(await sqlState(db.insert(courseCaSettings).values({ ...ok, ...bad })), JSON.stringify(bad)).toBe('23514')
+    }
+    expect(await db.select().from(courseCaSettings)).toHaveLength(0)
+  })
+
+  it('one CA settings row per course', async () => {
+    const db = await createTestDb()
+    const { owner, course: c } = await seedSession(db)
+    const row = {
+      courseId: c.id,
+      total: 30,
+      attendancePoints: 5,
+      assignmentPoints: 20,
+      participationPoints: 5,
+      testPoints: 0,
+      updatedBy: owner.id,
+    }
+    await db.insert(courseCaSettings).values(row)
+    expect(await sqlState(db.insert(courseCaSettings).values(row))).toBe('23505')
+  })
+
+  it('rejects a participation delta other than -1 or 1', async () => {
+    const db = await createTestDb()
+    const { owner, course: c } = await seedSession(db)
+    const st = await makeUser(db, { role: 'student' })
+    const ev = { courseId: c.id, studentId: st.id, createdBy: owner.id }
+    for (const delta of [2, 0, -2]) {
+      expect(await sqlState(db.insert(participationEvent).values({ ...ev, delta })), `delta ${delta}`).toBe('23514')
+    }
+    await db.insert(participationEvent).values([
+      { ...ev, delta: 1 },
+      { ...ev, delta: -1 },
+    ])
+    expect(await db.select().from(participationEvent)).toHaveLength(2)
+  })
+
+  it('deleting a course removes its CA settings and participation events', async () => {
+    const db = await createTestDb()
+    const { owner, course: c } = await seedSession(db)
+    const st = await makeUser(db, { role: 'student' })
+    await db.insert(courseCaSettings).values({
+      courseId: c.id,
+      total: 30,
+      attendancePoints: 5,
+      assignmentPoints: 20,
+      participationPoints: 5,
+      testPoints: 0,
+      updatedBy: owner.id,
+    })
+    await db.insert(participationEvent).values({ courseId: c.id, studentId: st.id, delta: 1, createdBy: owner.id })
+    await db.delete(course)
+    expect(await db.select().from(courseCaSettings)).toHaveLength(0)
+    expect(await db.select().from(participationEvent)).toHaveLength(0)
+    expect(await db.select().from(user)).toHaveLength(2)
+  })
+
+  it('has the participation lookup indexes', async () => {
+    const db = await createTestDb()
+    const res = await db.execute(sql`select indexdef from pg_indexes where schemaname = 'public'`)
+    const defs = (res as unknown as { rows: { indexdef: string }[] }).rows.map((r) => r.indexdef.replace(/"/g, ''))
+    for (const columns of ['course_id, student_id', 'course_id, created_by, created_at']) {
+      expect(
+        defs.some((d) => d.includes(` ON public.participation_event USING btree (${columns})`)),
+        `participation_event(${columns})`,
       ).toBe(true)
     }
   })
