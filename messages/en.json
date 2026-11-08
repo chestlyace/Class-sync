@@ -504,7 +504,7 @@
         "join": {
           "title": "Join a class",
           "body": "Ask your lecturer for the class code, then enter it with your matricule.",
-          "action": "Join a class"
+          "action": "Enter the code"
         }
       }
     }

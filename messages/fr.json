@@ -504,7 +504,7 @@
         "join": {
           "title": "Rejoignez une classe",
           "body": "Demandez le code de la classe à votre enseignant, puis saisissez-le avec votre matricule.",
-          "action": "Rejoindre une classe"
+          "action": "Saisir le code"
         }
       }
     }
