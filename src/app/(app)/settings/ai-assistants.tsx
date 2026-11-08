@@ -105,16 +105,19 @@ export async function AiAssistantsSection({
                     />
                   </dl>
                 </div>
-                <ConfirmAction
-                  action={revokeAccessTokenAction}
-                  fields={{ id: token.id }}
-                  triggerLabel={t('tokens.revoke')}
-                  triggerAriaLabel={t('tokens.revokeAria', { name: token.name })}
-                  title={t('tokens.revokeTitle', { name: token.name })}
-                  body={t('tokens.revokeBody')}
-                  confirmLabel={t('tokens.revokeConfirm')}
-                  destructive
-                />
+                {/* A wrapper, so the pill keeps its width on phones (the row is a column there). */}
+                <div className="shrink-0">
+                  <ConfirmAction
+                    action={revokeAccessTokenAction}
+                    fields={{ id: token.id }}
+                    triggerLabel={t('tokens.revoke')}
+                    triggerAriaLabel={t('tokens.revokeAria', { name: token.name })}
+                    title={t('tokens.revokeTitle', { name: token.name })}
+                    body={t('tokens.revokeBody')}
+                    confirmLabel={t('tokens.revokeConfirm')}
+                    destructive
+                  />
+                </div>
               </li>
             ))}
           </ul>
@@ -176,16 +179,18 @@ export async function AiAssistantsSection({
                       </div>
                     </div>
                   </div>
-                  <ConfirmAction
-                    action={disconnectAppAction}
-                    fields={{ clientId: app.clientId }}
-                    triggerLabel={t('apps.disconnect')}
-                    triggerAriaLabel={t('apps.disconnectAria', { name })}
-                    title={t('apps.disconnectTitle', { name })}
-                    body={t('apps.disconnectBody', { name })}
-                    confirmLabel={t('apps.disconnectConfirm')}
-                    destructive
-                  />
+                  <div className="shrink-0">
+                    <ConfirmAction
+                      action={disconnectAppAction}
+                      fields={{ clientId: app.clientId }}
+                      triggerLabel={t('apps.disconnect')}
+                      triggerAriaLabel={t('apps.disconnectAria', { name })}
+                      title={t('apps.disconnectTitle', { name })}
+                      body={t('apps.disconnectBody', { name })}
+                      confirmLabel={t('apps.disconnectConfirm')}
+                      destructive
+                    />
+                  </div>
                 </li>
               )
             })}
