@@ -86,14 +86,14 @@ export function TestEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftKey])
 
-  // Keep every change as a draft.
+  // Keep every change as a draft, except while an earlier draft is on offer: it stays stored
+  // (and offered) until the lecturer restores or discards it, then the current work is kept.
   useEffect(() => {
-    if (dirty.current) saveDraft(draftKey, values)
-  }, [draftKey, values])
+    if (dirty.current && offer === null) saveDraft(draftKey, values)
+  }, [draftKey, values, offer])
 
   function update(change: (v: EditorValues) => EditorValues) {
     dirty.current = true
-    setOffer(null) // typing over an old draft replaces it
     setValues(change)
   }
 
