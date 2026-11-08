@@ -1,4 +1,6 @@
 import { randomBytes } from 'node:crypto'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { defineConfig, devices } from '@playwright/test'
 
 const PORT = 3000
@@ -17,7 +19,7 @@ const DATABASE_URL = process.env.E2E_DATABASE_URL ?? 'postgres://postgres@127.0.
 export default defineConfig({
   testDir: './e2e',
   // One serial scenario per project, one project after the other. Sign-ups are rate-limited to
-  // 30 per minute per IP under `next start` (src/server/auth/auth.ts); a full run (both scenarios, both projects) signs up 12 users.
+  // 30 per minute per IP under `next start` (src/server/auth/auth.ts); a full run (all scenarios, both projects) signs up 18 users.
   workers: 1,
   fullyParallel: false,
   retries: 0,
@@ -47,6 +49,9 @@ export default defineConfig({
       BETTER_AUTH_SECRET: randomBytes(32).toString('hex'),
       AUTH_REQUIRE_EMAIL_VERIFICATION: 'false',
       NEXT_TELEMETRY_DISABLED: '1',
+      // `next start` is production mode, which would pick Vercel Blob: keep uploads on local disk, in the OS temp dir.
+      STORAGE_DRIVER: 'local',
+      LOCAL_UPLOAD_DIR: join(tmpdir(), 'clasync-e2e-uploads'),
     },
   },
 })
