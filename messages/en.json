@@ -896,5 +896,85 @@
         "forbidden": "You're not on this course's list, so you can't hand in work here."
       }
     }
+  },
+  "performance": {
+    "lecturer": {
+      "courseLink": "CA",
+      "participationLink": "Participation",
+      "eyebrow": "Continuous assessment",
+      "title": "CA",
+      "export": "Export to Excel",
+      "classTitle": "Class",
+      "studentCount": "{count, plural, one {# student} other {# students}}",
+      "noStudents": "No students on this course yet.",
+      "summary": "{slipping, plural, =0 {Nobody is slipping} one {# student slipping} other {# students slipping}} · {missing, plural, =0 {no missing work} one {# with missing work} other {# with missing work}}",
+      "legend": "\"So far\" counts only the parts that have started. \"Final\" counts the rest as 0 and is the mark in the export. \"—\" means not started yet.",
+      "component": {
+        "attendance": "Attendance",
+        "assignments": "Assignments",
+        "participation": "Participation"
+      },
+      "table": {
+        "caption": "The class ranked by CA, with each part, the CA so far, the final CA, missing work and who is slipping.",
+        "rank": "Rank",
+        "student": "Student",
+        "sortBy": "Sort by {column}",
+        "outOf": "/ {points}",
+        "soFar": "So far",
+        "final": "Final",
+        "missing": "Missing work",
+        "missingLabel": "{count, plural, one {# missing piece of work} other {# missing pieces of work}} for {name}: open assignments",
+        "flag": "Flag",
+        "notStarted": "Not started yet",
+        "slipping": "Slipping",
+        "slippingHint": "CA so far under half its points, or attendance under 75% after 3 sessions"
+      },
+      "settings": {
+        "title": "CA settings",
+        "hint": "Split the CA total across the parts. Changes apply to every student at once.",
+        "total": "CA total",
+        "parts": "Points per part",
+        "attendance": "Attendance",
+        "assignments": "Assignments",
+        "participation": "Participation",
+        "sumHelper": "Parts add up to {sum} of {total}",
+        "sumHelperNoTotal": "Parts add up to {sum}",
+        "dropHint": "Give a part 0 points to leave it out.",
+        "target": "Participation target",
+        "targetHint": "Net taps a student needs for full participation points.",
+        "save": "Save settings",
+        "saving": "Saving…",
+        "saved": "Settings saved.",
+        "errors": {
+          "sum": "The parts must add up exactly to the CA total.",
+          "range": "The total must be between 1 and 100, each part between 0 and 100, and the target a whole number from 1 to 100.",
+          "decimals": "Use at most 2 decimals (for example {example}).",
+          "tests": "Test points aren't available yet.",
+          "shape": "The settings couldn't be read. Reload the page and try again.",
+          "fields": "Enter a number in each highlighted box."
+        }
+      },
+      "board": {
+        "eyebrow": "Participation",
+        "title": "Participation",
+        "backToCa": "Back to CA",
+        "targetHint": "{target, plural, one {# net tap gives} other {# net taps give}} full participation points.",
+        "noPointsHint": "Participation is worth 0 points in this course. Taps are still recorded.",
+        "noStudents": "No students on this course yet.",
+        "today": "Today",
+        "net": "Net",
+        "plusLabel": "+1 for {name}",
+        "minusLabel": "−1 for {name}",
+        "undo": "Undo last tap",
+        "undoing": "Undoing…",
+        "nothingToUndo": "Nothing to undo",
+        "undone": "Last tap undone.",
+        "announceTap": "{name}: {delta} (net {net})",
+        "announceUndo": "Undone for {name} (net {net})",
+        "announceFailed": "Tap for {name} not saved.",
+        "network": "The tap could not reach the server. Check your connection and try again.",
+        "notOnRoster": "This student is no longer on the course list. Reload the page."
+      }
+    }
   }
 }
