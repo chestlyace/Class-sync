@@ -105,7 +105,7 @@ export function NewTopicDialog({ courseId }: { courseId: string }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline">
+        <Button type="button" variant="outline" size="lg">
           <Plus aria-hidden="true" data-icon="inline-start" />
           {t('open')}
         </Button>
@@ -165,11 +165,11 @@ function TopicTitleForm({
       <NotesError state={state} />
       <DialogFooter>
         <DialogClose asChild>
-          <Button type="button" variant="outline">
+          <Button type="button" variant="outline" size="lg">
             {tCommon('cancel')}
           </Button>
         </DialogClose>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" size="lg" disabled={pending}>
           {submitLabel}
         </Button>
       </DialogFooter>
@@ -225,6 +225,7 @@ function TopicCard({
   const t = useTranslations('notes.lecturer')
   const { run, pending, error } = useQuickAction()
   const rows = topic.items.length + (topic.practice ? 1 : 0)
+  const itemCount = topic.items.length
   const base = `/courses/${encodeURIComponent(courseId)}/notes`
   const addHref = (kind: ItemKind) => `${base}/new?topic=${encodeURIComponent(topic.id)}&kind=${kind}`
   const practiceHref = `${base}/topics/${encodeURIComponent(topic.id)}/practice`
@@ -249,7 +250,7 @@ function TopicCard({
             {topic.title}
           </h2>
         </div>
-        <span className="shrink-0 pt-5 text-sm text-muted-foreground">{t('itemCount', { count: rows })}</span>
+        <span className="shrink-0 pt-5 text-sm text-muted-foreground">{t('itemCount', { count: itemCount })}</span>
         <TopicMenu topic={topic} index={index} count={topics.length} run={run} pending={pending} />
       </header>
       {error && (
@@ -487,24 +488,25 @@ function ItemRow({
   } else meta = item.host ?? ''
   if (item.sharedInCount > 0) meta = `${meta} · ${t('alsoIn', { count: item.sharedInCount })}`
 
-  const title = (
-    <span className="min-w-0 font-medium break-words underline-offset-4 hover:underline">{item.title}</span>
+  const text = (
+    <>
+      <span className="min-w-0 font-medium break-words underline-offset-4 group-hover/link:underline">{item.title}</span>
+      <span className="text-sm break-words text-muted-foreground">{meta}</span>
+    </>
   )
+  const linkClass = 'group/link flex min-h-11 min-w-0 flex-1 flex-col justify-center gap-0.5'
   return (
-    <li className="flex items-center gap-3 px-4 py-2.5 sm:px-5">
+    <li className="flex items-center gap-3 px-4 py-1 sm:px-5">
       <Icon aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        {item.kind === 'note' ? (
-          <Link href={base} className="min-w-0 py-0.5">
-            {title}
-          </Link>
-        ) : (
-          <a href={`${base}/open`} target="_blank" rel="noopener" className="min-w-0 py-0.5">
-            {title}
-          </a>
-        )}
-        <span className="text-sm break-words text-muted-foreground">{meta}</span>
-      </div>
+      {item.kind === 'note' ? (
+        <Link href={base} className={linkClass}>
+          {text}
+        </Link>
+      ) : (
+        <a href={`${base}/open`} target="_blank" rel="noopener" className={linkClass}>
+          {text}
+        </a>
+      )}
       <Pill tone={item.kind === 'note' ? 'note' : 'neutral'}>{t(`kind.${item.kind}`)}</Pill>
       <ItemMenu
         courseId={courseId}
@@ -671,11 +673,11 @@ function MoveItemDialog({
           <NotesError state={state} />
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline">
+              <Button type="button" variant="outline" size="lg">
                 {tCommon('cancel')}
               </Button>
             </DialogClose>
-            <Button type="submit" disabled={pending || topics.length === 0}>
+            <Button type="submit" size="lg" disabled={pending || topics.length === 0}>
               {t('submit')}
             </Button>
           </DialogFooter>
