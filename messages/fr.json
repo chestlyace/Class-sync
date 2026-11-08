@@ -1437,7 +1437,6 @@
       "onlyYou": "Votre résultat n'est visible que par vous.",
       "notJoined": "Vous n'avez pas passé ce test : il compte pour 0.",
       "pendingNote": "{count, plural, one {# réponse est encore en correction : votre total peut changer.} other {# réponses sont encore en correction : votre total peut changer.}}",
-      "questions": "Questions",
       "question": "Question {n}",
       "kind": {
         "mcq": "Choix multiple",
@@ -1446,7 +1445,9 @@
       "mark": "{mark} / {outOf}",
       "pending": "En correction",
       "comment": "Commentaire",
-      "seeMarks": "Voir vos notes"
+      "seeMarks": "Voir vos notes",
+      "mcqCount": "{count, plural, one {# question} other {# questions}}",
+      "mcqNote": "Affiché en un seul total, pour que les réponses restent privées."
     }
   }
 }

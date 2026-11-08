@@ -15,12 +15,13 @@ import { automatic, requireFinal } from './marking'
 import { scoreAttempt, type ScoringAnswer } from './paper'
 import { canSeeResult, testPhase } from './phase'
 import { requireOwnedTest } from './queries'
-import type { QuestionKind } from './rules'
 import { loadTestScores } from './scores'
 
 /**
- * A student's released result: total, and per question (in the lecturer's order) the mark and
- * the lecturer's comment. Never the options, the correct answers or the marking guide. `joined`
+ * A student's released result: the total; multiple choice as one total only (`mcq`, null when the
+ * test has none), so a per-question mark never tells a student which option was right; and each
+ * short-answer question (`number` in the lecturer's order) with its mark and the lecturer's
+ * comment. Never the MCQ prompts, the options, the correct answers or the marking guide. `joined`
  * is false for a student who never opened the test (every mark 0). A real short answer without a
  * confirmed mark (possible only when a student is back on the roster after the release) has
  * `mark: null` — pending, never shown as 0 — and is left out of `score`; `pending` counts them.
@@ -32,7 +33,8 @@ export type MyTestResult = {
   score: number
   outOf: number
   pending: number
-  questions: { number: number; kind: QuestionKind; prompt: string; mark: number | null; outOf: number; comment: string | null }[]
+  mcq: { score: number; outOf: number; count: number } | null
+  questions: { number: number; prompt: string; mark: number | null; outOf: number; comment: string | null }[]
 }
 
 /** Builds `<BETTER_AUTH_URL>/t/<code>`; relative (with one warning) when the base is not set. */
@@ -179,6 +181,7 @@ export async function getMyTestResult(ctx: Ctx, testId: string): Promise<MyTestR
   }))
   const byQuestion = new Map<string, ScoringAnswer & { comment: string | null }>(answers.map((a) => [a.questionId, a]))
   const score = scoreAttempt(scoring, byQuestion)
+  const mcqIndexes = questions.flatMap((q, i) => (q.kind === 'mcq' ? [i] : []))
   return {
     title: test.title,
     courseTitle: found.courseTitle,
@@ -186,18 +189,29 @@ export async function getMyTestResult(ctx: Ctx, testId: string): Promise<MyTestR
     score: score.score,
     outOf: score.outOf,
     pending: score.pendingShort,
-    questions: questions.map((q, i) => {
+    mcq:
+      mcqIndexes.length === 0
+        ? null
+        : {
+            // Marks are in 0.25 steps, so these sums are exact.
+            score: mcqIndexes.reduce((sum, i) => sum + (score.perQuestion[i].mark ?? 0), 0),
+            outOf: mcqIndexes.reduce((sum, i) => sum + scoring[i].mark, 0),
+            count: mcqIndexes.length,
+          },
+    questions: questions.flatMap((q, i) => {
+      if (q.kind !== 'short') return []
       const answer = byQuestion.get(q.id)
-      return {
-        number: i + 1,
-        kind: q.kind,
-        prompt: q.prompt,
-        // null = a real answer still to be confirmed (pending), never a 0.
-        mark: score.perQuestion[i].mark,
-        outOf: scoring[i].mark,
-        // Comments go with confirmed marks of real short answers only.
-        comment: q.kind === 'short' && answer?.mark !== null && answer?.text?.trim() ? (answer.comment ?? null) : null,
-      }
+      return [
+        {
+          number: i + 1,
+          prompt: q.prompt,
+          // null = a real answer still to be confirmed (pending), never a 0.
+          mark: score.perQuestion[i].mark,
+          outOf: scoring[i].mark,
+          // Comments go with confirmed marks of real answers only.
+          comment: answer?.mark !== null && answer?.text?.trim() ? (answer.comment ?? null) : null,
+        },
+      ]
     }),
   }
 }

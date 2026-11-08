@@ -1437,7 +1437,6 @@
       "onlyYou": "Only you can see your result.",
       "notJoined": "You didn't take this test, so it counts as 0.",
       "pendingNote": "{count, plural, one {# answer is still being marked: your total may change.} other {# answers are still being marked: your total may change.}}",
-      "questions": "Questions",
       "question": "Question {n}",
       "kind": {
         "mcq": "Multiple choice",
@@ -1446,7 +1445,9 @@
       "mark": "{mark} / {outOf}",
       "pending": "Being marked",
       "comment": "Comment",
-      "seeMarks": "See your marks"
+      "seeMarks": "See your marks",
+      "mcqCount": "{count, plural, one {# question} other {# questions}}",
+      "mcqNote": "Shown as one total, so the answers stay private."
     }
   }
 }

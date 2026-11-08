@@ -276,15 +276,17 @@ test('marking a test with AI suggestions, release and the CA, end to end', async
     })
 
     // ---- 7. The students' released results ----------------------------------------------------
-    await test.step('Ama sees 5 / 6, "3 / 4" with the comment and no options; Ben sees 0 / 6', async () => {
+    await test.step('Ama sees 5 / 6, multiple choice as a total, "3 / 4" with the comment; Ben sees 0 / 6', async () => {
       await ama.goto(testPath)
       await expect(ama.getByText('5 / 6', { exact: true })).toBeVisible()
+      // Multiple choice is one total, never question by question.
+      await expect(ama.getByRole('region', { name: 'Multiple choice' })).toContainText('2 / 2')
+      await expect(ama.getByText(MCQ.prompt)).toHaveCount(0)
       const questions = ama.getByRole('listitem')
-      await expect(questions).toHaveCount(2)
+      await expect(questions).toHaveCount(1)
       const short = questions.filter({ hasText: SHORT.prompt })
       await expect(short).toContainText('3 / 4')
       await expect(short.getByText('Mention the membrane', { exact: true })).toBeVisible()
-      await expect(questions.filter({ hasText: MCQ.prompt })).toContainText('2 / 2')
       // Never the options, nor which one was right; never the guide.
       await expect(ama.getByText(MCQ.correct, { exact: true })).toHaveCount(0)
       await expect(ama.getByText(MCQ.wrong, { exact: true })).toHaveCount(0)

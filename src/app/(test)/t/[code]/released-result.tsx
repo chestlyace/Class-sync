@@ -8,9 +8,9 @@ import { formatDecimal } from '@/lib/number-format'
 import type { MyTestResult } from '@/server/tests/results'
 
 /**
- * A released test with short answers (the release email links here): the total, then each
- * question's mark and the lecturer's comment. Never the options or which one was correct. A real
- * answer still to be confirmed reads "Being marked", never 0.
+ * A released test with short answers (the release email links here): the total, multiple choice
+ * as one total, then each short answer's mark and the lecturer's comment. Never the options or
+ * which one was correct. A real answer still to be confirmed reads "Being marked", never 0.
  */
 export async function ReleasedResult({ result }: { result: MyTestResult }) {
   const [t, locale] = await Promise.all([getTranslations('tests.released'), getLocale()])
@@ -31,18 +31,31 @@ export async function ReleasedResult({ result }: { result: MyTestResult }) {
         <p className="text-sm text-muted-foreground">{t('onlyYou')}</p>
       </Panel>
 
+      {result.mcq && (
+        <section aria-labelledby="released-mcq" className="flex flex-col gap-4">
+          <SectionHeading id="released-mcq">{t('kind.mcq')}</SectionHeading>
+          <div className="flex items-start justify-between gap-3 rounded-3xl border bg-card p-4 sm:p-5">
+            <div className="flex min-w-0 flex-col gap-1">
+              <Eyebrow>{t('mcqCount', { count: result.mcq.count })}</Eyebrow>
+              <p className="text-sm text-muted-foreground">{t('mcqNote')}</p>
+            </div>
+            <span className="shrink-0 font-mono text-base font-semibold whitespace-nowrap">
+              {t('mark', { mark: num(result.mcq.score), outOf: num(result.mcq.outOf) })}
+            </span>
+          </div>
+        </section>
+      )}
+
       <section aria-labelledby="released-questions" className="flex flex-col gap-4">
         <SectionHeading id="released-questions">
-          {t('questions')} · {result.questions.length}
+          {t('kind.short')} · {result.questions.length}
         </SectionHeading>
         <ol className="flex flex-col gap-3">
           {result.questions.map((q) => (
             <li key={q.number} className="flex flex-col gap-3 rounded-3xl border bg-card p-4 sm:p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 flex-col gap-1">
-                  <Eyebrow>
-                    {t('question', { n: q.number })} · {t(`kind.${q.kind}`)}
-                  </Eyebrow>
+                  <Eyebrow>{t('question', { n: q.number })}</Eyebrow>
                   <p className="font-medium break-words whitespace-pre-wrap">{q.prompt}</p>
                 </div>
                 {q.mark === null ? (

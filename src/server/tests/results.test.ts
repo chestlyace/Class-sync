@@ -177,7 +177,7 @@ describe('releasing test results', () => {
     await flush()
     const bob = await getMyTestResult(s.bob, s.test.id)
     expect(bob.score).toBe(1.75)
-    expect(bob.questions[2]).toMatchObject({ mark: 1.75, comment: 'Re-marked.' })
+    expect(bob.questions[1]).toMatchObject({ mark: 1.75, comment: 'Re-marked.' })
     expect(sent).toHaveLength(3)
   })
 
@@ -193,16 +193,15 @@ describe('releasing test results', () => {
 
     const alice = await getMyTestResult(s.alice, s.test.id)
     expect(alice).toMatchObject({ score: 4, outOf: 8, pending: 1 })
-    expect(alice.questions[1]).toEqual({
+    expect(alice.questions[0]).toEqual({
       number: 2,
-      kind: 'short',
       prompt: 'What is osmosis?',
       mark: null,
       outOf: 4,
       comment: null,
     })
     // A blank answer is still a plain 0.
-    expect((await getMyTestResult(s.bob, s.test.id)).questions[1]).toMatchObject({ mark: 0 })
+    expect((await getMyTestResult(s.bob, s.test.id)).questions[0]).toMatchObject({ mark: 0 })
   })
 
   it('getMyTestResult before release is CONFLICT not_released; it shows marks and comments but no options', async () => {
@@ -223,28 +222,31 @@ describe('releasing test results', () => {
       score: 7.5,
       outOf: 8,
       pending: 0,
+      // Multiple choice only as a total, so a mark per question can't give the key away.
+      mcq: { score: 2, outOf: 2, count: 1 },
       questions: [
-        { number: 1, kind: 'mcq', prompt: 'Which organelle makes ATP?', mark: 2, outOf: 2, comment: null },
-        { number: 2, kind: 'short', prompt: 'What is osmosis?', mark: 3.5, outOf: 4, comment: 'Name the membrane.' },
-        { number: 3, kind: 'short', prompt: 'Name a function of DNA.', mark: 2, outOf: 2, comment: null },
+        { number: 2, prompt: 'What is osmosis?', mark: 3.5, outOf: 4, comment: 'Name the membrane.' },
+        { number: 3, prompt: 'Name a function of DNA.', mark: 2, outOf: 2, comment: null },
       ],
     })
-    // No options, no correct answer, no guide.
+    // No MCQ prompt or per-question MCQ mark, no options, no correct answer, no guide.
     const text = JSON.stringify(alice)
-    for (const hidden of ['Mitochondrion', 'Ribosome', 'membrane: 2', 'genetic information.', 'option', 'correct']) {
+    for (const hidden of ['Which organelle', 'Mitochondrion', 'Ribosome', 'membrane: 2', 'genetic information.', 'option', 'correct', '"kind"']) {
       expect(text).not.toContain(hidden)
     }
 
     expect(await getMyTestResult(s.bob, s.test.id)).toMatchObject({
       score: 0.5,
-      questions: [{ mark: 0 }, { mark: 0, comment: null }, { mark: 0.5, comment: 'Not quite.' }],
+      mcq: { score: 0, outOf: 2, count: 1 },
+      questions: [{ mark: 0, comment: null }, { mark: 0.5, comment: 'Not quite.' }],
     })
     // Dave never joined: every mark 0.
     expect(await getMyTestResult(s.dave, s.test.id)).toMatchObject({
       joined: false,
       score: 0,
       outOf: 8,
-      questions: [{ mark: 0 }, { mark: 0 }, { mark: 0 }],
+      mcq: { score: 0, outOf: 2, count: 1 },
+      questions: [{ mark: 0 }, { mark: 0 }],
     })
   })
 
@@ -283,7 +285,7 @@ describe('releasing test results', () => {
     await expect(getMyTestResult(outsider, s.test.id)).rejects.toMatchObject({ code: 'FORBIDDEN' })
     await expect(getMyTestResult(s.lecturer, s.test.id)).rejects.toMatchObject({ code: 'FORBIDDEN' })
     await expect(getMyTestResult(s.colleague, s.test.id)).rejects.toMatchObject({ code: 'FORBIDDEN' })
-    expect((await getMyTestResult(s.carol, s.test.id)).questions[1]).toMatchObject({ mark: 0, comment: null })
+    expect((await getMyTestResult(s.carol, s.test.id)).questions[0]).toMatchObject({ mark: 0, comment: null })
 
     // Nothing changed through the refused calls.
     const [row] = await db
