@@ -45,10 +45,10 @@ export async function getCaSettings(db: Db, courseId: string): Promise<CaSetting
  * course — settings, the status matrix (a fixed handful), enrolment starts, published
  * assignments, their submissions, participation sums — never one per student.
  *
- * Per student, an assignment due before they joined the course (class `joined_at` or include
- * date, as attendance uses) is left out entirely. On a released assignment: a graded hand-in
- * counts its mark; no hand-in counts 0 and is missing work; a hand-in not graded yet is pending
- * and left out.
+ * On a released assignment: a graded hand-in counts its mark; a hand-in not graded yet is
+ * pending and left out; no hand-in counts 0 and is missing work. An assignment due before the
+ * student joined the course (class `joined_at` or include date, as attendance uses) is left out
+ * and never missing, unless they handed it in and it was graded: work done counts.
  */
 export async function loadCaInputs(
   db: Db,
@@ -113,22 +113,23 @@ export async function loadCaInputs(
 
     // No known enrolment date: everything counts (as attendance treats them as enrolled).
     const start = starts.get(studentId)
-    const counts = (a: { dueAt: Date }) => start === undefined || a.dueAt.getTime() >= start.getTime()
+    const dueWhileEnrolled = (a: { dueAt: Date }) => start === undefined || a.dueAt.getTime() >= start.getTime()
 
     let missingWork = 0
     const assignmentInputs: CaInput['assignments'] = []
     for (const a of released) {
-      if (!counts(a)) continue
       const key = `${a.id}:${studentId}`
-      if (!handIns.has(key)) {
+      const mark = handIns.get(key) ?? null
+      if (mark !== null) {
+        // Graded: counts, even when due before the student joined.
+        assignmentInputs.push({ weight: a.weight, mark, maxMark: a.maxMark })
+      } else if (!handIns.has(key) && dueWhileEnrolled(a)) {
         missingWork++
         assignmentInputs.push({ weight: a.weight, mark: null, maxMark: a.maxMark })
-        continue
       }
-      const mark = handIns.get(key) ?? null
-      if (mark !== null) assignmentInputs.push({ weight: a.weight, mark, maxMark: a.maxMark })
+      // Otherwise pending (handed in, not graded) or due before they joined: left out.
     }
-    for (const a of overdue) if (counts(a) && !handIns.has(`${a.id}:${studentId}`)) missingWork++
+    for (const a of overdue) if (dueWhileEnrolled(a) && !handIns.has(`${a.id}:${studentId}`)) missingWork++
 
     students.set(studentId, {
       input: {

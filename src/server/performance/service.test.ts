@@ -336,6 +336,36 @@ describe('CA service', () => {
     expect(rowOf(rows, alice).missingWork).toBe(2)
   })
 
+  it('graded work on an assignment due before a student joined counts; missing or pending work there does not', async () => {
+    const { lecturer, algo, cls } = await setup()
+    const erin = await addStudent(cls, 'Erin', 'UB5')
+    const frank = await addStudent(cls, 'Frank', 'UB6')
+
+    // Both due before Erin and Frank joined. Erin handed in both: one graded, one never graded.
+    const early = await publishedAssignment(lecturer, algo.id, { title: 'Early', maxMark: 20, weight: 1 })
+    await handIn(lecturer, erin, early.id, 16)
+    await releaseGrades(lecturer, early.id)
+    const ungraded = await publishedAssignment(lecturer, algo.id, { title: 'Ungraded', maxMark: 20, weight: 1 })
+    await handIn(lecturer, erin, ungraded.id)
+    await releaseGrades(lecturer, ungraded.id)
+    advance(2 * DAY)
+    for (const late of [erin, frank]) {
+      await db
+        .update(classStudent)
+        .set({ joinedAt: new Date(ungraded.dueAt.getTime() + MIN) })
+        .where(eq(classStudent.userId, late.user.id))
+    }
+
+    const { rows } = await getCourseCa(lecturer, algo.id)
+    // Erin: only the graded hand-in counts → 16/20 = 0.8 → 16 of 20; nothing missing.
+    expect(component(rowOf(rows, erin), 'assignments')).toMatchObject({ ratio: 0.8, score: 16 })
+    expect(rowOf(rows, erin).missingWork).toBe(0)
+    // Frank handed in nothing: not started, nothing missing.
+    expect(component(rowOf(rows, frank), 'assignments')).toMatchObject({ ratio: null, score: null })
+    expect(rowOf(rows, frank).missingWork).toBe(0)
+    expect((await getMyCa(erin, algo.id)).result).toEqual(rowOf(rows, erin).result)
+  })
+
   it('a student excluded from the course or removed from the class is left out and refused', async () => {
     const { lecturer, algo, alice, bob, cls } = await setup()
     const carol = await addStudent(cls, 'Carol', 'UB3')
