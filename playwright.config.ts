@@ -20,7 +20,7 @@ const DATABASE_URL = process.env.E2E_DATABASE_URL ?? 'postgres://postgres@127.0.
 export default defineConfig({
   testDir: './e2e',
   // One serial scenario per project, one project after the other. Sign-ups are rate-limited to
-  // 30 per minute per IP under `next start` (src/server/auth/auth.ts); a full run (all scenarios, both projects) signs up 34 users,
+  // 30 per minute per IP under `next start` (src/server/auth/auth.ts); a full run (all scenarios, both projects) signs up 40 users,
   // at most 4 per scenario and a few minutes apart, so no minute comes near the limit.
   workers: 1,
   fullyParallel: false,
@@ -54,6 +54,8 @@ export default defineConfig({
       // `next start` is production mode, which would pick Vercel Blob: keep uploads on local disk, in the OS temp dir.
       STORAGE_DRIVER: 'local',
       LOCAL_UPLOAD_DIR: join(tmpdir(), 'clasync-e2e-uploads'),
+      // Deterministic mark suggestions (src/server/tests/ai/fake.ts): no AI provider, no key.
+      AI_MARKING_MODEL: 'fake',
     },
   },
 })
