@@ -23,6 +23,16 @@ describe('redirectIfSignedIn', () => {
     expect(redirect).toHaveBeenCalledWith('/dashboard')
   })
 
+  it('sends a signed-in user to a safe next path', async () => {
+    getSessionUser.mockResolvedValue({ id: 'u1', role: 'student' })
+    await expect(redirectIfSignedIn('/t/8F3KQ2')).rejects.toThrow('NEXT_REDIRECT:/t/8F3KQ2')
+  })
+
+  it('ignores an unsafe next path', async () => {
+    getSessionUser.mockResolvedValue({ id: 'u1', role: 'student' })
+    await expect(redirectIfSignedIn('//evil.com')).rejects.toThrow('NEXT_REDIRECT:/dashboard')
+  })
+
   it('lets a visitor through', async () => {
     getSessionUser.mockResolvedValue(null)
     await expect(redirectIfSignedIn()).resolves.toBeUndefined()

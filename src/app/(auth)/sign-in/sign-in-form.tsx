@@ -10,7 +10,8 @@ import { PasswordInput } from '@/components/password-input'
 import { authClient } from '@/lib/auth-client'
 import { authErrorKey } from '@/lib/auth-errors'
 
-export function SignInForm() {
+/** `next`: a same-site path (already checked with safeNextPath) to open after signing in. */
+export function SignInForm({ next = null }: { next?: string | null }) {
   const t = useTranslations('auth.signIn')
   const tRoot = useTranslations()
   const router = useRouter()
@@ -31,7 +32,7 @@ export function SignInForm() {
         setError(tRoot(authErrorKey(authError.code, authError.status)))
         return
       }
-      router.push('/')
+      router.push(next ?? '/')
       router.refresh()
     } catch {
       setError(tRoot('common.genericError'))

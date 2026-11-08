@@ -1225,6 +1225,125 @@
         "notEnded": "Cet étudiant n'a pas été arrêté pour sortie.",
         "testOver": "Le test est terminé : personne ne peut plus revenir."
       }
+    },
+    "student": {
+      "metaTitle": "Test",
+      "loading": "Ouverture du test…",
+      "backToDashboard": "Retour au tableau de bord",
+      "notYourCourse": {
+        "title": "Ce test ne concerne aucun de vos cours",
+        "body": "Vérifiez le lien auprès de votre délégué ou de votre enseignant, et que vous êtes connecté avec le compte que vous utilisez pour ce cours."
+      },
+      "openElsewhere": {
+        "title": "Ce test est déjà ouvert sur un autre appareil",
+        "body": "Continuez sur l'appareil où vous l'avez ouvert. Si cet appareil est éteint, celui-ci peut prendre le relais au bout d'une minute.",
+        "retry": "Réessayer"
+      },
+      "openFailed": {
+        "title": "Impossible d'ouvrir le test",
+        "body": "Vérifiez votre connexion, puis réessayez.",
+        "retry": "Réessayer"
+      },
+      "sync": {
+        "saved": "Enregistré",
+        "saving": "Enregistrement…",
+        "offline": "Enregistré sur ce téléphone · en attente de connexion",
+        "signedOut": "Enregistré sur ce téléphone · reconnectez-vous pour envoyer vos réponses",
+        "failed": "Enregistré sur ce téléphone · nouvel essai en cours"
+      },
+      "facts": {
+        "duration": "Durée",
+        "durationValue": "{minutes} min",
+        "questions": "Questions",
+        "marks": "Total des points"
+      },
+      "waiting": {
+        "eyebrow": "En attente du début",
+        "status": "Votre enseignant lance le test pour tout le monde. La première question s'ouvre ici d'elle-même.",
+        "rule": "Le test se termine pour vous après {exits, plural, one {# sortie} other {# sorties}} de cette page, ou une absence de plus de {seconds, plural, one {# seconde} other {# secondes}}.",
+        "ruleWhat": "Sortir, c'est passer à un autre onglet ou une autre application ; sur un ordinateur, aussi à une autre fenêtre ou quitter le plein écran.",
+        "saved": "Vos réponses sont enregistrées sur ce téléphone au fur et à mesure.",
+        "notice": "Clasync remarque quand vous quittez cette page ; il ne verrouille pas votre téléphone."
+      },
+      "begin": {
+        "title": "Le test a commencé",
+        "body": "Touchez Commencer pour ouvrir les questions en plein écran. Le chrono tourne déjà.",
+        "note": "Quitter le plein écran compte comme quitter le test.",
+        "button": "Commencer"
+      },
+      "question": {
+        "progress": "Question {n} sur {total} · {answered, plural, one {# répondue} other {# répondues}}",
+        "timeLeft": "Temps restant",
+        "mark": "{n, plural, one {{mark} point} other {{mark} points}}",
+        "kindMcq": "Choix multiple",
+        "kindShort": "Réponse courte",
+        "answerLabel": "Votre réponse",
+        "counter": "{count} / {max}",
+        "previous": "Précédente",
+        "next": "Suivante",
+        "timeUp": "Temps écoulé — vos réponses sont remises",
+        "handIn": "Remettre",
+        "handInTitle": "Remettre vos réponses ?",
+        "handInAll": "Vous avez répondu à toutes les questions.",
+        "handInUnanswered": "{count, plural, one {# question est encore sans réponse.} other {# questions sont encore sans réponse.}}",
+        "handInFinal": "Vous ne pourrez plus modifier vos réponses après les avoir remises.",
+        "handingIn": "Remise en cours…",
+        "handInOffline": "Pas de connexion. Vos réponses sont enregistrées sur ce téléphone ; remettez-les à nouveau une fois reconnecté.",
+        "handInFailed": "Impossible de remettre vos réponses. Elles sont enregistrées sur ce téléphone ; veuillez réessayer."
+      },
+      "warning": {
+        "title": "Vous avez quitté le test ({n} sur {max})",
+        "away": "Temps d'absence",
+        "timeLeft": "Temps restant",
+        "nextEnds": "Si vous quittez encore, votre test se termine et vos réponses sont remises.",
+        "nextMore": "Votre test se termine après {count, plural, one {# sortie de plus} other {# sorties de plus}}, ou aussitôt après une absence de plus de {seconds, plural, one {# seconde} other {# secondes}}.",
+        "saved": "Vos réponses sont enregistrées.",
+        "continue": "Revenir aux questions",
+        "fullscreen": "Revenir en plein écran"
+      },
+      "ended": {
+        "eyebrow": "Test terminé",
+        "title": "Votre test est terminé",
+        "exits": "Vous avez quitté le test {count, plural, one {# fois} other {# fois}}, la limite fixée par votre enseignant.",
+        "absence": "Vous vous êtes absenté plus de {seconds, plural, one {# seconde} other {# secondes}}.",
+        "handedIn": "{count, plural, =0 {Aucune réponse n'a été remise.} one {# réponse a été remise.} other {# réponses ont été remises.}}",
+        "reopen": "Si votre enseignant vous laisse revenir, cette page se rouvre d'elle-même.",
+        "totalLater": "Votre total s'affiche quand le test est terminé pour tout le monde."
+      },
+      "result": {
+        "eyebrow": "Remis",
+        "title": "Votre résultat",
+        "score": "{score} / {outOf}",
+        "right": "{right} sur {count} justes",
+        "pending": "Remis. Votre note s'affiche dans un instant.",
+        "awaitingRelease": "Remis. Votre résultat arrive quand votre enseignant le publie."
+      },
+      "closed": {
+        "title": "Ce test est terminé",
+        "body": "Il s'est terminé avant que vous l'ouvriez."
+      },
+      "duration": {
+        "seconds": "{s} s",
+        "minutes": "{m} min {s} s"
+      },
+      "myTests": {
+        "title": "Mes tests",
+        "empty": "Aucun test pour ce cours pour l'instant.",
+        "state": {
+          "not_started": "Pas commencé",
+          "running": "En cours",
+          "ended": "Terminé",
+          "released": "Résultats publiés"
+        },
+        "status": {
+          "not_joined": "Pas rejoint",
+          "working": "En cours",
+          "ended_left": "Terminé pour sortie",
+          "handed_in": "Remis"
+        },
+        "score": "{score} / {outOf}",
+        "openLabel": "Ouvrir le test {title}"
+      }
     }
   }
 }

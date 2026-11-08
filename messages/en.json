@@ -1225,6 +1225,125 @@
         "notEnded": "This student wasn't ended for leaving.",
         "testOver": "The test is over: nobody can be let back in."
       }
+    },
+    "student": {
+      "metaTitle": "Test",
+      "loading": "Opening the test…",
+      "backToDashboard": "Back to dashboard",
+      "notYourCourse": {
+        "title": "This test is not for one of your courses",
+        "body": "Check the link with your class rep or lecturer, and that you are signed in with the account you use for this course."
+      },
+      "openElsewhere": {
+        "title": "This test is already open on another device",
+        "body": "Keep answering on the device where you opened it. If that device is switched off, this one can take over after a minute.",
+        "retry": "Try again"
+      },
+      "openFailed": {
+        "title": "We couldn't open the test",
+        "body": "Check your connection, then try again.",
+        "retry": "Try again"
+      },
+      "sync": {
+        "saved": "Saved",
+        "saving": "Saving…",
+        "offline": "Saved on this phone · waiting for connection",
+        "signedOut": "Saved on this phone · sign in again to send your answers",
+        "failed": "Saved on this phone · trying again"
+      },
+      "facts": {
+        "duration": "Duration",
+        "durationValue": "{minutes} min",
+        "questions": "Questions",
+        "marks": "Total marks"
+      },
+      "waiting": {
+        "eyebrow": "Waiting to start",
+        "status": "Your lecturer starts the test for everyone. The first question opens here by itself.",
+        "rule": "The test ends for you after {exits, plural, one {# exit} other {# exits}} from this page, or one absence longer than {seconds, plural, one {# second} other {# seconds}}.",
+        "ruleWhat": "Leaving means switching to another tab or app; on a laptop, also another window or leaving full screen.",
+        "saved": "Your answers are saved on this phone as you go.",
+        "notice": "Clasync notices when you leave this page; it does not lock your phone."
+      },
+      "begin": {
+        "title": "The test has started",
+        "body": "Tap Begin to open the questions in full screen. The timer is already running.",
+        "note": "Leaving full screen counts as leaving the test.",
+        "button": "Begin"
+      },
+      "question": {
+        "progress": "Question {n} of {total} · {answered} answered",
+        "timeLeft": "Time left",
+        "mark": "{n, plural, one {{mark} mark} other {{mark} marks}}",
+        "kindMcq": "Multiple choice",
+        "kindShort": "Short answer",
+        "answerLabel": "Your answer",
+        "counter": "{count} / {max}",
+        "previous": "Previous",
+        "next": "Next",
+        "timeUp": "Time is up — handing in your answers",
+        "handIn": "Hand in",
+        "handInTitle": "Hand in your answers?",
+        "handInAll": "You have answered every question.",
+        "handInUnanswered": "{count, plural, one {# question is} other {# questions are}} still unanswered.",
+        "handInFinal": "You can't change your answers after handing in.",
+        "handingIn": "Handing in…",
+        "handInOffline": "No connection. Your answers are saved on this phone; hand in again once you are back online.",
+        "handInFailed": "We couldn't hand in your answers. They are saved on this phone; please try again."
+      },
+      "warning": {
+        "title": "You left the test ({n} of {max})",
+        "away": "Time away",
+        "timeLeft": "Time left",
+        "nextEnds": "If you leave again, your test ends and your answers are handed in.",
+        "nextMore": "Your test ends after {count, plural, one {# more exit} other {# more exits}}, or at once after an absence longer than {seconds, plural, one {# second} other {# seconds}}.",
+        "saved": "Your answers are saved.",
+        "continue": "Back to the questions",
+        "fullscreen": "Back to full screen"
+      },
+      "ended": {
+        "eyebrow": "Test ended",
+        "title": "Your test has ended",
+        "exits": "You left the test {count, plural, one {# time} other {# times}}, the limit your lecturer set.",
+        "absence": "You were away for longer than {seconds, plural, one {# second} other {# seconds}}.",
+        "handedIn": "{count, plural, =0 {No answers were handed in.} one {# answer was handed in.} other {# answers were handed in.}}",
+        "reopen": "If your lecturer lets you back in, this page reopens by itself.",
+        "totalLater": "Your total appears when the test ends for everyone."
+      },
+      "result": {
+        "eyebrow": "Handed in",
+        "title": "Your result",
+        "score": "{score} / {outOf}",
+        "right": "{right} of {count} right",
+        "pending": "Handed in. Your score appears in a moment.",
+        "awaitingRelease": "Handed in. Your result comes when your lecturer releases it."
+      },
+      "closed": {
+        "title": "This test has ended",
+        "body": "It ended before you opened it."
+      },
+      "duration": {
+        "seconds": "{s} s",
+        "minutes": "{m} min {s} s"
+      },
+      "myTests": {
+        "title": "My tests",
+        "empty": "No tests for this course yet.",
+        "state": {
+          "not_started": "Not started",
+          "running": "Running",
+          "ended": "Ended",
+          "released": "Results out"
+        },
+        "status": {
+          "not_joined": "Not joined",
+          "working": "In progress",
+          "ended_left": "Ended for leaving",
+          "handed_in": "Handed in"
+        },
+        "score": "{score} / {outOf}",
+        "openLabel": "Open the test {title}"
+      }
     }
   }
 }

@@ -1,6 +1,10 @@
 import { z } from 'zod'
+// Types only (erased at build): one definition shared with the service, no server code in the bundle.
+import type { AnswerInput, ExitReport } from '@/server/tests/attempt'
 import { MAX_QUESTIONS, SHORT_ANSWER_MAX } from '@/server/tests/rules'
 import { MAX_AWAY_MS } from './leave-tracker'
+
+export type { AnswerInput, ExitReport }
 
 /**
  * What the student's test runner sends with each sync: its device id, the answers the server has
@@ -8,10 +12,6 @@ import { MAX_AWAY_MS } from './leave-tracker'
  * `syncAttempt`, and used by the answer store to read back what it saved in localStorage.
  */
 
-/** One answer as sent: `rev` counts this question's changes on the device (1, 2, 3…). */
-export type AnswerInput = { questionId: string; optionId: string | null; text: string | null; rev: number }
-/** One leave report: `left` when the page was left, `back` with the absence measured on the device. */
-export type ExitReport = { exitId: string; phase: 'left' | 'back'; awayMs: number | null }
 export type SyncPayload = { deviceId: string; answers: AnswerInput[]; exits: ExitReport[] }
 
 export const MAX_SYNC_EXITS = 50
@@ -25,13 +25,13 @@ export const answerInputSchema = z.object({
   optionId: id.nullable(),
   text: z.string().max(SHORT_ANSWER_MAX).nullable(),
   rev: z.int().min(1).max(MAX_REV),
-})
+}) satisfies z.ZodType<AnswerInput>
 
 export const exitReportSchema = z.object({
   exitId: z.uuid(),
   phase: z.enum(['left', 'back']),
   awayMs: z.int().min(0).max(MAX_AWAY_MS).nullable(),
-})
+}) satisfies z.ZodType<ExitReport>
 
 const syncPayloadSchema = z.object({
   deviceId: z.uuid(),
@@ -41,7 +41,7 @@ const syncPayloadSchema = z.object({
     // One row per question: a question twice in one upsert is ambiguous (and Postgres refuses it).
     .refine((answers) => new Set(answers.map((a) => a.questionId)).size === answers.length),
   exits: z.array(exitReportSchema).max(MAX_SYNC_EXITS),
-})
+}) satisfies z.ZodType<SyncPayload>
 
 /** The payload when every part is valid, otherwise null. Unknown keys are dropped. */
 export function parseSyncPayload(value: unknown): SyncPayload | null {
