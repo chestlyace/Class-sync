@@ -172,7 +172,7 @@ async function LecturerActions() {
       <Link href="/classes/new" className={buttonVariants({ variant: 'outline' })}>
         {t('newClass')}
       </Link>
-      <Link href="/courses/new" className={buttonVariants({ className: 'bg-foreground text-background hover:bg-foreground/85' })}>
+      <Link href="/courses/new" className={buttonVariants({ variant: 'contrast' })}>
         <Plus aria-hidden="true" data-icon="inline-start" />
         {t('newCourse')}
       </Link>
@@ -210,11 +210,11 @@ async function LikelyNow({
   return (
     <section
       aria-labelledby="likely-now"
-      className="flex flex-wrap items-center justify-between gap-6 rounded-3xl border bg-card px-6 py-6 sm:px-8 sm:py-7"
+      className="flex flex-wrap items-center justify-between gap-5 rounded-3xl border bg-card px-5 py-5 sm:gap-6 sm:px-8 sm:py-7"
     >
       <div className="flex min-w-0 flex-col gap-2">
         <Eyebrow>{t('likelyNow', { weekday, time: formatSessionDate(startedAt, locale, config.timeZone, 'time') })}</Eyebrow>
-        <h2 id="likely-now" className="text-2xl leading-tight font-semibold tracking-[-0.02em] sm:text-3xl">
+        <h2 id="likely-now" className="text-2xl leading-tight font-semibold tracking-[-0.02em] text-balance sm:text-3xl">
           {course.title}
         </h2>
         <p className="text-muted-foreground">
@@ -223,7 +223,8 @@ async function LikelyNow({
             : t('likelyMeta', { className: course.className, schoolName: course.schoolName, count: studentCount })}
         </p>
       </div>
-      <div className="flex flex-wrap items-center gap-2.5">
+      {/* Phones: the check-in button first and full width, "Open course" under it. */}
+      <div className="flex w-full flex-col-reverse gap-1.5 sm:w-auto sm:flex-row sm:items-center sm:gap-2.5">
         <Link href={courseHref} className={buttonVariants({ variant: 'ghost', size: 'lg' })}>
           {t('openCourse')}
         </Link>
@@ -270,7 +271,11 @@ async function ClassBlock({
           <li>
             <Link
               href={`/courses/new?classId=${encodeURIComponent(cls.id)}`}
-              className="flex h-full min-h-36 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-input px-5 py-4 text-center font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+              className={cn(
+                'flex h-full items-center justify-center gap-2 rounded-2xl border border-dashed border-input px-5 py-4 text-center font-medium text-muted-foreground outline-none transition-colors duration-150 hover:border-muted-foreground hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50',
+                // The class's only tile: as tall as a course card, so the empty class still reads as a row.
+                courses.length === 0 ? 'min-h-36 flex-col' : 'min-h-14',
+              )}
             >
               <Plus aria-hidden="true" className="size-5" />
               {t('addCourse')}
@@ -303,17 +308,18 @@ async function CourseCard({
   return (
     <Link
       href={`/courses/${encodeURIComponent(course.id)}`}
-      className="flex h-full min-h-36 flex-col gap-1 rounded-2xl border bg-card px-5 py-4 outline-none hover:border-input focus-visible:ring-3 focus-visible:ring-ring/50"
+      className="group flex h-full min-h-36 flex-col gap-1 rounded-2xl border bg-card px-5 py-4 outline-none transition-colors duration-150 hover:border-input focus-visible:ring-3 focus-visible:ring-ring/50"
     >
       <span className="font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase">{meta}</span>
-      <span className="text-lg leading-snug font-semibold">{course.title}</span>
+      <span className="text-lg leading-snug font-semibold text-pretty">{course.title}</span>
       {context && <span className="text-sm break-words text-muted-foreground">{context}</span>}
       <span className="mt-auto flex items-end justify-between gap-2 border-t border-accent pt-3.5">
         {isLecturer ? (
           lastSession ? (
             <span className="flex flex-col">
-              <span className="font-display text-3xl leading-none">
-                {lastSession.attended} / {lastSession.total}
+              <span className="font-display text-3xl leading-none tabular-nums">
+                {lastSession.attended}
+                <span className="text-muted-foreground"> / {lastSession.total}</span>
               </span>
               <span className="text-[13px] text-muted-foreground">{t('lastSession')}</span>
             </span>
@@ -323,7 +329,13 @@ async function CourseCard({
         ) : (
           <span className="text-sm text-muted-foreground">{t('taughtBy', { name: course.lecturerName })}</span>
         )}
-        <ArrowRight aria-hidden="true" className={cn('size-4 shrink-0 text-muted-foreground', isLecturer && 'mb-1')} />
+        <ArrowRight
+          aria-hidden="true"
+          className={cn(
+            'size-4 shrink-0 text-muted-foreground transition-[color,transform] duration-150 ease-out group-hover:translate-x-0.5 group-hover:text-foreground motion-reduce:transition-none',
+            isLecturer && 'mb-1',
+          )}
+        />
       </span>
     </Link>
   )
