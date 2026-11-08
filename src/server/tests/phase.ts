@@ -25,14 +25,20 @@ export function testPhase(t: TestTiming, at: Date): TestPhase {
   return 'running'
 }
 
-/** Ended tests are released at once when MCQ-only, otherwise when the lecturer releases them. */
+/**
+ * Ended tests with short answers are released when the lecturer releases them. MCQ-only tests are
+ * released once answers are final (the end plus the grace), the same moment the result shows and
+ * the test counts in the CA; until then they are `ended`.
+ */
 export function testState(
   t: TestTiming & { resultsReleasedAt: Date | null; hasShort: boolean },
   at: Date,
 ): TestState {
   const phase = testPhase(t, at)
-  if (phase === 'ended' && (!t.hasShort || t.resultsReleasedAt !== null)) return 'released'
-  return phase
+  if (phase !== 'ended') return phase
+  if (t.hasShort) return t.resultsReleasedAt !== null ? 'released' : 'ended'
+  const finalAt = answersFinalAt(t)
+  return finalAt !== null && at.getTime() >= finalAt.getTime() ? 'released' : 'ended'
 }
 
 /**

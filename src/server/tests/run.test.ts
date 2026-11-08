@@ -566,7 +566,7 @@ describe('running a test (lecturer)', () => {
     ])
   })
 
-  it('an MCQ-only test is released at the end and its scores follow answers received in the grace', async () => {
+  it('an MCQ-only test is released once answers are final and its scores follow answers received in the grace', async () => {
     const { lecturer, algo, alice } = await setup()
     const q = await insertTest(lecturer, algo.id, { mcqOnly: true })
     setClock(T0)
@@ -576,13 +576,19 @@ describe('running a test (lecturer)', () => {
 
     setClock(at(30))
     const first = await getTestResults(lecturer, q.test.id)
-    expect(first.test.state).toBe('released')
+    expect(first.test.state).toBe('ended')
     expect(first.rows[0]).toMatchObject({ score: 2, outOf: 5 })
 
     // An answer stuck on a weak connection arrives 90 s after the end (accepted by the student service).
     setClock(at(31.5))
     await answer(a.id, q.q2.id, { optionId: q.o4.id }, at(31.5))
-    expect((await getTestResults(lecturer, q.test.id)).rows[0]).toMatchObject({ score: 5, outOf: 5 })
+    const graced = await getTestResults(lecturer, q.test.id)
+    expect(graced.test.state).toBe('ended')
+    expect(graced.rows[0]).toMatchObject({ score: 5, outOf: 5 })
+
+    // Released when the answers are final, the moment the student sees it and the CA counts it.
+    setClock(at(32))
+    expect((await getTestResults(lecturer, q.test.id)).test.state).toBe('released')
   })
 
   it('loadTestScores: every test × student, 0 without an attempt, a fixed number of queries', async () => {
