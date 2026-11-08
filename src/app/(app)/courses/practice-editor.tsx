@@ -139,7 +139,11 @@ function QuestionCard({
   const t = useTranslations('revision.lecturer')
   const [editing, setEditing] = useState(false)
   const [moving, startMoving] = useTransition()
-  const move = (dir: 'up' | 'down') => startMoving(async () => void (await movePracticeQuestionAction(question.id, dir)))
+  const [moveError, setMoveError] = useState<ActionResult<unknown> | null>(null)
+  const move = (dir: 'up' | 'down') =>
+    startMoving(async () => {
+      setMoveError(await movePracticeQuestionAction(question.id, dir))
+    })
 
   if (editing) {
     return (
@@ -208,6 +212,8 @@ function QuestionCard({
           />
         </div>
       </div>
+
+      <PracticeError state={moveError} />
 
       <p className="break-words whitespace-pre-line">{question.prompt}</p>
 
@@ -352,6 +358,7 @@ function QuestionForm({
           <Button
             type="button"
             variant="outline"
+            size="lg"
             className="self-start"
             disabled={options.length >= MCQ_OPTIONS_MAX}
             onClick={() => {
@@ -395,10 +402,10 @@ function QuestionForm({
 
       <PracticeError state={state} />
       <div className="flex flex-wrap gap-2.5">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" size="lg" disabled={pending}>
           {pending ? t('saving') : initial ? t('save') : t('add')}
         </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="outline" size="lg" onClick={onCancel}>
           {t('cancel')}
         </Button>
       </div>
@@ -413,11 +420,11 @@ function AddQuestion({ topicId }: { topicId: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-2.5">
-        <Button type="button" variant={kind === 'mcq' ? 'default' : 'outline'} aria-pressed={kind === 'mcq'} onClick={() => setKind('mcq')}>
+        <Button type="button" size="lg" variant={kind === 'mcq' ? 'default' : 'outline'} aria-pressed={kind === 'mcq'} onClick={() => setKind('mcq')}>
           <CircleDot aria-hidden="true" data-icon="inline-start" />
           {t('addMcq')}
         </Button>
-        <Button type="button" variant={kind === 'short' ? 'default' : 'outline'} aria-pressed={kind === 'short'} onClick={() => setKind('short')}>
+        <Button type="button" size="lg" variant={kind === 'short' ? 'default' : 'outline'} aria-pressed={kind === 'short'} onClick={() => setKind('short')}>
           <TextCursorInput aria-hidden="true" data-icon="inline-start" />
           {t('addShort')}
         </Button>
@@ -474,7 +481,7 @@ function ImportTest({ topicId, importable }: { topicId: string; importable: Impo
           {t('done', { count: state.data.count })}
         </p>
       )}
-      <Button type="submit" variant="outline" className="self-start" disabled={pending}>
+      <Button type="submit" variant="outline" size="lg" className="self-start" disabled={pending}>
         <Copy aria-hidden="true" data-icon="inline-start" />
         {pending ? t('copying') : t('submit')}
       </Button>

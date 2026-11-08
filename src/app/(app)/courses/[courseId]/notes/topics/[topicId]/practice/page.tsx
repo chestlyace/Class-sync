@@ -66,7 +66,7 @@ export default async function PracticePage({ params }: PageProps<'/courses/[cour
         title={data.topic.title}
         description={`${data.course.title} · ${data.course.className}`}
         actions={
-          <Link href={notesHref} className={buttonVariants({ variant: 'outline' })}>
+          <Link href={notesHref} className={buttonVariants({ variant: 'outline', size: 'lg' })}>
             <ArrowLeft aria-hidden="true" data-icon="inline-start" />
             {t('backToNotes')}
           </Link>

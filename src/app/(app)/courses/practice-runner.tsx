@@ -15,10 +15,10 @@ import { answer, missed, score, shuffleOptions, startRound, type Round } from '.
 
 type Started = { round: Round; optionOrder: Record<string, string[]> }
 
-/** Sends queued answers. Only a lost session or no network keeps them: anything else is final. */
+/** Sends queued answers. Only a lost session, an unverified email or no network keeps them: anything else is final. */
 async function send(courseId: string, batch: Outcome[]): Promise<boolean> {
   const result = await recordPracticeOutcomesAction(courseId, batch)
-  return result.ok || result.code !== 'UNAUTHENTICATED'
+  return result.ok || (result.code !== 'UNAUTHENTICATED' && result.code !== 'EMAIL_UNVERIFIED')
 }
 
 function begin(questions: Map<string, PracticeQuestionView>, ids: string[]): Started {
@@ -71,13 +71,15 @@ export function PracticeRunner({
 
   if (questions.length === 0) {
     return (
-      <div className="mx-auto flex w-full max-w-xl flex-col items-start gap-4 rounded-3xl border p-5 sm:p-7">
-        <h2 className="text-xl font-semibold tracking-tight">{t('emptyTitle')}</h2>
-        <p className="text-muted-foreground">{t('emptyBody')}</p>
-        <Link href={notesHref} className={buttonVariants({ variant: 'outline' })}>
-          {t('readNotes')}
-        </Link>
-      </div>
+      <Shell topicTitle={topicTitle} notesHref={notesHref}>
+        <div className="flex flex-col items-start gap-4 rounded-3xl border p-5 sm:p-7">
+          <h2 className="text-xl font-semibold tracking-tight">{t('emptyTitle')}</h2>
+          <p className="text-muted-foreground">{t('emptyBody')}</p>
+          <Link href={notesHref} className={buttonVariants({ variant: 'outline', size: 'lg' })}>
+            {t('readNotes')}
+          </Link>
+        </div>
+      </Shell>
     )
   }
 
