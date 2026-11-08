@@ -773,7 +773,7 @@ describe('taking a test (student services)', () => {
     expect(graced.result).toBeNull()
     expect((await openTest(alice, t.code, 'dev-A')).result).toBeNull()
     expect((await handIn(alice, attemptId, { deviceId: 'dev-A', answers: [] })).result).toBeNull()
-    expect((await listMyTests(alice, algo.id))[0]).toMatchObject({ state: 'released', result: null })
+    expect((await listMyTests(alice, algo.id))[0]).toMatchObject({ state: 'ended', result: null })
 
     // Once the answers are final, the total includes the grace answer.
     setClock(after(DEADLINE, 2 * MIN))
