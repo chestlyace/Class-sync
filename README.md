@@ -118,13 +118,23 @@ Students get one email about 24 hours before an assignment is due, if they have 
 The job is `POST /api/cron/reminders`; it must be called every hour, and an hour that was missed is made up on the next call (each student is reminded at most once per assignment).
 
 1. Set `CRON_SECRET` to a long random string (e.g. `openssl rand -hex 32`) in the Vercel project: Settings, Environment Variables, add `CRON_SECRET` for Production (and Preview if you want to test there), then redeploy. Without it the route answers 503.
-2. On the VPS, add this line with `crontab -e` (replace `<domain>`, and export the same `CRON_SECRET` in the crontab or inline it):
+2. On the VPS, keep the secret in a file only the cron user can read, not in the crontab (which other tools and backups may show). As the user whose crontab will run the job:
+
+   ```bash
+   sudo install -m 600 -o "$USER" /dev/null /etc/clasync-cron-header   # empty file, mode 600, owned by you
+   nano /etc/clasync-cron-header                                        # one line: Authorization: Bearer <CRON_SECRET>
+   ls -l /etc/clasync-cron-header                                       # should show -rw-------
+   ```
+
+3. Add this line with `crontab -e` (replace `<domain>`). `-H @file` reads the header from the file (curl 7.55 or later):
 
    ```cron
-   0 * * * * curl -fsS --max-time 120 -X POST -H "Authorization: Bearer $CRON_SECRET" https://<domain>/api/cron/reminders
+   0 * * * * curl -fsS --max-time 120 -X POST -H @/etc/clasync-cron-header https://<domain>/api/cron/reminders
    ```
 
 The response is JSON like `{"assignments":2,"reminded":14}`; `reminded` counts emails attempted, not confirmed deliveries. The links in the emails use `BETTER_AUTH_URL`.
+
+An assignment published less than 24 hours before it is due is inside the reminder window at once, so its students may get the reminder soon after the "new assignment" email. When a lecturer moves the due date later, the reminders already sent for that assignment are forgotten and the new deadline gets its own reminder.
 
 ## Deploying
 
