@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronRight, Plus } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Info, Plus } from 'lucide-react'
 import { getLocale, getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
@@ -8,6 +8,7 @@ import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
 import { formatDecimal } from '@/lib/number-format'
 import { config } from '@/server/core/config'
 import { getCourse, type CourseSummary } from '@/server/courses/service'
+import { getCaSettings } from '@/server/performance/inputs'
 import { listCourseTests, type TestSummary } from '@/server/tests/authoring'
 import { loadPage } from '../../../load-page'
 import { formatSessionDate } from '../../attendance-format'
@@ -23,12 +24,13 @@ export default async function TestListPage({ params }: PageProps<'/courses/[cour
   const t = await getTranslations('tests.lecturer')
   const rawLocale = await getLocale()
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
-  const view = await loadPage<{ course: CourseSummary; tests: TestSummary[] }>(async (ctx) => {
+  const view = await loadPage<{ course: CourseSummary; tests: TestSummary[]; testPoints: number }>(async (ctx) => {
     const tests = await listCourseTests(ctx, courseId) // FORBIDDEN unless I teach this course
-    return { course: await getCourse(ctx, courseId), tests }
+    const [course, settings] = await Promise.all([getCourse(ctx, courseId), getCaSettings(ctx.db, courseId)])
+    return { course, tests, testPoints: settings.testPoints }
   })
   if (!view.ok) return <ErrorState code={view.code} />
-  const { course, tests } = view.data
+  const { course, tests, testPoints } = view.data
   const courseHref = `/courses/${encodeURIComponent(course.id)}`
 
   return (
@@ -50,6 +52,19 @@ export default async function TestListPage({ params }: PageProps<'/courses/[cour
           </>
         }
       />
+
+      {testPoints === 0 && (
+        // Every test counts toward the CA, but only once the CA gives tests some points.
+        <p className="flex items-start gap-2 rounded-3xl border bg-muted/40 px-4 py-3 text-sm sm:px-5">
+          <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          <span>
+            {t('pointsZero')}{' '}
+            <Link href={`${courseHref}/performance#ca-settings`} className="font-medium text-primary underline-offset-4 hover:underline">
+              {t('pointsLink')}
+            </Link>
+          </span>
+        </p>
+      )}
 
       <section aria-labelledby="test-list" className="flex flex-col gap-4">
         <SectionHeading id="test-list">

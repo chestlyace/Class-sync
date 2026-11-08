@@ -2,12 +2,19 @@ import { describe, expect, it } from 'vitest'
 import type { ExitReport } from './sync-payload'
 import {
   allAnswers,
+  armsLeaving,
+  clearsLocalCopy,
   endReason,
   exitCount,
   formatCountdown,
   keepSyncing,
   localVerdict,
+  navigationFor,
   pickClockSample,
+  RELOAD_GAP_MS,
+  resolveOpenExit,
+  spokenSyncStatus,
+  tracksLeaving,
   resultState,
   retryDelayMs,
   screenFor,
@@ -216,5 +223,120 @@ describe('syncDueAt', () => {
     // An answer timer due in 600 ms is not pushed back by the regular 5 s sync.
     expect(syncDueAt(1600, 1000, 5000, true)).toBe(1600)
     expect(syncDueAt(9000, 1000, 5000, true)).toBe(6000)
+  })
+})
+
+describe('when leaving counts (C1)', () => {
+  const answering = { stage: 'answering' as const, verdict: 'continue' as const, timeUp: false, fatal: false }
+
+  it('tracks only while answering, still allowed, before time is up', () => {
+    expect(tracksLeaving(answering)).toBe(true)
+    expect(tracksLeaving({ ...answering, stage: 'waiting' })).toBe(false)
+    expect(tracksLeaving({ ...answering, stage: 'ended_left' })).toBe(false)
+    expect(tracksLeaving({ ...answering, verdict: 'end_exits' })).toBe(false)
+    expect(tracksLeaving({ ...answering, timeUp: true })).toBe(false)
+    expect(tracksLeaving({ ...answering, fatal: true })).toBe(false)
+  })
+
+  it('arms only on the questions screen: not while waiting, on Begin, or on a notice', () => {
+    expect(armsLeaving('question')).toBe(true)
+    expect(armsLeaving('warning')).toBe(true)
+    for (const screen of ['waiting', 'begin', 'ended', 'result', 'closed'] as const) expect(armsLeaving(screen)).toBe(false)
+  })
+})
+
+describe('navigationFor', () => {
+  const base = { timeOriginMs: 1000, currentPath: '/t/ABC123', mountedAtMs: 9000 }
+
+  it('a full load of this page: its navigation type, started at the time origin', () => {
+    expect(navigationFor({ ...base, entry: { type: 'reload', url: 'https://x.test/t/ABC123' } })).toEqual({ type: 'reload', startMs: 1000 })
+    expect(navigationFor({ ...base, entry: { type: 'navigate', url: 'https://x.test/t/ABC123?x=1' } })).toEqual({ type: 'navigate', startMs: 1000 })
+  })
+
+  it('reached in the app from another page (after sign-in): no type, started when the runner mounted', () => {
+    expect(navigationFor({ ...base, entry: { type: 'reload', url: 'https://x.test/sign-in?next=x' } })).toEqual({ type: null, startMs: 9000 })
+    expect(navigationFor({ ...base, entry: null })).toEqual({ type: null, startMs: 9000 })
+    expect(navigationFor({ ...base, entry: { type: 'navigate', url: 'not a url' } })).toEqual({ type: null, startMs: 9000 })
+  })
+})
+
+describe('resolveOpenExit (I1: a reload is not leaving; a closed tab still is)', () => {
+  const openExit = { exitId: 'x', leftAtEpochMs: 100_000 }
+
+  it('a same-tab reload whose left report never reached the server is dropped: not an exit', () => {
+    // Pull-to-refresh: the new page started before the old one unloaded.
+    const nav = { type: 'reload', startMs: 97_000 }
+    expect(resolveOpenExit({ openExit, nav, visible: true, leftQueued: true })).toEqual({ kind: 'drop' })
+    expect(resolveOpenExit({ openExit, nav: { type: 'reload', startMs: 100_000 + RELOAD_GAP_MS }, visible: true, leftQueued: true })).toEqual({
+      kind: 'drop',
+    })
+  })
+
+  it('a reload whose left the server already has comes back at once, measured to the new page start', () => {
+    expect(resolveOpenExit({ openExit, nav: { type: 'reload', startMs: 101_000 }, visible: true, leftQueued: false })).toEqual({
+      kind: 'back',
+      awayMs: 1000,
+    })
+    expect(resolveOpenExit({ openExit, nav: { type: 'reload', startMs: 97_000 }, visible: false, leftQueued: false })).toEqual({
+      kind: 'back',
+      awayMs: 0,
+    })
+  })
+
+  it('a "reload" long after leaving (a discarded tab reloaded on return) still counts', () => {
+    expect(
+      resolveOpenExit({ openExit, nav: { type: 'reload', startMs: 100_000 + RELOAD_GAP_MS + 1 }, visible: true, leftQueued: true }),
+    ).toEqual({ kind: 'back', awayMs: RELOAD_GAP_MS + 1 })
+  })
+
+  it('a closed tab reopened counts, with the absence up to the new page start (not until the server answers)', () => {
+    expect(resolveOpenExit({ openExit, nav: { type: 'navigate', startMs: 130_000 }, visible: true, leftQueued: true })).toEqual({
+      kind: 'back',
+      awayMs: 30_000,
+    })
+    expect(resolveOpenExit({ openExit, nav: { type: null, startMs: 130_000 }, visible: true, leftQueued: false })).toEqual({
+      kind: 'back',
+      awayMs: 30_000,
+    })
+  })
+
+  it('reopened in a background tab: judged when the page shows', () => {
+    expect(resolveOpenExit({ openExit, nav: { type: 'navigate', startMs: 130_000 }, visible: false, leftQueued: true })).toEqual({
+      kind: 'wait',
+    })
+  })
+})
+
+describe('spokenSyncStatus (minor 3: only problems, and the return to Saved after one)', () => {
+  it('says nothing for the Saved / Saving round of every answer', () => {
+    expect(spokenSyncStatus(null, 'saving')).toBeNull()
+    expect(spokenSyncStatus(null, 'saved')).toBeNull()
+  })
+
+  it('says each problem, and Saved once after a problem', () => {
+    expect(spokenSyncStatus(null, 'offline')).toBe('offline')
+    expect(spokenSyncStatus('offline', 'saving')).toBe('offline')
+    expect(spokenSyncStatus('offline', 'failed')).toBe('failed')
+    expect(spokenSyncStatus('failed', 'saved')).toBe('saved')
+    expect(spokenSyncStatus('saved', 'saving')).toBe('saved')
+    expect(spokenSyncStatus('saved', 'saved')).toBeNull()
+    expect(spokenSyncStatus('saved', 'signed_out')).toBe('signed_out')
+  })
+})
+
+describe('clearsLocalCopy (minor 13)', () => {
+  const view = { stage: 'over' as const, attemptId: 'a', hasShort: false, result: null, awaitingRelease: false }
+
+  it('after a hand-in, once a result shows, or once nothing more will be sent', () => {
+    expect(clearsLocalCopy({ ...view, stage: 'handed_in', result: { score: 1, outOf: 2, mcqCorrect: 1, mcqCount: 2 } }, true)).toBe(true)
+    expect(clearsLocalCopy({ ...view, result: { score: 1, outOf: 2, mcqCorrect: 1, mcqCount: 2 } }, false)).toBe(true)
+    expect(clearsLocalCopy({ ...view, hasShort: true, awaitingRelease: true }, false)).toBe(true)
+  })
+
+  it('never while answers are still queued or the attempt may reopen', () => {
+    expect(clearsLocalCopy({ ...view, hasShort: true, awaitingRelease: true }, true)).toBe(false)
+    expect(clearsLocalCopy({ ...view, stage: 'ended_left' }, false)).toBe(false)
+    expect(clearsLocalCopy({ ...view, stage: 'answering' }, false)).toBe(false)
+    expect(clearsLocalCopy({ ...view, stage: 'waiting' }, false)).toBe(false)
   })
 })

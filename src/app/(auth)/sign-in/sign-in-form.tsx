@@ -27,6 +27,8 @@ export function SignInForm({ next = null }: { next?: string | null }) {
       const { error: authError } = await authClient.signIn.email({
         email: String(form.get('email') ?? ''),
         password: String(form.get('password') ?? ''),
+        // An unverified account gets a fresh verification email: its link comes back here too.
+        ...(next ? { callbackURL: next } : {}),
       })
       if (authError) {
         setError(tRoot(authErrorKey(authError.code, authError.status)))

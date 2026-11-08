@@ -29,7 +29,7 @@ export function ResultScreen({ info, result }: { info: TestInfo; result: QuickRe
           <span className="font-mono text-xs font-medium tracking-[0.1em] text-muted-foreground uppercase">
             {t('result.title')}
           </span>
-          <span className="font-display text-8xl leading-none">
+          <span className="font-display text-[min(18vw,6rem)] leading-none whitespace-nowrap">
             {t('result.score', { score: formatDecimal(result.score, locale), outOf: formatDecimal(result.outOf, locale) })}
           </span>
           {!info.hasShort && (
@@ -39,7 +39,7 @@ export function ResultScreen({ info, result }: { info: TestInfo; result: QuickRe
           )}
           {info.hasShort && (
             // Released while this page was open: the page itself shows marks and comments.
-            <Button type="button" variant="outline" className="mt-2" onClick={() => router.refresh()}>
+            <Button type="button" variant="outline" size="lg" className="mt-2" onClick={() => router.refresh()}>
               <ListChecks aria-hidden="true" data-icon="inline-start" />
               {tr('seeMarks')}
             </Button>

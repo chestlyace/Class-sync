@@ -107,13 +107,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Text → number: "2,5" or "2.5" → 2.5. Blank, negative or junk → NaN, which the service refuses
+ * Text → number: "2,5" or "2.5" → 2.5; ".5" and "5." are fine too. Blank, negative or junk → NaN, which the service refuses
  * on that field (a number of the wrong value, not a wrong shape). Non-strings pass unchanged.
  */
 function toNumber(value: unknown): unknown {
   if (typeof value !== 'string') return value
   const text = value.trim().replace(',', '.')
-  if (!/^\d+(\.\d+)?$/.test(text)) return Number.NaN
+  if (!/^(\d+(\.\d*)?|\.\d+)$/.test(text)) return Number.NaN
   return Number(text)
 }
 

@@ -2,13 +2,23 @@
 
 import { useCallback, useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from 'react'
 import type { ActionResult } from '@/lib/action-result'
-import { createLeaveTracker, type LeaveEvent, type LeaveSignal } from './leave-tracker'
+import { postJson } from './attempt-client'
+import {
+  createLeaveTracker,
+  FOCUS_QUIET_MS,
+  type LeaveEvent,
+  type LeaveSignal,
+  type LeaveTracker,
+  type OpenExit,
+} from './leave-tracker'
 import {
   acknowledge,
   answeredCount,
   attemptKey,
   clearLocalAttempt,
+  dropExit,
   emptyAttempt,
+  hasLeftQueued,
   loadLocalAttempt,
   mergeServerCopy,
   pendingAnswers,
@@ -18,7 +28,6 @@ import {
   saveLocalAttempt,
   type LocalAttempt,
 } from './answer-store'
-import { handInAction, openTestAction, syncAttemptAction } from './actions'
 import { getDeviceId, randomUuid } from './device-id'
 import { EndedScreen } from './ended-screen'
 import { BeginScreen, LoadingScreen, NoticeScreen } from './notice-screen'
@@ -26,21 +35,28 @@ import { QuestionScreen, type HandInProblem } from './question-screen'
 import { ResultScreen } from './result-screen'
 import {
   allAnswers,
+  armsLeaving,
+  clearsLocalCopy,
   endReason,
   exitCount,
   keepSyncing,
   localVerdict,
+  navigationFor,
   pickClockSample,
+  resolveOpenExit,
   retryDelayMs,
   screenFor,
   settleFinalAnswers,
   syncDueAt,
+  tracksLeaving,
   type ClockSample,
+  type NavInfo,
 } from './runner-logic'
 import type { SyncStatus } from './screen-parts'
 import { clockOffsetMs, msLeft as msLeftUntil } from './server-clock'
 import type { AttemptViewDto } from './view-dto'
 import { WaitingScreen } from './waiting-screen'
+import { createWakeLockKeeper } from './wake-lock'
 import { WarningScreen } from './warning-screen'
 
 /** Sync this long after an answer changes (typing coalesces; a tap goes out almost at once). */
@@ -77,12 +93,35 @@ function isOpenElsewhere(result: ActionResult<unknown>): boolean {
   return !result.ok && result.code === 'CONFLICT' && result.details?.reason === 'open_elsewhere'
 }
 
+/** How this page was reached and when it started (see navigationFor). */
+function readNavigation(mountedAtMs: number): NavInfo {
+  const [entry] = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[]
+  return navigationFor({
+    entry: entry ? { type: entry.type, url: entry.name } : null,
+    timeOriginMs: performance.timeOrigin,
+    currentPath: window.location.pathname,
+    mountedAtMs,
+  })
+}
+
+/** Keeps the paper (and saved answers) the device holds when a lean sync leaves them out. */
+function withKeptPaper(dto: AttemptViewDto, previous: AttemptViewDto | null): AttemptViewDto {
+  if (dto.paper !== undefined && dto.saved !== undefined) return dto
+  return { ...dto, paper: dto.paper ?? previous?.paper ?? null, saved: dto.saved ?? previous?.saved ?? [] }
+}
+
+/** The device holds no paper and the attempt may still show one: the next sync asks for it. */
+function needsPaper(view: AttemptViewDto): boolean {
+  return !view.paper && (view.stage === 'waiting' || view.stage === 'answering' || view.stage === 'ended_left')
+}
+
 /**
  * The student's side of a test. The server decides (stage, deadline, result); this keeps every
  * answer and leave report on the device first (localStorage, written synchronously), sends them
- * with `syncAttemptAction` (every STUDENT_SYNC_MS, soon after each answer, at once after each exit,
- * on `online` and on return), and judges leaving locally too so an ended student sees it offline.
- * A failed request is never leaving: it only changes the "saved on this device" line.
+ * to the sync route (every STUDENT_SYNC_MS, soon after each answer, at once after each exit, on
+ * `online` and on return), and judges leaving locally too so an ended student sees it offline.
+ * Every request has a deadline (postJson): a failed or stalled request is never leaving, it only
+ * changes the "saved on this device" line.
  */
 export function TestRunner({ userId, code }: { userId: string; code: string }) {
   const [view, setView] = useState<AttemptViewDto | null>(null)
@@ -121,6 +160,13 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
   const stoppedRef = useRef(false)
   /** "Back to full screen" was pressed: the `back` it causes goes straight to the questions. */
   const resumingRef = useRef(false)
+  /** Aborts the requests in flight when the runner goes away. */
+  const abortRef = useRef<AbortController | null>(null)
+  /** When the runner mounted (the page start when it was reached inside the app). */
+  const mountedAtRef = useRef(0)
+  /** The exit left open by the previous page (closed tab or reload), judged once by I1's rule. */
+  const reopenedExitRef = useRef<string | null>(null)
+  const trackerRef = useRef<LeaveTracker | null>(null)
 
   /** The one way local state changes: kept in the ref, written to localStorage at once, rendered. */
   const commit = useCallback((next: LocalAttempt) => {
@@ -133,8 +179,9 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
     const sample = { offsetMs: clockOffsetMs(dto.serverNow, sentAtMs, receivedAtMs), rttMs: receivedAtMs - sentAtMs }
     clockRef.current = pickClockSample(clockRef.current, sample)
     setOffsetMs(clockRef.current.offsetMs)
-    viewRef.current = dto
-    setView(dto)
+    const next = withKeptPaper(dto, viewRef.current)
+    viewRef.current = next
+    setView(next)
   }, [])
 
   const stop = useCallback((reason: Fatal) => {
@@ -181,12 +228,25 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
     const answers = pendingAnswers(state)
     const exits = pendingExits(state)
     if (answers.length > 0 || exits.length > 0) setStatus((s) => (s === 'saved' ? 'saving' : s))
+    const signal = abortRef.current?.signal
     const sentAt = Date.now()
     let ok = false
     try {
-      const result = await syncAttemptAction(v.attemptId, { deviceId: deviceIdRef.current, answers, exits })
+      const result = await postJson<AttemptViewDto>(
+        `/api/tests/attempts/${encodeURIComponent(v.attemptId)}/sync`,
+        { deviceId: deviceIdRef.current, answers, exits, withPaper: needsPaper(v) },
+        { signal },
+      )
       const receivedAt = Date.now()
-      if (result.ok) {
+      if (stoppedRef.current || signal?.aborted) return
+      if (result === 'offline') {
+        // No connection, cut, or no answer in time: everything stays queued on the device.
+        failuresRef.current += 1
+        setStatus('offline')
+      } else if (result === 'failed') {
+        failuresRef.current += 1
+        setStatus('failed')
+      } else if (result.ok) {
         ok = true
         failuresRef.current = 0
         // Exactly the reports sent: one id per report (a left and its back share an id). Answers
@@ -197,16 +257,14 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
         setStatus(hasQueued(localRef.current) ? 'saving' : 'saved')
       } else if (isOpenElsewhere(result)) {
         stop('open_elsewhere')
+        return
       } else if (result.code === 'FORBIDDEN') {
         stop('not_your_course')
+        return
       } else {
         failuresRef.current += 1
         setStatus(result.code === 'UNAUTHENTICATED' ? 'signed_out' : 'failed')
       }
-    } catch {
-      // No connection (or the request was cut): everything stays queued on the device.
-      failuresRef.current += 1
-      setStatus('offline')
     } finally {
       inFlightRef.current = false
     }
@@ -225,44 +283,54 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
 
   const open = useCallback(async () => {
     stoppedRef.current = false
+    const signal = abortRef.current?.signal
     const sentAt = Date.now()
-    try {
-      const result = await openTestAction(code, deviceIdRef.current)
-      const receivedAt = Date.now()
-      if (!result.ok) {
-        if (isOpenElsewhere(result)) setFatal('open_elsewhere')
-        else setFatal(result.code === 'FORBIDDEN' ? 'not_your_course' : 'open_failed')
-        return
-      }
-      setFatal(null)
-      const dto = result.data
-      if (dto.attemptId) {
-        keyRef.current = attemptKey(userId, dto.attemptId)
-        // The server's copy first, before any answer can be recorded: a newer local answer is kept.
-        commit(settleFinalAnswers(mergeServerCopy(loadLocalAttempt(keyRef.current), dto.saved), dto, []))
-      }
-      applyView(dto, sentAt, receivedAt)
-      setStatus(hasQueued(localRef.current) ? 'saving' : 'saved')
-      // Queued answers and leave reports (from before a reload) go out at once.
-      schedule(hasQueued(localRef.current) ? 0 : retryDelayMs(0))
-    } catch {
+    const result = await postJson<AttemptViewDto>('/api/tests/open', { code, deviceId: deviceIdRef.current }, { signal })
+    const receivedAt = Date.now()
+    // This runner went away meanwhile (a remount has its own request).
+    if (signal?.aborted) return
+    if (result === 'offline' || result === 'failed') {
       setFatal('open_failed')
+      return
     }
+    if (!result.ok) {
+      if (isOpenElsewhere(result)) setFatal('open_elsewhere')
+      else setFatal(result.code === 'FORBIDDEN' ? 'not_your_course' : 'open_failed')
+      return
+    }
+    setFatal(null)
+    const dto = result.data
+    if (dto.attemptId) {
+      keyRef.current = attemptKey(userId, dto.attemptId)
+      // The server's copy first, before any answer can be recorded: a newer local answer is kept.
+      const stored = loadLocalAttempt(keyRef.current)
+      reopenedExitRef.current = stored.openExit?.exitId ?? null
+      commit(settleFinalAnswers(mergeServerCopy(stored, dto.saved ?? []), dto, []))
+    }
+    applyView(dto, sentAt, receivedAt)
+    setStatus(hasQueued(localRef.current) ? 'saving' : 'saved')
+    // Queued answers and leave reports (from before a reload) go out at once.
+    schedule(hasQueued(localRef.current) ? 0 : retryDelayMs(0))
   }, [applyView, code, commit, schedule, userId])
 
   const onMount = useEffectEvent(() => {
     deviceIdRef.current = getDeviceId()
+    mountedAtRef.current = Date.now()
+    abortRef.current = new AbortController()
     void open()
   })
 
   useEffect(() => {
-    // Starts the first request; state is only set once it answers (the rule cannot see past `await`).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // Starts the first request; state is only set once it answers.
     onMount()
     const tick = setInterval(() => setNowMs(Date.now()), 1000)
     return () => {
       clearInterval(tick)
+      // Gone (e.g. Back to dashboard): no request in flight re-arms the timer after this.
+      stoppedRef.current = true
+      abortRef.current?.abort()
       if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = null
     }
   }, [])
 
@@ -292,8 +360,14 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
   const msLeft = view?.endsAt ? msLeftUntil(view.endsAt, offsetMs, nowMs) : 0
   const timeUp = view?.stage === 'answering' && view.endsAt !== null && msLeft === 0
   const needsBegin = device !== null && device.laptop && device.canFullscreen && !begun
-  /** Leaving counts only while answering: not before Start, after the end, a hand-in or an ending. */
-  const tracking = view?.stage === 'answering' && verdict === 'continue' && !timeUp && fatal === null
+  /** Leaving is watched only while answering: not before Start, after the end, a hand-in or an ending. */
+  const tracking = view !== null && tracksLeaving({ stage: view.stage, verdict, timeUp, fatal: fatal !== null })
+  const screen =
+    view && fatal === null
+      ? screenFor({ stage: view.stage, attemptId: view.attemptId, verdict, needsBegin, hasWarning: warning !== null, timeUp })
+      : null
+  /** On the questions: leaving counts from the first moment the student is present (C1). */
+  const onQuestions = screen !== null && armsLeaving(screen)
 
   const onLeaveEvent = useEffectEvent((event: LeaveEvent) => {
     const v = viewRef.current
@@ -319,6 +393,31 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
     if (keyRef.current) saveLocalAttempt(keyRef.current, localRef.current)
   })
 
+  /**
+   * The exit the previous page left open, judged once when tracking starts (I1): a same-tab reload
+   * is dropped (or comes back at once), a closed tab counts up to the new page's start, and a page
+   * opened hidden is left to the tracker, which judges it when the page shows.
+   */
+  const takeOpenExit = useEffectEvent((): OpenExit | null => {
+    const openExit = localRef.current.openExit
+    if (!openExit || openExit.exitId !== reopenedExitRef.current) return openExit
+    reopenedExitRef.current = null
+    const decision = resolveOpenExit({
+      openExit,
+      nav: readNavigation(mountedAtRef.current),
+      visible: document.visibilityState === 'visible',
+      leftQueued: hasLeftQueued(localRef.current, openExit.exitId),
+    })
+    if (decision.kind === 'wait') return openExit
+    if (decision.kind === 'drop') commit(dropExit(localRef.current, openExit.exitId))
+    else onLeaveEvent({ type: 'back', exitId: openExit.exitId, awayMs: decision.awayMs })
+    return null
+  })
+
+  const armIfOnQuestions = useEffectEvent((tracker: LeaveTracker) => {
+    if (onQuestions) tracker.arm()
+  })
+
   useEffect(() => {
     if (!tracking || device === null) return
     const tracker = createLeaveTracker({
@@ -326,18 +425,32 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
       countsFullscreen: fullscreenMode,
       now: Date.now,
       newId: randomUuid,
-      openExit: localRef.current.openExit,
+      openExit: takeOpenExit(),
+      armed: false,
     })
+    trackerRef.current = tracker
     const feed = (signal: LeaveSignal) => {
       const event = tracker.handle(signal)
       if (event) onLeaveEvent(event)
     }
     const visibility = (): LeaveSignal => (document.visibilityState === 'hidden' ? 'hidden' : 'visible')
-    // The state right now (a tab closed mid-test is judged here, on reopening). Focus is not read
-    // here: a page often loads without focus (address bar, a link opened from another app), and
-    // counting that as leaving would be unfair; only a real `blur` after this counts.
+    // After a full screen change, blur and focus are ignored for a moment (macOS fires them while
+    // the window moves); the real focus is read once the moment has passed.
+    let settleTimer: ReturnType<typeof setTimeout> | null = null
+    const settleFocus = () => {
+      if (!device.laptop) return
+      if (settleTimer) clearTimeout(settleTimer)
+      settleTimer = setTimeout(() => feed(document.hasFocus() ? 'focus' : 'blur'), FOCUS_QUIET_MS + 50)
+    }
+    // The state right now (a page opened hidden is judged when it shows). Focus is not read here:
+    // a page often loads without focus (address bar, a link opened from another app), and counting
+    // that as leaving would be unfair; only a real `blur` after this counts.
     feed(visibility())
-    if (fullscreenMode) feed(document.fullscreenElement ? 'fullscreen_enter' : 'fullscreen_exit')
+    if (fullscreenMode) {
+      feed(document.fullscreenElement ? 'fullscreen_enter' : 'fullscreen_exit')
+      settleFocus()
+    }
+    armIfOnQuestions(tracker)
 
     const onVisibility = () => feed(visibility())
     // A page restored from the back/forward cache may skip visibilitychange.
@@ -349,7 +462,9 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
     const onBlur = () => feed('blur')
     const onFocus = () => feed('focus')
     const onFullscreen = () => {
-      if (fullscreenMode) feed(document.fullscreenElement ? 'fullscreen_enter' : 'fullscreen_exit')
+      if (!fullscreenMode) return
+      feed(document.fullscreenElement ? 'fullscreen_enter' : 'fullscreen_exit')
+      settleFocus()
     }
     document.addEventListener('visibilitychange', onVisibility)
     window.addEventListener('pageshow', onPageShow)
@@ -358,6 +473,8 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
     window.addEventListener('focus', onFocus)
     document.addEventListener('fullscreenchange', onFullscreen)
     return () => {
+      if (settleTimer) clearTimeout(settleTimer)
+      if (trackerRef.current === tracker) trackerRef.current = null
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('pageshow', onPageShow)
       window.removeEventListener('pagehide', onHide)
@@ -367,12 +484,40 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
     }
   }, [tracking, device, fullscreenMode])
 
+  // The questions show (first time, after Begin, after a let back in): leaving counts from the first
+  // moment the student is present on them.
+  useEffect(() => {
+    if (onQuestions) trackerRef.current?.arm()
+  }, [onQuestions])
+
+  // Keep the screen on while answering (C2): a phone locking itself after 30 s of reading must not
+  // count as leaving. The browser drops the lock whenever the page hides, so it is asked for again
+  // on each return; a tap also asks (some browsers want one). Unsupported or refused: silent.
+  useEffect(() => {
+    if (!tracking) return
+    const wakeLock = 'wakeLock' in navigator ? navigator.wakeLock : null
+    const keeper = createWakeLockKeeper(wakeLock ? () => wakeLock.request('screen') : null)
+    const refresh = () => void keeper.refresh(document.visibilityState === 'visible')
+    refresh()
+    document.addEventListener('visibilitychange', refresh)
+    window.addEventListener('pageshow', refresh)
+    window.addEventListener('pointerdown', refresh, { passive: true })
+    return () => {
+      document.removeEventListener('visibilitychange', refresh)
+      window.removeEventListener('pageshow', refresh)
+      window.removeEventListener('pointerdown', refresh)
+      keeper.release()
+    }
+  }, [tracking])
+
   // Out of answering (ended, handed in, time up, open elsewhere): an exit still open no longer
   // counts, and full screen is released. Otherwise a stale exit would be judged if the lecturer lets
   // the student back in. Begin shows again then, so full screen is re-entered with a click before
   // leaving it counts (a tracker that counted it at once would log a false exit).
   const onStopTracking = useEffectEvent(() => {
     if (localRef.current.openExit) commit({ ...localRef.current, openExit: null })
+    // An ending while "Back to full screen" was pending: the next return after a let back in warns.
+    resumingRef.current = false
     setWarning(null)
     setFullscreenMode(false)
     setBegun(false)
@@ -382,12 +527,28 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
     if (view !== null && !tracking) onStopTracking()
   }, [view, tracking])
 
-  // Handed in: final on the server, nothing left to keep on the device.
+  // Handed in, a result shown, or nothing more to send: final on the server, nothing left to keep
+  // on the device.
   useEffect(() => {
-    if (view?.stage !== 'handed_in' || !keyRef.current) return
+    if (!view || !keyRef.current) return
+    if (!clearsLocalCopy({ ...view, hasShort: view.info.hasShort }, hasQueued(local))) return
     clearLocalAttempt(keyRef.current)
     keyRef.current = null
-  }, [view?.stage])
+  }, [view, local])
+
+  // A new screen (not the questions, which focus their prompt, nor Begin and the warning, which
+  // focus their button): focus its title so keyboard and screen reader users start there.
+  const previousScreenRef = useRef<typeof screen>(null)
+  useEffect(() => {
+    const previous = previousScreenRef.current
+    previousScreenRef.current = screen
+    if (previous === null || previous === screen || screen === null) return
+    if (screen === 'question' || screen === 'begin' || screen === 'warning') return
+    const heading = document.querySelector<HTMLElement>('main h1')
+    if (!heading) return
+    heading.setAttribute('tabindex', '-1')
+    heading.focus()
+  }, [screen])
 
   // ------------------------------------------------------------------------------------------
   // Actions from the screens
@@ -409,12 +570,26 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
     const exits = pendingExits(state)
     const sentAt = Date.now()
     try {
-      const result = await handInAction(v.attemptId, { deviceId: deviceIdRef.current, answers: allAnswers(state), exits })
+      const result = await postJson<AttemptViewDto>(
+        `/api/tests/attempts/${encodeURIComponent(v.attemptId)}/hand-in`,
+        { deviceId: deviceIdRef.current, answers: allAnswers(state), exits },
+        { signal: abortRef.current?.signal },
+      )
       const receivedAt = Date.now()
+      if (result === 'offline') {
+        // No answer in time either: the answers stay on the device and the student can try again.
+        setHandInProblem('offline')
+        setStatus('offline')
+        return false
+      }
+      if (result === 'failed') {
+        setHandInProblem('failed')
+        return false
+      }
       if (result.ok) {
         const merged = mergeServerCopy(
           acknowledge(localRef.current, result.data.acceptedRevs, exits.map((e) => e.exitId)),
-          result.data.saved,
+          result.data.saved ?? [],
         )
         commit(settleFinalAnswers(merged, result.data, allAnswers(state)))
         applyView(result.data, sentAt, receivedAt)
@@ -424,10 +599,6 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
       }
       if (isOpenElsewhere(result)) stop('open_elsewhere')
       else setHandInProblem('failed')
-      return false
-    } catch {
-      setHandInProblem('offline')
-      setStatus('offline')
       return false
     } finally {
       setHandingIn(false)
@@ -466,17 +637,9 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
   if (fatal === 'open_elsewhere') return <NoticeScreen kind="open_elsewhere" onRetry={() => void open()} />
   if (fatal === 'open_failed') return <NoticeScreen kind="open_failed" onRetry={() => void open()} />
   if (fatal === 'not_your_course') return <NoticeScreen kind="not_your_course" />
-  if (!view) return <LoadingScreen />
+  if (!view || screen === null) return <LoadingScreen />
 
   const answered = answeredCount(local)
-  const screen = screenFor({
-    stage: view.stage,
-    attemptId: view.attemptId,
-    verdict,
-    needsBegin,
-    hasWarning: warning !== null,
-    timeUp,
-  })
 
   switch (screen) {
     case 'waiting':

@@ -38,6 +38,16 @@ function values(over: Partial<EditorValues> = {}): EditorValues {
 }
 
 describe('parseTestForm', () => {
+  it('accepts ".5", "5." and ",5" as numbers, and still refuses junk', () => {
+    const mark = (defaultMark: string) => (parseTestForm(values({ defaultMark })) as { defaultMark: number }).defaultMark
+    expect(mark('.5')).toBe(0.5)
+    expect(mark(',5')).toBe(0.5)
+    expect(mark('5.')).toBe(5)
+    expect(mark('5,')).toBe(5)
+    expect(mark(' 2 ')).toBe(2)
+    for (const junk of ['.', ',', '', '5..', '1.2.3', '-1', '1e3', 'x']) expect(mark(junk)).toBeNaN()
+  })
+
   it('turns "2,5" and "2.5" into 2.5 and a blank question mark into null (the default)', () => {
     const parsed = parseTestForm(values({ defaultMark: '2.5', weight: '1,5' })) as Record<string, unknown>
     expect(parsed).toEqual({

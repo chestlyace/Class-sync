@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createLeaveTracker, MAX_AWAY_MS, type LeaveEvent, type LeaveSignal } from './leave-tracker'
+import { createLeaveTracker, FOCUS_QUIET_MS, MAX_AWAY_MS, type LeaveEvent, type LeaveSignal } from './leave-tracker'
 
 const phone = { countsFocus: false, countsFullscreen: false }
 const laptop = { countsFocus: true, countsFullscreen: true }
@@ -12,14 +12,14 @@ function ids() {
 
 /** Feeds the signals at time 0 and returns every event the tracker emitted. */
 function run(device: Device, signals: LeaveSignal[]): LeaveEvent[] {
-  const tracker = createLeaveTracker({ ...device, now: () => 0, newId: ids(), openExit: null })
+  const tracker = createLeaveTracker({ ...device, now: () => 0, newId: ids(), openExit: null, armed: true })
   return signals.map((s) => tracker.handle(s)).filter((e): e is LeaveEvent => e !== null)
 }
 
 /** Feeds timed signals and returns the absence of the first `back`. */
 function awayOf(device: Device, signals: [LeaveSignal, number][]): number | undefined {
   let t = 0
-  const tracker = createLeaveTracker({ ...device, now: () => t, newId: ids(), openExit: null })
+  const tracker = createLeaveTracker({ ...device, now: () => t, newId: ids(), openExit: null, armed: true })
   const events: LeaveEvent[] = []
   for (const [signal, at] of signals) {
     t = at
@@ -118,20 +118,20 @@ describe('reopened after the tab was closed', () => {
   const openExit = { exitId: 'x', leftAtEpochMs: 0 }
 
   it('the stored exit is still open and comes back with the whole absence', () => {
-    const tracker = createLeaveTracker({ ...phone, openExit, now: () => 300_000, newId: ids() })
+    const tracker = createLeaveTracker({ ...phone, openExit, armed: true, now: () => 300_000, newId: ids() })
     expect(tracker.openExit()).toEqual(openExit)
     expect(tracker.handle('visible')).toEqual({ type: 'back', exitId: 'x', awayMs: 300_000 })
     expect(tracker.openExit()).toBeNull()
   })
 
   it('a laptop also returns on visible, and a focus first changes nothing', () => {
-    const tracker = createLeaveTracker({ ...laptop, openExit, now: () => 300_000, newId: ids() })
+    const tracker = createLeaveTracker({ ...laptop, openExit, armed: true, now: () => 300_000, newId: ids() })
     expect(tracker.handle('focus')).toBeNull()
     expect(tracker.handle('visible')).toEqual({ type: 'back', exitId: 'x', awayMs: 300_000 })
   })
 
   it('a hidden signal before the page shows does not start a second exit', () => {
-    const tracker = createLeaveTracker({ ...phone, openExit, now: () => 300_000, newId: ids() })
+    const tracker = createLeaveTracker({ ...phone, openExit, armed: true, now: () => 300_000, newId: ids() })
     expect(tracker.handle('hidden')).toBeNull()
     expect(tracker.openExit()).toEqual(openExit)
   })
@@ -140,12 +140,110 @@ describe('reopened after the tab was closed', () => {
 describe('openExit()', () => {
   it('is the current exit while away, null while present', () => {
     let t = 100
-    const tracker = createLeaveTracker({ ...laptop, now: () => t, newId: ids(), openExit: null })
+    const tracker = createLeaveTracker({ ...laptop, now: () => t, newId: ids(), openExit: null, armed: true })
     expect(tracker.openExit()).toBeNull()
     tracker.handle('blur')
     expect(tracker.openExit()).toEqual({ exitId: 'exit-1', leftAtEpochMs: 100 })
     t = 900
     tracker.handle('focus')
     expect(tracker.openExit()).toBeNull()
+  })
+})
+
+describe('not counting until the student is present on the questions (C1)', () => {
+  function unarmed(device: Device, now: () => number = () => 0) {
+    return createLeaveTracker({ ...device, now, newId: ids(), openExit: null, armed: false })
+  }
+
+  it('hidden when answering begins (another tab at Start) is no exit, and coming back is none either', () => {
+    const tracker = unarmed(phone)
+    expect(tracker.handle('hidden')).toBeNull()
+    expect(tracker.handle('pagehide')).toBeNull()
+    expect(tracker.handle('visible')).toBeNull()
+    expect(tracker.openExit()).toBeNull()
+  })
+
+  it('a laptop switching windows on the Begin screen is no exit', () => {
+    const tracker = unarmed(laptop)
+    expect(tracker.handle('blur')).toBeNull()
+    expect(tracker.handle('focus')).toBeNull()
+  })
+
+  it('arm() while present counts from then on', () => {
+    const tracker = unarmed(phone)
+    tracker.handle('visible')
+    tracker.arm()
+    expect(tracker.handle('hidden')).toMatchObject({ type: 'left' })
+  })
+
+  it('arm() while still hidden counts only from the first moment the page shows', () => {
+    const tracker = unarmed(phone)
+    tracker.handle('hidden')
+    tracker.arm()
+    expect(tracker.handle('pagehide')).toBeNull()
+    expect(tracker.handle('visible')).toBeNull()
+    expect(tracker.handle('hidden')).toMatchObject({ type: 'left' })
+  })
+
+  it('arm() on a laptop whose window lost focus before counts once it has focus again', () => {
+    const tracker = unarmed(laptop)
+    tracker.handle('blur')
+    tracker.arm()
+    expect(tracker.handle('hidden')).toBeNull()
+    expect(tracker.handle('visible')).toBeNull()
+    expect(tracker.handle('focus')).toBeNull()
+    expect(tracker.handle('blur')).toMatchObject({ type: 'left' })
+  })
+
+  it('arming twice changes nothing', () => {
+    const tracker = unarmed(phone)
+    tracker.arm()
+    tracker.arm()
+    expect(tracker.handle('hidden')).toMatchObject({ type: 'left' })
+    expect(tracker.handle('visible')).toMatchObject({ type: 'back' })
+  })
+
+  it('a reopened exit (tab closed mid-test) is judged at once, armed or not', () => {
+    const tracker = createLeaveTracker({ ...phone, openExit: { exitId: 'x', leftAtEpochMs: 0 }, armed: false, now: () => 5000, newId: ids() })
+    expect(tracker.handle('visible')).toEqual({ type: 'back', exitId: 'x', awayMs: 5000 })
+    expect(tracker.handle('hidden')).toMatchObject({ type: 'left' })
+  })
+})
+
+describe('focus quiet window after a full screen change (macOS)', () => {
+  function timed(signals: [LeaveSignal, number][]): LeaveEvent[] {
+    let t = 0
+    const tracker = createLeaveTracker({ ...laptop, now: () => t, newId: ids(), openExit: null, armed: true })
+    const events: LeaveEvent[] = []
+    for (const [signal, at] of signals) {
+      t = at
+      const event = tracker.handle(signal)
+      if (event) events.push(event)
+    }
+    return events
+  }
+
+  it('a blur and focus fired while entering full screen are ignored', () => {
+    expect(timed([['fullscreen_enter', 1000], ['blur', 1200], ['focus', 1400]])).toEqual([])
+    expect(timed([['fullscreen_enter', 1000], ['blur', 1000 + FOCUS_QUIET_MS - 1]])).toEqual([])
+  })
+
+  it('a blur after the window counts again', () => {
+    expect(timed([['fullscreen_enter', 1000], ['blur', 1000 + FOCUS_QUIET_MS]]).map((e) => e.type)).toEqual(['left'])
+  })
+
+  it('visibility still counts inside the window', () => {
+    expect(timed([['fullscreen_enter', 1000], ['hidden', 1100]]).map((e) => e.type)).toEqual(['left'])
+  })
+
+  it('the window is the quiet time after each change, not after the first', () => {
+    expect(
+      timed([
+        ['fullscreen_enter', 0],
+        ['fullscreen_exit', 5000],
+        ['fullscreen_enter', 6000],
+        ['blur', 6300],
+      ]).map((e) => e.type),
+    ).toEqual(['left', 'back'])
   })
 })

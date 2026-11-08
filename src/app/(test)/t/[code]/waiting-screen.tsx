@@ -1,6 +1,6 @@
 'use client'
 
-import { Eye, Hourglass, Smartphone } from 'lucide-react'
+import { Eye, Hourglass, Smartphone, Sun } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { Eyebrow, PageHeader, Panel } from '@/components/page-header'
 import { formatDecimal } from '@/lib/number-format'
@@ -39,6 +39,10 @@ export function WaitingScreen({ info, status }: { info: TestInfo; status: SyncSt
         <li className="flex items-start gap-3">
           <Smartphone aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
           {t('waiting.saved')}
+        </li>
+        <li className="flex items-start gap-3">
+          <Sun aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          {t('waiting.screenOn')}
         </li>
         <li className="flex items-start gap-3">
           <Eye aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />

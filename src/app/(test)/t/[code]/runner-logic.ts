@@ -3,6 +3,8 @@ import type { AttemptStage, QuickResult } from '@/server/tests/attempt'
 import { judgeExit, type LeavingRule } from '@/server/tests/leaving'
 import { STUDENT_SYNC_MS } from '@/server/tests/rules'
 import type { LocalAttempt } from './answer-store'
+import { MAX_AWAY_MS, type OpenExit } from './leave-tracker'
+import type { SyncStatus } from './screen-parts'
 import type { AnswerInput, ExitReport } from './sync-payload'
 
 export type Verdict = ReturnType<typeof judgeExit>
@@ -127,6 +129,103 @@ export function localVerdict(rule: LeavingRule, serverExits: number, queue: Exit
     if (verdict !== 'continue') return verdict
   }
   return 'continue'
+}
+
+// ---------------------------------------------------------------------------------------------
+// When leaving counts
+// ---------------------------------------------------------------------------------------------
+
+/** The tracker runs only while answering: not before Start, after the end, a hand-in or an ending. */
+export function tracksLeaving(s: { stage: AttemptStage; verdict: Verdict; timeUp: boolean; fatal: boolean }): boolean {
+  return s.stage === 'answering' && s.verdict === 'continue' && !s.timeUp && !s.fatal
+}
+
+/**
+ * Leaving counts from the first moment the student is present on the questions (C1): never on the
+ * waiting screen, nor on Begin, so a student in another app when the lecturer presses Start has
+ * not left. The warning screen only follows a counted exit, so it keeps counting.
+ */
+export function armsLeaving(screen: Screen): boolean {
+  return screen === 'question' || screen === 'warning'
+}
+
+/** How this page was reached, and when it started (epoch ms). */
+export type NavInfo = { type: string | null; startMs: number }
+
+/**
+ * From the Navigation Timing entry: when it is this page's own load, its type ('reload', 'navigate',
+ * …) and the time origin. Reached inside the app (a client navigation after sign-in), the entry is
+ * another page's: no type, and the page started when the runner mounted.
+ */
+export function navigationFor(input: {
+  entry: { type: string; url: string } | null
+  timeOriginMs: number
+  currentPath: string
+  mountedAtMs: number
+}): NavInfo {
+  let path: string | null = null
+  try {
+    path = input.entry ? new URL(input.entry.url).pathname : null
+  } catch {
+    path = null
+  }
+  if (input.entry && path === input.currentPath) return { type: input.entry.type, startMs: input.timeOriginMs }
+  return { type: null, startMs: input.mountedAtMs }
+}
+
+/**
+ * A reload starts the new page before the old one unloads (the `left` is stored as it unloads), so
+ * a same-tab reload has the new page start at most this long after the stored leaving.
+ */
+export const RELOAD_GAP_MS = 3000
+
+/**
+ * An exit still open when the page opens (I1). A same-tab reload (pull-to-refresh, the reload
+ * button) is not leaving: its `left` is dropped while the server has not heard of it, or else
+ * comes back at once with the time up to the new page start. A tab closed and reopened counts,
+ * the absence measured to when the new page started (not to when the server answered, which on
+ * weak data can take longer than the limit). A page opened hidden is judged when it shows.
+ */
+export function resolveOpenExit(input: {
+  openExit: OpenExit
+  nav: NavInfo
+  visible: boolean
+  /** The exit's `left` is still queued on the device: the server has not counted it. */
+  leftQueued: boolean
+}): { kind: 'drop' } | { kind: 'back'; awayMs: number } | { kind: 'wait' } {
+  const sinceLeft = input.nav.startMs - input.openExit.leftAtEpochMs
+  const awayMs = Math.min(MAX_AWAY_MS, Math.max(0, Math.round(sinceLeft)))
+  const reload = input.nav.type === 'reload' && sinceLeft <= RELOAD_GAP_MS
+  if (reload) return input.leftQueued ? { kind: 'drop' } : { kind: 'back', awayMs }
+  if (!input.visible) return { kind: 'wait' }
+  return { kind: 'back', awayMs }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Sync line, local copy
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * What screen readers hear of the sync line: each problem, and "Saved" once after a problem; the
+ * Saved / Saving round that every answer causes stays silent. `spoken` is what was last said; the
+ * line is live while the status shown is the one to say.
+ */
+export function spokenSyncStatus(spoken: SyncStatus | null, next: SyncStatus): SyncStatus | null {
+  if (next === 'saving') return spoken
+  if (next === 'saved') return spoken === null || spoken === 'saved' ? null : 'saved'
+  return next
+}
+
+/**
+ * The device copy can go: after a hand-in (final on the server), once a result shows, or once
+ * nothing more will be sent (the attempt is over and nothing is queued).
+ */
+export function clearsLocalCopy(
+  view: { stage: AttemptStage; attemptId: string | null; hasShort: boolean; result: QuickResult | null; awaitingRelease: boolean },
+  hasPending: boolean,
+): boolean {
+  if (view.stage === 'handed_in' || view.result !== null) return true
+  return !keepSyncing(view, hasPending)
 }
 
 /** Why the server ended the attempt (the view does not say): the exits, or else one long absence. */

@@ -66,3 +66,13 @@ describe('parseSyncPayload', () => {
     expect(parseSyncPayload({ ...valid, userId: 'someone-else' })).toEqual(valid)
   })
 })
+
+describe('withPaper', () => {
+  const base = { deviceId: '11111111-1111-4111-8111-111111111111', answers: [], exits: [] }
+
+  it('is optional and must be a boolean', () => {
+    expect(parseSyncPayload(base)).toEqual(base)
+    expect(parseSyncPayload({ ...base, withPaper: true })).toEqual({ ...base, withPaper: true })
+    expect(parseSyncPayload({ ...base, withPaper: 'yes' })).toBeNull()
+  })
+})

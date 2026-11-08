@@ -3,7 +3,8 @@ import { LanguageSwitcher } from '@/components/language-switcher'
 
 /**
  * Taking a test: the wordmark and the EN/FR toggle, no navigation (a link away would count as
- * leaving). The wordmark is plain text for the same reason.
+ * leaving). The wordmark is plain text for the same reason. `data-taking-test` turns off
+ * pull-to-refresh for the page (globals.css): an over-drag at the top must not reload the test.
  */
 export default async function TestLayout({ children }: { children: React.ReactNode }) {
   const t = await getTranslations('common')
@@ -15,7 +16,7 @@ export default async function TestLayout({ children }: { children: React.ReactNo
           <LanguageSwitcher />
         </div>
       </header>
-      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 pt-6 pb-16 sm:pt-10">{children}</main>
+      <main data-taking-test className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 pt-6 pb-16 sm:pt-10">{children}</main>
     </>
   )
 }

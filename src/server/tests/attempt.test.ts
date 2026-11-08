@@ -179,6 +179,8 @@ describe('taking a test (student services)', () => {
   })
   const sync = (who: Ctx, attemptId: string, answers: AnswerInput[] = [], exits: ExitReport[] = [], deviceId = 'dev-A') =>
     syncAttempt(who, attemptId, { deviceId, answers, exits })
+  /** A sync from a device that holds no paper yet: asks for the paper and the saved answers. */
+  const syncWithPaper = (who: Ctx, attemptId: string) => syncAttempt(who, attemptId, { deviceId: 'dev-A', answers: [], exits: [], withPaper: true })
 
   async function storedAnswers(attemptId: string) {
     return db
@@ -302,10 +304,33 @@ describe('taking a test (student services)', () => {
     expect(first.paper!.find((q) => q.id === t.questions[0].id)!.mark).toBe(3)
     expect(first.paper!.find((q) => q.id === t.questions[1].id)!.mark).toBe(2)
 
-    const second = await sync(alice, attemptId)
+    const second = await syncWithPaper(alice, attemptId)
     expect(second.paper).toEqual(first.paper)
     const third = await openTest(alice, t.code, 'dev-A')
     expect(third.paper).toEqual(first.paper)
+  })
+
+  it('a sync leaves out the paper and the saved answers unless the device asks for them (data on phones)', async () => {
+    const { lecturer, algo, alice } = await setup()
+    const t = await makeTest(algo.id, lecturer, { mcq: 3, short: 1 })
+    const [q1] = t.questions
+    const waiting = await openTest(alice, t.code, 'dev-A')
+    // Waiting: no paper yet; the device asks on every sync, and gets none before Start.
+    const beforeStart = await syncWithPaper(alice, waiting.attemptId!)
+    expect(beforeStart).toMatchObject({ stage: 'waiting', paper: null, saved: [] })
+    await start(t.id)
+    const attemptId = await joinRunning(alice, t)
+
+    const lean = await sync(alice, attemptId, [mcqAnswer(q1, right(q1))])
+    expect(lean.stage).toBe('answering')
+    expect(lean).not.toHaveProperty('paper')
+    expect(lean).not.toHaveProperty('saved')
+    expect(lean.acceptedRevs).toEqual({ [q1.id]: 1 })
+    expect(JSON.stringify(lean).length).toBeLessThan(1000)
+
+    const asked = await syncWithPaper(alice, attemptId)
+    expect(asked.paper!.map((q) => q.id).sort()).toEqual(t.questions.map((q) => q.id).sort())
+    expect(asked.saved).toEqual([{ questionId: q1.id, optionId: right(q1), text: null, rev: 1 }])
   })
 
   it("shuffle off keeps the lecturer's order", async () => {
@@ -313,7 +338,7 @@ describe('taking a test (student services)', () => {
     const t = await makeTest(algo.id, lecturer, { mcq: 6, short: 1, shuffle: false })
     await start(t.id)
     const attemptId = await joinRunning(alice, t)
-    const view = await sync(alice, attemptId)
+    const view = await syncWithPaper(alice, attemptId)
     expect(view.paper!.map((q) => q.id)).toEqual(t.questions.map((q) => q.id))
     expect(view.paper!.map((q) => q.prompt)).toEqual(t.questions.map((_, i) => `Question ${i + 1}`))
     for (const pq of view.paper!) {
@@ -356,7 +381,7 @@ describe('taking a test (student services)', () => {
     // A higher rev replaces it; the same rev again changes nothing.
     await sync(alice, attemptId, [shortAnswer(q3, 'diffusion', 2)])
     await sync(alice, attemptId, [shortAnswer(q3, 'other', 2)])
-    const view = await sync(alice, attemptId)
+    const view = await syncWithPaper(alice, attemptId)
     expect(view.saved).toEqual(
       expect.arrayContaining([
         { questionId: q1.id, optionId: wrong(q1), text: null, rev: 2 },
@@ -383,7 +408,7 @@ describe('taking a test (student services)', () => {
     const late = await sync(alice, attemptId, [mcqAnswer(q1, right(q1)), mcqAnswer(q2, right(q2)), mcqAnswer(q3, wrong(q3))])
     expect(late.acceptedRevs).toEqual({ [q1.id]: 1, [q2.id]: 1, [q3.id]: 1 })
     expect(late.stage).toBe('over')
-    expect(late.paper).toBeNull()
+    expect(late.paper).toBeUndefined()
 
     // One more arrives 3 min after the end: dropped silently.
     setClock(after(DEADLINE, 3 * MIN))
@@ -449,7 +474,7 @@ describe('taking a test (student services)', () => {
     ])
     expect(three.stage).toBe('ended_left')
     expect(three.exitsSoFar).toBe(3)
-    expect(three.paper).toBeNull()
+    expect(three.paper).toBeUndefined()
     expect(three.acceptedRevs).toEqual({ [q1.id]: 1, [q2.id]: 1 })
     expect(await storedAnswers(attemptId)).toHaveLength(2)
     const row = await attemptRow(attemptId)
