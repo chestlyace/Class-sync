@@ -24,6 +24,7 @@ describe('safeNextPath', () => {
 
   it('refuses control characters and overly long values', () => {
     expect(safeNextPath('/t/A\nB')).toBeNull()
-    expect(safeNextPath(`/${'a'.repeat(600)}`)).toBeNull()
+    expect(safeNextPath(`/${'a'.repeat(2100)}`)).toBeNull()
+    expect(safeNextPath(`/${'a'.repeat(1000)}`)).toBe(`/${'a'.repeat(1000)}`)
   })
 })
