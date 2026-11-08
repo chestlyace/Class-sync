@@ -15,7 +15,7 @@ import {
   revokeAccessToken,
   type AuthInstance,
 } from './connections'
-import { createTestAuth } from './test-auth'
+import { createTestAuth } from '@/test/mcp-oauth'
 
 describe('mcp connections service', () => {
   let db: Db

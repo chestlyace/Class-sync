@@ -151,6 +151,9 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
         // Hosted assistants register themselves (RFC 7591) without credentials.
         allowDynamicClientRegistration: true,
         allowUnauthenticatedClientRegistration: true,
+        // CLI assistants (Claude Code, Cursor) register http://localhost callbacks without sending
+        // application_type: classify those as native clients instead of refusing them as web ones.
+        clientRegistrationDefaultApplicationType: 'infer',
         // No client_credentials: its subject is not a user.
         grantTypes: ['authorization_code', 'refresh_token'],
         refreshTokenReuseInterval: 0,
@@ -170,6 +173,26 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
   })
 }
 
-export const auth = createAuth(db)
+export type Auth = ReturnType<typeof createAuth>
 
-export type Auth = typeof auth
+let instance: Auth | undefined
+
+/**
+ * The app's Better Auth instance, created on first use: creating it starts the OAuth provider's
+ * startup work (seeding the MCP resource row), which must not run when a module is merely
+ * imported (`next build`, unit tests).
+ */
+export function getAuth(): Auth {
+  return (instance ??= createAuth(db))
+}
+
+export const auth: Auth = new Proxy({} as Auth, {
+  get(_target, prop) {
+    const real = getAuth()
+    const value = Reflect.get(real, prop, real)
+    return typeof value === 'function' ? value.bind(real) : value
+  },
+  has(_target, prop) {
+    return Reflect.has(getAuth(), prop)
+  },
+})
