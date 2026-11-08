@@ -1,5 +1,5 @@
 import { and, isNull, lt, notExists, sql } from 'drizzle-orm'
-import type { Db } from '@/server/db'
+import { db as defaultDb, type Db } from '@/server/db'
 import { oauthAccessToken, oauthClient, oauthConsent, oauthRefreshToken } from '@/server/db/schema'
 
 const DAY_MS = 86_400_000
@@ -9,7 +9,7 @@ const DAY_MS = 86_400_000
  * user, with no consent and no tokens. Dynamic registration is open, so this bounds what a
  * flood of registrations can leave behind. Returns how many were deleted. Run from the daily cron.
  */
-export async function pruneUnusedOauthClients(db: Db, now: Date = new Date()): Promise<number> {
+export async function pruneUnusedOauthClients(db: Db = defaultDb, now: Date = new Date()): Promise<number> {
   const cutoff = new Date(now.getTime() - DAY_MS)
   const deleted = await db
     .delete(oauthClient)
