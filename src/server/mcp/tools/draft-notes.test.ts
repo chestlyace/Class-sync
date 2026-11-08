@@ -8,6 +8,7 @@ import { createTopic, setTopicHidden } from '@/server/notes/topics'
 import { addPracticeQuestions, PRACTICE_BATCH_MAX } from '@/server/revision/authoring'
 import { MAX_PRACTICE_PER_TOPIC } from '@/server/revision/rules'
 import { getPracticePaper } from '@/server/revision/practice'
+import { createCourse } from '@/server/courses/service'
 import { createTestDb } from '@/test/db'
 import { clearMarkingData, setupCourse } from '@/test/marking-fixture'
 import { callTool, parseToolInput } from '@/test/mcp'
@@ -172,5 +173,31 @@ describe('notes and practice draft tools', () => {
     await setTopicHidden(fx.lecturer, fx.hidden, false)
     const paper = await getPracticePaper(fx.alice, fx.bio.id, fx.hidden)
     expect(paper.questions).toHaveLength(1)
+  })
+
+  it("a topic of the lecturer's other course is refused (FORBIDDEN), even when hidden", async () => {
+    const fx = await setup()
+    const genetics = await createCourse(fx.lecturer, { classId: fx.cls.id, title: 'Genetics', semester: 1 })
+    const otherHidden = (await createTopic(fx.lecturer, genetics.id, { title: 'Genes (draft)', hidden: true })).id
+    await expect(
+      callTool('create_note_draft', fx.lecturer, { courseId: fx.bio.id, topicId: otherHidden, title: 'N', body: 'B' }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    expect(await db.select().from(resource)).toEqual([])
+  })
+
+  it('every notes draft tool refuses a student (FORBIDDEN)', async () => {
+    const fx = await setup()
+    await expect(
+      callTool('create_note_draft', fx.alice, { courseId: fx.bio.id, topicId: fx.hidden, title: 'N', body: 'B' }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    await expect(
+      callTool('create_note_draft', fx.alice, { courseId: fx.bio.id, newTopicTitle: 'Mine', title: 'N', body: 'B' }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    await expect(callTool('add_practice_questions', fx.alice, { topicId: fx.hidden, questions: [short] })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    })
+    expect(await db.select().from(resource)).toEqual([])
+    expect(await db.select().from(revisionQuestion)).toEqual([])
+    expect((await db.select().from(courseTopic)).map((t) => t.title).sort()).toEqual(['Cells', 'Drafts'])
   })
 })

@@ -168,4 +168,40 @@ describe('test draft tools', () => {
       storeAssistantSuggestions(fx.lecturer, test.id, [{ attemptId: 'x', questionId: q1.id, mark: 1, reason: 'R' }]),
     ).rejects.toMatchObject({ code: 'CONFLICT', details: { reason: 'automatic' } })
   })
+
+  it('suggest_test_marks ignores answers of another test of the same lecturer and writes nothing there', async () => {
+    const { fx, test, q2, a } = await endedTest()
+    const other = await insertStartedTest(db, fx.lecturer, fx.bio.id)
+    const otherAttempt = await joinTest(db, other.test.id, fx.bob)
+    await putAnswer(db, otherAttempt.id, other.q2!.id, { text: 'Other test answer.' })
+    setClock(at(40))
+    const out = (await callTool('suggest_test_marks', fx.lecturer, {
+      testId: test.id,
+      suggestions: [
+        { attemptId: otherAttempt.id, questionId: other.q2!.id, mark: 1, reason: 'Wrong test.' },
+        { attemptId: otherAttempt.id, questionId: q2!.id, mark: 1, reason: 'Mixed ids.' },
+        { attemptId: a.id, questionId: other.q2!.id, mark: 1, reason: 'Mixed ids.' },
+      ],
+    })) as { suggested: number; skipped: { reason: string }[] }
+    expect(out.suggested).toBe(0)
+    expect(out.skipped.map((x) => x.reason)).toEqual(['no_answer', 'no_answer', 'no_answer'])
+    expect((await answerRow(db, otherAttempt.id, other.q2!.id)).suggestedMark).toBeNull()
+    expect((await answerRow(db, a.id, q2!.id)).suggestedMark).toBeNull()
+  })
+
+  it('every test draft tool refuses a student (FORBIDDEN)', async () => {
+    const { fx, test, q2, a } = await endedTest()
+    setClock(at(40))
+    await expect(callTool('create_test', fx.alice, { courseId: fx.bio.id, title: 'Mine', questions })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    })
+    await expect(callTool('update_test', fx.alice, { testId: test.id, title: 'Mine' })).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    await expect(
+      callTool('suggest_test_marks', fx.alice, {
+        testId: test.id,
+        suggestions: [{ attemptId: a.id, questionId: q2!.id, mark: 4, reason: 'Me' }],
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    expect((await answerRow(db, a.id, q2!.id)).suggestedMark).toBeNull()
+  })
 })
