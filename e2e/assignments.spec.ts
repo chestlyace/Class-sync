@@ -263,6 +263,11 @@ test('assignments with uploads, grading and release, end to end', async ({
       await lecturer.getByRole('button', { name: 'Release grades', exact: true }).click()
       const dialog = lecturer.getByRole('dialog')
       await expect(dialog).toContainText('1 graded submission becomes visible to its student')
+      await expect(dialog).toContainText(
+        'Releasing also closes this assignment: students can no longer hand in or replace work.',
+      )
+      // Due tomorrow: Bob hasn't handed in, so the dialog warns that he won't be able to.
+      await expect(dialog).toContainText("The deadline hasn't passed — students who haven't handed in won't be able to.")
       await dialog.getByRole('button', { name: 'Release grades', exact: true }).click()
       await expect(dialog).toHaveCount(0)
       await expect(lecturer.getByText(/Grades released /)).toBeVisible()

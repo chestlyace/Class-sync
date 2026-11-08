@@ -1,4 +1,4 @@
-import { and, eq, gt, lte } from 'drizzle-orm'
+import { and, eq, gt, isNull, lte } from 'drizzle-orm'
 import { createElement } from 'react'
 import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
@@ -14,7 +14,8 @@ export const REMINDER_WINDOW_MS = 24 * 60 * 60 * 1000
 const INSERT_CHUNK = 500
 
 /**
- * Emails every roster student who has not submitted yet for each published assignment due within
+ * Emails every roster student who has not submitted yet for each published assignment (grades not
+ * yet released) due within
  * the next 24 hours (`(at, at + 24 h]`), once per student and assignment. The reminder row is
  * inserted (`on conflict do nothing … returning`) BEFORE sending and only the rows that came back
  * are emailed, so overlapping runs cannot double-send; the price is that a failed send is not
@@ -33,7 +34,15 @@ export async function sendDueReminders(db: Db, at: Date): Promise<{ assignments:
     })
     .from(assignment)
     .innerJoin(course, eq(course.id, assignment.courseId))
-    .where(and(eq(assignment.status, 'published'), gt(assignment.dueAt, at), lte(assignment.dueAt, upper)))
+    .where(
+      and(
+        eq(assignment.status, 'published'),
+        // Released grades close hand-ins (ruling B9): nothing left to remind about.
+        isNull(assignment.gradesReleasedAt),
+        gt(assignment.dueAt, at),
+        lte(assignment.dueAt, upper),
+      ),
+    )
 
   if (due.length === 0) return { assignments: 0, reminded: 0 }
   // One builder per run: without BETTER_AUTH_URL it warns once, not per email.

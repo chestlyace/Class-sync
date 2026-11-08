@@ -148,6 +148,18 @@ describe('sendDueReminders', () => {
     expect(await db.select().from(assignmentReminder)).toHaveLength(0)
   })
 
+  it('skips an assignment whose grades are released (hand-ins are closed, ruling B9)', async () => {
+    const at = new Date()
+    const { lecturer, algo, students } = await setup()
+    await addAssignment(algo.id, lecturer.user.id, at, 23, { title: 'Released lab', gradesReleasedAt: at })
+    const open = await addAssignment(algo.id, lecturer.user.id, at, 23, { title: 'Open lab' })
+    await expect(sendDueReminders(db, at)).resolves.toEqual({ assignments: 1, reminded: 3 })
+    expect(sent().every((m) => m.subject.includes('Open lab'))).toBe(true)
+    const rows = await db.select().from(assignmentReminder)
+    expect(rows).toHaveLength(students.length)
+    expect(rows.every((r) => r.assignmentId === open.id)).toBe(true)
+  })
+
   it('a run 6 hours late still reminds', async () => {
     const at = new Date()
     const { lecturer, algo } = await setup()

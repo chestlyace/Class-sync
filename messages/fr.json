@@ -724,6 +724,8 @@
         "releaseTitle": "Publier les notes ?",
         "releaseBody": "{graded, plural, =0 {Aucun rendu n'est encore noté. Les étudiants verront les notes dès que vous les ajouterez.} one {# rendu noté devient visible pour son auteur, qui reçoit un e-mail.} other {# rendus notés deviennent visibles pour leurs auteurs, qui reçoivent chacun un e-mail.}}",
         "releaseUngraded": "{count, plural, one {# rendu n'est pas encore noté ; sa note s'affichera dès que vous l'aurez noté.} other {# rendus ne sont pas encore notés ; leurs notes s'afficheront dès que vous les aurez notés.}}",
+        "releaseCloses": "La publication ferme aussi ce devoir : les étudiants ne pourront plus rendre ni remplacer leur travail.",
+        "releaseBeforeDeadline": "La date limite n'est pas encore passée : les étudiants qui n'ont pas rendu leur travail ne pourront plus le faire.",
         "releaseConfirm": "Publier les notes",
         "releasedOn": "Notes publiées le {date}. Les notes que vous modifiez maintenant sont visibles tout de suite par les étudiants.",
         "gradedCount": "{graded, plural, one {# rendu noté sur {total}.} other {# rendus notés sur {total}.}}",

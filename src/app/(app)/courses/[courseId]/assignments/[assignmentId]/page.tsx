@@ -20,7 +20,7 @@ import { loadPage } from '../../../../load-page'
 import { DeleteDraftButton, PublishButton, ReleaseGradesButton } from '../../../assignment-controls'
 import { formatSessionDate } from '../../../attendance-format'
 
-type DetailView = { course: CourseSummary; assignment: AssignmentDetail; rows: SubmissionRow[] }
+type DetailView = { course: CourseSummary; assignment: AssignmentDetail; rows: SubmissionRow[]; now: Date }
 
 export async function generateMetadata() {
   const t = await getTranslations('assignments.lecturer')
@@ -37,10 +37,10 @@ export default async function AssignmentDetailPage({
   const view = await loadPage<DetailView>(async (ctx) => {
     const { assignment, rows } = await listSubmissions(ctx, assignmentId) // FORBIDDEN unless mine
     if (assignment.courseId !== courseId) throw new AppError('NOT_FOUND', 'Assignment not in this course')
-    return { course: await getCourse(ctx, courseId), assignment, rows }
+    return { course: await getCourse(ctx, courseId), assignment, rows, now: new Date() }
   })
   if (!view.ok) return <ErrorState code={view.code} />
-  const { course, assignment, rows } = view.data
+  const { course, assignment, rows, now } = view.data
   const courseHref = `/courses/${encodeURIComponent(course.id)}`
   const href = `${courseHref}/assignments/${encodeURIComponent(assignment.id)}`
   const date = (d: Date) => formatSessionDate(d, locale, config.timeZone)
@@ -110,7 +110,12 @@ export default async function AssignmentDetailPage({
               <p className="w-full text-sm text-muted-foreground">
                 {t('detail.gradedCount', { graded, total: submitted.length })}
               </p>
-              <ReleaseGradesButton assignmentId={assignment.id} graded={graded} ungraded={submitted.length - graded} />
+              <ReleaseGradesButton
+                assignmentId={assignment.id}
+                graded={graded}
+                ungraded={submitted.length - graded}
+                beforeDeadline={assignment.dueAt.getTime() > now.getTime()}
+              />
             </>
           )}
         </div>

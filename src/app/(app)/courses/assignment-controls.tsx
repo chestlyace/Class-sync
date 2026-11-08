@@ -57,15 +57,20 @@ export function DeleteDraftButton({ assignmentId, courseId }: { assignmentId: st
   )
 }
 
-/** Release grades; the dialog says how many submissions are graded and how many are not. */
+/**
+ * Release grades; the dialog says how many submissions are graded and how many are not, that
+ * releasing closes hand-ins (ruling B9), and warns when the deadline has not passed yet.
+ */
 export function ReleaseGradesButton({
   assignmentId,
   graded,
   ungraded,
+  beforeDeadline,
 }: {
   assignmentId: string
   graded: number
   ungraded: number
+  beforeDeadline: boolean
 }) {
   const t = useTranslations('assignments.lecturer.detail')
   return (
@@ -76,8 +81,9 @@ export function ReleaseGradesButton({
       triggerLabel={t('release')}
       triggerIcon={<Unlock aria-hidden="true" data-icon="inline-start" />}
       title={t('releaseTitle')}
-      body={t('releaseBody', { graded })}
+      body={`${t('releaseBody', { graded })} ${t('releaseCloses')}`}
       note={ungraded > 0 ? t('releaseUngraded', { count: ungraded }) : undefined}
+      warning={beforeDeadline ? t('releaseBeforeDeadline') : undefined}
       confirmLabel={t('releaseConfirm')}
       renderError={renderError}
     />

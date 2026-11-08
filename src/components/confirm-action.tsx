@@ -1,5 +1,6 @@
 'use client'
 
+import { TriangleAlert } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useActionState, useState } from 'react'
 import { ActionError } from '@/components/action-error'
@@ -28,6 +29,7 @@ export function ConfirmAction({
   title,
   body,
   note,
+  warning,
   confirmLabel,
   destructive = false,
   primary = false,
@@ -41,6 +43,8 @@ export function ConfirmAction({
   title: string
   body: string
   note?: string
+  /** A consequence the person may not expect, shown more strongly than `note`. */
+  warning?: string
   confirmLabel: string
   destructive?: boolean
   /** Shows the trigger as the page's main action (filled blue). */
@@ -74,6 +78,12 @@ export function ConfirmAction({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{body}</DialogDescription>
           {note && <p className="text-sm text-muted-foreground">{note}</p>}
+          {warning && (
+            <p className="flex items-start gap-2 text-sm font-medium text-foreground">
+              <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-destructive" />
+              {warning}
+            </p>
+          )}
         </DialogHeader>
         <form action={dispatch} className="flex flex-col gap-3">
           {Object.entries(fields).map(([name, value]) => (

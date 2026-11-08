@@ -724,6 +724,8 @@
         "releaseTitle": "Release the grades?",
         "releaseBody": "{graded, plural, =0 {No submission is graded yet. Students will see marks as soon as you add them.} one {# graded submission becomes visible to its student, who gets an email.} other {# graded submissions become visible to their students, who each get an email.}}",
         "releaseUngraded": "{count, plural, one {# submission isn't graded yet; its mark will show as soon as you grade it.} other {# submissions aren't graded yet; their marks will show as soon as you grade them.}}",
+        "releaseCloses": "Releasing also closes this assignment: students can no longer hand in or replace work.",
+        "releaseBeforeDeadline": "The deadline hasn't passed — students who haven't handed in won't be able to.",
         "releaseConfirm": "Release grades",
         "releasedOn": "Grades released {date}. Marks you change now are visible to students right away.",
         "gradedCount": "Graded: {graded} of {total}.",
