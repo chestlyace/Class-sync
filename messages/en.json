@@ -83,6 +83,7 @@
   "schools": {
     "title": "Schools",
     "new": {
+      "step": "Step 1 of 3 · School",
       "title": "Find your school",
       "description": "Search first: your school may already be on Clasync.",
       "searchLabel": "Search by school name",
@@ -115,8 +116,10 @@
   "classes": {
     "title": "Classes",
     "new": {
+      "step": "Step 2 of 3 · Class",
       "title": "New class",
       "description": "A class is shared: colleagues join it with the lecturer code and add their own courses.",
+      "joinInstead": "A colleague already created this class? Join it with their lecturer code",
       "pickSchool": "First, choose the school.",
       "school": "School",
       "changeSchool": "Change school",
@@ -166,6 +169,7 @@
   "courses": {
     "title": "Courses",
     "new": {
+      "step": "Step 3 of 3 · Course",
       "title": "New course",
       "description": "Every active student of the class is on the course roster. You can adjust it afterwards.",
       "class": "Class",

@@ -28,11 +28,18 @@ export default async function NewClassPage({ searchParams }: PageProps<'/classes
   if (user.role !== 'lecturer') return <ErrorState code="FORBIDDEN" />
   const t = await getTranslations()
   const { schoolId } = await searchParams
-  const header = <PageHeader title={t('classes.new.title')} description={t('classes.new.description')} />
+  const header = (
+    <PageHeader eyebrow={t('classes.new.step')} title={t('classes.new.title')} description={t('classes.new.description')} />
+  )
+  const joinInstead = (
+    <Link href="/join" className="self-start text-sm font-medium text-primary underline-offset-4 hover:underline">
+      {t('classes.new.joinInstead')}
+    </Link>
+  )
 
   if (typeof schoolId !== 'string' || schoolId === '') {
     return (
-      <>
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
         {header}
         <Panel className="flex flex-col gap-5">
           <p className="font-medium">{t('classes.new.pickSchool')}</p>
@@ -42,7 +49,8 @@ export default async function NewClassPage({ searchParams }: PageProps<'/classes
             {t('schools.new.addSchool')}
           </Link>
         </Panel>
-      </>
+        {joinInstead}
+      </div>
     )
   }
 
@@ -50,7 +58,7 @@ export default async function NewClassPage({ searchParams }: PageProps<'/classes
   if (!school.ok) return <ErrorState code={school.code} />
 
   return (
-    <>
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
       {header}
       <Panel className="flex flex-col gap-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -66,6 +74,7 @@ export default async function NewClassPage({ searchParams }: PageProps<'/classes
         </div>
         <NewClassForm schoolId={school.data.id} defaultYear={currentAcademicYear()} />
       </Panel>
-    </>
+      {joinInstead}
+    </div>
   )
 }
