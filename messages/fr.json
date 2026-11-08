@@ -1129,7 +1129,7 @@
         "reconnecting": "Connexion perdue. Nouvelle tentative…",
         "counts": {
           "joined": "Connectés",
-          "working": "En train de composer",
+          "working": "Composent",
           "handedIn": "Copies rendues",
           "endedLeaving": "Arrêtés pour sortie"
         },

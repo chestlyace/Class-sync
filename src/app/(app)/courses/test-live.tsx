@@ -146,7 +146,7 @@ export function TestLive({
             <span id="test-link">{t('linkLabel')}</span>
           </Eyebrow>
           <div className="flex flex-wrap items-center gap-3">
-            <code className="min-w-0 font-mono text-base break-all sm:text-lg">{link}</code>
+            <code className="min-w-0 font-mono text-sm break-all sm:text-lg">{link}</code>
             <CopyButton value={link} label={t('copyLink')} />
           </div>
           {phase === 'not_started' && <p className="text-sm text-muted-foreground">{t('notStartedHint')}</p>}
