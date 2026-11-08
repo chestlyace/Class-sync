@@ -1580,6 +1580,40 @@
       "course": "Choisissez un cours.",
       "notEmpty": "Ce thème contient encore des notes, des fichiers, des liens ou des questions d'entraînement. Retirez-les d'abord.",
       "alreadyThere": "Cet élément est déjà dans ce cours."
+    },
+    "student": {
+      "eyebrow": "Notes",
+      "title": "Notes",
+      "back": "Retour à {course}",
+      "searchLabel": "Rechercher dans les notes du cours",
+      "searchPlaceholder": "Rechercher dans les notes du cours",
+      "searchButton": "Rechercher",
+      "clearSearch": "Effacer la recherche",
+      "topicHeading": "{n} · {title}",
+      "empty": "Votre enseignant n'a pas encore partagé de notes.",
+      "noResults": "Aucun résultat pour « {q} ».",
+      "noteMeta": "Note",
+      "newBadge": "Nouveau",
+      "fileType": {
+        "pdf": "PDF",
+        "word": "Word",
+        "slides": "Diaporama",
+        "image": "Image",
+        "other": "Fichier"
+      },
+      "practiceTitle": "Réviser ce thème",
+      "practiceMeta": "{count, plural, one {# question} other {# questions}} · ne compte pas pour les notes",
+      "openFile": "Ouvrir {title}",
+      "openLink": "Ouvrir {title} dans un nouvel onglet",
+      "updated": "{lecturer} · mis à jour le {date}",
+      "allNotes": "Toutes les notes",
+      "practise": "Réviser ce thème",
+      "topicLabel": "{course} · Thème {n}",
+      "section": {
+        "title": "Notes",
+        "body": "Notes, fichiers et liens de votre enseignant, par thème.",
+        "open": "Ouvrir les notes"
+      }
     }
   }
 }

@@ -25,7 +25,7 @@ export default async function CourseNotesPage({
   ) // FORBIDDEN unless I teach this course or I am on its roster
   if (!view.ok) return <ErrorState code={view.code} />
   const data = view.data
-  if (data.role === 'student') return <StudentNotes data={data} />
+  if (data.role === 'student') return <StudentNotes data={data} q={typeof q === 'string' ? q : undefined} />
 
   return (
     <>
