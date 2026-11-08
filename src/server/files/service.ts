@@ -25,7 +25,8 @@ const MAX_NAME_LENGTH = 255
 const MAX_SAFE_NAME_LENGTH = 100
 /** Unconfirmed uploads one person may have started in the last PENDING_WINDOW_MS. */
 const MAX_PENDING_UPLOADS = 2 * MAX_FILES
-const PENDING_WINDOW_MS = 24 * 60 * 60 * 1000
+/** Ruling B10: one hour, so a stuck client recovers soon while a loop can't pile up rows. */
+const PENDING_WINDOW_MS = 60 * 60 * 1000
 
 const requestSchema = z.object({
   purpose: z.enum(FILE_PURPOSES),

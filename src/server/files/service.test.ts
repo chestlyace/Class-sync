@@ -506,7 +506,7 @@ describe('files service', () => {
     expect((await getFileForDownload(alice, fileId)).info.id).toBe(fileId)
   })
 
-  it('caps pending uploads: 2 × MAX_FILES unconfirmed in the last 24 h → CONFLICT too_many_pending', async () => {
+  it('caps pending uploads: 2 × MAX_FILES unconfirmed in the last hour → CONFLICT too_many_pending', async () => {
     const { alice, published } = await setup()
     const at = new Date('2026-11-09T10:00:00Z')
     setNowForTests(() => at)
@@ -521,14 +521,17 @@ describe('files service', () => {
       name: 'old.pdf',
       mimeType: PDF,
       sizeBytes: 2,
-      createdAt: new Date(at.getTime() - DAY - 1000),
+      createdAt: new Date(at.getTime() - HOUR - 1000),
     })
     await upload(alice, 'submission', published)
     await req(100)
     await expect(req(101)).rejects.toMatchObject({ code: 'CONFLICT', details: { reason: 'too_many_pending' } })
-    // A day later the window has moved on.
-    setNowForTests(() => new Date(at.getTime() + DAY + 1000))
-    await expect(req(102)).resolves.toMatchObject({ fileId: expect.any(String) })
+    // Still inside the hour: still capped.
+    setNowForTests(() => new Date(at.getTime() + HOUR - 1000))
+    await expect(req(102)).rejects.toMatchObject({ code: 'CONFLICT', details: { reason: 'too_many_pending' } })
+    // An hour later the window has moved on.
+    setNowForTests(() => new Date(at.getTime() + HOUR + 1000))
+    await expect(req(103)).resolves.toMatchObject({ fileId: expect.any(String) })
   })
 
   it('cleans display names: bidi and C1 controls go, lone surrogates become U+FFFD', async () => {
