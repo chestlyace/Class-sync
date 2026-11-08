@@ -1,10 +1,12 @@
-import { and, count, desc, eq, gt, isNull, or } from 'drizzle-orm'
+import { verifyOAuthQueryParams } from '@better-auth/oauth-provider'
+import { and, asc, count, desc, eq, gt, isNull, or } from 'drizzle-orm'
 import type { createAuth } from '@/server/auth/auth'
 import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
 import { requireRole } from '@/server/core/guards'
 import { db } from '@/server/db'
 import { apikey, oauthAccessToken, oauthClient, oauthConsent, oauthRefreshToken } from '@/server/db/schema'
+import { describeRedirect, isRegisteredRedirect, type RedirectTarget } from './redirect-target'
 
 // Lecturers' assistant connections: personal access tokens (api-key plugin) and the OAuth apps
 // they allowed (oauth-provider consents). Better Auth owns these tables; the app lists and revokes.
@@ -81,6 +83,19 @@ export async function createAccessToken(
       userId: ctx.user.id,
     },
   })
+  // The count above and this insert are not atomic (the plugin writes through its own adapter, so
+  // it can't join a transaction here). Settle races afterwards instead: of the active tokens, the
+  // first MAX_ACCESS_TOKENS by creation stand; a token created past them is deleted at once and
+  // its key never returned. Concurrent requests rank the same rows the same way.
+  const ranked = await ctx.db
+    .select({ id: apikey.id })
+    .from(apikey)
+    .where(activeKeyFilter(ctx.user.id))
+    .orderBy(asc(apikey.createdAt), asc(apikey.id))
+  if (ranked.findIndex((r) => r.id === created.id) >= MAX_ACCESS_TOKENS) {
+    await ctx.db.delete(apikey).where(eq(apikey.id, created.id))
+    throw new AppError('CONFLICT', `At most ${MAX_ACCESS_TOKENS} active tokens; revoke one first`, { max: MAX_ACCESS_TOKENS })
+  }
   return { id: created.id, key: created.key }
 }
 
@@ -156,12 +171,22 @@ export async function disconnectApp(ctx: Ctx, clientId: string): Promise<void> {
   })
 }
 
-/** Whether the user has an active consent for this client (checked on every OAuth MCP call). */
+/**
+ * Whether the user has a consent for this client and the client is not disabled (checked on every
+ * OAuth MCP call, so disconnecting or disabling cuts access before the JWT expires).
+ */
 export async function hasConsent(database: Ctx['db'], userId: string, clientId: string): Promise<boolean> {
   const [row] = await database
     .select({ id: oauthConsent.id })
     .from(oauthConsent)
-    .where(and(eq(oauthConsent.userId, userId), eq(oauthConsent.clientId, clientId)))
+    .innerJoin(oauthClient, eq(oauthClient.clientId, oauthConsent.clientId))
+    .where(
+      and(
+        eq(oauthConsent.userId, userId),
+        eq(oauthConsent.clientId, clientId),
+        or(isNull(oauthClient.disabled), eq(oauthClient.disabled, false)),
+      ),
+    )
     .limit(1)
   return Boolean(row)
 }
@@ -191,4 +216,64 @@ export async function getConsentClient(clientId: string, database: Ctx['db'] = d
     .where(eq(oauthClient.clientId, clientId))
   if (!row || row.disabled) return null
   return { clientId: row.clientId, name: row.name, icon: safeHttpsUrl(row.icon), uri: safeHttpsUrl(row.uri) }
+}
+
+export type ConsentRequest =
+  | { status: 'invalid' }
+  | { status: 'unknown-client' }
+  | {
+      status: 'ok'
+      client: ConsentClient & {
+        /** Client ID Metadata Document clients: the host their client_id (a URL) names. */
+        metadataHost: string | null
+      }
+      redirect: RedirectTarget
+      scopes: string[]
+    }
+
+/**
+ * What the consent page shows, from its signed query: the client, where the code will go (the
+ * signed `redirect_uri`, which the provider uses, checked against the client's registered URIs)
+ * and the scopes. A bad or expired signature is `invalid`: Allow would fail anyway.
+ */
+export async function describeConsentRequest(
+  query: string,
+  deps: { auth?: AuthInstance; db?: Ctx['db'] } = {},
+): Promise<ConsentRequest> {
+  const a = deps.auth ?? (await defaultAuth())
+  const { secret } = await a.$context
+  if (!(await verifyOAuthQueryParams(query, secret))) return { status: 'invalid' }
+  const params = new URLSearchParams(query)
+  const clientId = params.get('client_id') ?? ''
+  const redirectUri = params.get('redirect_uri') ?? ''
+  if (!clientId || clientId.length > 2048) return { status: 'unknown-client' }
+  const [row] = await (deps.db ?? db)
+    .select({
+      clientId: oauthClient.clientId,
+      name: oauthClient.name,
+      icon: oauthClient.icon,
+      uri: oauthClient.uri,
+      disabled: oauthClient.disabled,
+      redirectUris: oauthClient.redirectUris,
+      clientDiscoveryId: oauthClient.clientDiscoveryId,
+    })
+    .from(oauthClient)
+    .where(eq(oauthClient.clientId, clientId))
+  if (!row || row.disabled) return { status: 'unknown-client' }
+  const redirect = describeRedirect(redirectUri)
+  if (!redirect || !isRegisteredRedirect(row.redirectUris, redirectUri)) return { status: 'invalid' }
+  let metadataHost: string | null = null
+  if (row.clientDiscoveryId) {
+    try {
+      metadataHost = new URL(row.clientId).host
+    } catch {
+      metadataHost = null
+    }
+  }
+  return {
+    status: 'ok',
+    client: { clientId: row.clientId, name: row.name, icon: safeHttpsUrl(row.icon), uri: safeHttpsUrl(row.uri), metadataHost },
+    redirect,
+    scopes: (params.get('scope') ?? '').split(' ').filter(Boolean),
+  }
 }

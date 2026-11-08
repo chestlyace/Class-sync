@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto'
 import { runDueReminders } from '@/server/assignments/reminders'
+import { pruneUnusedOauthClients } from '@/server/mcp/prune'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -17,8 +18,13 @@ async function handle(request: Request): Promise<Response> {
   if (!authorized(request.headers.get('authorization'), secret)) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  // Daily housekeeping rides on this cron. Its failure is logged and never blocks the reminders.
+  const oauthClientsPruned = await pruneUnusedOauthClients().catch((error: unknown) => {
+    console.error('[cron/reminders] pruning unused OAuth clients failed', error)
+    return null
+  })
   try {
-    return Response.json(await runDueReminders())
+    return Response.json({ ...(await runDueReminders()), oauthClientsPruned })
   } catch (error) {
     console.error('[cron/reminders] run failed', error)
     return Response.json({ error: 'Reminder run failed' }, { status: 500 })

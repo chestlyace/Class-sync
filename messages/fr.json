@@ -1829,6 +1829,13 @@
     "lecturersOnlyTitle": "Pour les enseignants",
     "lecturersOnlyBody": "La connexion d'un assistant à Clasync est réservée aux enseignants. Votre compte étudiant ne peut pas être connecté à un assistant.",
     "unknownTitle": "Assistant inconnu",
-    "unknownBody": "Clasync ne reconnaît pas l'assistant qui vous a envoyé ici. Relancez la connexion depuis votre assistant."
+    "unknownBody": "Clasync ne reconnaît pas l'assistant qui vous a envoyé ici. Relancez la connexion depuis votre assistant.",
+    "unverified": "Application non vérifiée",
+    "identifiedBy": "Identifiée par {host}",
+    "destinationLabel": "L'accès sera envoyé à",
+    "destinationLoopback": "Une application sur cet ordinateur.",
+    "warningTitle": "Vérifiez avant d'autoriser",
+    "warningBody": "N'autorisez que si vous venez de lancer la connexion depuis votre assistant. Le code d'accès sera envoyé à {destination}.",
+    "expiredTitle": "Demande expirée"
   }
 }

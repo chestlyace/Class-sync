@@ -1,8 +1,8 @@
-import { Ban, Bot, Eye, PencilLine } from 'lucide-react'
+import { Ban, Bot, Eye, PencilLine, Send, TriangleAlert } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/server/auth/session'
-import { getConsentClient } from '@/server/mcp/connections'
+import { describeConsentRequest } from '@/server/mcp/connections'
 import { ConsentButtons } from './consent-buttons'
 
 export async function generateMetadata() {
@@ -46,27 +46,30 @@ export default async function ConsentPage({ searchParams }: { searchParams: Prom
   if (!user) redirect(`/sign-in?${toQuery(search)}`)
 
   const t = await getTranslations('oauthConsent')
-  const clientId = typeof search.client_id === 'string' ? search.client_id : ''
-  const client = await getConsentClient(clientId)
+  // The signed query says which client and where the code goes; describeConsentRequest checks the
+  // signature and that the destination is one the client registered.
+  const request = await describeConsentRequest(toQuery(search))
 
-  if (!client) {
+  if (request.status !== 'ok') {
+    const invalid = request.status === 'invalid'
     return (
       <>
-        <h1 className="font-display text-5xl leading-[0.95] tracking-[0.01em]">{t('unknownTitle')}</h1>
-        <p className="text-sm text-[#48484a]">{t('unknownBody')}</p>
+        <h1 className="font-display text-5xl leading-[0.95] tracking-[0.01em]">{invalid ? t('expiredTitle') : t('unknownTitle')}</h1>
+        <p className="text-sm text-[#48484a]">{invalid ? t('expired') : t('unknownBody')}</p>
       </>
     )
   }
 
+  const { client, redirect: destination } = request
   const name = client.name?.trim() || t('unnamed')
-  const scopes = new Set(typeof search.scope === 'string' ? search.scope.split(' ') : [])
+  const scopes = new Set(request.scopes)
   const isLecturer = user.role === 'lecturer'
 
   return (
     <>
       <div className="flex items-center gap-3">
         {client.icon ? (
-          // An external, https-only image chosen by the assistant's developer; no referrer sent.
+          // An external, https-only image chosen by the app's developer; no referrer sent.
           // eslint-disable-next-line @next/next/no-img-element
           <img src={client.icon} alt="" width={48} height={48} referrerPolicy="no-referrer" className="size-12 rounded-xl border object-contain" />
         ) : (
@@ -74,12 +77,34 @@ export default async function ConsentPage({ searchParams }: { searchParams: Prom
             <Bot aria-hidden="true" className="size-6" />
           </span>
         )}
-        <div className="flex min-w-0 flex-col">
-          <span className="font-mono text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase">{t('eyebrow')}</span>
+        <div className="flex min-w-0 flex-col gap-0.5">
           <span className="truncate text-lg font-semibold">{name}</span>
-          {client.uri && <span className="truncate text-sm text-muted-foreground">{new URL(client.uri).host}</span>}
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+            {/* Anyone can register an app under any name and logo: none is verified by Clasync. */}
+            <span className="rounded-full border px-2 py-0.5 font-mono text-[11px] font-medium tracking-[0.08em] uppercase">{t('unverified')}</span>
+            {client.metadataHost && <span className="truncate">{t('identifiedBy', { host: client.metadataHost })}</span>}
+          </span>
         </div>
       </div>
+
+      <div className="flex flex-col gap-1 rounded-2xl border bg-muted px-4 py-3">
+        <span className="font-mono text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase">{t('destinationLabel')}</span>
+        <span className="flex items-center gap-2">
+          <Send aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+          <span className="font-mono text-base font-semibold break-all">{destination.display}</span>
+        </span>
+        {destination.kind === 'loopback' && <span className="text-sm text-[#48484a]">{t('destinationLoopback')}</span>}
+      </div>
+
+      {isLecturer && destination.kind === 'other' && (
+        <div role="note" className="flex gap-3 rounded-2xl border border-[#b45309]/40 bg-[#fffbeb] px-4 py-3">
+          <TriangleAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-[#b45309]" />
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-semibold">{t('warningTitle')}</span>
+            <span className="text-sm text-[#48484a]">{t('warningBody', { destination: destination.display })}</span>
+          </div>
+        </div>
+      )}
 
       {isLecturer ? (
         <>

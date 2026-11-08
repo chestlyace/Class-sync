@@ -1829,6 +1829,13 @@
     "lecturersOnlyTitle": "For lecturers",
     "lecturersOnlyBody": "Clasync's assistant connection is for lecturers. Your student account can't be connected to an assistant.",
     "unknownTitle": "Unknown assistant",
-    "unknownBody": "Clasync doesn't recognise the assistant that sent you here. Start connecting again from your assistant."
+    "unknownBody": "Clasync doesn't recognise the assistant that sent you here. Start connecting again from your assistant.",
+    "unverified": "Unverified app",
+    "identifiedBy": "Identified by {host}",
+    "destinationLabel": "Access goes to",
+    "destinationLoopback": "An app on this computer.",
+    "warningTitle": "Check before you allow",
+    "warningBody": "Only allow this if you started connecting from your assistant just now. The access code will be sent to {destination}.",
+    "expiredTitle": "Request expired"
   }
 }
