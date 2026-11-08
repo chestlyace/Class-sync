@@ -12,7 +12,7 @@ export async function MyNotes({ courseId }: { courseId: string }) {
       <SectionHeading id="my-notes">{t('title')}</SectionHeading>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="min-w-0 flex-1 text-muted-foreground">{t('body')}</p>
-        <Link href={`/courses/${encodeURIComponent(courseId)}/notes`} className={buttonVariants({ variant: 'outline' })}>
+        <Link href={`/courses/${encodeURIComponent(courseId)}/notes`} className={buttonVariants({ variant: 'outline', size: 'lg' })}>
           <NotebookText aria-hidden="true" data-icon="inline-start" />
           {t('open')}
         </Link>

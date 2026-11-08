@@ -62,13 +62,13 @@ export default async function NotePage({ params }: PageProps<'/courses/[courseId
       </article>
 
       <div className="flex flex-wrap gap-2.5">
-        <Link href={notesHref} className={buttonVariants({ variant: 'outline' })}>
+        <Link href={notesHref} className={buttonVariants({ variant: 'outline', size: 'lg' })}>
           {t('allNotes')}
         </Link>
         {note.practiceCount > 0 && (
           <Link
             href={`${notesHref}/topics/${encodeURIComponent(note.topic.id)}/practice`}
-            className={buttonVariants({ variant: 'default' })}
+            className={buttonVariants({ variant: 'default', size: 'lg' })}
           >
             {t('practise')}
           </Link>

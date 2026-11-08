@@ -48,7 +48,7 @@ export async function StudentNotes({
         title={t('title')}
         description={course.title}
         actions={
-          <Link href={courseHref} className={buttonVariants({ variant: 'outline' })}>
+          <Link href={courseHref} className={buttonVariants({ variant: 'outline', size: 'lg' })}>
             <ArrowLeft aria-hidden="true" data-icon="inline-start" />
             {t('back', { course: course.title })}
           </Link>
@@ -122,7 +122,11 @@ export async function StudentNotes({
                           href={`${base}/open`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          aria-label={t(item.kind === 'file' ? 'openFile' : 'openLink', { title: item.title })}
+                          aria-label={t(item.kind === 'file' ? 'openFile' : 'openLink', {
+                            title: item.title,
+                            isNew: String(item.isNew),
+                            meta: meta(item),
+                          })}
                           className={ROW}
                         >
                           {inner}
@@ -134,7 +138,7 @@ export async function StudentNotes({
                 {topic.practice && !query && (
                   <li>
                     <Link href={`${courseHref}/notes/topics/${encodeURIComponent(topic.id)}/practice`} className={ROW}>
-                      <SquareCheck aria-hidden="true" className="size-5 shrink-0 text-green-600" />
+                      <SquareCheck aria-hidden="true" className="size-5 shrink-0 text-primary" />
                       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                         <span className="font-medium">{t('practiceTitle')}</span>
                         <span className="text-sm text-muted-foreground">
