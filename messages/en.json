@@ -259,6 +259,14 @@
       "body": "Your lecturer has released the grades for {assignment} in {course}.",
       "cta": "See my grade",
       "fallback": "If the button doesn't work, copy and paste this link into your browser:"
+    },
+    "testResultsReleased": {
+      "subject": "Your result for {test} in {course} is available",
+      "preview": "Your result for {test} in {course} has been released",
+      "greeting": "Hello {name},",
+      "body": "Your lecturer has released the results of the test {test} in {course}. You can now see your total, your mark for each question and any comments.",
+      "cta": "See my result",
+      "fallback": "If the button doesn't work, copy and paste this link into your browser:"
     }
   },
   "landing": {

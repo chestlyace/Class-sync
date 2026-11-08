@@ -37,15 +37,26 @@ export function emailSubject(
   vars: { courseTitle: string; assignmentTitle: string },
 ): string
 export function emailSubject(
-  kind: 'verify' | NotificationKind,
+  kind: 'testResultsReleased',
   locale: Locale,
-  vars?: { courseTitle: string; assignmentTitle: string },
+  vars: { courseTitle: string; testTitle: string },
+): string
+export function emailSubject(
+  kind: 'verify' | NotificationKind | 'testResultsReleased',
+  locale: Locale,
+  vars?: { courseTitle: string; assignmentTitle: string } | { courseTitle: string; testTitle: string },
 ): string {
   const t = emailTranslator(locale)
   if (kind === 'verify') return t('verify.subject')
+  if (kind === 'testResultsReleased') {
+    return t('testResultsReleased.subject', {
+      course: singleLine(vars?.courseTitle ?? ''),
+      test: singleLine(vars && 'testTitle' in vars ? vars.testTitle : ''),
+    })
+  }
   return t(`${kind}.subject`, {
     course: singleLine(vars?.courseTitle ?? ''),
-    assignment: singleLine(vars?.assignmentTitle ?? ''),
+    assignment: singleLine(vars && 'assignmentTitle' in vars ? vars.assignmentTitle : ''),
   })
 }
 

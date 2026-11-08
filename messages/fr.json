@@ -259,6 +259,14 @@
       "body": "Votre enseignant a publié les notes du devoir « {assignment} » dans {course}.",
       "cta": "Voir ma note",
       "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :"
+    },
+    "testResultsReleased": {
+      "subject": "Votre résultat pour « {test} » ({course}) est disponible",
+      "preview": "Les résultats de « {test} » ({course}) ont été publiés",
+      "greeting": "Bonjour {name},",
+      "body": "Votre enseignant a publié les résultats du test « {test} » dans {course}. Vous pouvez voir votre total, la note de chaque question et les éventuels commentaires.",
+      "cta": "Voir mon résultat",
+      "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :"
     }
   },
   "landing": {
