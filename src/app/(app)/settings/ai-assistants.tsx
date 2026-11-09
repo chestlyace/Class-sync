@@ -21,7 +21,6 @@ export type TokenRow = {
 export type AppRow = {
   clientId: string
   name: string | null
-  icon: string | null
   host: string | null
   canRead: boolean
   canDraft: boolean
@@ -141,22 +140,10 @@ export async function AiAssistantsSection({
               return (
                 <li key={app.clientId} data-testid="app-row" className="flex flex-col gap-3 py-4 last:pb-0 sm:flex-row sm:items-center sm:gap-5">
                   <div className="flex min-w-0 flex-1 items-start gap-3">
-                    {app.icon ? (
-                      // An external, https-only image chosen by the assistant's developer; no referrer sent.
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={app.icon}
-                        alt=""
-                        width={40}
-                        height={40}
-                        referrerPolicy="no-referrer"
-                        className="size-10 shrink-0 rounded-xl border object-contain"
-                      />
-                    ) : (
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border bg-muted">
-                        <Bot aria-hidden="true" className="size-5" />
-                      </span>
-                    )}
+                    {/* Never the client's own logo: loading it would send the lecturer's IP to the client's host. */}
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border bg-muted">
+                      <Bot aria-hidden="true" className="size-5" />
+                    </span>
                     <div className="flex min-w-0 flex-col gap-1.5">
                       <div className="flex flex-wrap items-baseline gap-x-2">
                         <span className="font-semibold break-words">{name}</span>

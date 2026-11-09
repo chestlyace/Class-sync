@@ -6,6 +6,7 @@ import type { Ctx, SessionUser } from '@/server/core/context'
 import { isVerificationPending } from '@/server/core/guards'
 import { db as defaultDb, type Db } from '@/server/db'
 import { user } from '@/server/db/schema'
+import { hitRateLimit, isRateLimited, type RateLimitRule } from '@/server/lib/rate-limit'
 import type { McpScope } from './tool'
 import { hasConsent, type AuthInstance } from './connections'
 
@@ -17,6 +18,17 @@ const ALL_SCOPES: McpScope[] = ['clasync:read', 'clasync:write']
 /** Hinted in the 401 challenge: offline_access gets the assistant a refresh token. */
 const CHALLENGE_SCOPE = 'offline_access clasync:read clasync:write'
 const LECTURERS_ONLY = "Clasync's assistant connection is for lecturers"
+
+/**
+ * Shared across instances (Postgres counters). Each assistant (user + client or token) gets 120
+ * requests a minute. An IP gets 30 failed authentications a minute; then every token it sends is
+ * refused without a lookup until the minute ends. Requests without a token cost no lookup and
+ * are not counted (clients send one first to discover the authorization server).
+ */
+export const MCP_RATE_LIMITS = {
+  caller: { max: 120, windowMs: 60_000 },
+  failedAuthPerIp: { max: 30, windowMs: 60_000 },
+} satisfies Record<string, RateLimitRule>
 
 async function defaultDeps(): Promise<McpAuthDeps> {
   const { auth } = await import('@/server/auth/auth')
@@ -33,6 +45,20 @@ function jsonRpcError(status: number, message: string, headers: Record<string, s
     status,
     headers: { 'content-type': 'application/json', ...headers },
   })
+}
+
+function tooManyRequests(retryAfter: number): Response {
+  return jsonRpcError(429, 'Too many requests; try again shortly', { 'retry-after': String(retryAfter) })
+}
+
+/**
+ * The client's IP: the first `x-forwarded-for` entry, which Vercel sets (and overwrites when a
+ * client sends its own), else `x-real-ip`.
+ */
+export function clientIp(req: Request): string {
+  const forwarded = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+  // An IPv6 address is at most 45 characters; cut anything longer a non-Vercel proxy let through.
+  return (forwarded || req.headers.get('x-real-ip')?.trim() || 'unknown').slice(0, 64)
 }
 
 /** 401 with the challenge MCP clients use to discover the authorization server. */
@@ -103,12 +129,20 @@ async function verifyOAuthToken(auth: AuthInstance, token: string, origin: strin
  * Who is calling the MCP endpoint. `Bearer cls_…` is a personal access token (both scopes);
  * anything else must be an OAuth access token (JWT) bound to `<origin>/api/mcp`, whose scopes
  * come from the token and whose app is still connected. The user must be a lecturer with a
- * verified email. Returns the caller, or the Response to send (401 / 403 / 429).
+ * verified email. Returns the caller, or the Response to send (401 / 403 / 429; see MCP_RATE_LIMITS).
  */
 export async function resolveMcpCaller(req: Request, deps?: McpAuthDeps): Promise<McpCaller | Response> {
   const { auth, db, origin } = deps ?? (await defaultDeps())
   const token = bearerToken(req)
   if (!token) return unauthorized(origin, false)
+
+  const ipKey = `mcp:auth-fail:${clientIp(req)}`
+  const blocked = await isRateLimited(db, ipKey, MCP_RATE_LIMITS.failedAuthPerIp)
+  if (blocked.limited) return tooManyRequests(blocked.retryAfter)
+  const rejected = async () => {
+    await hitRateLimit(db, ipKey, MCP_RATE_LIMITS.failedAuthPerIp)
+    return unauthorized(origin, true)
+  }
 
   const verified = token.startsWith(API_KEY_PREFIX)
     ? await verifyApiKey(auth, token)
@@ -116,7 +150,10 @@ export async function resolveMcpCaller(req: Request, deps?: McpAuthDeps): Promis
   if (verified && 'rateLimited' in verified) {
     return jsonRpcError(429, 'Too many requests for this token; wait a minute', { 'retry-after': '60' })
   }
-  if (!verified) return unauthorized(origin, true)
+  if (!verified) return rejected()
+
+  const perCaller = await hitRateLimit(db, `mcp:caller:${verified.userId}:${verified.clientId}`, MCP_RATE_LIMITS.caller)
+  if (perCaller.limited) return tooManyRequests(perCaller.retryAfter)
 
   const [row] = await db
     .select({
@@ -129,8 +166,8 @@ export async function resolveMcpCaller(req: Request, deps?: McpAuthDeps): Promis
     })
     .from(user)
     .where(eq(user.id, verified.userId))
-  if (!row) return unauthorized(origin, true)
-  if (verified.viaOAuth && !(await hasConsent(db, row.id, verified.clientId))) return unauthorized(origin, true)
+  if (!row) return rejected()
+  if (verified.viaOAuth && !(await hasConsent(db, row.id, verified.clientId))) return rejected()
 
   if (row.role !== 'lecturer') return jsonRpcError(403, LECTURERS_ONLY)
   const sessionUser: SessionUser = {

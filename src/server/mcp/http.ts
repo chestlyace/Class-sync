@@ -6,7 +6,7 @@ export const MCP_CORS_HEADERS: Record<string, string> = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'POST, OPTIONS',
   'access-control-allow-headers': 'authorization, content-type, accept, mcp-protocol-version, mcp-session-id, last-event-id',
-  'access-control-expose-headers': 'www-authenticate, mcp-protocol-version, mcp-session-id',
+  'access-control-expose-headers': 'www-authenticate, retry-after, mcp-protocol-version, mcp-session-id',
   'access-control-max-age': '86400',
 }
 
