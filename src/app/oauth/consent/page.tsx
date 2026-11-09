@@ -68,15 +68,10 @@ export default async function ConsentPage({ searchParams }: { searchParams: Prom
   return (
     <>
       <div className="flex items-center gap-3">
-        {client.icon ? (
-          // An external, https-only image chosen by the app's developer; no referrer sent.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={client.icon} alt="" width={48} height={48} referrerPolicy="no-referrer" className="size-12 rounded-xl border object-contain" />
-        ) : (
-          <span className="flex size-12 items-center justify-center rounded-xl border bg-muted">
-            <Bot aria-hidden="true" className="size-6" />
-          </span>
-        )}
+        {/* Never the client's own logo: loading it would send the lecturer's IP to the client's host. */}
+        <span className="flex size-12 items-center justify-center rounded-xl border bg-muted">
+          <Bot aria-hidden="true" className="size-6" />
+        </span>
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="truncate text-lg font-semibold">{name}</span>
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">

@@ -72,7 +72,6 @@ function toAppRows(apps: ConnectedApp[], day: (d: Date) => string): AppRow[] {
   return apps.map((app) => ({
     clientId: app.clientId,
     name: app.name,
-    icon: app.icon,
     host: hostOf(app.uri),
     canRead: app.scopes.includes('clasync:read'),
     canDraft: app.scopes.includes('clasync:write'),

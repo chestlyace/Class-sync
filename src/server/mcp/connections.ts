@@ -33,16 +33,19 @@ export type AccessTokenSummary = {
   expiresAt: Date | null
 }
 
+/**
+ * Clients register their own name, logo and links, unverified. The logo URL is never passed on:
+ * loading it would send the lecturer's IP to a host the client chose. The UI shows a neutral icon.
+ */
 export type ConnectedApp = {
   clientId: string
   name: string | null
-  icon: string | null
   uri: string | null
   scopes: string[]
   connectedAt: Date
 }
 
-export type ConsentClient = { clientId: string; name: string | null; icon: string | null; uri: string | null }
+export type ConsentClient = { clientId: string; name: string | null; uri: string | null }
 
 const DAY_MS = 86_400_000
 
@@ -136,7 +139,6 @@ export async function listConnectedApps(ctx: Ctx): Promise<ConnectedApp[]> {
     .select({
       clientId: oauthConsent.clientId,
       name: oauthClient.name,
-      icon: oauthClient.icon,
       uri: oauthClient.uri,
       scopes: oauthConsent.scopes,
       connectedAt: oauthConsent.createdAt,
@@ -145,8 +147,8 @@ export async function listConnectedApps(ctx: Ctx): Promise<ConnectedApp[]> {
     .innerJoin(oauthClient, eq(oauthClient.clientId, oauthConsent.clientId))
     .where(eq(oauthConsent.userId, ctx.user.id))
     .orderBy(desc(oauthConsent.createdAt))
-  // The client chose these at registration: show https ones only (as on the consent page).
-  return rows.map((r) => ({ ...r, icon: safeHttpsUrl(r.icon), uri: safeHttpsUrl(r.uri) }))
+  // The client chose its uri at registration: show https ones only (as on the consent page).
+  return rows.map((r) => ({ ...r, uri: safeHttpsUrl(r.uri) }))
 }
 
 /**
@@ -191,7 +193,7 @@ export async function hasConsent(database: Ctx['db'], userId: string, clientId: 
   return Boolean(row)
 }
 
-/** Only https icons are shown (no data: or http: images on the consent page). */
+/** Only https links are shown (no javascript: or http: links on the consent page). */
 function safeHttpsUrl(value: string | null): string | null {
   if (!value) return null
   try {
@@ -208,14 +210,13 @@ export async function getConsentClient(clientId: string, database: Ctx['db'] = d
     .select({
       clientId: oauthClient.clientId,
       name: oauthClient.name,
-      icon: oauthClient.icon,
       uri: oauthClient.uri,
       disabled: oauthClient.disabled,
     })
     .from(oauthClient)
     .where(eq(oauthClient.clientId, clientId))
   if (!row || row.disabled) return null
-  return { clientId: row.clientId, name: row.name, icon: safeHttpsUrl(row.icon), uri: safeHttpsUrl(row.uri) }
+  return { clientId: row.clientId, name: row.name, uri: safeHttpsUrl(row.uri) }
 }
 
 export type ConsentRequest =
@@ -251,7 +252,6 @@ export async function describeConsentRequest(
     .select({
       clientId: oauthClient.clientId,
       name: oauthClient.name,
-      icon: oauthClient.icon,
       uri: oauthClient.uri,
       disabled: oauthClient.disabled,
       redirectUris: oauthClient.redirectUris,
@@ -272,7 +272,7 @@ export async function describeConsentRequest(
   }
   return {
     status: 'ok',
-    client: { clientId: row.clientId, name: row.name, icon: safeHttpsUrl(row.icon), uri: safeHttpsUrl(row.uri), metadataHost },
+    client: { clientId: row.clientId, name: row.name, uri: safeHttpsUrl(row.uri), metadataHost },
     redirect,
     scopes: (params.get('scope') ?? '').split(' ').filter(Boolean),
   }

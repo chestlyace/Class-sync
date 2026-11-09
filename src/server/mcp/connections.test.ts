@@ -156,7 +156,6 @@ describe('mcp connections service', () => {
         {
           clientId: 'client-a',
           name: 'Claude',
-          icon: 'https://claude.ai/icon.png',
           uri: 'https://claude.ai',
           scopes: ['openid', 'clasync:read'],
           connectedAt: now,
@@ -172,16 +171,19 @@ describe('mcp connections service', () => {
       await expect(disconnectApp(ctx, 'client-a')).rejects.toMatchObject({ code: 'FORBIDDEN' })
     })
 
-    it('getConsentClient returns the client, hides non-https images, and null for unknown or disabled', async () => {
+    it('getConsentClient returns the client without its icon, hides non-https uris, and null for unknown or disabled', async () => {
       await insertClient('client-b', { icon: 'http://insecure.example/icon.png', uri: 'javascript:alert(1)' })
       await insertClient('client-c', { disabled: true })
-      expect(await getConsentClient('client-b', db)).toEqual({ clientId: 'client-b', name: 'Claude', icon: null, uri: null })
+      await insertClient('client-e')
+      expect(await getConsentClient('client-b', db)).toEqual({ clientId: 'client-b', name: 'Claude', uri: null })
+      // An https icon is not passed on either: the browser would fetch it from the client's host.
+      expect(await getConsentClient('client-e', db)).toEqual({ clientId: 'client-e', name: 'Claude', uri: 'https://claude.ai' })
       expect(await getConsentClient('client-c', db)).toBeNull()
       expect(await getConsentClient('nope', db)).toBeNull()
       expect(await getConsentClient('', db)).toBeNull()
     })
 
-    it('listConnectedApps hides non-https icons and uris too', async () => {
+    it('listConnectedApps hides icons and non-https uris too', async () => {
       const ctx = await lecturer()
       await insertClient('client-d', { icon: 'http://insecure.example/icon.png', uri: 'javascript:alert(1)' })
       const now = new Date()
@@ -194,7 +196,7 @@ describe('mcp connections service', () => {
         updatedAt: now,
       })
       expect(await listConnectedApps(ctx)).toEqual([
-        { clientId: 'client-d', name: 'Claude', icon: null, uri: null, scopes: ['clasync:read', 'clasync:write'], connectedAt: now },
+        { clientId: 'client-d', name: 'Claude', uri: null, scopes: ['clasync:read', 'clasync:write'], connectedAt: now },
       ])
     })
   })
