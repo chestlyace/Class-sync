@@ -69,6 +69,7 @@ describe('releasing test results', () => {
    */
   async function scenario() {
     const c = await setupCourse(db)
+    tasks.splice(0) // the class-join confirmations of the setup; these tests are about result emails
     const t = await insertStartedTest(db, c.lecturer, c.bio.id)
     const q2 = t.q2!
     const q3 = t.q3!
