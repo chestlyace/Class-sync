@@ -1,13 +1,19 @@
 import { and, asc, eq, gt, inArray, lte, type SQL } from 'drizzle-orm'
+import { createElement } from 'react'
 import { now } from '@/server/core/clock'
+import { config } from '@/server/core/config'
 import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
 import { requireRole } from '@/server/core/guards'
 import { isOnCourseRoster, rosteredCourseIds } from '@/server/courses/roster'
 import type { Db } from '@/server/db'
 import { assignment, course, submission, submissionFile } from '@/server/db/schema'
+import { queueNotifications, type Notification } from '@/server/email/notify'
+import { AssignmentSubmittedEmail } from '@/server/email/templates/assignment-submitted'
+import { emailSubject } from '@/server/email/templates/verify-email'
 import { assertConfirmedFilesOwnedBy, type FileInfo } from '@/server/files/service'
 import {
+  assignmentLinkBuilder,
   type AssignmentDetail,
   type AssignmentRow,
   loadAssignmentRow,
@@ -260,7 +266,8 @@ function checkSubmission(
  * Text that is not a valid block list is VALIDATION { fields: ['text'] }. After the deadline with
  * the `close` policy: CONFLICT { reason: 'closed' }; once grades are released, always CONFLICT
  * { reason: 'released' } (ruling B9). A resubmission (before the release) replaces the text and
- * files, moves `submittedAt`, recomputes `isLate` and clears any grade.
+ * files, moves `submittedAt`, recomputes `isLate` and clears any grade. Each accepted submission
+ * emails the student a receipt after the response (best effort, never failing the submission).
  */
 export async function submitAssignment(
   ctx: Ctx,
@@ -277,7 +284,7 @@ export async function submitAssignment(
   checkSubmission(row, text, fileIds, at)
   await assertSubmissionFiles(ctx.db, fileIds, ctx.user.id, row.id)
 
-  return ctx.db.transaction(async (tx) => {
+  const done = await ctx.db.transaction(async (tx) => {
     // FOR SHARE: a lecturer's concurrent edit (FOR UPDATE on this row) waits for this submission, or
     // this waits for the edit and is validated against its result — never against a stale mode,
     // deadline or late policy.
@@ -312,6 +319,38 @@ export async function submitAssignment(
         .insert(submissionFile)
         .values(fileIds.map((fileId, position) => ({ submissionId: saved.id, fileId, position })))
     }
-    return { submittedAt: at, isLate: late }
+    return { submittedAt: at, isLate: late, title: locked.title }
   })
+  await queueNotifications('submitAssignment', () =>
+    submittedEmails(ctx, { id: row.id, courseId: row.courseId, title: done.title }, done),
+  )
+  return { submittedAt: done.submittedAt, isLate: done.isLate }
+}
+
+/** The student's receipt for a submission, in their own language. */
+async function submittedEmails(
+  ctx: Ctx,
+  a: { id: string; courseId: string; title: string },
+  saved: { submittedAt: Date; isLate: boolean },
+): Promise<Notification[]> {
+  const [c] = await ctx.db.select({ title: course.title }).from(course).where(eq(course.id, a.courseId))
+  if (!c) return []
+  const me = ctx.user
+  return [
+    {
+      to: me.email,
+      locale: me.locale,
+      subject: emailSubject('assignmentSubmitted', me.locale, { courseTitle: c.title, assignmentTitle: a.title }),
+      react: createElement(AssignmentSubmittedEmail, {
+        locale: me.locale,
+        studentName: me.name,
+        courseTitle: c.title,
+        assignmentTitle: a.title,
+        submittedAt: saved.submittedAt,
+        isLate: saved.isLate,
+        url: assignmentLinkBuilder('submitAssignment')(a.id),
+        timeZone: config.timeZone,
+      }),
+    },
+  ]
 }

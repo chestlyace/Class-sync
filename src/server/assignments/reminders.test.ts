@@ -14,6 +14,7 @@ import {
   user,
 } from '@/server/db/schema'
 import { setResendClientFactoryForTests, setRetryWaitForTests, type NotifyClient } from '@/server/email/notify'
+import { setAfterResponseForTests } from '@/server/lib/after-response'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
 import { createSchool } from '@/server/schools/service'
@@ -45,11 +46,15 @@ describe('sendDueReminders', () => {
     }
     setResendClientFactoryForTests(() => client)
     setRetryWaitForTests(async () => {})
+    // Class-join confirmations of the setup are scheduled after the response: drop them, so only
+    // reminders reach the fake client.
+    setAfterResponseForTests(() => {})
   })
   afterEach(async () => {
     vi.unstubAllEnvs()
     setResendClientFactoryForTests(null)
     setRetryWaitForTests(null)
+    setAfterResponseForTests(null)
     setConfigForTests({ timeZone: originalTz })
     await db.delete(assignmentReminder)
     await db.delete(submission)
