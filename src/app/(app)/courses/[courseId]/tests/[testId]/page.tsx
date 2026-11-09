@@ -1,6 +1,5 @@
 import { ArrowLeft, PenLine } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
-import { headers } from 'next/headers'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
 import { PageHeader } from '@/components/page-header'
@@ -11,31 +10,13 @@ import { getCourse, type CourseSummary } from '@/server/courses/service'
 import { getTestForEdit } from '@/server/tests/authoring'
 import type { TestState } from '@/server/tests/phase'
 import { getLiveTest } from '@/server/tests/run'
+import { absoluteLink, testLinkPath } from '@/app/share-links'
 import { loadPage } from '../../../../load-page'
 import type { LiveTestView } from '../../../test-actions'
 import { TestLive } from '../../../test-live'
 import { TestStatePill } from '../../../test-state'
 
 type LiveView = { course: CourseSummary; live: LiveTestView; state: TestState; hasShort: boolean }
-
-/**
- * The student link, `/t/<CODE>`, always absolute (it is pasted into WhatsApp): from BETTER_AUTH_URL
- * (as in emails), else from the host this page was asked for.
- */
-async function testLink(code: string): Promise<string> {
-  const path = `/t/${encodeURIComponent(code)}`
-  return `${await linkOrigin()}${path}`
-}
-
-async function linkOrigin(): Promise<string> {
-  const configured = (process.env.BETTER_AUTH_URL ?? '').trim().replace(/\/+$/, '')
-  if (configured) return configured
-  const h = await headers()
-  const host = h.get('x-forwarded-host')?.split(',')[0]?.trim() || h.get('host')
-  if (!host) return ''
-  const proto = h.get('x-forwarded-proto')?.split(',')[0]?.trim() || (/^(localhost|127\.0\.0\.1|\[::1\])(:|$)/.test(host) ? 'http' : 'https')
-  return `${proto}://${host}`
-}
 
 export async function generateMetadata() {
   const t = await getTranslations('tests.lecturer')
@@ -87,7 +68,7 @@ export default async function TestLivePage({ params }: PageProps<'/courses/[cour
         }
       />
       {/* A new phase (Start, End, deadline) remounts the live view with fresh state. */}
-      <TestLive key={live.phase} initial={live} courseId={course.id} link={await testLink(live.code)} timeZone={config.timeZone} />
+      <TestLive key={live.phase} initial={live} courseId={course.id} link={await absoluteLink(testLinkPath(live.code))} timeZone={config.timeZone} />
     </>
   )
 }

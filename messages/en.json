@@ -133,9 +133,9 @@
     "page": {
       "eyebrow": "Class",
       "studentCode": "Student code",
-      "studentCodeHint": "Students join with this code and their matricule.",
+      "studentCodeHint": "Send students this link: they open it, enter their matricule, and they are in. The code works too.",
       "lecturerCode": "Lecturer code",
-      "lecturerCodeHint": "Colleagues join with this code to add their own courses.",
+      "lecturerCodeHint": "Send this link to colleagues so they can add their own courses. The code works too.",
       "copyStudentCode": "Copy the student code",
       "copyLecturerCode": "Copy the lecturer code",
       "regenerate": "Regenerate",
@@ -143,10 +143,10 @@
       "regenerateLecturerLabel": "Regenerate the lecturer code",
       "regenerateStudentTitle": "Regenerate the student code?",
       "regenerateLecturerTitle": "Regenerate the lecturer code?",
-      "regenerateBody": "The current code stops working at once. Everyone who already joined stays in the class.",
+      "regenerateBody": "The current code and its link stop working at once. Everyone who already joined stays in the class.",
       "regenerateConfirm": "Regenerate code",
       "roster": "Students",
-      "rosterEmpty": "No students yet. Share the student code so they can join.",
+      "rosterEmpty": "No students yet. Share the student link so they can join.",
       "name": "Name",
       "matricule": "Matricule",
       "email": "Email",
@@ -155,7 +155,7 @@
       "removeTitle": "Remove {name}?",
       "removeBody": "They lose access to every course of this class.",
       "removeConfirm": "Remove student",
-      "rejoinNote": "A removed student can rejoin with the current student code unless you regenerate it.",
+      "rejoinNote": "A removed student can rejoin with the current student link or code unless you regenerate it.",
       "courses": "Your courses in this class",
       "coursesEmpty": "You have no course in this class yet.",
       "addCourse": "Add a course",
@@ -163,7 +163,11 @@
       "studentCoursesEmpty": "No courses in this class yet.",
       "copyInvite": "Copy invite message",
       "copyInviteLabel": "Copy a message with the student code and how to join, in English and French",
-      "inviteMessage": "Join {className} on Clasync: open {url}, then enter the code {code} and your matricule.\nRejoignez {className} sur Clasync : ouvrez {url}, puis saisissez le code {code} et votre matricule."
+      "inviteMessage": "Join {className} on Clasync: open {url} and enter your matricule (class code: {code}).\nRejoignez {className} sur Clasync : ouvrez {url} et saisissez votre matricule (code de la classe : {code}).",
+      "copyStudentLink": "Copy student link",
+      "copyLecturerLink": "Copy lecturer link",
+      "copyStudentLinkTitle": "Copy the link students open to join this class",
+      "copyLecturerLinkTitle": "Copy the link colleagues open to teach in this class"
     }
   },
   "courses": {
@@ -716,11 +720,13 @@
           "action": "Create course"
         },
         "share": {
-          "title": "Share the join code with students",
-          "body": "Students choose Join a class, then enter this code and their matricule. This ticks off when the first one joins.",
+          "title": "Share the join link with students",
+          "body": "Send students this link: they open it and enter their matricule. The code works too, from Join a class. This ticks off when the first one joins.",
           "action": "Open class",
           "codeLabel": "Student code for {className}",
-          "copy": "Copy the student code"
+          "copy": "Copy the student code",
+          "copyLink": "Copy student link",
+          "copyLinkLabel": "Copy the link students open to join {className}"
         },
         "join": {
           "title": "Join a class",
@@ -869,7 +875,27 @@
     "submit": "Join class",
     "submitting": "Joining…",
     "notFound": "No class matches this code. Check it and try again.",
-    "matriculeTaken": "This matricule is already used in this class."
+    "matriculeTaken": "This matricule is already used in this class.",
+    "confirmTitle": "Join {className}",
+    "confirmStudent": "Your lecturer invited you to this class. Confirm with your matricule: you only do this once.",
+    "confirmLecturer": "A colleague invited you to teach in this class. Once you join, you can add your own courses to it.",
+    "confirmSubmit": "Join {className}",
+    "matriculeSuggested": "The matricule you use in your other class at this school. Change it if it is different here.",
+    "otherCode": "Not this class? Enter a code instead",
+    "memberTitle": "You're already in {className}",
+    "openClass": "Open the class",
+    "linkNotFound": "This link doesn't match any class: its code may have been changed. Ask for a new link, or enter the code below.",
+    "backToDashboard": "Back to the dashboard",
+    "wrongRole": {
+      "lecturerLink": {
+        "title": "This link is for lecturers",
+        "body": "It lets colleagues teach in a class. To join as a student, ask your lecturer for the student link."
+      },
+      "studentLink": {
+        "title": "This link is for students",
+        "body": "Students join the class with it. To teach in this class, ask one of its lecturers for the lecturer link."
+      }
+    }
   },
   "attendance": {
     "student": {
@@ -910,6 +936,18 @@
         "absent": "Absent",
         "not_enrolled": "Not on the course yet",
         "none": "Not taken yet"
+      },
+      "link": {
+        "description": "Your lecturer sent you this check-in link: no code needed.",
+        "locationExplain": "This class checks that you are on campus. When you tap Check in, your browser will ask for your location; it is only used for this check.",
+        "invalidTitle": "This check-in link doesn't work",
+        "invalid": "This check-in link isn't valid. Ask your lecturer for a new one, or enter the code shown in class.",
+        "forbiddenTitle": "You can't check in here",
+        "closedTitle": "Check-in for {course} has closed",
+        "closedBody": "This link only works while the check-in is open. If you were there, ask your lecturer to mark you present.",
+        "lecturerTitle": "This link is for students",
+        "lecturerBody": "Students on the course open it to check in. Your own check-ins are on the attendance page of each course.",
+        "allCheckIns": "All open check-ins"
       }
     },
     "lecturer": {
@@ -974,7 +1012,10 @@
         "closing": "Closing…",
         "present": "Full screen",
         "exitHint": "Press Esc to leave full screen",
-        "reconnecting": "Connection lost. Retrying…"
+        "reconnecting": "Connection lost. Retrying…",
+        "copyLink": "Copy check-in link",
+        "copyLinkLabel": "Copy a link that checks students in to this window without the code",
+        "linkHint": "Anyone on the course who has this link can check in while this window is open, without the code. Location rules still apply."
       },
       "studentsTitle": "Students",
       "start": "Start",
@@ -1542,7 +1583,8 @@
           "ended_left": "Test ended for leaving",
           "reopened": "Let back in",
           "handed_in": "Handed in"
-        }
+        },
+        "copyLinkShort": "Copy link"
       },
       "results": {
         "title": "Results",

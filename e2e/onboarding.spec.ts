@@ -76,6 +76,11 @@ test('setup checklist for a new lecturer and a new student', async ({
       await expect(lecturer.getByTestId('setup-join-code')).toContainText(studentCode)
       await card.getByRole('button', { name: 'Copy the student code' }).click()
       expect(await lecturer.evaluate(() => navigator.clipboard.readText())).toBe(studentCode)
+      // The link is the primary action: absolute, opening the join confirmation for this code.
+      await card.getByRole('button', { name: 'Copy student link', exact: true }).click()
+      expect(await lecturer.evaluate(() => navigator.clipboard.readText())).toMatch(
+        new RegExp(`^https?://[^/]+/join\\?code=${studentCode}$`),
+      )
       await expect(step(lecturer, 'share').getByRole('link', { name: 'Open class' })).toHaveAttribute(
         'href',
         /^\/classes\/[^/?]+$/,

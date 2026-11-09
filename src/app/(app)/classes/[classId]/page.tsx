@@ -1,6 +1,5 @@
 import { ArrowRight, Plus, RefreshCw, UserMinus } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
-import { headers } from 'next/headers'
 import Link from 'next/link'
 import { ConfirmAction } from '@/components/confirm-action'
 import { CopyButton } from '@/components/copy-button'
@@ -10,6 +9,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { getClassRoster, listMyClasses, type ClassSummary, type RosterEntry } from '@/server/classes/service'
 import { AppError } from '@/server/core/errors'
 import { listLecturerCourses, listStudentCourses, type CourseSummary } from '@/server/courses/service'
+import { absoluteLink, joinLinkPath } from '@/app/share-links'
 import { loadPage } from '../../load-page'
 import { regenerateCodeAction, removeStudentAction } from '../actions'
 
@@ -43,11 +43,6 @@ export default async function ClassPage({ params }: PageProps<'/classes/[classId
   })
   if (!view.ok) return <ErrorState code={view.code} />
   const { cls } = view.data
-  // The invite message links to /join on whatever address this page was opened from.
-  const requestHeaders = await headers()
-  const host = requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host')
-  const proto = requestHeaders.get('x-forwarded-proto') ?? 'https'
-  const joinUrl = host ? `${proto}://${host}/join` : '/join'
 
   return (
     <>
@@ -61,7 +56,7 @@ export default async function ClassPage({ params }: PageProps<'/classes/[classId
         }
       />
       {view.data.role === 'lecturer' ? (
-        <LecturerClass cls={cls} roster={view.data.roster} courses={view.data.courses} joinUrl={joinUrl} />
+        <LecturerClass cls={cls} roster={view.data.roster} courses={view.data.courses} />
       ) : (
         <CourseList
           heading={t('classes.page.studentCourses')}
@@ -77,35 +72,45 @@ async function LecturerClass({
   cls,
   roster,
   courses,
-  joinUrl,
 }: {
   cls: ClassSummary
   roster: RosterEntry[]
   courses: CourseSummary[]
-  joinUrl: string
 }) {
   const t = await getTranslations('classes.page')
+  const studentCode = cls.studentCode ?? ''
+  const lecturerCode = cls.lecturerCode ?? ''
+  const [studentLink, lecturerLink] = await Promise.all([
+    absoluteLink(joinLinkPath(studentCode)),
+    absoluteLink(joinLinkPath(lecturerCode)),
+  ])
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2">
         <CodeCard
           classId={cls.id}
           kind="student"
-          code={cls.studentCode ?? ''}
-          invite={t('inviteMessage', { className: cls.name, url: joinUrl, code: cls.studentCode ?? '' })}
+          code={studentCode}
+          link={studentLink}
+          invite={t('inviteMessage', { className: cls.name, url: studentLink, code: studentCode })}
           label={t('studentCode')}
           hint={t('studentCodeHint')}
           copyLabel={t('copyStudentCode')}
+          copyLinkLabel={t('copyStudentLink')}
+          copyLinkTitle={t('copyStudentLinkTitle')}
           regenerateLabel={t('regenerateStudentLabel')}
           regenerateTitle={t('regenerateStudentTitle')}
         />
         <CodeCard
           classId={cls.id}
           kind="lecturer"
-          code={cls.lecturerCode ?? ''}
+          code={lecturerCode}
+          link={lecturerLink}
           label={t('lecturerCode')}
           hint={t('lecturerCodeHint')}
           copyLabel={t('copyLecturerCode')}
+          copyLinkLabel={t('copyLecturerLink')}
+          copyLinkTitle={t('copyLecturerLinkTitle')}
           regenerateLabel={t('regenerateLecturerLabel')}
           regenerateTitle={t('regenerateLecturerTitle')}
         />
@@ -182,21 +187,28 @@ async function CodeCard({
   classId,
   kind,
   code,
+  link,
   invite,
   label,
   hint,
   copyLabel,
+  copyLinkLabel,
+  copyLinkTitle,
   regenerateLabel,
   regenerateTitle,
 }: {
   classId: string
   kind: 'student' | 'lecturer'
   code: string
+  /** The absolute join link (`/join?code=…`): the primary thing to share. */
+  link: string
   /** Ready-to-paste message with the code and how to join (student code only). */
   invite?: string
   label: string
   hint: string
   copyLabel: string
+  copyLinkLabel: string
+  copyLinkTitle: string
   regenerateLabel: string
   regenerateTitle: string
 }) {
@@ -215,8 +227,12 @@ async function CodeCard({
         {code}
       </p>
       <p className="text-sm text-muted-foreground">{hint}</p>
+      <p data-testid={`${kind}-link`} className="font-mono text-xs break-all text-muted-foreground">
+        {link}
+      </p>
       <div className="flex flex-wrap items-center gap-2">
-        {invite && <CopyButton value={invite} label={t('copyInviteLabel')} text={t('copyInvite')} />}
+        <CopyButton value={link} label={copyLinkTitle} text={copyLinkLabel} />
+        {invite && <CopyButton value={invite} label={t('copyInviteLabel')} text={t('copyInvite')} variant="outline" />}
         <CopyButton value={code} label={copyLabel} />
         <ConfirmAction
           action={regenerateCodeAction}
