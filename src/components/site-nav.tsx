@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
+import { Logo } from '@/components/logo'
 import { buttonVariants } from '@/components/ui/button'
 import type { SessionUser } from '@/server/core/context'
 import { LanguageSwitcher } from './language-switcher'
@@ -29,9 +30,9 @@ export async function SiteNav({ user, sections }: { user: SessionUser | null; se
         >
           <Link
             href={user ? '/dashboard' : '/'}
-            className="font-display text-[26px] leading-none tracking-[0.04em] uppercase outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="inline-flex rounded-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           >
-            {t('common.appName')}
+            <Logo className="h-[22px]" title={t('common.appName')} />
           </Link>
           {user && <TopNavLinks role={user.role} />}
           {!user && sections && (

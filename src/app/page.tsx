@@ -23,6 +23,7 @@ import { ExchangeExample, MarkingExample } from '@/components/landing/assistant-
 import { AttendanceExample, PhoneExample, ProjectorExample, SubmissionsExample } from '@/components/landing/examples'
 import { CaExample, NotesExample, StructureDiagram, TestPhoneExample } from '@/components/landing/product-examples'
 import { Reveal } from '@/components/landing/reveal'
+import { Logo } from '@/components/logo'
 import { Eyebrow } from '@/components/page-header'
 import { SiteNav } from '@/components/site-nav'
 import { buttonVariants } from '@/components/ui/button'
@@ -493,7 +494,7 @@ export default async function Home() {
       <footer className="border-t">
         <div className={cn(container, 'flex flex-wrap items-center justify-between gap-4 py-8 text-sm text-muted-foreground')}>
           <span className="flex items-center gap-3.5">
-            <span className="font-display text-[22px] tracking-[0.04em] text-foreground uppercase">Clasync</span>
+            <Logo className="h-5 text-foreground" />
             {t('footer.copyright', { year: new Date().getFullYear() })}
           </span>
           <a href="https://chestlyace.online" className={cn('text-subtle hover:text-foreground', focusRing, 'rounded-full')}>
