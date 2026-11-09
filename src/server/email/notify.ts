@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { Resend } from 'resend'
 import type { Locale } from '@/server/core/context'
+import { runAfterResponse } from '@/server/lib/after-response'
 
 export type Notification = { to: string; locale: Locale; subject: string; react: ReactElement }
 
@@ -87,4 +88,34 @@ export async function sendNotifications(
     else result.failed += chunk.length
   }
   return result
+}
+
+/**
+ * Prepares notification emails now and sends them after the response, for confirmations that
+ * follow a user's action (joining a class, handing in work). Never throws: a failure while
+ * gathering what the emails need is logged and nothing is sent, and sending is best effort
+ * (sendNotifications), so the action that triggered it always stands.
+ */
+export async function queueNotifications(context: string, build: () => Promise<Notification[]>): Promise<void> {
+  let items: Notification[]
+  try {
+    items = await build()
+  } catch (error) {
+    console.error(`[${context}] could not prepare notification emails`, error)
+    return
+  }
+  if (items.length === 0) return
+  runAfterResponse(async () => {
+    await sendNotifications(items)
+  })
+}
+
+/**
+ * Builds absolute links into the app for emails, from BETTER_AUTH_URL. Without it the links are
+ * relative and one warning is logged per builder (i.e. per batch of emails), never per recipient.
+ */
+export function appLinkBuilder(context: string): (path: string) => string {
+  const base = (process.env.BETTER_AUTH_URL ?? '').replace(/\/+$/, '')
+  if (!base) console.warn(`[${context}] BETTER_AUTH_URL is not set: notification emails will carry relative links`)
+  return (path) => `${base}${path}`
 }

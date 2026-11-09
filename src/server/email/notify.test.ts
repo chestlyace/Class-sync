@@ -1,6 +1,13 @@
 import { createElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { sendNotifications, setResendClientFactoryForTests, setRetryWaitForTests, type Notification } from './notify'
+import {
+  appLinkBuilder,
+  queueNotifications,
+  sendNotifications,
+  setResendClientFactoryForTests,
+  setRetryWaitForTests,
+  type Notification,
+} from './notify'
 import { runAfterResponse, setAfterResponseForTests } from '@/server/lib/after-response'
 
 function items(n: number): Notification[] {
@@ -129,5 +136,69 @@ describe('runAfterResponse', () => {
     expect(() => runAfterResponse(task)).not.toThrow()
     await vi.waitFor(() => expect(error).toHaveBeenCalled())
     expect(task).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('queueNotifications', () => {
+  let tasks: Array<() => Promise<void>>
+  beforeEach(() => {
+    tasks = []
+    setAfterResponseForTests((task) => {
+      tasks.push(task)
+    })
+  })
+  afterEach(() => {
+    setAfterResponseForTests(null)
+    setResendClientFactoryForTests(null)
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
+  })
+
+  it('prepares now and sends only after the response', async () => {
+    vi.stubEnv('RESEND_API_KEY', 're_test')
+    const send = vi.fn(async () => ({ error: null }))
+    setResendClientFactoryForTests(() => ({ batch: { send } }))
+    await queueNotifications('test', async () => items(2))
+    expect(send).not.toHaveBeenCalled()
+    expect(tasks).toHaveLength(1)
+    await tasks[0]()
+    expect(send).toHaveBeenCalledTimes(1)
+  })
+
+  it('a failure while preparing is logged and schedules nothing, never thrown', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await expect(
+      queueNotifications('test', async () => {
+        throw new Error('db down')
+      }),
+    ).resolves.toBeUndefined()
+    expect(tasks).toHaveLength(0)
+    expect(error).toHaveBeenCalledWith('[test] could not prepare notification emails', expect.any(Error))
+  })
+
+  it('nothing to send schedules nothing', async () => {
+    await queueNotifications('test', async () => [])
+    expect(tasks).toHaveLength(0)
+  })
+})
+
+describe('appLinkBuilder', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
+  })
+
+  it('builds absolute links from BETTER_AUTH_URL, without a doubled slash', () => {
+    vi.stubEnv('BETTER_AUTH_URL', 'https://clasync.online/')
+    expect(appLinkBuilder('test')('/dashboard')).toBe('https://clasync.online/dashboard')
+  })
+
+  it('falls back to relative links with one warning when the base is missing', () => {
+    vi.stubEnv('BETTER_AUTH_URL', '')
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const link = appLinkBuilder('test')
+    expect(link('/a')).toBe('/a')
+    expect(link('/b')).toBe('/b')
+    expect(warn).toHaveBeenCalledTimes(1)
   })
 })

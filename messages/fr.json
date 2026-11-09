@@ -267,6 +267,53 @@
       "body": "Votre enseignant a publié les résultats du test « {test} » dans {course}. Vous pouvez voir votre total, la note de chaque question et les éventuels commentaires.",
       "cta": "Voir mon résultat",
       "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :"
+    },
+    "classJoined": {
+      "subject": "Vous avez rejoint {class} ({school})",
+      "preview": "Bienvenue en {class} ({school})",
+      "greeting": "Bonjour {name},",
+      "body": "Vous avez rejoint la classe {class} à {school}. Bienvenue !",
+      "next": "Les cours, devoirs et tests de vos enseignants pour cette classe apparaîtront sur votre tableau de bord dès qu'ils les ajouteront.",
+      "cta": "Ouvrir mon tableau de bord",
+      "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :"
+    },
+    "lecturerJoinedClass": {
+      "subject": "Vous enseignez maintenant en {class} ({school})",
+      "preview": "Vous avez rejoint {class} ({school}) en tant qu'enseignant",
+      "greeting": "Bonjour {name},",
+      "body": "Vous avez rejoint la classe {class} à {school} en tant qu'enseignant.",
+      "next": "Depuis la page de la classe, vous pouvez ajouter vos cours et partager le code étudiant avec vos étudiants.",
+      "cta": "Ouvrir la classe",
+      "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :"
+    },
+    "colleagueJoinedClass": {
+      "subject": "{name} a rejoint {class}",
+      "preview": "{name} enseigne maintenant en {class}",
+      "greeting": "Bonjour {recipient},",
+      "body": "{name} a rejoint la classe {class} à {school} en tant qu'enseignant, avec le code enseignant de la classe.",
+      "next": "Si vous ne connaissez pas cette personne, ouvrez la classe et générez un nouveau code enseignant.",
+      "cta": "Ouvrir la classe",
+      "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :"
+    },
+    "assignmentSubmitted": {
+      "subject": "Rendu reçu : {assignment} ({course})",
+      "preview": "Nous avons bien reçu votre rendu pour « {assignment} » ({course})",
+      "greeting": "Bonjour {name},",
+      "body": "Nous avons bien reçu votre rendu pour le devoir « {assignment} » dans {course}.",
+      "at": "Rendu le {date} à {time}.",
+      "late": "Il a été rendu après la date limite : il est donc marqué en retard.",
+      "cta": "Voir mon rendu",
+      "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :"
+    },
+    "testHandedIn": {
+      "subject": "Test remis : {test} ({course})",
+      "preview": "Vos réponses au test « {test} » ({course}) ont été remises",
+      "greeting": "Bonjour {name},",
+      "body": "Vos réponses au test « {test} » dans {course} ont bien été remises.",
+      "at": "Remis le {date} à {time}.",
+      "next": "Votre résultat apparaîtra sur la page du test dès qu'il sera disponible.",
+      "cta": "Ouvrir le test",
+      "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :"
     }
   },
   "landing": {

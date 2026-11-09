@@ -1,12 +1,17 @@
 import { and, asc, count, desc, eq, inArray, lte, or, sql, type Column } from 'drizzle-orm'
+import { createElement } from 'react'
 import { isWellFormedJoinCode, normalizeJoinCode } from '@/server/classes/join-code'
 import { now } from '@/server/core/clock'
+import { config } from '@/server/core/config'
 import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
 import { requireRole, requireVerified } from '@/server/core/guards'
 import { isOnCourseRoster } from '@/server/courses/roster'
 import type { Db } from '@/server/db'
 import { course, courseTest, testAnswer, testAttempt, testExit, testLog, testOption, testQuestion } from '@/server/db/schema'
+import { appLinkBuilder, queueNotifications, type Notification } from '@/server/email/notify'
+import { TestHandedInEmail } from '@/server/email/templates/test-handed-in'
+import { emailSubject } from '@/server/email/templates/verify-email'
 import { judgeExit, type LeavingRule } from './leaving'
 import { orderFor, scoreAttempt, type ScoringAnswer, type ScoringQuestion } from './paper'
 import { acceptsAnswers, answersFinalAt, canSeeResult, endsAt, testPhase, testState, type TestPhase, type TestState } from './phase'
@@ -699,7 +704,16 @@ async function writeAttempt(
   attemptId: string,
   input: { deviceId: string; answers: AnswerInput[]; exits: ExitReport[] },
   close: boolean,
-): Promise<{ test: TestRow; courseTitle: string; questions: LoadedQuestion[]; attempt: AttemptRow; acceptedRevs: Record<string, number>; at: Date }> {
+): Promise<{
+  test: TestRow
+  courseTitle: string
+  questions: LoadedQuestion[]
+  attempt: AttemptRow
+  acceptedRevs: Record<string, number>
+  at: Date
+  /** True only for the call that closed the attempt as handed in. */
+  handedInNow: boolean
+}> {
   const { test, courseTitle } = await requireMyAttempt(ctx, attemptId)
   const deviceId = parseDeviceId(input?.deviceId)
   const answers = parseAnswers(input?.answers)
@@ -711,12 +725,12 @@ async function writeAttempt(
     throw new AppError('CONFLICT', 'The test has not started', { reason: 'not_started' })
   }
 
-  const { attempt, acceptedRevs } = await ctx.db.transaction(async (tx) => {
+  const { attempt, acceptedRevs, handedInNow } = await ctx.db.transaction(async (tx) => {
     // One write at a time per attempt, so exits are numbered and counted once.
     const [locked] = await tx.select().from(testAttempt).where(eq(testAttempt.id, attemptId)).for('update')
     if (!locked) forbidden()
     // A hand-in is final: nothing more is written, whichever device asks.
-    if (locked.closedReason === 'handed_in') return { attempt: locked, acceptedRevs: {} }
+    if (locked.closedReason === 'handed_in') return { attempt: locked, acceptedRevs: {}, handedInNow: false }
     let attempt = locked
     if (deviceMatters(test, attempt, at)) attempt = await claimDevice(tx, attempt.id, deviceId, at)
     const acceptedRevs = await saveAnswers(tx, test, attempt, answers, at)
@@ -730,10 +744,11 @@ async function writeAttempt(
         .where(eq(testAttempt.id, attempt.id))
         .returning()
       await tx.insert(testLog).values({ attemptId: attempt.id, kind: 'handed_in', at })
+      return { attempt, acceptedRevs, handedInNow: true }
     }
-    return { attempt, acceptedRevs }
+    return { attempt, acceptedRevs, handedInNow: false }
   })
-  return { test, courseTitle, questions, attempt, acceptedRevs, at }
+  return { test, courseTitle, questions, attempt, acceptedRevs, at, handedInNow }
 }
 
 /**
@@ -750,7 +765,8 @@ export async function syncAttempt(ctx: Ctx, attemptId: string, input: SyncInput)
 /**
  * Saves the answers like syncAttempt, then closes the attempt as handed in and logs it. Already
  * handed in: the view, unchanged. Ended for leaving: answers within its grace are saved, the
- * ending stays. Before Start: CONFLICT not_started.
+ * ending stays. Before Start: CONFLICT not_started. The hand-in that closes the attempt emails the
+ * student a receipt after the response (best effort, never failing the hand-in).
  */
 export async function handIn(
   ctx: Ctx,
@@ -758,7 +774,31 @@ export async function handIn(
   input: { deviceId: string; answers: AnswerInput[] },
 ): Promise<AttemptView> {
   const w = await writeAttempt(ctx, attemptId, { deviceId: input?.deviceId, answers: input?.answers, exits: [] }, true)
+  if (w.handedInNow) {
+    await queueNotifications('handIn', async () => handedInEmails(ctx, w.test, w.courseTitle, w.at))
+  }
   return buildView(ctx.db, w.test, w.courseTitle, w.questions, w.attempt, w.at)
+}
+
+/** The student's receipt for handing in, in their own language: the test, the course and the time, never marks. */
+function handedInEmails(ctx: Ctx, test: TestRow, courseTitle: string, at: Date): Notification[] {
+  const me = ctx.user
+  return [
+    {
+      to: me.email,
+      locale: me.locale,
+      subject: emailSubject('testHandedIn', me.locale, { courseTitle, testTitle: test.title }),
+      react: createElement(TestHandedInEmail, {
+        locale: me.locale,
+        studentName: me.name,
+        courseTitle,
+        testTitle: test.title,
+        handedInAt: at,
+        url: appLinkBuilder('handIn')(`/t/${encodeURIComponent(test.code)}`),
+        timeZone: config.timeZone,
+      }),
+    },
+  ]
 }
 
 /** The course's tests with my status and (when visible) my quick result, newest first. */

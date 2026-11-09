@@ -117,6 +117,7 @@ describe('lecturer assignment services', () => {
     await joinClassAsStudent(alice, cls.studentCode!, 'UB1')
     await joinClassAsStudent(bob, cls.studentCode!, 'UB2')
     await joinClassAsStudent(carol, cls.studentCode!, 'UB3')
+    tasks = [] // the class-join confirmations; these tests are about assignment emails
     return { lecturer, colleague, algo, alice, bob, carol, cls }
   }
 
@@ -422,6 +423,7 @@ describe('lecturer assignment services', () => {
     const other = await createClass(lecturer, { schoolId: sch.id, name: 'Other', academicYear: '2026/27' })
     const visitor = ctxFor(db, await makeUser(db, { role: 'student', name: 'Visitor', locale: 'fr' }))
     await joinClassAsStudent(visitor, other.studentCode!, 'UB9')
+    tasks = [] // the visitor's join confirmation
     await setRosterAdjustment(lecturer, algo.id, carol.user.id, 'exclude')
     await setRosterAdjustment(lecturer, algo.id, visitor.user.id, 'include')
     expect(cls.id).toBeTruthy()

@@ -267,6 +267,53 @@
       "body": "Your lecturer has released the results of the test {test} in {course}. You can now see your total, your mark for each question and any comments.",
       "cta": "See my result",
       "fallback": "If the button doesn't work, copy and paste this link into your browser:"
+    },
+    "classJoined": {
+      "subject": "You've joined {class} at {school}",
+      "preview": "Welcome to {class} at {school}",
+      "greeting": "Hello {name},",
+      "body": "You've joined {class} at {school}. Welcome!",
+      "next": "Your lecturers' courses, assignments and tests for this class will appear on your dashboard as they add them.",
+      "cta": "Go to my dashboard",
+      "fallback": "If the button doesn't work, copy and paste this link into your browser:"
+    },
+    "lecturerJoinedClass": {
+      "subject": "You're now a lecturer of {class} at {school}",
+      "preview": "You've joined {class} at {school} as a lecturer",
+      "greeting": "Hello {name},",
+      "body": "You've joined {class} at {school} as a lecturer.",
+      "next": "From the class page you can add your courses and share the student code with your students.",
+      "cta": "Open the class",
+      "fallback": "If the button doesn't work, copy and paste this link into your browser:"
+    },
+    "colleagueJoinedClass": {
+      "subject": "{name} joined {class}",
+      "preview": "{name} is now a lecturer of {class}",
+      "greeting": "Hello {recipient},",
+      "body": "{name} joined {class} at {school} as a lecturer, using the class's lecturer code.",
+      "next": "If you don't know this person, open the class and generate a new lecturer code.",
+      "cta": "Open the class",
+      "fallback": "If the button doesn't work, copy and paste this link into your browser:"
+    },
+    "assignmentSubmitted": {
+      "subject": "Submission received: {assignment} in {course}",
+      "preview": "We received your submission for {assignment} in {course}",
+      "greeting": "Hello {name},",
+      "body": "We received your submission for {assignment} in {course}.",
+      "at": "Submitted {date} at {time}.",
+      "late": "It was submitted after the deadline, so it is marked late.",
+      "cta": "View my submission",
+      "fallback": "If the button doesn't work, copy and paste this link into your browser:"
+    },
+    "testHandedIn": {
+      "subject": "Test handed in: {test} in {course}",
+      "preview": "Your answers for {test} in {course} have been handed in",
+      "greeting": "Hello {name},",
+      "body": "Your answers for the test {test} in {course} have been handed in.",
+      "at": "Handed in {date} at {time}.",
+      "next": "Your result will show on the test page once it is available.",
+      "cta": "Open the test",
+      "fallback": "If the button doesn't work, copy and paste this link into your browser:"
     }
   },
   "landing": {

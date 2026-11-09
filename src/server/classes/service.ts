@@ -1,10 +1,15 @@
-import { and, asc, count, eq, inArray, or, sql } from 'drizzle-orm'
+import { and, asc, count, eq, inArray, isNotNull, ne, or, sql } from 'drizzle-orm'
+import { createElement } from 'react'
 import { z } from 'zod'
 import { AppError } from '@/server/core/errors'
 import type { Ctx } from '@/server/core/context'
 import { requireRole } from '@/server/core/guards'
 import type { Db } from '@/server/db'
 import { class_, classLecturer, classStudent, school, user } from '@/server/db/schema'
+import { appLinkBuilder, queueNotifications, type Notification } from '@/server/email/notify'
+import { ClassJoinedEmail } from '@/server/email/templates/class-joined'
+import { ColleagueJoinedClassEmail, LecturerJoinedClassEmail } from '@/server/email/templates/lecturer-joined-class'
+import { emailSubject } from '@/server/email/templates/verify-email'
 import { isUniqueViolation } from '@/server/lib/db-errors'
 import { getSchool } from '@/server/schools/service'
 import {
@@ -146,11 +151,90 @@ async function findClassByCode(db: Db, kind: 'student' | 'lecturer', raw: string
   throw new AppError('NOT_FOUND', 'Class not found')
 }
 
+/** The class's and its school's names, for confirmation emails. */
+async function classNames(db: Db, classId: string): Promise<{ className: string; schoolName: string }> {
+  const [row] = await db
+    .select({ className: class_.name, schoolName: school.name })
+    .from(class_)
+    .innerJoin(school, eq(school.id, class_.schoolId))
+    .where(eq(class_.id, classId))
+  if (!row) throw new Error(`Class ${classId} not found`)
+  return row
+}
+
+/**
+ * Joins the class as a lecturer. A first join emails, after the response, a confirmation to the
+ * joiner and a heads-up to the class's other lecturers and its creator, each in their own
+ * language; joining again changes nothing and emails nobody.
+ */
 export async function joinClassAsLecturer(ctx: Ctx, code: string): Promise<{ classId: string }> {
   requireRole(ctx, 'lecturer') // before the lookup, so a wrong-role caller learns nothing about codes
   const classId = await findClassByCode(ctx.db, 'lecturer', code)
-  await ctx.db.insert(classLecturer).values({ classId, userId: ctx.user.id }).onConflictDoNothing()
+  const inserted = await ctx.db
+    .insert(classLecturer)
+    .values({ classId, userId: ctx.user.id })
+    .onConflictDoNothing()
+    .returning({ classId: classLecturer.classId })
+  if (inserted.length > 0) {
+    await queueNotifications('joinClassAsLecturer', () => lecturerJoinedEmails(ctx, classId))
+  }
   return { classId }
+}
+
+async function lecturerJoinedEmails(ctx: Ctx, classId: string): Promise<Notification[]> {
+  const { className, schoolName } = await classNames(ctx.db, classId)
+  const colleagues = await ctx.db
+    .selectDistinct({ id: user.id, name: user.name, email: user.email, locale: user.locale })
+    .from(user)
+    .leftJoin(classLecturer, and(eq(classLecturer.userId, user.id), eq(classLecturer.classId, classId)))
+    .leftJoin(class_, and(eq(class_.createdBy, user.id), eq(class_.id, classId)))
+    .where(and(or(isNotNull(classLecturer.userId), isNotNull(class_.id)), ne(user.id, ctx.user.id)))
+  const url = appLinkBuilder('joinClassAsLecturer')(`/classes/${encodeURIComponent(classId)}`)
+  const me = ctx.user
+  const items: Notification[] = [
+    {
+      to: me.email,
+      locale: me.locale,
+      subject: emailSubject('lecturerJoinedClass', me.locale, { className, schoolName }),
+      react: createElement(LecturerJoinedClassEmail, { locale: me.locale, lecturerName: me.name, className, schoolName, url }),
+    },
+  ]
+  for (const c of colleagues) {
+    const locale = c.locale === 'fr' ? 'fr' : 'en'
+    items.push({
+      to: c.email,
+      locale,
+      subject: emailSubject('colleagueJoinedClass', locale, { colleagueName: me.name, className }),
+      react: createElement(ColleagueJoinedClassEmail, {
+        locale,
+        recipientName: c.name,
+        colleagueName: me.name,
+        className,
+        schoolName,
+        url,
+      }),
+    })
+  }
+  return items
+}
+
+async function studentJoinedEmails(ctx: Ctx, classId: string): Promise<Notification[]> {
+  const { className, schoolName } = await classNames(ctx.db, classId)
+  const me = ctx.user
+  return [
+    {
+      to: me.email,
+      locale: me.locale,
+      subject: emailSubject('classJoined', me.locale, { className, schoolName }),
+      react: createElement(ClassJoinedEmail, {
+        locale: me.locale,
+        studentName: me.name,
+        className,
+        schoolName,
+        url: appLinkBuilder('joinClassAsStudent')('/dashboard'),
+      }),
+    },
+  ]
 }
 
 export async function joinClassAsStudent(
@@ -161,6 +245,11 @@ export async function joinClassAsStudent(
   requireRole(ctx, 'student')
   const classId = await findClassByCode(ctx.db, 'student', code)
   const normalized = normalizeMatricule(matricule)
+  // Only a join that makes the student active (new, or back after removal) is confirmed by email.
+  const [before] = await ctx.db
+    .select({ status: classStudent.status })
+    .from(classStudent)
+    .where(and(eq(classStudent.classId, classId), eq(classStudent.userId, ctx.user.id)))
   try {
     // An existing row (active or removed) is reactivated with the matricule given now.
     await ctx.db
@@ -175,6 +264,9 @@ export async function joinClassAsStudent(
       throw new AppError('CONFLICT', 'This matricule is already used in this class')
     }
     throw err
+  }
+  if (before?.status !== 'active') {
+    await queueNotifications('joinClassAsStudent', () => studentJoinedEmails(ctx, classId))
   }
   return { classId }
 }

@@ -28,7 +28,9 @@ function singleLine(value: string): string {
   return value.replace(/\s+/g, ' ').trim().slice(0, SUBJECT_VAR_MAX)
 }
 
-export type NotificationKind = 'assignmentPublished' | 'assignmentReminder' | 'gradesReleased'
+export type NotificationKind = 'assignmentPublished' | 'assignmentReminder' | 'gradesReleased' | 'assignmentSubmitted'
+export type TestNotificationKind = 'testResultsReleased' | 'testHandedIn'
+export type ClassNotificationKind = 'classJoined' | 'lecturerJoinedClass'
 
 export function emailSubject(kind: 'verify', locale: Locale): string
 export function emailSubject(
@@ -37,26 +39,35 @@ export function emailSubject(
   vars: { courseTitle: string; assignmentTitle: string },
 ): string
 export function emailSubject(
-  kind: 'testResultsReleased',
+  kind: TestNotificationKind,
   locale: Locale,
   vars: { courseTitle: string; testTitle: string },
 ): string
 export function emailSubject(
-  kind: 'verify' | NotificationKind | 'testResultsReleased',
+  kind: ClassNotificationKind,
   locale: Locale,
-  vars?: { courseTitle: string; assignmentTitle: string } | { courseTitle: string; testTitle: string },
+  vars: { className: string; schoolName: string },
+): string
+export function emailSubject(
+  kind: 'colleagueJoinedClass',
+  locale: Locale,
+  vars: { colleagueName: string; className: string },
+): string
+export function emailSubject(
+  kind: 'verify' | NotificationKind | TestNotificationKind | ClassNotificationKind | 'colleagueJoinedClass',
+  locale: Locale,
+  vars?: Record<string, string>,
 ): string {
   const t = emailTranslator(locale)
   if (kind === 'verify') return t('verify.subject')
-  if (kind === 'testResultsReleased') {
-    return t('testResultsReleased.subject', {
-      course: singleLine(vars?.courseTitle ?? ''),
-      test: singleLine(vars && 'testTitle' in vars ? vars.testTitle : ''),
-    })
-  }
+  const v = (name: string) => singleLine(vars?.[name] ?? '')
   return t(`${kind}.subject`, {
-    course: singleLine(vars?.courseTitle ?? ''),
-    assignment: singleLine(vars && 'assignmentTitle' in vars ? vars.assignmentTitle : ''),
+    course: v('courseTitle'),
+    assignment: v('assignmentTitle'),
+    test: v('testTitle'),
+    class: v('className'),
+    school: v('schoolName'),
+    name: v('colleagueName'),
   })
 }
 
