@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setNowForTests } from '@/server/core/clock'
 import type { Db } from '@/server/db'
 import {
@@ -21,8 +21,9 @@ import { createSchool, setSchoolLocation } from '@/server/schools/service'
 import { createClass, joinClassAsStudent } from '@/server/classes/service'
 import { createCourse, setRosterAdjustment } from '@/server/courses/service'
 import { codeForSlot } from './code'
-import { closeWindow, createSession, openWindow } from './sessions'
-import { checkIn, listOpenCheckIns } from './check-in'
+import { closeWindow, createSession, getCheckInLink, openWindow } from './sessions'
+import { checkIn, checkInWithLink, getCheckInLinkTarget, listOpenCheckIns } from './check-in'
+import { CHECK_IN_LINK_PARAM, signCheckInLink } from './link'
 
 const MIN = 60_000
 const CAMPUS = { latitude: 4.15, longitude: 9.29 } // default radius: 500 m
@@ -366,5 +367,134 @@ describe('student check-in', () => {
     // An excluded student no longer sees the course.
     await setRosterAdjustment(lecturer, dbs.id, bob.user.id, 'exclude')
     expect(await listOpenCheckIns(bob)).toEqual([])
+  })
+  describe('check-in links', () => {
+    beforeEach(() => vi.stubEnv('BETTER_AUTH_SECRET', 'test-secret-'.repeat(4)))
+    afterEach(() => vi.unstubAllEnvs())
+
+    /** The token inside the link the lecturer copies. */
+    async function linkToken(lecturer: Awaited<ReturnType<typeof lecturerCtx>>, windowId: string) {
+      const path = await getCheckInLink(lecturer, windowId)
+      expect(path).not.toBeNull()
+      return new URL(path!, 'https://clasync.test').searchParams.get(CHECK_IN_LINK_PARAM)!
+    }
+
+    it('the owner gets a link for an open window, without the code in it; others are FORBIDDEN', async () => {
+      const { lecturer, algo, alice } = await setup()
+      const w = await open(lecturer, algo.id)
+      const path = await getCheckInLink(lecturer, w.windowId)
+      expect(path).toMatch(/^\/check-in\?w=/)
+      expect(path).not.toContain(w.code)
+      const colleague = await lecturerCtx()
+      await expect(getCheckInLink(colleague, w.windowId)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+      await expect(getCheckInLink(alice, w.windowId)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+      await closeWindow(lecturer, w.windowId)
+      expect(await getCheckInLink(lecturer, w.windowId)).toBeNull()
+    })
+
+    it('a rostered student checks in with the link alone, once', async () => {
+      const { lecturer, algo, alice } = await setup()
+      const w = await open(lecturer, algo.id)
+      const token = await linkToken(lecturer, w.windowId)
+      await expect(getCheckInLinkTarget(alice, token)).resolves.toMatchObject({
+        windowId: w.windowId,
+        courseTitle: 'Algorithms',
+        kind: 'start',
+        open: true,
+        checkedIn: false,
+      })
+      advance(5 * MIN) // codes have rotated five times: the link does not care
+      await expect(checkInWithLink(alice, token, { position: null })).resolves.toEqual({ result: 'checked_in' })
+      await expect(checkInWithLink(alice, token, { position: null })).resolves.toEqual({ result: 'already_checked_in' })
+      expect(await checkInRows()).toHaveLength(1)
+      await expect(getCheckInLinkTarget(alice, token)).resolves.toMatchObject({ checkedIn: true })
+    })
+
+    it('closed or expired windows are refused closed', async () => {
+      const { lecturer, cls, algo, alice, bob } = await setup()
+      const w = await open(lecturer, algo.id)
+      const token = await linkToken(lecturer, w.windowId)
+      await closeWindow(lecturer, w.windowId)
+      await expect(checkInWithLink(alice, token, { position: null })).rejects.toMatchObject({
+        code: 'VALIDATION',
+        details: { reason: 'closed' },
+      })
+      await expect(getCheckInLinkTarget(alice, token)).resolves.toMatchObject({ open: false, checkedIn: false })
+
+      const dbs = await createCourse(lecturer, { classId: cls.id, title: 'Databases', semester: 1 })
+      const expiring = await open(lecturer, dbs.id)
+      const later = await linkToken(lecturer, expiring.windowId)
+      advance(15 * MIN)
+      await expect(checkInWithLink(bob, later, { position: null })).rejects.toMatchObject({
+        code: 'VALIDATION',
+        details: { reason: 'closed' },
+      })
+      expect(await checkInRows()).toEqual([])
+    })
+
+    it('students off the roster, excluded students and lecturers are FORBIDDEN; nothing is recorded', async () => {
+      const { lecturer, algo, bob } = await setup()
+      const outsider = await studentCtx()
+      const w = await open(lecturer, algo.id)
+      const token = await linkToken(lecturer, w.windowId)
+      await setRosterAdjustment(lecturer, algo.id, bob.user.id, 'exclude')
+      for (const ctx of [outsider, bob, lecturer]) {
+        await expect(checkInWithLink(ctx, token, { position: null })).rejects.toMatchObject({ code: 'FORBIDDEN' })
+        await expect(getCheckInLinkTarget(ctx, token)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+      }
+      expect(await checkInRows()).toEqual([])
+    })
+
+    it('a forged, tampered or other-window token is NOT_FOUND; a signed unknown window is FORBIDDEN', async () => {
+      const { lecturer, cls, algo, alice } = await setup()
+      const w = await open(lecturer, algo.id)
+      const token = await linkToken(lecturer, w.windowId)
+      const sig = token.split('.')[1]
+      const dbs = await createCourse(lecturer, { classId: cls.id, title: 'Databases', semester: 1 })
+      await closeWindow(lecturer, w.windowId)
+      const other = await open(lecturer, dbs.id)
+      for (const bad of [`${other.windowId}.${sig}`, `${w.windowId}.${'A'.repeat(22)}`, w.windowId, 'junk']) {
+        await expect(checkInWithLink(alice, bad, { position: null })).rejects.toMatchObject({ code: 'NOT_FOUND' })
+        await expect(getCheckInLinkTarget(alice, bad)).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      }
+      const ghost = signCheckInLink('00000000-0000-4000-8000-000000000000')
+      await expect(checkInWithLink(alice, ghost, { position: null })).rejects.toMatchObject({ code: 'FORBIDDEN' })
+      expect(await checkInRows()).toEqual([])
+      // Bad links are not wrong codes: no strikes.
+      expect(await db.select().from(attendanceCodeFailure)).toEqual([])
+    })
+
+    it('a student locked out by wrong codes stays locked out with the link', async () => {
+      const { lecturer, algo, alice } = await setup()
+      const w = await open(lecturer, algo.id)
+      const wrong = w.code === 'AAAAAA' ? 'BBBBBB' : 'AAAAAA'
+      for (let i = 0; i < 10; i++) {
+        await expect(checkIn(alice, w.windowId, { code: wrong, position: null })).rejects.toMatchObject({
+          details: { reason: 'wrong_code' },
+        })
+      }
+      const token = await linkToken(lecturer, w.windowId)
+      await expect(checkInWithLink(alice, token, { position: null })).rejects.toMatchObject({
+        code: 'VALIDATION',
+        details: { reason: 'too_many_attempts' },
+      })
+      expect(await checkInRows()).toEqual([])
+    })
+
+    it('the campus rule still applies when the session requires it', async () => {
+      const { lecturer, algo, alice } = await setup()
+      const w = await open(lecturer, algo.id, true)
+      const token = await linkToken(lecturer, w.windowId)
+      await expect(getCheckInLinkTarget(alice, token)).resolves.toMatchObject({ requireOnCampus: true })
+      await expect(checkInWithLink(alice, token, { position: null })).rejects.toMatchObject({
+        details: { reason: 'location_required' },
+      })
+      await expect(checkInWithLink(alice, token, { position: north(800) })).rejects.toMatchObject({
+        details: { reason: 'off_campus' },
+      })
+      await expect(checkInWithLink(alice, token, { position: north(100) })).resolves.toEqual({ result: 'checked_in' })
+      const [row] = await checkInRows()
+      expect(row.latitude).not.toBeNull()
+    })
   })
 })

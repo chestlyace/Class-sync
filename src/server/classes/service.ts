@@ -1,4 +1,4 @@
-import { and, asc, count, eq, inArray, isNotNull, ne, or, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, isNotNull, ne, or, sql } from 'drizzle-orm'
 import { createElement } from 'react'
 import { z } from 'zod'
 import { AppError } from '@/server/core/errors'
@@ -149,6 +149,62 @@ async function findClassByCode(db: Db, kind: 'student' | 'lecturer', raw: string
     if (row) return row.id
   }
   throw new AppError('NOT_FOUND', 'Class not found')
+}
+
+export type JoinCodePreview =
+  /** The code is the other kind (a student opened the lecturer link, or the reverse): no class details. */
+  | { status: 'wrong_role'; codeKind: 'student' | 'lecturer' }
+  | {
+      /** `member`: already in the class (an active student, or one of its lecturers). */
+      status: 'ready' | 'member'
+      codeKind: 'student' | 'lecturer'
+      classId: string
+      className: string
+      schoolName: string
+      academicYear: string
+      /** Students only: the matricule they use in another class of the same school, to prefill. */
+      suggestedMatricule: string | null
+    }
+
+/**
+ * What a join link points at, for the signed-in user about to confirm it: the class and school
+ * for the right role, only "wrong role" for the other one. Unknown and malformed codes are
+ * NOT_FOUND. Joining itself still goes through joinClassAsStudent / joinClassAsLecturer.
+ */
+export async function previewJoinCode(ctx: Ctx, raw: string): Promise<JoinCodePreview> {
+  requireRole(ctx, ctx.user.role) // verified first
+  const code = normalizeJoinCode(typeof raw === 'string' ? raw : '')
+  if (!isWellFormedJoinCode(code)) throw new AppError('NOT_FOUND', 'Class not found')
+  const [row] = await ctx.db
+    .select({ cls: class_, schoolName: school.name })
+    .from(class_)
+    .innerJoin(school, eq(school.id, class_.schoolId))
+    .where(or(eq(class_.studentCode, code), eq(class_.lecturerCode, code)))
+    .limit(1)
+  if (!row) throw new AppError('NOT_FOUND', 'Class not found')
+  const codeKind: 'student' | 'lecturer' = row.cls.studentCode === code ? 'student' : 'lecturer'
+  if (codeKind !== ctx.user.role) return { status: 'wrong_role', codeKind }
+
+  const details = {
+    codeKind,
+    classId: row.cls.id,
+    className: row.cls.name,
+    schoolName: row.schoolName,
+    academicYear: row.cls.academicYear,
+  }
+  if (ctx.user.role === 'lecturer') {
+    const member = await isClassLecturer(ctx.db, row.cls.id, ctx.user.id)
+    return { status: member ? 'member' : 'ready', ...details, suggestedMatricule: null }
+  }
+  const mine = await ctx.db
+    .select({ classId: classStudent.classId, schoolId: class_.schoolId, matricule: classStudent.matricule })
+    .from(classStudent)
+    .innerJoin(class_, eq(class_.id, classStudent.classId))
+    .where(and(eq(classStudent.userId, ctx.user.id), eq(classStudent.status, 'active')))
+    .orderBy(desc(classStudent.joinedAt))
+  if (mine.some((m) => m.classId === row.cls.id)) return { status: 'member', ...details, suggestedMatricule: null }
+  const sameSchool = mine.find((m) => m.schoolId === row.cls.schoolId)
+  return { status: 'ready', ...details, suggestedMatricule: sameSchool?.matricule ?? null }
 }
 
 /** The class's and its school's names, for confirmation emails. */

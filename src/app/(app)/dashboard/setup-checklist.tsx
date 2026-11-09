@@ -1,6 +1,7 @@
 import { ArrowRight, Check } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
+import { absoluteLink, joinLinkPath } from '@/app/share-links'
 import { CopyButton } from '@/components/copy-button'
 import { Eyebrow } from '@/components/page-header'
 import { buttonVariants } from '@/components/ui/button'
@@ -48,6 +49,7 @@ export async function SetupChecklist({ status }: { status: OnboardingStatus }) {
   const done = steps.filter((s) => s.done).length
   const current = steps.find((s) => !s.done)?.key
   const shareClass = status.role === 'lecturer' && !status.steps.share ? status.latestClass : null
+  const shareLink = shareClass ? await absoluteLink(joinLinkPath(shareClass.studentCode)) : null
 
   return (
     <SetupCard titleId={TITLE_ID} dismissLabel={t('dismiss')}>
@@ -114,8 +116,13 @@ export async function SetupChecklist({ status }: { status: OnboardingStatus }) {
                 {isCurrent && (
                   <p className="max-w-prose text-sm text-muted-foreground">{t(`steps.${step.key}.body`)}</p>
                 )}
-                {showCode && shareClass && (
+                {showCode && shareClass && shareLink && (
                   <div className="flex flex-wrap items-center gap-2">
+                    <CopyButton
+                      value={shareLink}
+                      label={t('steps.share.copyLinkLabel', { className: shareClass.name })}
+                      text={t('steps.share.copyLink')}
+                    />
                     <span
                       data-testid="setup-join-code"
                       className="inline-flex h-11 items-center rounded-full border bg-muted px-5 font-mono text-lg font-medium tracking-[0.2em]"

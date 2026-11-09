@@ -133,9 +133,9 @@
     "page": {
       "eyebrow": "Classe",
       "studentCode": "Code étudiant",
-      "studentCodeHint": "Les étudiants rejoignent la classe avec ce code et leur matricule.",
+      "studentCodeHint": "Envoyez ce lien aux étudiants : ils l'ouvrent, saisissent leur matricule, et c'est fait. Le code fonctionne aussi.",
       "lecturerCode": "Code enseignant",
-      "lecturerCodeHint": "Vos collègues rejoignent la classe avec ce code pour y ajouter leurs cours.",
+      "lecturerCodeHint": "Envoyez ce lien à vos collègues pour qu'ils ajoutent leurs propres cours. Le code fonctionne aussi.",
       "copyStudentCode": "Copier le code étudiant",
       "copyLecturerCode": "Copier le code enseignant",
       "regenerate": "Régénérer",
@@ -143,10 +143,10 @@
       "regenerateLecturerLabel": "Régénérer le code enseignant",
       "regenerateStudentTitle": "Régénérer le code étudiant ?",
       "regenerateLecturerTitle": "Régénérer le code enseignant ?",
-      "regenerateBody": "Le code actuel cesse immédiatement de fonctionner. Les personnes déjà inscrites restent dans la classe.",
+      "regenerateBody": "Le code actuel et son lien cessent immédiatement de fonctionner. Les personnes déjà inscrites restent dans la classe.",
       "regenerateConfirm": "Régénérer le code",
       "roster": "Étudiants",
-      "rosterEmpty": "Aucun étudiant pour l'instant. Partagez le code étudiant pour qu'ils puissent rejoindre la classe.",
+      "rosterEmpty": "Aucun étudiant pour l'instant. Partagez le lien étudiant pour qu'ils puissent rejoindre la classe.",
       "name": "Nom",
       "matricule": "Matricule",
       "email": "E-mail",
@@ -155,7 +155,7 @@
       "removeTitle": "Retirer {name} ?",
       "removeBody": "Cet étudiant perd l'accès à tous les cours de cette classe.",
       "removeConfirm": "Retirer l'étudiant",
-      "rejoinNote": "Un étudiant retiré peut revenir avec le code étudiant actuel, sauf si vous le régénérez.",
+      "rejoinNote": "Un étudiant retiré peut revenir avec le lien ou le code étudiant actuel, sauf si vous le régénérez.",
       "courses": "Vos cours dans cette classe",
       "coursesEmpty": "Vous n'avez encore aucun cours dans cette classe.",
       "addCourse": "Ajouter un cours",
@@ -163,7 +163,11 @@
       "studentCoursesEmpty": "Aucun cours dans cette classe pour l'instant.",
       "copyInvite": "Copier le message d'invitation",
       "copyInviteLabel": "Copier un message avec le code étudiant et la marche à suivre, en anglais et en français",
-      "inviteMessage": "Join {className} on Clasync: open {url}, then enter the code {code} and your matricule.\nRejoignez {className} sur Clasync : ouvrez {url}, puis saisissez le code {code} et votre matricule."
+      "inviteMessage": "Join {className} on Clasync: open {url} and enter your matricule (class code: {code}).\nRejoignez {className} sur Clasync : ouvrez {url} et saisissez votre matricule (code de la classe : {code}).",
+      "copyStudentLink": "Copier le lien étudiant",
+      "copyLecturerLink": "Copier le lien enseignant",
+      "copyStudentLinkTitle": "Copier le lien que les étudiants ouvrent pour rejoindre cette classe",
+      "copyLecturerLinkTitle": "Copier le lien que vos collègues ouvrent pour enseigner dans cette classe"
     }
   },
   "courses": {
@@ -763,11 +767,13 @@
           "action": "Créer le cours"
         },
         "share": {
-          "title": "Transmettez le code à vos étudiants",
-          "body": "Les étudiants choisissent « Rejoindre une classe », puis saisissent ce code et leur matricule. L'étape se coche dès que le premier a rejoint la classe.",
+          "title": "Transmettez le lien à vos étudiants",
+          "body": "Envoyez ce lien aux étudiants : ils l'ouvrent et saisissent leur matricule. Le code fonctionne aussi, depuis « Rejoindre une classe ». L'étape se coche dès que le premier a rejoint la classe.",
           "action": "Ouvrir la classe",
           "codeLabel": "Code étudiant de {className}",
-          "copy": "Copier le code étudiant"
+          "copy": "Copier le code étudiant",
+          "copyLink": "Copier le lien étudiant",
+          "copyLinkLabel": "Copier le lien que les étudiants ouvrent pour rejoindre {className}"
         },
         "join": {
           "title": "Rejoignez une classe",
@@ -916,7 +922,27 @@
     "submit": "Rejoindre la classe",
     "submitting": "Inscription…",
     "notFound": "Aucune classe ne correspond à ce code. Vérifiez-le et réessayez.",
-    "matriculeTaken": "Ce matricule est déjà utilisé dans cette classe."
+    "matriculeTaken": "Ce matricule est déjà utilisé dans cette classe.",
+    "confirmTitle": "Rejoindre {className}",
+    "confirmStudent": "Votre enseignant vous invite dans cette classe. Confirmez avec votre matricule : une seule fois suffit.",
+    "confirmLecturer": "Un collègue vous invite à enseigner dans cette classe. Une fois inscrit, vous pourrez y ajouter vos propres cours.",
+    "confirmSubmit": "Rejoindre {className}",
+    "matriculeSuggested": "Le matricule de votre autre classe dans cet établissement. Modifiez-le s'il est différent ici.",
+    "otherCode": "Pas cette classe ? Saisir un code",
+    "memberTitle": "Vous êtes déjà dans {className}",
+    "openClass": "Ouvrir la classe",
+    "linkNotFound": "Ce lien ne correspond à aucune classe : son code a peut-être été changé. Demandez un nouveau lien, ou saisissez le code ci-dessous.",
+    "backToDashboard": "Retour au tableau de bord",
+    "wrongRole": {
+      "lecturerLink": {
+        "title": "Ce lien est réservé aux enseignants",
+        "body": "Il permet à des collègues d'enseigner dans une classe. Pour la rejoindre en tant qu'étudiant, demandez le lien étudiant à votre enseignant."
+      },
+      "studentLink": {
+        "title": "Ce lien est réservé aux étudiants",
+        "body": "Les étudiants rejoignent la classe avec ce lien. Pour y enseigner, demandez le lien enseignant à l'un de ses enseignants."
+      }
+    }
   },
   "attendance": {
     "student": {
@@ -957,6 +983,18 @@
         "absent": "Absent",
         "not_enrolled": "Pas encore inscrit au cours",
         "none": "Pas encore relevée"
+      },
+      "link": {
+        "description": "Votre enseignant vous a envoyé ce lien de pointage : pas besoin de code.",
+        "locationExplain": "Ce cours vérifie que vous êtes sur le campus. Quand vous appuierez sur Pointer, votre navigateur demandera votre position ; elle ne sert qu'à cette vérification.",
+        "invalidTitle": "Ce lien de pointage ne fonctionne pas",
+        "invalid": "Ce lien de pointage n'est pas valide. Demandez-en un nouveau à votre enseignant, ou saisissez le code affiché en cours.",
+        "forbiddenTitle": "Vous ne pouvez pas pointer ici",
+        "closedTitle": "Le pointage de {course} est fermé",
+        "closedBody": "Ce lien ne fonctionne que pendant que le pointage est ouvert. Si vous étiez présent, demandez à votre enseignant de vous marquer présent.",
+        "lecturerTitle": "Ce lien est réservé aux étudiants",
+        "lecturerBody": "Les étudiants du cours l'ouvrent pour pointer. Vos appels se trouvent sur la page des présences de chaque cours.",
+        "allCheckIns": "Tous les pointages ouverts"
       }
     },
     "lecturer": {
@@ -1021,7 +1059,10 @@
         "closing": "Fermeture…",
         "present": "Projeter",
         "exitHint": "Appuyez sur Échap pour quitter le plein écran",
-        "reconnecting": "Connexion perdue. Nouvelle tentative…"
+        "reconnecting": "Connexion perdue. Nouvelle tentative…",
+        "copyLink": "Copier le lien de pointage",
+        "copyLinkLabel": "Copier un lien qui permet aux étudiants de pointer dans cet appel sans le code",
+        "linkHint": "Toute personne inscrite au cours qui a ce lien peut pointer tant que l'appel est ouvert, sans le code. Les règles de localisation s'appliquent toujours."
       },
       "studentsTitle": "Étudiants",
       "start": "Début",
@@ -1589,7 +1630,8 @@
           "ended_left": "Test arrêté pour sortie",
           "reopened": "Autorisé à revenir",
           "handed_in": "Copie rendue"
-        }
+        },
+        "copyLinkShort": "Copier le lien"
       },
       "results": {
         "title": "Résultats",

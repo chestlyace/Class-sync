@@ -13,6 +13,7 @@ import {
   joinClassAsLecturer,
   joinClassAsStudent,
   listMyClasses,
+  previewJoinCode,
   regenerateJoinCode,
   removeStudentFromClass,
 } from './service'
@@ -358,5 +359,79 @@ describe('classes service', () => {
     const other = await lecturerCtx()
     expect(await isClassLecturer(db, cls.id, other.user.id)).toBe(false)
     expect(await isClassLecturer(db, 'nope', other.user.id)).toBe(false)
+  })
+  describe('previewJoinCode (join links)', () => {
+    it('shows the class and school for the right role, from either case and spacing', async () => {
+      const { lecturer, cls } = await setup()
+      const student = await studentCtx()
+      const colleague = await lecturerCtx()
+      const details = {
+        classId: cls.id,
+        className: 'Computer Science L3',
+        schoolName: 'University of Buea',
+        academicYear: '2026/27',
+      }
+      await expect(previewJoinCode(student, ` ${cls.studentCode!.toLowerCase()} `)).resolves.toEqual({
+        status: 'ready',
+        codeKind: 'student',
+        ...details,
+        suggestedMatricule: null,
+      })
+      await expect(previewJoinCode(colleague, cls.lecturerCode!)).resolves.toEqual({
+        status: 'ready',
+        codeKind: 'lecturer',
+        ...details,
+        suggestedMatricule: null,
+      })
+      // The creator is already a lecturer of the class.
+      await expect(previewJoinCode(lecturer, cls.lecturerCode!)).resolves.toMatchObject({ status: 'member' })
+    })
+
+    it('the other kind of code says wrong_role and nothing about the class', async () => {
+      const { cls } = await setup()
+      const student = await studentCtx()
+      const colleague = await lecturerCtx()
+      await expect(previewJoinCode(student, cls.lecturerCode!)).resolves.toEqual({
+        status: 'wrong_role',
+        codeKind: 'lecturer',
+      })
+      await expect(previewJoinCode(colleague, cls.studentCode!)).resolves.toEqual({
+        status: 'wrong_role',
+        codeKind: 'student',
+      })
+    })
+
+    it('unknown and malformed codes are NOT_FOUND; unverified users are EMAIL_UNVERIFIED', async () => {
+      await setup()
+      const student = await studentCtx()
+      for (const code of ['ZZZZZZ', 'ABC', '', 'O0I1OO']) {
+        await expect(previewJoinCode(student, code)).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      }
+      setConfigForTests({ requireEmailVerification: true })
+      const unverified = await studentCtx({ emailVerified: false })
+      await expect(previewJoinCode(unverified, 'ZZZZZZ')).rejects.toMatchObject({ code: 'EMAIL_UNVERIFIED' })
+    })
+
+    it('a student already in the class is a member; a removed one may rejoin', async () => {
+      const { lecturer, cls } = await setup()
+      const student = await studentCtx()
+      await joinClassAsStudent(student, cls.studentCode!, 'ub1')
+      await expect(previewJoinCode(student, cls.studentCode!)).resolves.toMatchObject({ status: 'member' })
+      await removeStudentFromClass(lecturer, cls.id, student.user.id)
+      await expect(previewJoinCode(student, cls.studentCode!)).resolves.toMatchObject({ status: 'ready' })
+    })
+
+    it('suggests the matricule the student uses in another class of the same school only', async () => {
+      const { lecturer, sch, cls } = await setup()
+      const other = await createClass(lecturer, { schoolId: sch.id, name: 'Maths L3', academicYear: '2026/27' })
+      const elsewhere = await createSchool(lecturer, { name: 'University of Dschang', town: 'Dschang' })
+      const far = await createClass(lecturer, { schoolId: elsewhere.id, name: 'Physics L1', academicYear: '2026/27' })
+      const student = await studentCtx()
+      await expect(previewJoinCode(student, cls.studentCode!)).resolves.toMatchObject({ suggestedMatricule: null })
+      await joinClassAsStudent(student, far.studentCode!, 'UDS-77')
+      await expect(previewJoinCode(student, cls.studentCode!)).resolves.toMatchObject({ suggestedMatricule: null })
+      await joinClassAsStudent(student, other.studentCode!, 'ub-42')
+      await expect(previewJoinCode(student, cls.studentCode!)).resolves.toMatchObject({ suggestedMatricule: 'UB-42' })
+    })
   })
 })

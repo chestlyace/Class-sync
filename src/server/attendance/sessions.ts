@@ -18,6 +18,7 @@ import { isOnCourseRoster, requireCourseOwner, type CourseSummary } from '@/serv
 import { getSchool } from '@/server/schools/service'
 import { isUniqueViolation } from '@/server/lib/db-errors'
 import { currentCode, newWindowSecret } from './code'
+import { checkInLinkPath, signCheckInLink } from './link'
 import { loadStatusMatrixForRoster, type StudentSessionState } from './matrix'
 import { isSessionOver, WINDOW_MAX_MINUTES } from './rules'
 import type { OverrideStatus } from './status'
@@ -266,6 +267,15 @@ export async function closeWindow(ctx: Ctx, windowId: string): Promise<void> {
 export async function getLiveWindow(ctx: Ctx, windowId: string): Promise<LiveWindow> {
   const { window, session } = await requireOwnedWindow(ctx, windowId)
   return liveWindow(ctx.db, window, session.courseId, now())
+}
+
+/**
+ * The check-in link for one of the lecturer's windows (`/check-in?w=…`, see link.ts), or null once
+ * the window has closed: a link is only worth sharing while it can be used.
+ */
+export async function getCheckInLink(ctx: Ctx, windowId: string): Promise<string | null> {
+  const { window } = await requireOwnedWindow(ctx, windowId)
+  return windowState(window, now()).open ? checkInLinkPath(signCheckInLink(window.id)) : null
 }
 
 /** Sets (or, with null, clears) the lecturer's verdict for one student in one session. */

@@ -6,19 +6,26 @@ import { ErrorState } from '@/components/error-state'
 import { PageHeader, Panel, SectionHeading } from '@/components/page-header'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
-import { getLiveWindow, getSession, type LiveWindow as LiveWindowData, type WindowState } from '@/server/attendance/sessions'
+import {
+  getCheckInLink,
+  getLiveWindow,
+  getSession,
+  type LiveWindow as LiveWindowData,
+  type WindowState,
+} from '@/server/attendance/sessions'
 import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
 import { isSessionOver, SESSION_MAX_HOURS } from '@/server/attendance/rules'
 import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import { AppError } from '@/server/core/errors'
+import { absoluteLink } from '@/app/share-links'
 import { loadPage } from '../../../../load-page'
 import { deleteSessionAction, type LiveWindowView } from '../../../attendance-actions'
 import { OpenWindowButton, OverrideSelect } from '../../../attendance-controls'
 import { formatSessionDate } from '../../../attendance-format'
 import { LiveWindow } from '../../../live-window'
 
-type SessionView = Awaited<ReturnType<typeof getSession>> & { live: LiveWindowData | null }
+type SessionView = Awaited<ReturnType<typeof getSession>> & { live: LiveWindowData | null; linkPath: string | null }
 
 export async function generateMetadata() {
   const t = await getTranslations('attendance.lecturer')
@@ -36,10 +43,13 @@ export default async function AttendanceSessionPage({
     const data = await getSession(ctx, sessionId) // FORBIDDEN unless I teach this course
     if (data.session.courseId !== courseId) throw new AppError('NOT_FOUND', 'Session not in this course')
     const openWindow = data.session.windows.find((w) => w.open)
-    return { ...data, live: openWindow ? await getLiveWindow(ctx, openWindow.id) : null }
+    if (!openWindow) return { ...data, live: null, linkPath: null }
+    const [live, linkPath] = await Promise.all([getLiveWindow(ctx, openWindow.id), getCheckInLink(ctx, openWindow.id)])
+    return { ...data, live, linkPath }
   })
   if (!view.ok) return <ErrorState code={view.code} />
-  const { session, course, students, live } = view.data
+  const { session, course, students, live, linkPath } = view.data
+  const checkInLink = linkPath ? await absoluteLink(linkPath) : null
   const gridHref = `/courses/${encodeURIComponent(course.id)}/attendance`
   const time = (date: Date) => formatSessionDate(date, locale, config.timeZone, 'time')
 
@@ -79,7 +89,9 @@ export default async function AttendanceSessionPage({
 
       <section aria-labelledby="check-in" className="flex flex-col gap-4">
         <SectionHeading id="check-in">{t('checkInTitle')}</SectionHeading>
-        {live && <LiveWindow key={live.windowId} initial={toView(live)} timeZone={config.timeZone} />}
+        {live && (
+          <LiveWindow key={live.windowId} initial={toView(live)} link={checkInLink} timeZone={config.timeZone} />
+        )}
         <Panel className="grid gap-6 sm:grid-cols-2">
           {(['start', 'end'] as const).map((kind) => (
             <div key={kind} className="flex flex-col gap-3">

@@ -7,9 +7,20 @@ import { Button } from '@/components/ui/button'
 
 /**
  * Copies `value` to the clipboard; `label` is the translated accessible name. With `text`, the
- * button shows that text next to the icon (a dark pill) instead of being icon-only.
+ * button shows that text next to the icon (a blue pill, or an outline one with `variant`)
+ * instead of being icon-only.
  */
-export function CopyButton({ value, label, text }: { value: string; label: string; text?: string }) {
+export function CopyButton({
+  value,
+  label,
+  text,
+  variant = 'default',
+}: {
+  value: string
+  label: string
+  text?: string
+  variant?: 'default' | 'outline'
+}) {
   const t = useTranslations('common')
   const [copied, setCopied] = useState(false)
 
@@ -31,18 +42,19 @@ export function CopyButton({ value, label, text }: { value: string; label: strin
   return (
     <>
       {text ? (
-        <Button
-          type="button"
-          size="lg"
-          onClick={copy}
-          title={label}
-          className="bg-foreground text-background hover:bg-foreground/85"
-        >
+        <Button type="button" size="lg" variant={variant} onClick={copy} title={label}>
           {copied ? <Check aria-hidden="true" data-icon="inline-start" /> : <Copy aria-hidden="true" data-icon="inline-start" />}
           {text}
         </Button>
       ) : (
-        <Button type="button" variant="outline" size="icon-lg" onClick={copy} aria-label={label} title={label}>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-lg"
+          onClick={copy}
+          aria-label={label}
+          title={label}
+        >
           {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
         </Button>
       )}

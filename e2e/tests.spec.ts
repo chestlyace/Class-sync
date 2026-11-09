@@ -153,7 +153,7 @@ test('a test run with offline answers, leaving and letting back in, end to end',
       expect(link).toMatch(/\/t\/[A-Z0-9]{6}$/)
       testPath = new URL(link).pathname
 
-      await lecturer.getByRole('button', { name: 'Copy the test link', exact: true }).click()
+      await lecturer.getByRole('button', { name: 'Copy link', exact: true }).click()
       await expect(lecturer.getByRole('status').filter({ hasText: 'Copied' })).toHaveCount(1)
       expect(await lecturer.evaluate(() => navigator.clipboard.readText())).toBe(link)
       await expect(lecturer.getByText('No students waiting yet', { exact: true })).toBeVisible()

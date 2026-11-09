@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input'
 import type { ActionResult } from '@/lib/action-result'
 import type { CheckInRefusal } from '@/server/attendance/check-in'
 import type { Position } from '@/server/attendance/geo'
-import { checkInAction } from './actions'
+import { checkInAction, checkInWithLinkAction } from './actions'
 import { createLocator, type Locator } from './locate'
 
 const MAX_CODE_LENGTH = 20
@@ -37,15 +37,18 @@ type Outcome = { kind: 'done'; already: boolean } | { kind: 'error'; message: Re
  * One open check-in: code entry (asking for the position only when the session requires it), and
  * an always-present status region that says "Checked in", whether the server already knew it
  * (`checkedIn`) or this form just did it, so the confirmation is announced and survives refreshes.
+ * With `linkToken` (opened from a check-in link) there is no code to type: one button checks in.
  */
 export function CheckInForm({
   windowId,
   requireOnCampus,
   checkedIn,
+  linkToken,
 }: {
   windowId: string
   requireOnCampus: boolean
   checkedIn: boolean
+  linkToken?: string
 }) {
   const t = useTranslations('attendance.student')
   const tRoot = useTranslations()
@@ -77,6 +80,7 @@ export function CheckInForm({
       if (Array.isArray(fields) && fields.includes('code')) return t('codeRequired')
     }
     if (result.code === 'FORBIDDEN') return t('forbidden')
+    if (result.code === 'NOT_FOUND' && linkToken) return t('link.invalid')
     if (result.code === 'EMAIL_UNVERIFIED') return t('emailUnverified')
     return <ErrorCodeMessage code={result.code} />
   }
@@ -84,7 +88,7 @@ export function CheckInForm({
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (phase !== 'idle') return
-    if (!code.trim()) {
+    if (!linkToken && !code.trim()) {
       setOutcome({ kind: 'error', message: t('codeRequired') })
       return
     }
@@ -98,7 +102,9 @@ export function CheckInForm({
         position = await getLocator().position()
       }
       setPhase('sending')
-      const result = await checkInAction(windowId, code, position)
+      const result = linkToken
+        ? await checkInWithLinkAction(linkToken, position)
+        : await checkInAction(windowId, code, position)
       if (result.ok) {
         setOutcome({ kind: 'done', already: result.data.result === 'already_checked_in' })
         router.refresh() // the server now reports `checkedIn` too
@@ -133,28 +139,30 @@ export function CheckInForm({
             {requireOnCampus && (
               <p id={locationId} className="flex gap-2 text-sm text-muted-foreground">
                 <MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-                {t('locationExplain')}
+                {linkToken ? t('link.locationExplain') : t('locationExplain')}
               </p>
             )}
-            <Field data-invalid={invalid}>
-              <FieldLabel htmlFor={inputId}>{t('codeLabel')}</FieldLabel>
-              <Input
-                id={inputId}
-                name="code"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                onFocus={requireOnCampus ? () => getLocator().warm() : undefined}
-                autoComplete="off"
-                autoCapitalize="characters"
-                autoCorrect="off"
-                spellCheck={false}
-                maxLength={MAX_CODE_LENGTH}
-                aria-describedby={describedBy}
-                aria-invalid={invalid}
-                className="max-w-56 font-mono text-lg tracking-[0.2em] uppercase"
-              />
-              <FieldDescription id={hintId}>{t('codeHint')}</FieldDescription>
-            </Field>
+            {!linkToken && (
+              <Field data-invalid={invalid}>
+                <FieldLabel htmlFor={inputId}>{t('codeLabel')}</FieldLabel>
+                <Input
+                  id={inputId}
+                  name="code"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  onFocus={requireOnCampus ? () => getLocator().warm() : undefined}
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  maxLength={MAX_CODE_LENGTH}
+                  aria-describedby={describedBy}
+                  aria-invalid={invalid}
+                  className="max-w-56 font-mono text-lg tracking-[0.2em] uppercase"
+                />
+                <FieldDescription id={hintId}>{t('codeHint')}</FieldDescription>
+              </Field>
+            )}
             {/* FieldError is role="alert"; it is cleared on each submit, so a repeated refusal is announced again. */}
             {outcome?.kind === 'error' && <FieldError id={errorId}>{outcome.message}</FieldError>}
           </FieldGroup>
