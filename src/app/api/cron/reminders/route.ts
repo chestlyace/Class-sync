@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto'
 import { runDueReminders } from '@/server/assignments/reminders'
+import { pruneRateLimits } from '@/server/lib/rate-limit'
 import { pruneUnusedOauthClients } from '@/server/mcp/prune'
 
 export const dynamic = 'force-dynamic'
@@ -23,8 +24,12 @@ async function handle(request: Request): Promise<Response> {
     console.error('[cron/reminders] pruning unused OAuth clients failed', error)
     return null
   })
+  const rateLimitsPruned = await pruneRateLimits().catch((error: unknown) => {
+    console.error('[cron/reminders] pruning rate limit counters failed', error)
+    return null
+  })
   try {
-    return Response.json({ ...(await runDueReminders()), oauthClientsPruned })
+    return Response.json({ ...(await runDueReminders()), oauthClientsPruned, rateLimitsPruned })
   } catch (error) {
     console.error('[cron/reminders] run failed', error)
     return Response.json({ error: 'Reminder run failed' }, { status: 500 })

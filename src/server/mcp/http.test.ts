@@ -1,12 +1,15 @@
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { config, setConfigForTests } from '@/server/core/config'
 import { AppError } from '@/server/core/errors'
 import type { Db } from '@/server/db'
+import { rateLimit } from '@/server/db/schema'
+import { hitRateLimit } from '@/server/lib/rate-limit'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
 import { createTestAuth, registerClient, runOAuthFlow, signUp, TEST_ORIGIN } from '@/test/mcp-oauth'
-import type { McpAuthDeps, McpCaller } from './auth'
+import { MCP_RATE_LIMITS, type McpAuthDeps, type McpCaller } from './auth'
 import { createAccessToken, type AuthInstance } from './connections'
 import { handleMcpPost, mcpMethodNotAllowed, mcpPreflight } from './http'
 import { runTool } from './server'
@@ -77,6 +80,26 @@ describe('POST /api/mcp', () => {
     )
     expect(res.headers.get('access-control-allow-origin')).toBe('*')
     expect(res.headers.get('access-control-expose-headers')).toContain('www-authenticate')
+  })
+
+  it('throttled: 429 with Retry-After, readable cross-origin', async () => {
+    // Hold the clock inside one window. Without x-forwarded-for the IP is "unknown": use up its failures.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(Math.floor(Date.now() / 60_000) * 60_000 + 5_000)
+    for (let i = 0; i < MCP_RATE_LIMITS.failedAuthPerIp.max; i++) {
+      await hitRateLimit(db, 'mcp:auth-fail:unknown', MCP_RATE_LIMITS.failedAuthPerIp)
+    }
+    try {
+      const res = await handleMcpPost(rpc('initialize', INIT, key), deps)
+      expect(res.status).toBe(429)
+      expect(Number(res.headers.get('retry-after'))).toBeGreaterThan(0)
+      expect(res.headers.get('access-control-allow-origin')).toBe('*')
+      expect(res.headers.get('access-control-expose-headers')).toContain('retry-after')
+      expect(await res.json()).toMatchObject({ jsonrpc: '2.0', error: { code: -32000 }, id: null })
+    } finally {
+      vi.useRealTimers()
+      await db.delete(rateLimit).where(eq(rateLimit.key, 'mcp:auth-fail:unknown'))
+    }
   })
 
   it('with a personal access token: initialize, tools/list, then tools/call whoami', async () => {

@@ -85,6 +85,13 @@
       "when": 1794176469516,
       "tag": "0011_mcp_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794188529802,
+      "tag": "0012_mcp_rate_limit",
+      "breakpoints": true
     }
   ]
 }

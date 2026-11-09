@@ -1,20 +1,34 @@
 import { eq } from 'drizzle-orm'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { config, setConfigForTests } from '@/server/core/config'
 import type { Db } from '@/server/db'
-import { apikey } from '@/server/db/schema'
+import { apikey, rateLimit } from '@/server/db/schema'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
-import { resolveMcpCaller, type McpAuthDeps, type McpCaller } from './auth'
+import { clientIp, MCP_RATE_LIMITS, resolveMcpCaller, type McpAuthDeps, type McpCaller } from './auth'
 import { createAccessToken, disconnectApp, type AuthInstance } from './connections'
 import { createTestAuth, registerClient, runOAuthFlow, signUp, TEST_ORIGIN } from '@/test/mcp-oauth'
 
-function mcpRequest(token?: string) {
+function mcpRequest(token?: string, ip?: string) {
   return new Request(`${TEST_ORIGIN}/api/mcp`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+    headers: {
+      'content-type': 'application/json',
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...(ip ? { 'x-forwarded-for': `${ip}, 10.0.0.1` } : {}),
+    },
     body: '{}',
   })
+}
+
+async function expectTooMany(res: McpCaller | Response) {
+  expect(res).toBeInstanceOf(Response)
+  const r = res as Response
+  expect(r.status).toBe(429)
+  const retryAfter = Number(r.headers.get('retry-after'))
+  expect(retryAfter).toBeGreaterThanOrEqual(1)
+  expect(retryAfter).toBeLessThanOrEqual(60)
+  expect(await r.json()).toMatchObject({ jsonrpc: '2.0', error: { code: -32000 }, id: null })
 }
 
 async function expectChallenge(res: McpCaller | Response, invalidToken: boolean) {
@@ -148,6 +162,73 @@ describe('resolveMcpCaller', () => {
       const clientId = await registerClient(auth)
       const { cookie } = await signUp(auth, 'student', `oauth-stu-${crypto.randomUUID()}@example.com`)
       await expect(runOAuthFlow(auth, { clientId, cookie })).rejects.toThrow(/consent failed: 403/)
+    })
+  })
+
+  describe('rate limits', () => {
+    // Fixed windows: hold the clock 5 s into a minute so a test never straddles two windows.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(Math.floor(Date.now() / 60_000) * 60_000 + 5_000)
+    })
+    afterEach(() => vi.useRealTimers())
+
+    const lecturerKey = async () => {
+      const lecturer = ctxFor(db, await makeUser(db, { role: 'lecturer' }))
+      return createAccessToken(lecturer, { name: 'CLI', expiresInDays: 30 }, auth)
+    }
+
+    it('reads the client IP from the first x-forwarded-for entry', () => {
+      expect(clientIp(mcpRequest(undefined, '203.0.113.9'))).toBe('203.0.113.9')
+      const realIp = new Request(`${TEST_ORIGIN}/api/mcp`, { headers: { 'x-real-ip': '198.51.100.4' } })
+      expect(clientIp(realIp)).toBe('198.51.100.4')
+      expect(clientIp(new Request(`${TEST_ORIGIN}/api/mcp`))).toBe('unknown')
+    })
+
+    it('after 30 failed authentications an IP gets 429 for any token, without a lookup; other IPs are not affected', async () => {
+      const { key } = await lecturerKey()
+      const ip = '203.0.113.10'
+      for (let i = 0; i < MCP_RATE_LIMITS.failedAuthPerIp.max; i++) {
+        await expectChallenge(await resolveMcpCaller(mcpRequest(`cls_${'b'.repeat(64)}`, ip), deps), true)
+      }
+      await expectTooMany(await resolveMcpCaller(mcpRequest(`cls_${'b'.repeat(64)}`, ip), deps))
+      await expectTooMany(await resolveMcpCaller(mcpRequest(key, ip), deps))
+      // No token: still the discovery challenge (costs no lookup, not counted).
+      await expectChallenge(await resolveMcpCaller(mcpRequest(undefined, ip), deps), false)
+      expect(await resolveMcpCaller(mcpRequest(key, '203.0.113.11'), deps)).not.toBeInstanceOf(Response)
+    })
+
+    it('a valid token does not count as a failed authentication', async () => {
+      const { key } = await lecturerKey()
+      const ip = '203.0.113.12'
+      for (let i = 0; i < MCP_RATE_LIMITS.failedAuthPerIp.max + 5; i++) {
+        expect(await resolveMcpCaller(mcpRequest(key, ip), deps)).not.toBeInstanceOf(Response)
+      }
+    })
+
+    it('a token over 120 requests a minute gets 429; the same lecturer\'s other token is not affected', async () => {
+      const first = await lecturerKey()
+      const caller = (await resolveMcpCaller(mcpRequest(first.key, '203.0.113.13'), deps)) as McpCaller
+      const { key: second } = await createAccessToken(caller.ctx, { name: 'Other', expiresInDays: 30 }, auth)
+      // Use up the rest of this minute's allowance directly (the first request counted one).
+      await db
+        .update(rateLimit)
+        .set({ count: MCP_RATE_LIMITS.caller.max })
+        .where(eq(rateLimit.key, `mcp:caller:${caller.ctx.user.id}:token:${first.id}`))
+      await expectTooMany(await resolveMcpCaller(mcpRequest(first.key, '203.0.113.13'), deps))
+      expect(await resolveMcpCaller(mcpRequest(second, '203.0.113.13'), deps)).not.toBeInstanceOf(Response)
+    })
+
+    it('an OAuth app over 120 requests a minute gets 429', async () => {
+      const clientId = await registerClient(auth)
+      const { cookie, userId } = await signUp(auth, 'lecturer', `oauth-rate-${crypto.randomUUID()}@example.com`)
+      const { tokens } = await runOAuthFlow(auth, { clientId, cookie })
+      expect(await resolveMcpCaller(mcpRequest(tokens.access_token, '203.0.113.14'), deps)).not.toBeInstanceOf(Response)
+      await db
+        .update(rateLimit)
+        .set({ count: MCP_RATE_LIMITS.caller.max })
+        .where(eq(rateLimit.key, `mcp:caller:${userId}:${clientId}`))
+      await expectTooMany(await resolveMcpCaller(mcpRequest(tokens.access_token, '203.0.113.15'), deps))
     })
   })
 })
