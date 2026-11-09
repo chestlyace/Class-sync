@@ -7,6 +7,7 @@ import { requireCourseOwner, type CourseSummary } from '@/server/courses/service
 import type { Db } from '@/server/db'
 import { courseTest, courseTopic, revisionGroup, revisionOption, revisionQuestion } from '@/server/db/schema'
 import { loadStoredQuestions, loadTestRow } from '@/server/tests/queries'
+import { assertTopicHidden } from '@/server/notes/topics'
 import { testPhase } from '@/server/tests/phase'
 import { familyHolds, type HoldInfo } from './hold'
 import { MAX_PRACTICE_PER_TOPIC, parsePracticeInput, type PracticeInput } from './rules'
@@ -213,26 +214,67 @@ async function nextQuestionPosition(db: Conn, groupId: string): Promise<number> 
   return (row?.top ?? -1) + 1
 }
 
+/** The topic's "written here" group, created on first use. */
+async function writtenHereGroup(tx: Tx, courseId: string, topicId: string): Promise<string> {
+  const [top] = await tx
+    .select({ top: max(revisionGroup.position) })
+    .from(revisionGroup)
+    .where(eq(revisionGroup.topicId, topicId))
+  await tx
+    .insert(revisionGroup)
+    .values({ courseId, topicId, position: (top?.top ?? -1) + 1 })
+    .onConflictDoNothing()
+  const [group] = await tx
+    .select({ id: revisionGroup.id })
+    .from(revisionGroup)
+    .where(and(eq(revisionGroup.topicId, topicId), isNull(revisionGroup.sourceFamilyId)))
+  return group.id
+}
+
 /** Adds a question to the topic's "written here" group, which is created with the first one. */
 export async function addPracticeQuestion(ctx: Ctx, topicId: string, input: unknown): Promise<{ id: string }> {
   const { topic, course } = await requireOwnedTopic(ctx, topicId)
   const value = parseOrThrow(input)
   return ctx.db.transaction(async (tx) => {
     if ((await countInTopic(tx, topic.id)) >= MAX_PRACTICE_PER_TOPIC) tooMany()
-    const [top] = await tx
-      .select({ top: max(revisionGroup.position) })
-      .from(revisionGroup)
-      .where(eq(revisionGroup.topicId, topic.id))
-    await tx
-      .insert(revisionGroup)
-      .values({ courseId: course.id, topicId: topic.id, position: (top?.top ?? -1) + 1 })
-      .onConflictDoNothing()
-    const [group] = await tx
-      .select({ id: revisionGroup.id })
-      .from(revisionGroup)
-      .where(and(eq(revisionGroup.topicId, topic.id), isNull(revisionGroup.sourceFamilyId)))
-    const id = await insertQuestion(tx, group.id, await nextQuestionPosition(tx, group.id), value)
+    const groupId = await writtenHereGroup(tx, course.id, topic.id)
+    const id = await insertQuestion(tx, groupId, await nextQuestionPosition(tx, groupId), value)
     return { id }
+  })
+}
+
+/** Questions one batch may add (an AI assistant's call). */
+export const PRACTICE_BATCH_MAX = 20
+
+/**
+ * Adds 1 to PRACTICE_BATCH_MAX questions to the topic's "written here" group, all or none. Every
+ * question is checked first (VALIDATION { fields, question } names the first bad one, 0-based).
+ * With `hiddenTopicOnly` (an assistant's drafts), a topic students can see is CONFLICT
+ * visible_topic; the topic stays locked until the questions are in, so it cannot be shown halfway.
+ */
+export async function addPracticeQuestions(
+  ctx: Ctx,
+  topicId: string,
+  inputs: unknown[],
+  opts: { hiddenTopicOnly?: boolean } = {},
+): Promise<{ ids: string[] }> {
+  const { topic, course } = await requireOwnedTopic(ctx, topicId)
+  if (!Array.isArray(inputs) || inputs.length < 1 || inputs.length > PRACTICE_BATCH_MAX) {
+    throw new AppError('VALIDATION', `Send 1 to ${PRACTICE_BATCH_MAX} questions`, { fields: ['questions'] })
+  }
+  const values = inputs.map((input, question) => {
+    const parsed = parsePracticeInput(input)
+    if (!parsed.ok) throw new AppError('VALIDATION', 'Invalid practice question', { fields: parsed.fields, question })
+    return parsed.value
+  })
+  return ctx.db.transaction(async (tx) => {
+    if (opts.hiddenTopicOnly) await assertTopicHidden(tx, topic.id)
+    if ((await countInTopic(tx, topic.id)) + values.length > MAX_PRACTICE_PER_TOPIC) tooMany()
+    const groupId = await writtenHereGroup(tx, course.id, topic.id)
+    let position = await nextQuestionPosition(tx, groupId)
+    const ids: string[] = []
+    for (const value of values) ids.push(await insertQuestion(tx, groupId, position++, value))
+    return { ids }
   })
 }
 

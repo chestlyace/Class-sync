@@ -395,3 +395,111 @@ export async function confirmMark(
     .set({ mark: input.mark, comment, markedBy: ctx.user.id, markedAt: at })
     .where(and(eq(testAnswer.attemptId, input.attemptId), eq(testAnswer.questionId, input.questionId)))
 }
+
+/** Suggestions one call may store (an AI assistant's batch). */
+export const ASSISTANT_SUGGEST_MAX = 200
+
+export type AssistantSuggestion = { attemptId: string; questionId: string; mark: number; reason: string }
+
+export type SkippedSuggestion = {
+  attemptId: string
+  questionId: string
+  /** confirmed: the lecturer already marked it; blank: nothing to mark; no_answer: no such answer here. */
+  reason: 'confirmed' | 'blank' | 'no_answer'
+}
+
+/**
+ * Stores marks suggested by the lecturer's AI assistant (MCP) on short answers of an ended test
+ * whose answers are final: `suggested_mark`, `suggested_reason`, `suggested_at` — the columns the
+ * marking panel shows as suggestions — never `mark`. Owner only; MCQ-only → CONFLICT automatic;
+ * not final → CONFLICT not_final. Each mark is 0..the question's mark in 0.25 steps and each reason
+ * 1..COMMENT_MAX characters, else VALIDATION { fields, index } for the first bad one (nothing is
+ * stored). Answers already confirmed (also while this runs), blank, of students no longer on the
+ * roster, or not of this test's short questions are skipped and reported. A new suggestion
+ * replaces an earlier one (the AI suggester's included).
+ */
+export async function storeAssistantSuggestions(
+  ctx: Ctx,
+  testId: string,
+  items: AssistantSuggestion[],
+): Promise<{ suggested: { attemptId: string; questionId: string }[]; skipped: SkippedSuggestion[] }> {
+  const { test, course } = await requireOwnedTest(ctx, testId)
+  const questions = await loadQuestionRows(ctx.db, test.id)
+  const shorts = new Map(questions.filter((q) => q.kind === 'short').map((q) => [q.id, q]))
+  if (shorts.size === 0) automatic()
+  const at = now()
+  requireFinal(test, at)
+  if (!Array.isArray(items) || items.length < 1 || items.length > ASSISTANT_SUGGEST_MAX) {
+    throw new AppError('VALIDATION', `Send 1 to ${ASSISTANT_SUGGEST_MAX} suggestions`, { fields: ['suggestions'] })
+  }
+
+  const key = (attemptId: string, questionId: string) => `${attemptId}:${questionId}`
+  const wanted = new Map<string, AssistantSuggestion>()
+  for (const [index, item] of items.entries()) {
+    if (!isId(item?.attemptId) || !isId(item?.questionId)) {
+      throw new AppError('VALIDATION', 'Invalid answer reference', { fields: ['attemptId', 'questionId'], index })
+    }
+    const question = shorts.get(item.questionId)
+    if (question) {
+      const maxMark = questionMark(question, test.defaultMark)
+      if (typeof item.mark !== 'number' || !isValidMark(item.mark, maxMark)) {
+        throw new AppError('VALIDATION', `Invalid mark: 0 to ${maxMark} in steps of 0.25`, { fields: ['mark'], index })
+      }
+    }
+    const reason = typeof item.reason === 'string' ? item.reason.trim() : ''
+    if (reason.length < 1 || reason.length > COMMENT_MAX) {
+      throw new AppError('VALIDATION', `The reason must be 1 to ${COMMENT_MAX} characters`, { fields: ['reason'], index })
+    }
+    // The last suggestion for an answer wins.
+    wanted.set(key(item.attemptId, item.questionId), { ...item, reason })
+  }
+
+  const [roster, rows] = await Promise.all([
+    courseRosterQuery(ctx.db, { courseId: course.id }),
+    ctx.db
+      .select({
+        attemptId: testAnswer.attemptId,
+        questionId: testAnswer.questionId,
+        studentId: testAttempt.studentId,
+        text: testAnswer.text,
+        mark: testAnswer.mark,
+      })
+      .from(testAnswer)
+      .innerJoin(testAttempt, eq(testAttempt.id, testAnswer.attemptId))
+      .where(eq(testAttempt.testId, test.id)),
+  ])
+  const onRoster = new Set(roster.map((r) => r.studentId))
+  const found = new Map(rows.map((r) => [key(r.attemptId, r.questionId), r]))
+
+  const skipped: SkippedSuggestion[] = []
+  const values = []
+  for (const [k, s] of wanted) {
+    const row = found.get(k)
+    const ref = { attemptId: s.attemptId, questionId: s.questionId }
+    if (!row || !shorts.has(s.questionId) || !onRoster.has(row.studentId)) skipped.push({ ...ref, reason: 'no_answer' })
+    else if (isBlank(row.text)) skipped.push({ ...ref, reason: 'blank' })
+    else if (row.mark !== null) skipped.push({ ...ref, reason: 'confirmed' })
+    else values.push(sql`(${s.attemptId}::text, ${s.questionId}::text, ${s.mark}::numeric, ${s.reason}::text)`)
+  }
+  if (values.length === 0) return { suggested: [], skipped }
+
+  // Conditional on no mark, so a mark confirmed meanwhile is never shadowed.
+  const updated = await ctx.db.execute<{ attempt_id: string; question_id: string }>(sql`
+    update ${testAnswer}
+    set suggested_mark = v.mark, suggested_reason = v.reason, suggested_at = ${at.toISOString()}::timestamptz
+    from (values ${sql.join(values, sql`, `)}) as v(attempt_id, question_id, mark, reason)
+    where ${testAnswer.attemptId} = v.attempt_id
+      and ${testAnswer.questionId} = v.question_id
+      and ${testAnswer.mark} is null
+    returning ${testAnswer.attemptId} as attempt_id, ${testAnswer.questionId} as question_id`)
+  const done = new Set(updated.rows.map((r: { attempt_id: string; question_id: string }) => key(r.attempt_id, r.question_id)))
+  const suggested: { attemptId: string; questionId: string }[] = []
+  for (const s of wanted.values()) {
+    const k = key(s.attemptId, s.questionId)
+    if (done.has(k)) suggested.push({ attemptId: s.attemptId, questionId: s.questionId })
+    else if (!skipped.some((x) => key(x.attemptId, x.questionId) === k)) {
+      skipped.push({ attemptId: s.attemptId, questionId: s.questionId, reason: 'confirmed' })
+    }
+  }
+  return { suggested, skipped }
+}

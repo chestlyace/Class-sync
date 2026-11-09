@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, max } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, max, sql } from 'drizzle-orm'
 import { createElement } from 'react'
 import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
@@ -15,6 +15,7 @@ import {
   classStudent,
   LATE_POLICIES,
   submission,
+  submissionFile,
   SUBMISSION_MODES,
   user,
 } from '@/server/db/schema'
@@ -67,6 +68,9 @@ export type SubmissionRow = {
   submittedAt: Date | null
   mark: number | null
   graded: boolean
+  /** The hand-in has typed text / how many files it has (both false/0 when missing). */
+  hasText: boolean
+  fileCount: number
 }
 
 export type LecturerSubmissionView = {
@@ -78,6 +82,8 @@ export type LecturerSubmissionView = {
   isLate: boolean
   mark: number | null
   feedback: string | null
+  /** A grade suggested by the lecturer's assistant, never applied by itself. */
+  suggestion: { mark: number; feedback: string | null; at: Date } | null
 }
 
 const TITLE_MIN = 2
@@ -104,6 +110,10 @@ function isTwoDecimalNumber(value: unknown, min: number, max: number): value is 
 }
 
 const toCents = (value: number) => Math.round(value * 100) / 100
+
+function notDraft(): AppError {
+  return new AppError('CONFLICT', 'This assignment is published: change it in Clasync', { reason: 'published' })
+}
 
 type CleanInput = {
   title: string
@@ -227,9 +237,16 @@ export async function createAssignment(ctx: Ctx, courseId: string, input: Assign
  * submitted (CONFLICT mode_locked), and the max mark can't drop below a mark already given.
  * The attachment list is replaced by `attachmentIds`. A new due date recomputes every
  * submission's `isLate`; a later one also clears the assignment's sent reminders (ruling B11).
+ * With `draftOnly` (an AI assistant's edit), a published assignment is CONFLICT { reason: 'published' }.
  */
-export async function updateAssignment(ctx: Ctx, assignmentId: string, input: AssignmentInput): Promise<AssignmentDetail> {
+export async function updateAssignment(
+  ctx: Ctx,
+  assignmentId: string,
+  input: AssignmentInput,
+  opts: { draftOnly?: boolean } = {},
+): Promise<AssignmentDetail> {
   const { row: current } = await requireOwnedAssignment(ctx, assignmentId)
+  if (opts.draftOnly && current.status !== 'draft') throw notDraft()
   const data = parseInput(input, current)
   await assertAttachable(ctx.db, { ownerId: ctx.user.id, assignmentId }, data.attachmentIds)
 
@@ -237,6 +254,8 @@ export async function updateAssignment(ctx: Ctx, assignmentId: string, input: As
     // Lock the assignment so the checks below see the submissions as of this update.
     const [locked] = await tx.select().from(assignment).where(eq(assignment.id, assignmentId)).for('update')
     if (!locked) forbidden()
+    // Checked again under the lock, so a publish racing this update wins.
+    if (opts.draftOnly && locked.status !== 'draft') throw notDraft()
 
     if (data.submissionMode !== locked.submissionMode) {
       const [any] = await tx
@@ -289,6 +308,12 @@ export async function updateAssignment(ctx: Ctx, assignmentId: string, input: As
     }
     return updated
   })
+  return loadAssignmentDetail(ctx.db, row)
+}
+
+/** One assignment of mine as the editor loads it (drafts included). Owner only. */
+export async function getAssignmentForEdit(ctx: Ctx, assignmentId: string): Promise<AssignmentDetail> {
+  const { row } = await requireOwnedAssignment(ctx, assignmentId)
   return loadAssignmentDetail(ctx.db, row)
 }
 
@@ -418,10 +443,20 @@ export async function listSubmissions(
         submittedAt: submission.submittedAt,
         isLate: submission.isLate,
         mark: submission.mark,
+        hasText: sql<boolean>`${submission.text} is not null`,
       })
       .from(submission)
       .where(eq(submission.assignmentId, assignmentId)),
   ])
+  const fileCounts =
+    submissions.length === 0
+      ? []
+      : await ctx.db
+          .select({ submissionId: submissionFile.submissionId, n: count() })
+          .from(submissionFile)
+          .where(inArray(submissionFile.submissionId, submissions.map((s) => s.id)))
+          .groupBy(submissionFile.submissionId)
+  const filesBySubmission = new Map(fileCounts.map((f) => [f.submissionId, f.n]))
   const byStudent = new Map(submissions.map((s) => [s.studentId, s]))
   const rows: SubmissionRow[] = roster.map((student) => {
     const s = byStudent.get(student.studentId)
@@ -434,6 +469,8 @@ export async function listSubmissions(
       submittedAt: s?.submittedAt ?? null,
       mark: s?.mark ?? null,
       graded: s?.mark != null,
+      hasText: s?.hasText ?? false,
+      fileCount: s ? (filesBySubmission.get(s.id) ?? 0) : 0,
     }
   })
   return { assignment: detail, rows }
@@ -470,6 +507,10 @@ export async function getSubmissionForLecturer(ctx: Ctx, submissionId: string): 
     isLate: sub.isLate,
     mark: sub.mark,
     feedback: sub.feedback,
+    suggestion:
+      sub.suggestedMark !== null && sub.suggestedAt !== null
+        ? { mark: sub.suggestedMark, feedback: sub.suggestedFeedback, at: sub.suggestedAt }
+        : null,
   }
 }
 
@@ -498,12 +539,69 @@ export async function gradeSubmission(
   // Conditional on the version, so a resubmission racing this grade is never graded unseen.
   const updated = await ctx.db
     .update(submission)
-    .set({ mark, feedback, gradedAt: now(), gradedBy: ctx.user.id })
+    // The lecturer's own grade replaces any assistant suggestion.
+    .set({
+      mark,
+      feedback,
+      gradedAt: now(),
+      gradedBy: ctx.user.id,
+      suggestedMark: null,
+      suggestedFeedback: null,
+      suggestedAt: null,
+    })
     .where(and(eq(submission.id, sub.id), eq(submission.submittedAt, expected)))
     .returning({ id: submission.id })
   if (updated.length === 0) {
     throw new AppError('CONFLICT', 'The student handed in a new version', { reason: 'resubmitted' })
   }
+}
+
+/**
+ * Stores a grade suggested by the lecturer's AI assistant (MCP): `suggested_mark`,
+ * `suggested_feedback` and `suggested_at`, never `mark`, and nothing is released. Owner only. The
+ * mark follows the grading rules (0..maxMark in 0.25 steps), the feedback too (trimmed, blank =
+ * none, at most FEEDBACK_MAX characters). A submission that already has a mark is CONFLICT
+ * { reason: 'graded' }, also when the lecturer grades it while this runs. With
+ * `expectedSubmittedAt` (the version the assistant read), a newer hand-in is CONFLICT
+ * { reason: 'resubmitted' }, so a suggestion never lands on work the assistant has not seen. A new
+ * suggestion replaces the previous one.
+ */
+export async function suggestSubmissionMark(
+  ctx: Ctx,
+  submissionId: string,
+  input: { mark: number; feedback: string | null; expectedSubmittedAt?: Date },
+): Promise<{ mark: number; feedback: string | null; at: Date }> {
+  const { sub, row } = await requireOwnedSubmission(ctx, submissionId)
+  const mark = input?.mark
+  if (typeof mark !== 'number' || !isValidMark(mark, row.maxMark)) invalidFields(['mark'], 'Invalid mark')
+  const raw = input?.feedback
+  if (raw !== null && raw !== undefined && typeof raw !== 'string') invalidFields(['feedback'])
+  const feedback = typeof raw === 'string' && raw.trim() !== '' ? raw.trim() : null
+  if (feedback !== null && feedback.length > FEEDBACK_MAX) invalidFields(['feedback'], 'Feedback is too long')
+  const expected = input?.expectedSubmittedAt
+  if (expected !== undefined && (!(expected instanceof Date) || Number.isNaN(expected.getTime()))) {
+    invalidFields(['expectedSubmittedAt'])
+  }
+  const graded = () => new AppError('CONFLICT', 'This submission already has a grade', { reason: 'graded' })
+  const resubmitted = () =>
+    new AppError('CONFLICT', 'The student has resubmitted; read the submission again', { reason: 'resubmitted' })
+  if (sub.mark !== null) throw graded()
+  if (expected && sub.submittedAt.getTime() !== expected.getTime()) throw resubmitted()
+
+  const at = now()
+  // Conditional, so a grade saved (or a new version handed in) meanwhile is never shadowed.
+  const updated = await ctx.db
+    .update(submission)
+    .set({ suggestedMark: mark, suggestedFeedback: feedback, suggestedAt: at })
+    .where(
+      and(eq(submission.id, sub.id), isNull(submission.mark), expected ? eq(submission.submittedAt, expected) : undefined),
+    )
+    .returning({ id: submission.id })
+  if (updated.length === 0) {
+    const [fresh] = await ctx.db.select({ mark: submission.mark }).from(submission).where(eq(submission.id, sub.id))
+    throw fresh && fresh.mark === null ? resubmitted() : graded()
+  }
+  return { mark, feedback, at }
 }
 
 /**

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/password-input'
 import { authClient } from '@/lib/auth-client'
 import { authErrorKey } from '@/lib/auth-errors'
+import { needsFullNavigation } from '@/lib/oauth-resume'
 
 /** `next`: a same-site path (already checked with safeNextPath) to open after signing in. */
 export function SignInForm({ next = null }: { next?: string | null }) {
@@ -24,14 +25,30 @@ export function SignInForm({ next = null }: { next?: string | null }) {
     setPending(true)
     setError(null)
     try {
-      const { error: authError } = await authClient.signIn.email({
+      const { data, error: authError } = await authClient.signIn.email({
         email: String(form.get('email') ?? ''),
         password: String(form.get('password') ?? ''),
         // An unverified account gets a fresh verification email: its link comes back here too.
         ...(next ? { callbackURL: next } : {}),
       })
       if (authError) {
+        // The signed authorization query expired (about 10 minutes): restart it, which brings
+        // the user back here with a fresh one.
+        if ((authError as { error?: unknown }).error === 'invalid_signature' && next && needsFullNavigation(next)) {
+          window.location.assign(next)
+          return
+        }
         setError(tRoot(authErrorKey(authError.code, authError.status)))
+        return
+      }
+      // An assistant's authorization in progress: the server answers with where it continues
+      // (the consent page, or the assistant itself when already allowed).
+      if (data?.redirect && data.url) {
+        window.location.assign(data.url)
+        return
+      }
+      if (next && needsFullNavigation(next)) {
+        window.location.assign(next)
         return
       }
       router.push(next ?? '/')

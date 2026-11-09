@@ -1,7 +1,12 @@
+import { apiKey } from '@better-auth/api-key'
+import { cimd } from '@better-auth/cimd'
+import { fetchClientMetadataResource } from '@better-auth/cimd/node'
+import { mcp } from '@better-auth/mcp'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { APIError } from 'better-auth/api'
+import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api'
 import { nextCookies } from 'better-auth/next-js'
+import { jwt } from 'better-auth/plugins'
 import { isLocale } from '@/i18n/locale'
 import { config } from '@/server/core/config'
 import { AppError } from '@/server/core/errors'
@@ -31,6 +36,39 @@ const SIGN_IN_RULE = { window: 60, max: 100 }
 const SIGN_UP_RULE = { window: 60, max: 30 }
 
 
+/** The OAuth provider's client CRUD routes, closed over HTTP (see `disabledPaths`). */
+export const OAUTH_CLIENT_MANAGEMENT_PATHS = [
+  '/oauth2/create-client',
+  '/oauth2/update-client',
+  '/oauth2/delete-client',
+  '/oauth2/get-client',
+  '/oauth2/get-clients',
+  '/oauth2/client/rotate-secret',
+]
+
+/** Scopes an assistant can be granted. Read tools need `clasync:read`, draft tools `clasync:write`. */
+export const MCP_OAUTH_SCOPES = ['openid', 'profile', 'email', 'offline_access', 'clasync:read', 'clasync:write']
+
+/** Personal access tokens: `cls_` + 64 characters, sent as `Authorization: Bearer cls_…`. */
+export const API_KEY_PREFIX = 'cls_'
+
+/**
+ * The app's public origin: the explicit option, else BETTER_AUTH_URL, else the Vercel deployment
+ * URL, else localhost:3000. The OAuth provider needs a fixed base URL (issuer and MCP resource
+ * derive from it), so production needs BETTER_AUTH_URL set to the stable URL, and local runs on
+ * another port need it too.
+ */
+export function resolveAppOrigin(explicit?: string): string {
+  const vercel = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined
+  const raw = explicit || process.env.BETTER_AUTH_URL || vercel || 'http://localhost:3000'
+  return new URL(raw).origin
+}
+
+/** The MCP endpoint: the resource access tokens are bound to (`aud`). */
+export function mcpResourceUrl(origin: string): string {
+  return `${origin}/api/mcp`
+}
+
 function toApiError(err: unknown): unknown {
   return err instanceof AppError
     ? new APIError('BAD_REQUEST', { message: err.message, code: err.code })
@@ -38,9 +76,37 @@ function toApiError(err: unknown): unknown {
 }
 
 export function createAuth(database: Db, options: CreateAuthOptions = {}) {
+  const origin = resolveAppOrigin(options.baseURL)
   return betterAuth({
-    ...(options.baseURL ? { baseURL: options.baseURL } : {}),
+    baseURL: origin,
     ...(options.secret ? { secret: options.secret } : {}),
+    // The jwt plugin's /token would hand out session JWTs; MCP uses OAuth access tokens only.
+    // Personal access tokens are managed through src/server/mcp/connections.ts (lecturers only,
+    // at most 10, named, fixed expiries), so the api-key plugin's HTTP routes stay closed;
+    // `auth.api` calls are not affected.
+    // The OAuth provider's client-management routes are closed too: assistants register through
+    // dynamic registration or a metadata document, and nobody (students included) manages clients
+    // over HTTP. The consent page reads clients through src/server/mcp/connections.ts.
+    disabledPaths: [
+      '/token',
+      '/api-key/create',
+      '/api-key/update',
+      '/api-key/delete',
+      '/api-key/list',
+      '/api-key/get',
+      ...OAUTH_CLIENT_MANAGEMENT_PATHS,
+    ],
+    hooks: {
+      // Only a verified lecturer can allow an assistant (denying stays open to everyone).
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== '/oauth2/consent' || (ctx.body as { accept?: unknown } | undefined)?.accept !== true) return
+        const session = await getSessionFromCtx(ctx)
+        const u = session?.user as { role?: unknown; emailVerified?: boolean } | undefined
+        if (!u || u.role !== 'lecturer' || (config.requireEmailVerification && !u.emailVerified)) {
+          throw new APIError('FORBIDDEN', { message: "Clasync's assistant connection is for lecturers", code: 'LECTURERS_ONLY' })
+        }
+      }),
+    },
     database: drizzleAdapter(database, { provider: 'pg', schema }),
     emailAndPassword: {
       enabled: true,
@@ -108,11 +174,63 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
         },
       },
     },
-    // Must stay last: lets Server Actions set the session cookie.
-    plugins: options.nextCookies === false ? [] : [nextCookies()],
+    plugins: [
+      // Signs the OAuth access tokens (keys live in the jwks table, created on first use).
+      jwt({ disableSettingJwtHeader: true }),
+      // OAuth 2.1 provider for AI assistants (Claude, ChatGPT…): tokens bound to /api/mcp.
+      mcp({
+        loginPage: '/sign-in',
+        consentPage: '/oauth/consent',
+        resource: mcpResourceUrl(origin),
+        scopes: MCP_OAUTH_SCOPES,
+        // Hosted assistants register themselves (RFC 7591) without credentials.
+        allowDynamicClientRegistration: true,
+        allowUnauthenticatedClientRegistration: true,
+        // CLI assistants (Claude Code, Cursor) register http://localhost callbacks without sending
+        // application_type: classify those as native clients instead of refusing them as web ones.
+        clientRegistrationDefaultApplicationType: 'infer',
+        // No client_credentials: its subject is not a user.
+        grantTypes: ['authorization_code', 'refresh_token'],
+        refreshTokenReuseInterval: 0,
+        // Defence in depth behind `disabledPaths`: no user manages OAuth clients, and a signed-in
+        // browser can't register one either (assistants register without cookies).
+        clientPrivileges: () => false,
+      }),
+      // Client ID Metadata Documents: an https client_id the server fetches (SSRF-guarded).
+      cimd({ fetchClientMetadataResource, metadataProfile: 'mcp-2026-07-28' }),
+      // Personal access tokens for CLI tools. 120 requests a minute per key (default 10 a day).
+      apiKey({
+        defaultPrefix: API_KEY_PREFIX,
+        maximumNameLength: 60,
+        startingCharactersConfig: { charactersLength: 8 },
+        rateLimit: { enabled: true, timeWindow: 60_000, maxRequests: 120 },
+      }),
+      // Must stay last: lets Server Actions set the session cookie.
+      ...(options.nextCookies === false ? [] : [nextCookies()]),
+    ],
   })
 }
 
-export const auth = createAuth(db)
+export type Auth = ReturnType<typeof createAuth>
 
-export type Auth = typeof auth
+let instance: Auth | undefined
+
+/**
+ * The app's Better Auth instance, created on first use: creating it starts the OAuth provider's
+ * startup work (seeding the MCP resource row), which must not run when a module is merely
+ * imported (`next build`, unit tests).
+ */
+export function getAuth(): Auth {
+  return (instance ??= createAuth(db))
+}
+
+export const auth: Auth = new Proxy({} as Auth, {
+  get(_target, prop) {
+    const real = getAuth()
+    const value = Reflect.get(real, prop, real)
+    return typeof value === 'function' ? value.bind(real) : value
+  },
+  has(_target, prop) {
+    return Reflect.has(getAuth(), prop)
+  },
+})

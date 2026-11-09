@@ -119,8 +119,13 @@ export const submission = pgTable(
     feedback: text('feedback'),
     gradedAt: timestamp('graded_at', { withTimezone: true }),
     gradedBy: text('graded_by').references(() => user.id),
+    // A lecturer's AI assistant may suggest a mark (MCP); only the lecturer turns it into `mark`.
+    suggestedMark: numeric('suggested_mark', { precision: 7, scale: 2, mode: 'number' }),
+    suggestedFeedback: text('suggested_feedback'),
+    suggestedAt: timestamp('suggested_at', { withTimezone: true }),
   },
   (t) => [
+    check('submission_suggested_mark_check', sql`${t.suggestedMark} >= 0`),
     unique('submission_assignment_student_unique').on(t.assignmentId, t.studentId),
     index('submission_student_id_idx').on(t.studentId),
   ],

@@ -1,8 +1,8 @@
 'use client'
 
-import { Check, Save, Send, Trash2, Unlock } from 'lucide-react'
+import { Check, Save, Send, Sparkles, Trash2, Unlock } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useActionState } from 'react'
+import { useActionState, useRef } from 'react'
 import { isInvalidField } from '@/components/action-error'
 import { ConfirmAction } from '@/components/confirm-action'
 import { Button } from '@/components/ui/button'
@@ -100,14 +100,26 @@ export function GradeForm({
   maxMark,
   mark,
   feedback,
+  suggestion = null,
 }: {
   submissionId: string
   submittedAt: string
   maxMark: number
   mark: number | null
   feedback: string | null
+  /** The lecturer's AI assistant's suggestion; shown only while the work has no grade. */
+  suggestion?: { mark: number; feedback: string | null } | null
 }) {
   const t = useTranslations('assignments.lecturer.grade')
+  const markRef = useRef<HTMLInputElement>(null)
+  const feedbackRef = useRef<HTMLTextAreaElement>(null)
+  /** Fills the form with the suggestion; nothing is saved until the lecturer saves. */
+  const applySuggestion = () => {
+    if (!suggestion) return
+    if (markRef.current) markRef.current.value = String(suggestion.mark)
+    if (feedbackRef.current) feedbackRef.current.value = suggestion.feedback ?? ''
+    markRef.current?.focus()
+  }
   const locale = useLocale()
   const max = formatDecimal(maxMark, locale)
   const [state, dispatch, pending] = useActionState(
@@ -119,6 +131,26 @@ export function GradeForm({
   return (
     <form onSubmit={submitWith(dispatch)} noValidate className="flex flex-col gap-5">
       <input type="hidden" name="submittedAt" value={submittedAt} />
+      {suggestion && mark === null && (
+        <div className="flex flex-col gap-3 rounded-2xl border bg-muted/50 p-4" aria-labelledby="grade-suggestion-title">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <Sparkles aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+            <p id="grade-suggestion-title" className="text-sm text-muted-foreground">
+              {t('suggestionTitle')}
+            </p>
+            <p className="font-mono text-sm font-medium">
+              {formatDecimal(suggestion.mark, locale)} / {max}
+            </p>
+          </div>
+          {suggestion.feedback && <p className="text-sm whitespace-pre-line">{suggestion.feedback}</p>}
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" variant="outline" size="sm" onClick={applySuggestion}>
+              {t('useSuggestion')}
+            </Button>
+            <span className="text-xs text-muted-foreground">{t('suggestionHint')}</span>
+          </div>
+        </div>
+      )}
       <FieldGroup>
         <Field data-invalid={invalid('mark')}>
           <FieldLabel htmlFor="grade-mark">{t('mark')}</FieldLabel>
@@ -132,6 +164,7 @@ export function GradeForm({
               min={0}
               max={maxMark}
               step={MARK_STEP}
+              ref={markRef}
               defaultValue={mark ?? ''}
               aria-invalid={invalid('mark')}
               aria-describedby="grade-mark-hint"
@@ -150,6 +183,7 @@ export function GradeForm({
             name="feedback"
             rows={5}
             maxLength={FEEDBACK_MAX}
+            ref={feedbackRef}
             defaultValue={feedback ?? ''}
             aria-invalid={invalid('feedback')}
             aria-describedby="grade-feedback-hint"

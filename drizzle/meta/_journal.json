@@ -78,6 +78,13 @@
       "when": 1794157977884,
       "tag": "0010_gigantic_prowler",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794176469516,
+      "tag": "0011_mcp_auth",
+      "breakpoints": true
     }
   ]
 }
