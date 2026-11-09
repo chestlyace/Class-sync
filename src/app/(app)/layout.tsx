@@ -1,13 +1,19 @@
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { SiteNav } from '@/components/site-nav'
 import { VerifyBanner } from '@/components/verify-banner'
+import { REQUEST_PATH_HEADER, safeNextPath } from '@/lib/next-path'
 import { getSessionUser } from '@/server/auth/session'
 import { isVerificationPending } from '@/server/core/guards'
 
 /** Signed-in area: pill nav, phone bottom nav, and the verification banner when needed. */
 export default async function AppLayout({ children }: LayoutProps<'/'>) {
   const user = await getSessionUser()
-  if (!user) redirect('/sign-in')
+  if (!user) {
+    // Back to the page asked for after signing in (e.g. a join or check-in link someone shared).
+    const next = safeNextPath((await headers()).get(REQUEST_PATH_HEADER))
+    redirect(next && next !== '/dashboard' ? `/sign-in?next=${encodeURIComponent(next)}` : '/sign-in')
+  }
   return (
     <>
       <SiteNav user={user} />

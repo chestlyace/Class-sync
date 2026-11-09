@@ -1,3 +1,6 @@
+/** Request header (set by src/proxy.ts) with the page's path and query, the layouts' `next` candidate. */
+export const REQUEST_PATH_HEADER = 'x-clasync-path'
+
 // Room for an assistant's OAuth authorization request (src/lib/oauth-resume.ts).
 const MAX_NEXT_LENGTH = 2048
 
