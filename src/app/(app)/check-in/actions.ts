@@ -2,7 +2,7 @@
 
 import { toActionResult, type ActionResult } from '@/lib/action-result'
 import { parsePosition } from '@/lib/position'
-import { checkIn, listOpenCheckIns } from '@/server/attendance/check-in'
+import { checkIn, checkInWithLink, listOpenCheckIns } from '@/server/attendance/check-in'
 import { getCtx } from '@/server/auth/session'
 import { AppError } from '@/server/core/errors'
 import { toOpenCheckInView, type OpenCheckInView } from './view'
@@ -31,5 +31,18 @@ export async function checkInAction(
     if (typeof windowId !== 'string' || !windowId) invalid('windowId')
     if (typeof code !== 'string' || code.length > MAX_CODE_LENGTH || !code.trim()) invalid('code')
     return checkIn(await getCtx(), windowId, { code, position: parsePosition(position) })
+  })
+}
+
+const MAX_LINK_TOKEN_LENGTH = 200
+
+/** Checks in with a check-in link's token instead of the code (the window comes from the token). */
+export async function checkInWithLinkAction(
+  token: string,
+  position: unknown,
+): Promise<ActionResult<{ result: 'checked_in' | 'already_checked_in' }>> {
+  return toActionResult(async () => {
+    if (typeof token !== 'string' || !token || token.length > MAX_LINK_TOKEN_LENGTH) invalid('token')
+    return checkInWithLink(await getCtx(), token, { position: parsePosition(position) })
   })
 }

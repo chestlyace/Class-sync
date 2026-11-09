@@ -1,6 +1,7 @@
 'use client'
 
 import { Maximize2, Square } from 'lucide-react'
+import { CopyButton } from '@/components/copy-button'
 import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from 'react'
@@ -48,9 +49,19 @@ type PollProblem = { kind: 'network' } | { kind: 'error'; result: Extract<Action
  * The projector view of an open check-in window: the current code (huge), a countdown to the
  * next one, and how many students have checked in. Polls every LIVE_POLL_MS; between polls the
  * countdown runs on the local clock and resyncs on each answer. When the window reports closed
- * (lecturer closed it, or 15 minutes passed) polling stops and the page refreshes.
+ * (lecturer closed it, or 15 minutes passed) polling stops and the page refreshes. "Copy check-in
+ * link" (never shown full screen, so it is not projected) lets students check in without the code.
  */
-export function LiveWindow({ initial, timeZone }: { initial: LiveWindowView; timeZone: string }) {
+export function LiveWindow({
+  initial,
+  link,
+  timeZone,
+}: {
+  initial: LiveWindowView
+  /** The signed check-in link for this window (no code in it), absolute; null if it could not be made. */
+  link: string | null
+  timeZone: string
+}) {
   const t = useTranslations('attendance.lecturer')
   const locale = useLocale()
   const router = useRouter()
@@ -196,17 +207,25 @@ export function LiveWindow({ initial, timeZone }: { initial: LiveWindowView; tim
           <p className="font-mono text-xs tracking-[0.1em] text-muted-foreground uppercase">{t('live.exitHint')}</p>
         )
       ) : (
-        <div className="flex flex-wrap justify-center gap-2.5">
-          {canFullscreen && (
-            <Button type="button" variant="outline" onClick={present}>
-              <Maximize2 aria-hidden="true" data-icon="inline-start" />
-              {t('live.present')}
-            </Button>
+        <div className="flex flex-col items-center gap-4">
+          {link && open && (
+            <div className="flex max-w-md flex-col items-center gap-2">
+              <CopyButton value={link} label={t('live.copyLinkLabel')} text={t('live.copyLink')} variant="outline" />
+              <p className="text-sm text-muted-foreground">{t('live.linkHint')}</p>
+            </div>
           )}
-          <Button type="button" variant="destructive" disabled={closing || !open} onClick={close}>
-            <Square aria-hidden="true" data-icon="inline-start" />
-            {closing ? t('live.closing') : t('live.close')}
-          </Button>
+          <div className="flex flex-wrap justify-center gap-2.5">
+            {canFullscreen && (
+              <Button type="button" variant="outline" onClick={present}>
+                <Maximize2 aria-hidden="true" data-icon="inline-start" />
+                {t('live.present')}
+              </Button>
+            )}
+            <Button type="button" variant="destructive" disabled={closing || !open} onClick={close}>
+              <Square aria-hidden="true" data-icon="inline-start" />
+              {closing ? t('live.closing') : t('live.close')}
+            </Button>
+          </div>
         </div>
       )}
       <AttendanceError state={closeState} />

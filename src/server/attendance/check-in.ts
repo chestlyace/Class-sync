@@ -15,6 +15,7 @@ import {
 import { isOnCourseRoster, rosteredCourseIds } from '@/server/courses/roster'
 import { isCodeAccepted } from './code'
 import { checkCampus, type Position } from './geo'
+import { verifyCheckInLink } from './link'
 import { MAX_CODE_FAILURES, WINDOW_MAX_MINUTES } from './rules'
 import { windowState, type WindowKind } from './sessions'
 
@@ -44,6 +45,10 @@ function forbidden(): never {
 
 function refuse(reason: CheckInRefusal): never {
   throw new AppError('VALIDATION', 'Check-in refused', { reason })
+}
+
+function invalidLink(): never {
+  throw new AppError('NOT_FOUND', 'Check-in link not valid')
 }
 
 function invalid(field: string): never {
@@ -123,6 +128,9 @@ export async function listOpenCheckIns(ctx: Ctx): Promise<OpenCheckIn[]> {
   })
 }
 
+/** What proves the student is in the room: the rotating code, or a valid check-in link for this window. */
+type Credential = { kind: 'code'; code: string } | { kind: 'link' }
+
 /**
  * Checks the student in to a window with the code shown in class (and, when the session asks
  * for it, a position on campus). Refusals are VALIDATION with a `reason`; a window that does not
@@ -136,6 +144,74 @@ export async function checkIn(
   requireRole(ctx, 'student')
   if (typeof input?.code !== 'string') invalid('code')
   const position = parsePosition(input.position)
+  return recordCheckIn(ctx, windowId, position, { kind: 'code', code: input.code })
+}
+
+/**
+ * Checks the student in with a check-in link (link.ts) instead of the code: the link's signature
+ * stands in for the code, for its one window only. Every other rule is the same as `checkIn`:
+ * on the roster, window open, lockout after too many wrong codes, campus position when required,
+ * one check-in per student. A malformed or forged token is NOT_FOUND.
+ */
+export async function checkInWithLink(
+  ctx: Ctx,
+  token: string,
+  input: { position: Position | null },
+): Promise<{ result: 'checked_in' | 'already_checked_in' }> {
+  requireRole(ctx, 'student')
+  const position = parsePosition(input?.position ?? null)
+  const windowId = verifyCheckInLink(token)
+  if (!windowId) invalidLink()
+  return recordCheckIn(ctx, windowId, position, { kind: 'link' })
+}
+
+export type CheckInLinkTarget = OpenCheckIn & { open: boolean }
+
+/**
+ * The window a check-in link points at, for the student who opened it: course, kind, whether it
+ * is still open, whether they already checked in. NOT_FOUND for a bad token; FORBIDDEN when the
+ * window does not exist or the student is not on its course (as `checkIn`).
+ */
+export async function getCheckInLinkTarget(ctx: Ctx, token: string): Promise<CheckInLinkTarget> {
+  requireRole(ctx, 'student')
+  const windowId = verifyCheckInLink(token)
+  if (!windowId) invalidLink()
+  const [row] = await ctx.db
+    .select({
+      window: attendanceWindow,
+      courseId: course.id,
+      courseTitle: course.title,
+      requireOnCampus: attendanceSession.requireOnCampus,
+    })
+    .from(attendanceWindow)
+    .innerJoin(attendanceSession, eq(attendanceSession.id, attendanceWindow.sessionId))
+    .innerJoin(course, eq(course.id, attendanceSession.courseId))
+    .where(eq(attendanceWindow.id, windowId))
+  if (!row || !(await isOnCourseRoster(ctx.db, row.courseId, ctx.user.id))) forbidden()
+  const [existing] = await ctx.db
+    .select({ studentId: attendanceCheckIn.studentId })
+    .from(attendanceCheckIn)
+    .where(and(eq(attendanceCheckIn.windowId, windowId), eq(attendanceCheckIn.studentId, ctx.user.id)))
+  const at = now()
+  const state = windowState(row.window, at)
+  return {
+    windowId,
+    courseId: row.courseId,
+    courseTitle: row.courseTitle,
+    kind: row.window.kind,
+    requireOnCampus: row.requireOnCampus,
+    closesAt: state.closesAt,
+    open: row.window.openedAt.getTime() <= at.getTime() && state.open,
+    checkedIn: existing !== undefined,
+  }
+}
+
+async function recordCheckIn(
+  ctx: Ctx,
+  windowId: string,
+  position: Position | null,
+  credential: Credential,
+): Promise<{ result: 'checked_in' | 'already_checked_in' }> {
   const studentId = ctx.user.id
 
   const [row] = await ctx.db
@@ -161,16 +237,18 @@ export async function checkIn(
   if (existing) return { result: 'already_checked_in' }
 
   // isCodeAccepted does not look at the window's bounds: it must only run on an open window.
+  // A link is only good while its window is open, too.
   const at = now()
   if (window.openedAt.getTime() > at.getTime() || !windowState(window, at).open) refuse('closed')
 
+  // A student locked out by wrong codes stays locked out, link or not.
   const [strikes] = await ctx.db
     .select({ failures: attendanceCodeFailure.failures })
     .from(attendanceCodeFailure)
     .where(and(eq(attendanceCodeFailure.windowId, window.id), eq(attendanceCodeFailure.studentId, studentId)))
   if ((strikes?.failures ?? 0) >= MAX_CODE_FAILURES) refuse('too_many_attempts')
 
-  if (!isCodeAccepted(window.secret, window.openedAt, at, input.code)) {
+  if (credential.kind === 'code' && !isCodeAccepted(window.secret, window.openedAt, at, credential.code)) {
     await ctx.db
       .insert(attendanceCodeFailure)
       .values({ windowId: window.id, studentId, failures: 1 })
