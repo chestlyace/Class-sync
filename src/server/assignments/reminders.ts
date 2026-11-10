@@ -81,6 +81,7 @@ export async function sendDueReminders(db: Db, at: Date): Promise<{ assignments:
         to: student.email,
         locale,
         subject: emailSubject('assignmentReminder', locale, { courseTitle: a.courseTitle, assignmentTitle: a.title }),
+        kind: 'assignmentReminder',
         react: createElement(AssignmentReminderEmail, {
           locale,
           studentName: student.name,

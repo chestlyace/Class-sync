@@ -4,7 +4,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { config, setConfigForTests } from '@/server/core/config'
 import { AppError } from '@/server/core/errors'
 import type { Db } from '@/server/db'
-import { rateLimit } from '@/server/db/schema'
+import { opsEvent, rateLimit } from '@/server/db/schema'
+import { setAfterResponseForTests } from '@/server/lib/after-response'
 import { hitRateLimit } from '@/server/lib/rate-limit'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
@@ -82,6 +83,32 @@ describe('POST /api/mcp', () => {
     expect(res.headers.get('access-control-expose-headers')).toContain('www-authenticate')
   })
 
+  it('records an mcp_request health event with the status after the response, for 401 and 200', async () => {
+    const tasks: Array<() => Promise<void>> = []
+    setAfterResponseForTests((task) => {
+      tasks.push(task)
+    })
+    try {
+      await db.delete(opsEvent)
+      const denied = await handleMcpPost(rpc('initialize', INIT), deps)
+      expect(denied.status).toBe(401)
+      // Nothing is written until the response has gone out.
+      expect(await db.select().from(opsEvent)).toHaveLength(0)
+      expect(tasks).toHaveLength(1)
+      await tasks[0]!()
+      const ok = await handleMcpPost(rpc('tools/list', {}, key), deps)
+      expect(ok.status).toBe(200)
+      await tasks[1]!()
+      const rows = await db.select().from(opsEvent).orderBy(opsEvent.at)
+      expect(rows.map((r) => r.kind)).toEqual(['mcp_request', 'mcp_request'])
+      expect(rows.map((r) => r.detail)).toEqual([{ status: 401 }, { status: 200 }])
+      expect(rows.map((r) => r.ok)).toEqual([true, true])
+    } finally {
+      setAfterResponseForTests(null)
+      await db.delete(opsEvent)
+    }
+  })
+
   it('throttled: 429 with Retry-After, readable cross-origin', async () => {
     // Hold the clock inside one window. Without x-forwarded-for the IP is "unknown": use up its failures.
     vi.useFakeTimers({ toFake: ['Date'] })
@@ -89,14 +116,23 @@ describe('POST /api/mcp', () => {
     for (let i = 0; i < MCP_RATE_LIMITS.failedAuthPerIp.max; i++) {
       await hitRateLimit(db, 'mcp:auth-fail:unknown', MCP_RATE_LIMITS.failedAuthPerIp)
     }
+    const tasks429: Array<() => Promise<void>> = []
+    setAfterResponseForTests((task) => {
+      tasks429.push(task)
+    })
     try {
       const res = await handleMcpPost(rpc('initialize', INIT, key), deps)
       expect(res.status).toBe(429)
+      expect(tasks429).toHaveLength(1)
+      await tasks429[0]!()
+      expect(await db.select().from(opsEvent).where(eq(opsEvent.kind, 'mcp_request'))).toMatchObject([{ detail: { status: 429 } }])
       expect(Number(res.headers.get('retry-after'))).toBeGreaterThan(0)
       expect(res.headers.get('access-control-allow-origin')).toBe('*')
       expect(res.headers.get('access-control-expose-headers')).toContain('retry-after')
       expect(await res.json()).toMatchObject({ jsonrpc: '2.0', error: { code: -32000 }, id: null })
     } finally {
+      setAfterResponseForTests(null)
+      await db.delete(opsEvent)
       vi.useRealTimers()
       await db.delete(rateLimit).where(eq(rateLimit.key, 'mcp:auth-fail:unknown'))
     }

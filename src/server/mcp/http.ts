@@ -1,3 +1,6 @@
+import { db as defaultDb } from '@/server/db'
+import { runAfterResponse } from '@/server/lib/after-response'
+import { recordOpsEvent } from '@/server/ops/events'
 import { resolveMcpCaller, type McpAuthDeps } from './auth'
 import { createMcpServerHandler } from './server'
 
@@ -16,11 +19,19 @@ function withCors(res: Response): Response {
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers })
 }
 
-/** POST /api/mcp: authenticate, then hand the JSON-RPC request to the MCP server. */
+/**
+ * POST /api/mcp: authenticate, then hand the JSON-RPC request to the MCP server. Every request
+ * (refusals and throttling included) records an `mcp_request` health event with its status after
+ * the response. Only a 5xx counts as not ok: a 401 or 429 is the caller's doing, not ours.
+ */
 export async function handleMcpPost(req: Request, deps?: McpAuthDeps): Promise<Response> {
   const caller = await resolveMcpCaller(req, deps)
-  if (caller instanceof Response) return withCors(caller)
-  return withCors(await createMcpServerHandler(caller)(req))
+  const res = withCors(caller instanceof Response ? caller : await createMcpServerHandler(caller)(req))
+  const status = res.status
+  runAfterResponse(() =>
+    recordOpsEvent(deps?.db ?? defaultDb, { kind: 'mcp_request', ok: status < 500, detail: { status } }),
+  )
+  return res
 }
 
 /** GET /api/mcp: no server-sent stream in stateless mode. */

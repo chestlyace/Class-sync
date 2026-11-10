@@ -130,6 +130,7 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
         await sendEmail({
           to: user.email,
           subject: emailSubject('verify', locale),
+          kind: 'verify',
           react: VerifyEmail({ name: user.name, url, locale }),
         })
       },

@@ -341,6 +341,7 @@ async function submittedEmails(
       to: me.email,
       locale: me.locale,
       subject: emailSubject('assignmentSubmitted', me.locale, { courseTitle: c.title, assignmentTitle: a.title }),
+      kind: 'assignmentSubmitted',
       react: createElement(AssignmentSubmittedEmail, {
         locale: me.locale,
         studentName: me.name,
