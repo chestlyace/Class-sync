@@ -1,4 +1,4 @@
-import { lt, sql } from 'drizzle-orm'
+import { and, inArray, isNotNull, lt } from 'drizzle-orm'
 import { db as defaultDb, type Db } from '@/server/db'
 import { opsEvent, user, type OpsEventKind } from '@/server/db/schema'
 
@@ -15,9 +15,12 @@ export function maskEmail(email: string): string {
   return `${email[0]}***${email.slice(at)}`
 }
 
-/** A provider's error text for `detail`: any address in it masked, and bounded in length. */
+/**
+ * A provider's error text for `detail`: any address in it masked, and bounded in length. Never
+ * throws: a missing or non-string message (a provider can reject with anything) becomes text.
+ */
 export function scrubError(message: string): string {
-  return message.replace(/[^\s@<>,;"']+@[^\s@<>,;"']+/g, (m) => maskEmail(m)).slice(0, 200)
+  return String(message ?? '').replace(/[^\s@<>,;"']+@[^\s@<>,;"']+/g, (m) => maskEmail(m)).slice(0, 200)
 }
 
 /**
@@ -50,7 +53,9 @@ export async function pruneOpsEvents(db: Db = defaultDb, at: Date = new Date()):
 
 /**
  * Which of these addresses belong to suspended accounts: one query, returned lower-cased. A
- * suspended user gets no email at all. Addresses are compared case-insensitively.
+ * suspended user gets no email at all. Addresses are compared case-insensitively: Better Auth
+ * stores them lower-cased (sign-up, createUser and change-email all normalise), so the given ones
+ * are lower-cased and matched as stored, which lets the unique email index serve the lookup.
  */
 export async function dropSuspendedRecipients(db: Db, emails: string[]): Promise<Set<string>> {
   if (emails.length === 0) return new Set()
@@ -58,6 +63,6 @@ export async function dropSuspendedRecipients(db: Db, emails: string[]): Promise
   const rows = await db
     .select({ email: user.email })
     .from(user)
-    .where(sql`${user.suspendedAt} is not null and lower(${user.email}) in (${sql.join(lowered.map((e) => sql`${e}`), sql`, `)})`)
+    .where(and(isNotNull(user.suspendedAt), inArray(user.email, lowered)))
   return new Set(rows.map((r) => r.email.toLowerCase()))
 }

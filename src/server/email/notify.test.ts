@@ -194,7 +194,8 @@ describe('sendNotifications suspension and health events', () => {
 
   it('drops items for a suspended user: counted as skipped, address never reaches the provider', async () => {
     send.mockResolvedValue({ data: { data: [] }, error: null })
-    const u = await makeUser(db, { email: 'Student1@Example.com' })
+    // Stored lower-cased, as Better Auth does.
+    const u = await makeUser(db, { email: 'student1@example.com' })
     await db.update(user).set({ suspendedAt: new Date() }).where(eq(user.id, u.id))
     const result = await sendNotifications(items(3))
     expect(result).toEqual({ sent: 2, skipped: 1, failed: 0 })

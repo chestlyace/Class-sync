@@ -1,4 +1,5 @@
-import { eq } from 'drizzle-orm'
+import { eq, type SQL } from 'drizzle-orm'
+import { PgDialect } from 'drizzle-orm/pg-core'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import type { Db } from '@/server/db'
 import { opsEvent, user } from '@/server/db/schema'
@@ -20,6 +21,11 @@ describe('scrubError', () => {
   it('masks any address in a provider message and bounds its length', () => {
     expect(scrubError('Invalid to address amina@example.com, try again')).toBe('Invalid to address a***@example.com try again'.replace('com try', 'com, try'))
     expect(scrubError('x'.repeat(500))).toHaveLength(200)
+  })
+  it('turns a missing or non-string message into text instead of throwing', () => {
+    expect(scrubError(undefined as unknown as string)).toBe('')
+    expect(scrubError(null as unknown as string)).toBe('')
+    expect(scrubError(42 as unknown as string)).toBe('42')
   })
 })
 
@@ -76,11 +82,22 @@ describe('pruneOpsEvents', () => {
 describe('dropSuspendedRecipients', () => {
   it('returns the lower-cased emails of suspended users among the given ones', async () => {
     const db = await createTestDb()
+    // Better Auth stores addresses lower-cased; the caller's spelling may differ.
     const active = await makeUser(db, { email: 'active@example.com' })
-    const gone = await makeUser(db, { email: 'Gone@Example.com' })
+    const gone = await makeUser(db, { email: 'gone@example.com' })
     await db.update(user).set({ suspendedAt: new Date() }).where(eq(user.id, gone.id))
-    const result = await dropSuspendedRecipients(db, [active.email, 'GONE@example.com', 'stranger@example.com'])
+    const result = await dropSuspendedRecipients(db, [active.email, ' GONE@Example.com', 'stranger@example.com'])
     expect([...result]).toEqual(['gone@example.com'])
+  })
+
+  it('compares the stored address directly, so the email index can be used', async () => {
+    const where = vi.fn<(condition: SQL) => Promise<unknown[]>>(async () => [])
+    const stub = { select: () => ({ from: () => ({ where }) }) } as unknown as Db
+    await dropSuspendedRecipients(stub, ['A@Example.com'])
+    const query = new PgDialect().sqlToQuery(where.mock.calls[0]![0])
+    expect(query.sql).not.toMatch(/lower\(/i)
+    expect(query.sql).toMatch(/"user"\."email" in \(\$\d+\)/)
+    expect(query.params).toContain('a@example.com')
   })
 
   it('does no query for an empty list', async () => {

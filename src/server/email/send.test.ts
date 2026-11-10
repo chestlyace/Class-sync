@@ -111,14 +111,21 @@ describe('sendEmail health events and suspension', () => {
     expect(await db.select().from(opsEvent)).toHaveLength(0)
   })
 
+  it('records email_failed and throws the real error when the provider error has no message', async () => {
+    send.mockResolvedValue({ data: null, error: {} })
+    await expect(sendEmail(message)).rejects.toThrow('Failed to send email')
+    expect(await db.select().from(opsEvent)).toMatchObject([{ kind: 'email_failed', ok: false, detail: { error: '' } }])
+  })
+
   it('sends nothing and records nothing to a suspended user', async () => {
-    const u = await makeUser(db, { email: 'Suspended@Example.com' })
+    // Stored lower-cased, as Better Auth does; the address to send to may be spelled otherwise.
+    const u = await makeUser(db, { email: 'suspended@example.com' })
     await db.update(user).set({ suspendedAt: new Date() }).where(eq(user.id, u.id))
     const info = vi.spyOn(console, 'info').mockImplementation(() => {})
-    await expect(sendEmail({ ...message, to: 'suspended@example.com' })).resolves.toBeUndefined()
+    await expect(sendEmail({ ...message, to: 'Suspended@Example.com' })).resolves.toBeUndefined()
     expect(send).not.toHaveBeenCalled()
     expect(await db.select().from(opsEvent)).toHaveLength(0)
-    expect(JSON.stringify(info.mock.calls)).not.toContain('suspended@')
+    expect(JSON.stringify(info.mock.calls).toLowerCase()).not.toContain('suspended@')
   })
 
   it('does not change what happens when recording fails', async () => {
