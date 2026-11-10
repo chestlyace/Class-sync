@@ -72,11 +72,46 @@ const FORBIDDEN_MEMBERS = [
   'privateKey',
   'clientSecret',
   'secret',
+  // Content and per-student columns on allowed tables.
+  'instructions',
+  'prompt',
+  'correct',
+  'isCorrect',
+  'isLate',
+  'studentId',
+  'latitude',
+  'longitude',
+  'accuracyM',
 ]
 const FORBIDDEN_MEMBER_RE = new RegExp(`\\.(${FORBIDDEN_MEMBERS.join('|')})\\b`, 'g')
 /** The same columns by their SQL names, for raw `sql` fragments. */
 const FORBIDDEN_SQL_COLUMN_RE =
-  /\b(suggested_mark|suggested_reason|suggested_feedback|storage_key|body_text|private_key|client_secret)\b/g
+  /\b(suggested_mark|suggested_reason|suggested_feedback|storage_key|body_text|private_key|client_secret|is_late|is_correct|student_id|accuracy_m)\b/g
+
+/** Identifiers of tables (not the constant lists) that admin code may import. */
+const TABLE_NAMES = [...ADMIN_ALLOWED_TABLES].filter((n) => !/^[A-Z_]+$/.test(n)).join('|')
+/** A table bound to a key, `{ s: submission }`: selects every column of it. */
+const TABLE_AS_VALUE_RE = new RegExp(`[\\w'"\\]]\\s*:\\s*(${TABLE_NAMES})\\s*(?=[,}])`, 'g')
+/** Shorthand `{ submission }` or `{ id, submission }`, checked inside select calls. */
+const TABLE_SHORTHAND_RE = new RegExp(`[{,]\\s*(${TABLE_NAMES})\\s*(?=[,}])`, 'g')
+/** `{ ...submission }` spreads a table's columns. */
+const TABLE_SPREAD_RE = new RegExp(`\\.\\.\\.\\s*(${TABLE_NAMES})\\b`, 'g')
+
+/** The argument text of every `.select(...)`, `.selectDistinct(...)` and `.selectDistinctOn(...)` call. */
+function selectArguments(src: string): string[] {
+  const out: string[] = []
+  for (const m of src.matchAll(/\.select(?:Distinct(?:On)?)?\s*\(/g)) {
+    const start = m.index + m[0].length
+    let depth = 1
+    let i = start
+    for (; i < src.length && depth > 0; i++) {
+      if (src[i] === '(') depth++
+      else if (src[i] === ')') depth--
+    }
+    out.push(src.slice(start, i - 1))
+  }
+  return out
+}
 
 function walk(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -127,9 +162,19 @@ function fenceViolations(file: string, src: string): string[] {
   for (const m of src.matchAll(FORBIDDEN_MEMBER_RE)) out.push(`${rel}: reads .${m[1]}`)
   for (const m of src.matchAll(FORBIDDEN_SQL_COLUMN_RE)) out.push(`${rel}: names column ${m[1]}`)
 
-  // (d) Whole-row reads: select() without columns, or the relational query API.
-  if (/\.select(?:Distinct)?\(\s*\)/.test(src)) out.push(`${rel}: select() without columns`)
+  // (d) Whole-row reads: select() without columns, the relational query API, a whole table as a
+  // select value (by key, shorthand or spread), table introspection, and aliases of anything but user.
+  if (/\.select(?:Distinct(?:On)?)?\(\s*\)/.test(src)) out.push(`${rel}: select() without columns`)
   if (/\.query\.\w+\.find(?:First|Many)\b/.test(src)) out.push(`${rel}: relational query API`)
+  for (const m of src.matchAll(TABLE_AS_VALUE_RE)) out.push(`${rel}: whole table ${m[1]} as a value`)
+  for (const m of src.matchAll(TABLE_SPREAD_RE)) out.push(`${rel}: spreads table ${m[1]}`)
+  for (const args of selectArguments(src)) {
+    for (const m of args.matchAll(TABLE_SHORTHAND_RE)) out.push(`${rel}: selects whole table ${m[1]}`)
+  }
+  for (const m of src.matchAll(/\b(getTableColumns|getTableConfig)\b/g)) out.push(`${rel}: uses ${m[1]}`)
+  for (const m of src.matchAll(/\balias\(\s*(\w+)/g)) {
+    if (m[1] !== 'user') out.push(`${rel}: aliases ${m[1]}`)
+  }
 
   return out
 }
@@ -181,6 +226,33 @@ describe('admin data fence', () => {
       expect(check(`db.selectDistinct( ).from(user)`)).toHaveLength(1)
       expect(check(`db.query.submission.findMany()`)).toHaveLength(1)
       expect(check(`db.select({ id: user.id }).from(user)`)).toEqual([])
+    })
+
+    it('(c) content and per-student columns on allowed tables', () => {
+      for (const col of ['assignment.instructions', 'revisionOutcome.correct', 'submission.isLate', 'attendanceCheckIn.studentId', 'attendanceCheckIn.latitude', 'attendanceCheckIn.accuracyM']) {
+        expect(check(`db.select({ x: ${col} })`)).toHaveLength(1)
+      }
+      expect(check('sql`select is_late, student_id from submission`')).toHaveLength(2)
+    })
+
+    it('(d) a whole table as a select value, by key, shorthand or spread', () => {
+      expect(check(`db.select({ s: submission }).from(submission)`)).toHaveLength(1)
+      expect(check(`db.select({ s: submission, id: user.id })`)).toHaveLength(1)
+      expect(check(`db.select({ 'row': testAnswer })`)).toHaveLength(1)
+      expect(check(`db.select({ submission }).from(submission)`)).toHaveLength(1)
+      expect(check(`db.select({ id: user.id, testAnswer })`)).toHaveLength(1)
+      expect(check(`db.selectDistinct({\n  attendanceCheckIn,\n})`)).toHaveLength(1)
+      expect(check(`const cols = { s: submission }\ndb.select(cols)`)).toHaveLength(1)
+      expect(check(`db.select({ ...submission })`)).toHaveLength(1)
+      expect(check(`db.select({ id: user.id, userId: session.userId }).from(user)`)).toEqual([])
+      expect(check(`await countWhere(db, user, where)`)).toEqual([])
+    })
+
+    it('(d) table introspection and aliases of other tables', () => {
+      expect(check(`db.select(getTableColumns(testAnswer))`)).toHaveLength(1)
+      expect(check(`const c = getTableConfig(submission)`)).toHaveLength(1)
+      expect(check(`const s = alias(submission, 's')`)).toHaveLength(1)
+      expect(check(`const a = alias(user, 'admin_user')`)).toEqual([])
     })
   })
 })
