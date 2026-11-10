@@ -2188,5 +2188,278 @@
     "warningTitle": "Vérifiez avant d'autoriser",
     "warningBody": "N'autorisez que si vous venez de lancer la connexion depuis votre assistant. Le code d'accès sera envoyé à {destination}.",
     "expiredTitle": "Demande expirée"
+  },
+  "admin": {
+    "title": "Administration",
+    "settingsLink": {
+      "title": "Administration",
+      "description": "Les comptes, l'utilisation et l'état de Clasync."
+    },
+    "nav": {
+      "label": "Sections de l'administration",
+      "overview": "Vue d'ensemble",
+      "people": "Comptes",
+      "usage": "Utilisation",
+      "ai": "IA et MCP",
+      "health": "État",
+      "audit": "Journal"
+    },
+    "chart": {
+      "day": "Jour"
+    },
+    "pagination": {
+      "label": "Pages",
+      "previous": "Précédent",
+      "next": "Suivant",
+      "range": "{from}–{to} sur {total}"
+    },
+    "roles": {
+      "lecturer": "Enseignant",
+      "student": "Étudiant"
+    },
+    "badges": {
+      "admin": "Admin",
+      "unverified": "Non vérifié",
+      "suspended": "Suspendu"
+    },
+    "overview": {
+      "title": "Vue d'ensemble",
+      "description": "Clasync fonctionne-t-il bien, et est-il utilisé ?",
+      "totals": {
+        "title": "Totaux",
+        "lecturers": "Enseignants",
+        "students": "Étudiants",
+        "schools": "Établissements",
+        "classes": "Classes",
+        "courses": "Cours",
+        "unverified": "Comptes non vérifiés",
+        "suspended": "Comptes suspendus"
+      },
+      "signups": {
+        "title": "Inscriptions",
+        "chart": "Inscriptions par jour, 30 derniers jours",
+        "lecturers": "Enseignants",
+        "students": "Étudiants",
+        "total": "{lecturers} enseignants et {students} étudiants ces 30 derniers jours"
+      },
+      "active": {
+        "title": "Utilisateurs actifs",
+        "hint": "Les personnes qui ont utilisé Clasync, sur le web ou via un assistant.",
+        "day1": "Dernières 24 heures",
+        "day7": "7 derniers jours",
+        "day30": "30 derniers jours"
+      },
+      "links": {
+        "title": "Plus de détails",
+        "usage": "L'activité quotidienne sur toute la plateforme.",
+        "ai": "Crédit AI Gateway, propositions de notes et assistants.",
+        "health": "Tâche de rappel, e-mails, stockage et environnement."
+      }
+    },
+    "people": {
+      "title": "Comptes",
+      "description": "Toutes les personnes qui ont un compte Clasync. Uniquement les informations du compte.",
+      "search": "Rechercher",
+      "searchPlaceholder": "Nom ou adresse e-mail",
+      "role": {
+        "label": "Rôle",
+        "any": "Tous les rôles",
+        "lecturer": "Enseignants",
+        "student": "Étudiants"
+      },
+      "verified": {
+        "label": "E-mail",
+        "any": "Vérifié ou non",
+        "yes": "Vérifié",
+        "no": "Non vérifié"
+      },
+      "suspended": {
+        "label": "Statut",
+        "any": "Tous les statuts",
+        "yes": "Suspendu",
+        "no": "Non suspendu"
+      },
+      "apply": "Appliquer",
+      "clear": "Effacer les filtres",
+      "empty": "Aucun compte ne correspond à ces filtres.",
+      "joined": "Inscrit le {date}",
+      "lastSignIn": "Dernière connexion le {date}",
+      "neverSignedIn": "Jamais connecté"
+    },
+    "person": {
+      "back": "Tous les comptes",
+      "facts": {
+        "title": "Compte",
+        "email": "E-mail",
+        "role": "Rôle",
+        "verified": "E-mail vérifié",
+        "joined": "Inscription",
+        "lastSignIn": "Dernière connexion",
+        "lastSeen": "Dernière activité",
+        "status": "Statut",
+        "active": "Actif",
+        "suspendedSince": "Suspendu depuis le {date}",
+        "reason": "Motif",
+        "noReason": "Aucun motif indiqué",
+        "yes": "Oui",
+        "no": "Non",
+        "never": "Jamais"
+      },
+      "counts": {
+        "title": "Dans Clasync",
+        "schools": "Établissements",
+        "classesTaught": "Classes enseignées",
+        "courses": "Cours",
+        "classesJoined": "Classes rejointes",
+        "hint": "Uniquement des nombres. Les notes, les rendus et les contenus restent privés."
+      },
+      "sessions": {
+        "title": "Sessions web",
+        "empty": "Aucune session web active.",
+        "unknownDevice": "Navigateur inconnu",
+        "lastActive": "Dernière activité le {date}",
+        "expires": "Expire le {date}",
+        "network": "Réseau {ip}"
+      },
+      "connections": {
+        "title": "Assistants connectés",
+        "empty": "Aucun assistant connecté.",
+        "oauth": "Application connectée",
+        "token": "Jeton personnel",
+        "unnamed": "Sans nom",
+        "lastUsed": "Dernière utilisation le {date}",
+        "neverUsed": "Pas encore utilisé"
+      },
+      "actions": {
+        "title": "Actions",
+        "none": "Aucune action ne s'applique à ce compte pour le moment."
+      }
+    },
+    "actions": {
+      "reason": "Motif",
+      "reasonHint": "Facultatif. Conservé dans le journal.",
+      "suspend": {
+        "trigger": "Suspendre",
+        "title": "Suspendre {name} ?",
+        "body": "Cette personne est déconnectée partout et ne peut plus se connecter, et ses assistants sont refusés, jusqu'à ce que vous leviez la suspension. Ses classes et ses contenus restent tels quels.",
+        "confirm": "Suspendre"
+      },
+      "unsuspend": {
+        "trigger": "Lever la suspension",
+        "title": "Lever la suspension de {name} ?",
+        "body": "Cette personne peut de nouveau se connecter, et ses assistants fonctionnent de nouveau.",
+        "confirm": "Lever la suspension"
+      },
+      "revoke": {
+        "trigger": "Déconnecter partout",
+        "title": "Déconnecter {name} partout ?",
+        "body": "Toutes les sessions web de ce compte prennent fin. La personne peut se reconnecter tout de suite.",
+        "confirm": "Déconnecter partout"
+      },
+      "resend": {
+        "trigger": "Renvoyer l'e-mail de vérification",
+        "title": "Renvoyer l'e-mail de vérification ?",
+        "body": "Un nouveau lien de vérification sera envoyé à {email}.",
+        "confirm": "Envoyer"
+      }
+    },
+    "usage": {
+      "title": "Utilisation",
+      "description": "Les nombres quotidiens sur toute la plateforme ces 30 derniers jours, jamais détaillés par personne.",
+      "total": "{count} en 30 jours",
+      "chart": "{label} par jour, 30 derniers jours",
+      "series": {
+        "checkInsOpened": "Appels ouverts",
+        "checkIns": "Présences enregistrées",
+        "assignmentsPublished": "Devoirs publiés",
+        "submissions": "Devoirs rendus",
+        "testsStarted": "Tests lancés",
+        "testAttempts": "Participations aux tests",
+        "resourcesAdded": "Notes de cours et ressources ajoutées",
+        "practiceAnswers": "Réponses d'entraînement"
+      }
+    },
+    "ai": {
+      "title": "IA et MCP",
+      "description": "Le crédit AI Gateway, les propositions de notes par l'IA et les assistants connectés par les enseignants.",
+      "credits": {
+        "title": "Crédit AI Gateway",
+        "balance": "Solde (USD)",
+        "used": "Consommé (USD)",
+        "unavailable": "Indisponible",
+        "unavailableHint": "Le solde n'a pas pu être lu depuis l'application.",
+        "dashboard": "Ouvrir le tableau de bord AI Gateway"
+      },
+      "suggestions": {
+        "title": "Propositions de notes par l'IA",
+        "series": "Propositions",
+        "chart": "Propositions de notes par l'IA par jour, 30 derniers jours",
+        "total": "{count} en 30 jours"
+      },
+      "mcp": {
+        "title": "Assistants (MCP)",
+        "lecturersConnected": "Enseignants connectés",
+        "oauthConnections": "Applications connectées",
+        "personalTokens": "Jetons personnels actifs",
+        "requests7d": "Requêtes, 7 derniers jours",
+        "rateLimited7d": "Requêtes limitées, 7 derniers jours"
+      }
+    },
+    "health": {
+      "title": "État",
+      "description": "La tâche de rappel, les e-mails, le stockage des fichiers et ce déploiement.",
+      "cron": {
+        "title": "Tâche de rappel",
+        "notHere": "Les tâches planifiées ne s'exécutent pas dans cet environnement.",
+        "lastRun": "Dernière exécution",
+        "never": "Aucune exécution enregistrée pour l'instant.",
+        "result": "Résultat",
+        "ok": "Réussie",
+        "failed": "Échouée",
+        "assignments": "Devoirs vérifiés",
+        "reminded": "Rappels envoyés",
+        "stale": "Aucune exécution depuis 26 heures. Consultez les journaux."
+      },
+      "email": {
+        "title": "E-mails",
+        "sent": "Envoyés, 7 derniers jours",
+        "failed": "Échecs, 7 derniers jours",
+        "recent": "Derniers échecs",
+        "none": "Aucun échec enregistré.",
+        "batch": "Envoi groupé",
+        "unknownKind": "Type inconnu",
+        "noError": "Aucun détail"
+      },
+      "files": {
+        "title": "Stockage des fichiers",
+        "count": "Fichiers",
+        "size": "Taille totale"
+      },
+      "env": {
+        "title": "Environnement",
+        "name": "Environnement",
+        "commit": "Commit",
+        "noCommit": "Pas un déploiement",
+        "migrations": "Migrations appliquées"
+      },
+      "logs": {
+        "title": "Erreurs serveur",
+        "hint": "Les erreurs ne sont pas suivies dans l'application. Elles se trouvent dans les journaux du projet Vercel.",
+        "link": "Ouvrir les journaux Vercel"
+      }
+    },
+    "audit": {
+      "title": "Journal d'administration",
+      "description": "Toutes les actions d'administration, des plus récentes aux plus anciennes. Les entrées ne peuvent être ni modifiées ni supprimées.",
+      "empty": "Aucune action d'administration pour l'instant.",
+      "by": "par {name}",
+      "noReason": "Aucun motif indiqué",
+      "actions": {
+        "suspend": "Suspension",
+        "unsuspend": "Suspension levée",
+        "revoke_sessions": "Déconnexion partout",
+        "resend_verification": "E-mail de vérification renvoyé"
+      }
+    }
   }
 }
