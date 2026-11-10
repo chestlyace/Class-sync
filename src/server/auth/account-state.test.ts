@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import type { Db } from '@/server/db'
 import { user } from '@/server/db/schema'
 import { createTestDb } from '@/test/db'
@@ -35,6 +35,23 @@ describe('account state', () => {
       const later = new Date(t0.getTime() + 61 * MINUTE)
       await checkAccount(db, u.id, later)
       expect((await row(u.id)).lastSeenAt?.toISOString()).toBe(later.toISOString())
+    })
+
+    it('sends no UPDATE while last_seen_at is fresh, nor for a suspended account', async () => {
+      const u = await makeUser(db)
+      const t0 = new Date('2026-11-10T10:00:00Z')
+      await checkAccount(db, u.id, t0)
+      const update = vi.spyOn(db, 'update')
+      try {
+        await checkAccount(db, u.id, new Date(t0.getTime() + 30 * MINUTE))
+        expect(update).not.toHaveBeenCalled()
+        await db.update(user).set({ suspendedAt: t0 }).where(eq(user.id, u.id))
+        update.mockClear()
+        await checkAccount(db, u.id, new Date(t0.getTime() + 2 * 60 * MINUTE))
+        expect(update).not.toHaveBeenCalled()
+      } finally {
+        update.mockRestore()
+      }
     })
 
     it('reports a suspended account and records no activity', async () => {
