@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { Resend } from 'resend'
+import { isAllowedRecipient } from './allowlist'
 
 const DEFAULT_FROM = 'Clasync <onboarding@resend.dev>'
 
@@ -13,6 +14,13 @@ export async function sendEmail(args: {
   subject: string
   react: ReactElement
 }): Promise<void> {
+  if (!isAllowedRecipient(args.to)) {
+    console.info('[email] recipient not on EMAIL_ALLOWLIST, email not sent', {
+      to: args.to,
+      subject: args.subject,
+    })
+    return
+  }
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {
     if (process.env.NODE_ENV === 'production') {

@@ -16,3 +16,8 @@ export const config: Config = {
 export function setConfigForTests(overrides: Partial<Config>): void {
   Object.assign(config, overrides)
 }
+
+/** True on a Vercel preview deployment: staging (branch Development) and other preview branches. */
+export function isPreviewDeployment(env: Record<string, string | undefined> = process.env): boolean {
+  return env.VERCEL_ENV === 'preview'
+}

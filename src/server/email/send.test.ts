@@ -1,6 +1,9 @@
 import { createElement } from 'react'
+import { Resend } from 'resend'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { sendEmail } from './send'
+
+vi.mock('resend', () => ({ Resend: vi.fn() }))
 
 const message = { to: 'ada@example.com', subject: 'Hello', react: createElement('p', null, 'Hi') }
 
@@ -24,5 +27,22 @@ describe('sendEmail without RESEND_API_KEY', () => {
     const info = vi.spyOn(console, 'info').mockImplementation(() => {})
     await expect(sendEmail(message)).resolves.toBeUndefined()
     expect(info).toHaveBeenCalledWith(expect.stringContaining('not sent'), { to: 'ada@example.com', subject: 'Hello' })
+  })
+})
+
+describe('sendEmail with EMAIL_ALLOWLIST', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
+  })
+
+  it('skips a recipient who is not on the list, without sending or throwing', async () => {
+    vi.stubEnv('VERCEL_ENV', 'preview')
+    vi.stubEnv('EMAIL_ALLOWLIST', 'other@example.com')
+    vi.stubEnv('RESEND_API_KEY', 're_test')
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    await expect(sendEmail(message)).resolves.toBeUndefined()
+    expect(info).toHaveBeenCalledWith(expect.stringContaining('EMAIL_ALLOWLIST'), { to: 'ada@example.com', subject: 'Hello' })
+    expect(Resend).not.toHaveBeenCalled()
   })
 })

@@ -130,10 +130,28 @@ An assignment published less than 24 hours before it is due is inside the remind
 
 ## Deploying
 
-Run the migrations against the production database **before** deploying code that needs new tables or columns:
+Clasync runs in three places, each with its own database and file store:
+
+| | Production | Staging | Local |
+|---|---|---|---|
+| Branch | `main` | `Development` | your branch |
+| URL | https://clasync.online | https://staging.clasync.online (behind Vercel login) | http://localhost:3000 |
+| Vercel environment | Production | Preview | none |
+| Database and files | production Prisma Postgres and Blob store | staging Prisma Postgres and Blob store | a local Postgres and `STORAGE_DRIVER=local` |
+| Email | everyone | only `EMAIL_ALLOWLIST` addresses | logged, unless `RESEND_API_KEY` is set |
+
+Work flows one way: a feature branch, a pull request into `Development` (CI runs lint, typecheck and tests), a check on staging, then a pull request from `Development` into `main`. Pull requests into `main` from any other branch fail CI.
+
+Other branches also get a preview deployment on the staging database and store, but only `Development` signs in properly (staging's `BETTER_AUTH_URL`) and only `Development` migrates.
+
+**Staging migrates itself:** each `Development` build runs `npm run db:migrate` against the staging database before building (`scripts/vercel-build.sh`). A feature branch that adds tables won't work on its own preview until it reaches `Development`.
+
+**Production migrations stay manual.** Run them against the production database **before** merging `Development` into `main`:
 
 ```bash
 DATABASE_URL=<production connection string> npm run db:migrate
 ```
 
 The new code fails on a database without its tables. Keep migrations additive (new tables, columns, indexes) so the version still running keeps working on the migrated database; a migration that drops or renames something needs a deploy in two steps.
+
+Never point local development at the production or staging database (don't use `vercel env pull` for `DATABASE_URL`): a local `npm run db:migrate` on an unfinished branch would change that database's schema.
