@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [Development, main]
+  push:
+    branches: [Development]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+
+  # Production only takes what was tested on staging.
+  source-branch:
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          test "$HEAD_REF" = "Development" || { echo "::error::Pull requests into main must come from Development (this one is from $HEAD_REF)"; exit 1; }
