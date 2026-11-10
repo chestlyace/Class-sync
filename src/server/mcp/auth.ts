@@ -63,6 +63,23 @@ export function clientIp(req: Request): string {
   return (forwarded || req.headers.get('x-real-ip')?.trim() || 'unknown').slice(0, 64)
 }
 
+/**
+ * Refusals sent before any token was looked at: no bearer token, or the IP already used up its
+ * failed authentications. They cost no lookup, so they record no health event either (a loop of
+ * anonymous requests must not grow the ops_event table).
+ */
+const refusedBeforeTokenCheck = new WeakSet<Response>()
+
+function beforeTokenCheck(res: Response): Response {
+  refusedBeforeTokenCheck.add(res)
+  return res
+}
+
+/** Whether `resolveMcpCaller` refused this request before checking any token. */
+export function wasRefusedBeforeTokenCheck(res: Response): boolean {
+  return refusedBeforeTokenCheck.has(res)
+}
+
 /** 401 with the challenge MCP clients use to discover the authorization server. */
 export function unauthorized(origin: string, invalidToken: boolean): Response {
   const params = [
@@ -137,11 +154,11 @@ async function verifyOAuthToken(auth: AuthInstance, token: string, origin: strin
 export async function resolveMcpCaller(req: Request, deps?: McpAuthDeps): Promise<McpCaller | Response> {
   const { auth, db, origin } = deps ?? (await defaultDeps())
   const token = bearerToken(req)
-  if (!token) return unauthorized(origin, false)
+  if (!token) return beforeTokenCheck(unauthorized(origin, false))
 
   const ipKey = `mcp:auth-fail:${clientIp(req)}`
   const blocked = await isRateLimited(db, ipKey, MCP_RATE_LIMITS.failedAuthPerIp)
-  if (blocked.limited) return tooManyRequests(blocked.retryAfter)
+  if (blocked.limited) return beforeTokenCheck(tooManyRequests(blocked.retryAfter))
   const rejected = async () => {
     await hitRateLimit(db, ipKey, MCP_RATE_LIMITS.failedAuthPerIp)
     return unauthorized(origin, true)

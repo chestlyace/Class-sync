@@ -1,7 +1,7 @@
 import { db as defaultDb } from '@/server/db'
 import { runAfterResponse } from '@/server/lib/after-response'
 import { recordOpsEvent } from '@/server/ops/events'
-import { resolveMcpCaller, type McpAuthDeps } from './auth'
+import { resolveMcpCaller, wasRefusedBeforeTokenCheck, type McpAuthDeps } from './auth'
 import { createMcpServerHandler } from './server'
 
 /** Permissive CORS without credentials: browser-based MCP clients send a bearer token, not cookies. */
@@ -21,17 +21,24 @@ function withCors(res: Response): Response {
 
 /**
  * POST /api/mcp: authenticate, then hand the JSON-RPC request to the MCP server. Every request
- * (refusals and throttling included) records an `mcp_request` health event with its status after
- * the response. Only a 5xx counts as not ok: a 401 or 429 is the caller's doing, not ours.
+ * that reached a token check (refusals and throttling included) records an `mcp_request` health
+ * event with its status after the response; one without a bearer token, or refused by the IP's
+ * failed-auth limit, records nothing. A handler that throws records a 500 and the error goes on.
+ * Only a 5xx counts as not ok: a 401 or 429 is the caller's doing, not ours.
  */
 export async function handleMcpPost(req: Request, deps?: McpAuthDeps): Promise<Response> {
   const caller = await resolveMcpCaller(req, deps)
-  const res = withCors(caller instanceof Response ? caller : await createMcpServerHandler(caller)(req))
-  const status = res.status
-  runAfterResponse(() =>
-    recordOpsEvent(deps?.db ?? defaultDb, { kind: 'mcp_request', ok: status < 500, detail: { status } }),
-  )
-  return res
+  if (caller instanceof Response && wasRefusedBeforeTokenCheck(caller)) return withCors(caller)
+  let status = 500
+  try {
+    const res = withCors(caller instanceof Response ? caller : await createMcpServerHandler(caller)(req))
+    status = res.status
+    return res
+  } finally {
+    runAfterResponse(() =>
+      recordOpsEvent(deps?.db ?? defaultDb, { kind: 'mcp_request', ok: status < 500, detail: { status } }),
+    )
+  }
 }
 
 /** GET /api/mcp: no server-sent stream in stateless mode. */
