@@ -4,11 +4,12 @@ import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
 import { requireAdmin } from '@/server/core/guards'
 import type { Db } from '@/server/db'
-import { adminAction, session, user, type AdminActionKind } from '@/server/db/schema'
+import { adminAction, session, user } from '@/server/db/schema'
 
 const MAX_REASON_LENGTH = 500
 
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0]
+type AdminActionKind = (typeof adminAction.$inferInsert)['action']
 
 function cleanReason(reason?: string): string | null {
   const trimmed = (reason ?? '').trim().slice(0, MAX_REASON_LENGTH).trim()
@@ -17,7 +18,11 @@ function cleanReason(reason?: string): string | null {
 
 /** Reads and locks the target row for the rest of the transaction, so concurrent actions queue. */
 async function lockTarget(tx: Tx, targetId: string) {
-  const [target] = await tx.select().from(user).where(eq(user.id, targetId)).for('update')
+  const [target] = await tx
+    .select({ id: user.id, email: user.email, emailVerified: user.emailVerified, suspendedAt: user.suspendedAt })
+    .from(user)
+    .where(eq(user.id, targetId))
+    .for('update')
   if (!target) throw new AppError('NOT_FOUND', 'No such user')
   return target
 }
