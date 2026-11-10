@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Db } from '@/server/db'
+import { setEmailDbForTests } from '@/server/email/db'
 import { setResendClientFactoryForTests, setRetryWaitForTests, type NotifyClient } from '@/server/email/notify'
 import { setAfterResponseForTests } from '@/server/lib/after-response'
 import { createTestDb } from '@/test/db'
@@ -31,6 +32,7 @@ describe('test hand-in receipts', () => {
         },
       },
     }
+    setEmailDbForTests(db)
     setResendClientFactoryForTests(() => client)
     setRetryWaitForTests(async () => {})
     vi.stubEnv('RESEND_API_KEY', 're_test')
@@ -38,6 +40,7 @@ describe('test hand-in receipts', () => {
   })
   afterEach(async () => {
     setAfterResponseForTests(null)
+    setEmailDbForTests(null)
     setResendClientFactoryForTests(null)
     setRetryWaitForTests(null)
     vi.unstubAllEnvs()

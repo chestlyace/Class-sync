@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { config, setConfigForTests } from '@/server/core/config'
 import type { Db } from '@/server/db'
-import { apikey, rateLimit } from '@/server/db/schema'
+import { apikey, rateLimit, user } from '@/server/db/schema'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
 import { clientIp, MCP_RATE_LIMITS, resolveMcpCaller, type McpAuthDeps, type McpCaller } from './auth'
@@ -162,6 +162,49 @@ describe('resolveMcpCaller', () => {
       const clientId = await registerClient(auth)
       const { cookie } = await signUp(auth, 'student', `oauth-stu-${crypto.randomUUID()}@example.com`)
       await expect(runOAuthFlow(auth, { clientId, cookie })).rejects.toThrow(/consent failed: 403/)
+    })
+  })
+
+  describe('suspension and activity', () => {
+    const suspend = (id: string) => db.update(user).set({ suspendedAt: new Date() }).where(eq(user.id, id))
+
+    /** The 401 for a suspended account must not be told apart from the one for an unknown token. */
+    async function expectSameAsUnknownToken(res: McpCaller | Response) {
+      expect(res).toBeInstanceOf(Response)
+      const unknown = (await resolveMcpCaller(mcpRequest(`cls_${'c'.repeat(64)}`), deps)) as Response
+      const r = res as Response
+      expect(r.status).toBe(unknown.status)
+      expect([...r.headers]).toEqual([...unknown.headers])
+      expect(await r.text()).toBe(await unknown.text())
+    }
+
+    it("a suspended lecturer's personal token gets the same 401 as an unknown token", async () => {
+      const lecturer = ctxFor(db, await makeUser(db, { role: 'lecturer' }))
+      const { key } = await createAccessToken(lecturer, { name: 'CLI', expiresInDays: 30 }, auth)
+      expect(await resolveMcpCaller(mcpRequest(key), deps)).not.toBeInstanceOf(Response)
+      await suspend(lecturer.user.id)
+      const res = (await resolveMcpCaller(mcpRequest(key), deps)) as Response
+      await expectSameAsUnknownToken(res.clone())
+      await expectChallenge(res, true)
+    })
+
+    it("a suspended lecturer's OAuth access token gets the same 401 as an unknown token", async () => {
+      const clientId = await registerClient(auth)
+      const { cookie, userId } = await signUp(auth, 'lecturer', `oauth-susp-${crypto.randomUUID()}@example.com`)
+      const { tokens } = await runOAuthFlow(auth, { clientId, cookie })
+      expect(await resolveMcpCaller(mcpRequest(tokens.access_token), deps)).not.toBeInstanceOf(Response)
+      await suspend(userId)
+      const res = (await resolveMcpCaller(mcpRequest(tokens.access_token), deps)) as Response
+      await expectSameAsUnknownToken(res.clone())
+      await expectChallenge(res, true)
+    })
+
+    it('a successful call records last_seen_at', async () => {
+      const lecturer = ctxFor(db, await makeUser(db, { role: 'lecturer' }))
+      const { key } = await createAccessToken(lecturer, { name: 'CLI', expiresInDays: 30 }, auth)
+      expect(await resolveMcpCaller(mcpRequest(key), deps)).not.toBeInstanceOf(Response)
+      const [row] = await db.select({ lastSeenAt: user.lastSeenAt }).from(user).where(eq(user.id, lecturer.user.id))
+      expect(row.lastSeenAt).toBeInstanceOf(Date)
     })
   })
 

@@ -62,7 +62,9 @@
       "passwordTooLong": "Your password is too long.",
       "invalidEmail": "Please enter a valid email address.",
       "emailNotVerified": "Please verify your email address before signing in. We just sent you a new verification link.",
-      "tooManyAttempts": "Too many attempts. Wait a moment and try again."
+      "tooManyAttempts": "Too many attempts. Wait a moment and try again.",
+      "accountSuspended": "This account is suspended.",
+      "accountSuspendedContact": "Contact {email}."
     }
   },
   "nav": {
@@ -2186,5 +2188,279 @@
     "warningTitle": "Check before you allow",
     "warningBody": "Only allow this if you started connecting from your assistant just now. The access code will be sent to {destination}.",
     "expiredTitle": "Request expired"
+  },
+  "admin": {
+    "title": "Admin",
+    "settingsLink": {
+      "title": "Admin",
+      "description": "People, usage and the health of Clasync."
+    },
+    "nav": {
+      "label": "Admin sections",
+      "overview": "Overview",
+      "people": "People",
+      "usage": "Usage",
+      "ai": "AI & MCP",
+      "health": "Health",
+      "audit": "Audit"
+    },
+    "chart": {
+      "day": "Day"
+    },
+    "pagination": {
+      "label": "Pages",
+      "previous": "Previous",
+      "next": "Next",
+      "range": "{from}–{to} of {total}"
+    },
+    "roles": {
+      "lecturer": "Lecturer",
+      "student": "Student"
+    },
+    "badges": {
+      "admin": "Admin",
+      "unverified": "Not verified",
+      "suspended": "Suspended"
+    },
+    "overview": {
+      "title": "Overview",
+      "description": "Is Clasync healthy and being used?",
+      "totals": {
+        "title": "Totals",
+        "lecturers": "Lecturers",
+        "students": "Students",
+        "schools": "Schools",
+        "classes": "Classes",
+        "courses": "Courses",
+        "unverified": "Unverified accounts",
+        "suspended": "Suspended accounts"
+      },
+      "signups": {
+        "title": "Sign-ups",
+        "chart": "Sign-ups per day, last 30 days",
+        "lecturers": "Lecturers",
+        "students": "Students",
+        "total": "{lecturers} lecturers and {students} students in the last 30 days"
+      },
+      "active": {
+        "title": "Active users",
+        "hint": "People who used Clasync, on the web or through an assistant.",
+        "day1": "Last 24 hours",
+        "day7": "Last 7 days",
+        "day30": "Last 30 days"
+      },
+      "links": {
+        "title": "More",
+        "usage": "Daily activity across the platform.",
+        "ai": "AI Gateway credit, mark suggestions and assistants.",
+        "health": "Reminder job, email, storage and environment."
+      }
+    },
+    "people": {
+      "title": "People",
+      "description": "Everyone with a Clasync account. Account facts only.",
+      "search": "Search",
+      "searchPlaceholder": "Name or email",
+      "role": {
+        "label": "Role",
+        "any": "All roles",
+        "lecturer": "Lecturers",
+        "student": "Students"
+      },
+      "verified": {
+        "label": "Email",
+        "any": "Verified or not",
+        "yes": "Verified",
+        "no": "Not verified"
+      },
+      "suspended": {
+        "label": "Status",
+        "any": "Any status",
+        "yes": "Suspended",
+        "no": "Not suspended"
+      },
+      "apply": "Apply",
+      "clear": "Clear filters",
+      "empty": "No one matches these filters.",
+      "joined": "Joined {date}",
+      "lastSignIn": "Last sign-in {date}",
+      "neverSignedIn": "Never signed in"
+    },
+    "person": {
+      "back": "All people",
+      "facts": {
+        "title": "Account",
+        "email": "Email",
+        "role": "Role",
+        "verified": "Email verified",
+        "joined": "Joined",
+        "lastSignIn": "Last sign-in",
+        "lastSeen": "Last seen",
+        "status": "Status",
+        "active": "Active",
+        "suspendedSince": "Suspended since {date}",
+        "reason": "Reason",
+        "noReason": "No reason given",
+        "yes": "Yes",
+        "no": "No",
+        "never": "Never"
+      },
+      "counts": {
+        "title": "In Clasync",
+        "schools": "Schools",
+        "classesTaught": "Classes taught",
+        "courses": "Courses",
+        "classesJoined": "Classes joined",
+        "hint": "Counts only. Marks, submissions and content stay private."
+      },
+      "sessions": {
+        "title": "Web sessions",
+        "empty": "No active web sessions.",
+        "unknownDevice": "Unknown browser",
+        "lastActive": "Last active {date}",
+        "expires": "Expires {date}",
+        "network": "Network {ip}"
+      },
+      "connections": {
+        "title": "Assistant connections",
+        "empty": "No assistant connected.",
+        "oauth": "Connected app",
+        "token": "Personal token",
+        "unnamed": "Unnamed",
+        "lastUsed": "Last used {date}",
+        "neverUsed": "Not used yet"
+      },
+      "actions": {
+        "title": "Actions",
+        "none": "No action applies to this account right now."
+      }
+    },
+    "actions": {
+      "reason": "Reason",
+      "reasonHint": "Optional. Kept in the audit log.",
+      "suspend": {
+        "trigger": "Suspend",
+        "title": "Suspend {name}?",
+        "body": "They're signed out everywhere and can't sign in again, and their assistants are refused, until you unsuspend the account. Their classes and content stay as they are.",
+        "confirm": "Suspend"
+      },
+      "unsuspend": {
+        "trigger": "Unsuspend",
+        "title": "Unsuspend {name}?",
+        "body": "They can sign in again, and their assistants work again.",
+        "confirm": "Unsuspend"
+      },
+      "revoke": {
+        "trigger": "Sign out everywhere",
+        "title": "Sign {name} out everywhere?",
+        "body": "Every web session of this account ends. They can sign in again straight away.",
+        "confirm": "Sign out everywhere"
+      },
+      "resend": {
+        "trigger": "Resend verification email",
+        "title": "Resend the verification email?",
+        "body": "A new verification link goes to {email}.",
+        "confirm": "Send"
+      }
+    },
+    "usage": {
+      "title": "Usage",
+      "description": "Daily counts across the platform for the last 30 days, never broken down by person.",
+      "total": "{count} in 30 days",
+      "chart": "{label} per day, last 30 days",
+      "series": {
+        "checkInsOpened": "Check-ins opened",
+        "checkIns": "Student check-ins",
+        "assignmentsPublished": "Assignments published",
+        "submissions": "Submissions made",
+        "testsStarted": "Tests run",
+        "testAttempts": "Test attempts",
+        "resourcesAdded": "Notes and resources added",
+        "practiceAnswers": "Practice answers"
+      }
+    },
+    "ai": {
+      "title": "AI & MCP",
+      "description": "AI Gateway credit, AI mark suggestions and the assistants lecturers connect.",
+      "credits": {
+        "title": "AI Gateway credit",
+        "balance": "Balance (USD)",
+        "used": "Used (USD)",
+        "unavailable": "Unavailable",
+        "unavailableHint": "The balance couldn't be read from here.",
+        "dashboard": "Open the AI Gateway dashboard"
+      },
+      "suggestions": {
+        "title": "AI mark suggestions",
+        "series": "Suggestions",
+        "chart": "AI mark suggestions per day, last 30 days",
+        "total": "{count} in 30 days"
+      },
+      "mcp": {
+        "title": "Assistants (MCP)",
+        "lecturersConnected": "Lecturers connected",
+        "oauthConnections": "Connected apps",
+        "personalTokens": "Active personal tokens",
+        "requests7d": "Requests, last 7 days",
+        "rateLimited7d": "Rate-limited, last 7 days"
+      }
+    },
+    "health": {
+      "title": "Health",
+      "description": "The reminder job, email, file storage and this deployment.",
+      "cron": {
+        "title": "Reminder job",
+        "notHere": "Scheduled jobs don't run in this environment.",
+        "lastRun": "Last run",
+        "never": "No run recorded yet.",
+        "result": "Result",
+        "ok": "Succeeded",
+        "failed": "Failed",
+        "assignments": "Assignments checked",
+        "reminded": "Reminders sent",
+        "stale": "No run in the last 26 hours. Check the logs."
+      },
+      "email": {
+        "title": "Email",
+        "sent": "Sent, last 7 days",
+        "failed": "Failed, last 7 days",
+        "recent": "Recent failures",
+        "none": "No failures recorded.",
+        "batch": "Batch",
+        "unknownKind": "Unknown kind",
+        "noError": "No details"
+      },
+      "files": {
+        "title": "File storage",
+        "count": "Files",
+        "size": "Total size"
+      },
+      "env": {
+        "title": "Environment",
+        "name": "Environment",
+        "commit": "Commit",
+        "noCommit": "Not a deployment",
+        "migrations": "Migrations applied",
+        "unknownMigrations": "Unknown"
+      },
+      "logs": {
+        "title": "Server errors",
+        "hint": "Errors aren't tracked in the app. They're in the Vercel project's logs.",
+        "link": "Open the Vercel logs"
+      }
+    },
+    "audit": {
+      "title": "Audit log",
+      "description": "Every admin action, newest first. Entries can't be edited or deleted.",
+      "empty": "No admin actions yet.",
+      "by": "by {name}",
+      "noReason": "No reason given",
+      "actions": {
+        "suspend": "Suspended",
+        "unsuspend": "Unsuspended",
+        "revoke_sessions": "Signed out everywhere",
+        "resend_verification": "Resent the verification email"
+      }
+    }
   }
 }

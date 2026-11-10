@@ -365,6 +365,7 @@ export async function publishAssignment(ctx: Ctx, assignmentId: string): Promise
         to: student.email,
         locale,
         subject: emailSubject('assignmentPublished', locale, { courseTitle: course.title, assignmentTitle: updated.title }),
+        kind: 'assignmentPublished',
         react: createElement(AssignmentPublishedEmail, {
           locale,
           studentName: student.name,
@@ -645,6 +646,7 @@ export async function releaseGrades(ctx: Ctx, assignmentId: string): Promise<{ r
         to: student.email,
         locale,
         subject: emailSubject('gradesReleased', locale, { courseTitle: course.title, assignmentTitle: row.title }),
+        kind: 'gradesReleased',
         react: createElement(GradesReleasedEmail, {
           locale,
           studentName: student.name,

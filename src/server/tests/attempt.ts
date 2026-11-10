@@ -788,6 +788,7 @@ function handedInEmails(ctx: Ctx, test: TestRow, courseTitle: string, at: Date):
       to: me.email,
       locale: me.locale,
       subject: emailSubject('testHandedIn', me.locale, { courseTitle, testTitle: test.title }),
+      kind: 'testHandedIn',
       react: createElement(TestHandedInEmail, {
         locale: me.locale,
         studentName: me.name,
