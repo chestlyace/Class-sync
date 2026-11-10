@@ -149,7 +149,7 @@ Clasync runs in three places, each with its own database and file store:
 | URL | https://clasync.online | https://staging.clasync.online (behind Vercel login) | http://localhost:3000 |
 | Vercel environment | Production | Preview | none |
 | Database and files | production Prisma Postgres and Blob store | staging Prisma Postgres and Blob store | a local Postgres and `STORAGE_DRIVER=local` |
-| Email | everyone | only `EMAIL_ALLOWLIST` addresses | logged, unless `RESEND_API_KEY` is set |
+| Email | everyone | everyone (`EMAIL_ALLOWLIST=*`; a list of addresses limits it, and no list sends nothing) | logged, unless `RESEND_API_KEY` is set |
 
 Work flows one way: a feature branch, a pull request into `Development` (CI runs lint, typecheck and tests), a check on staging, then a pull request from `Development` into `main`. Pull requests into `main` from any other branch fail CI.
 
