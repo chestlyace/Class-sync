@@ -3,11 +3,13 @@ import { cimd } from '@better-auth/cimd'
 import { fetchClientMetadataResource } from '@better-auth/cimd/node'
 import { mcp } from '@better-auth/mcp'
 import { betterAuth } from 'better-auth'
+import { eq } from 'drizzle-orm'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api'
 import { nextCookies } from 'better-auth/next-js'
 import { jwt } from 'better-auth/plugins'
 import { isLocale } from '@/i18n/locale'
+import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import { AppError } from '@/server/core/errors'
 import { db, type Db } from '@/server/db'
@@ -170,6 +172,24 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
             } catch (err) {
               throw toApiError(err)
             }
+          },
+        },
+      },
+      session: {
+        create: {
+          // Every way in (password sign-in, sign-up, email verification, OAuth login) creates a
+          // session: a suspended account gets none. Pages and MCP check again on each request.
+          before: async (session) => {
+            const [row] = await database
+              .select({ suspendedAt: schema.user.suspendedAt })
+              .from(schema.user)
+              .where(eq(schema.user.id, session.userId))
+            if (row?.suspendedAt) {
+              throw new APIError('FORBIDDEN', { message: 'This account is suspended', code: 'ACCOUNT_SUSPENDED' })
+            }
+          },
+          after: async (session) => {
+            await database.update(schema.user).set({ lastSignInAt: now() }).where(eq(schema.user.id, session.userId))
           },
         },
       },

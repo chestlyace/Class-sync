@@ -1,7 +1,9 @@
 import { eq } from 'drizzle-orm'
 import { verifyJwsAccessToken } from 'better-auth/oauth2'
 import { isLocale } from '@/i18n/locale'
+import { checkAccount } from '@/server/auth/account-state'
 import { API_KEY_PREFIX, mcpResourceUrl, resolveAppOrigin } from '@/server/auth/auth'
+import { now } from '@/server/core/clock'
 import type { Ctx, SessionUser } from '@/server/core/context'
 import { isVerificationPending } from '@/server/core/guards'
 import { db as defaultDb, type Db } from '@/server/db'
@@ -129,7 +131,8 @@ async function verifyOAuthToken(auth: AuthInstance, token: string, origin: strin
  * Who is calling the MCP endpoint. `Bearer cls_…` is a personal access token (both scopes);
  * anything else must be an OAuth access token (JWT) bound to `<origin>/api/mcp`, whose scopes
  * come from the token and whose app is still connected. The user must be a lecturer with a
- * verified email. Returns the caller, or the Response to send (401 / 403 / 429; see MCP_RATE_LIMITS).
+ * verified email, and not suspended (a suspended account gets the 401 of an unknown token).
+ * Returns the caller, or the Response to send (401 / 403 / 429; see MCP_RATE_LIMITS).
  */
 export async function resolveMcpCaller(req: Request, deps?: McpAuthDeps): Promise<McpCaller | Response> {
   const { auth, db, origin } = deps ?? (await defaultDeps())
@@ -168,6 +171,8 @@ export async function resolveMcpCaller(req: Request, deps?: McpAuthDeps): Promis
     .where(eq(user.id, verified.userId))
   if (!row) return rejected()
   if (verified.viaOAuth && !(await hasConsent(db, row.id, verified.clientId))) return rejected()
+  // Suspended: the same 401 as an unknown token. Otherwise this records the activity.
+  if ((await checkAccount(db, row.id, now())).suspended) return rejected()
 
   if (row.role !== 'lecturer') return jsonRpcError(403, LECTURERS_ONLY)
   const sessionUser: SessionUser = {

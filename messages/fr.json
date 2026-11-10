@@ -62,7 +62,9 @@
       "passwordTooLong": "Votre mot de passe est trop long.",
       "invalidEmail": "Veuillez saisir une adresse e-mail valide.",
       "emailNotVerified": "Veuillez vérifier votre adresse e-mail avant de vous connecter. Nous venons de vous envoyer un nouveau lien de vérification.",
-      "tooManyAttempts": "Trop de tentatives. Patientez un instant puis réessayez."
+      "tooManyAttempts": "Trop de tentatives. Patientez un instant puis réessayez.",
+      "accountSuspended": "Ce compte est suspendu.",
+      "accountSuspendedContact": "Contactez {email}."
     }
   },
   "nav": {
