@@ -150,7 +150,7 @@ test('classes, joining and courses, end to end', async ({
       await expect(s).toHaveURL(/\/join$/)
       const sloppy = `${studentCode.slice(0, 3)} ${studentCode.slice(3)}`.toLowerCase()
       await s.getByLabel('Class code', { exact: true }).fill(sloppy)
-      await s.getByLabel('Matricule', { exact: true }).fill('ict 001')
+      await s.getByLabel('Matricule (Optional)', { exact: true }).fill('ict 001')
       await expectNoHorizontalScroll(s)
       await s.getByRole('button', { name: 'Join class', exact: true }).click()
       await expect(s).toHaveURL(classUrl)

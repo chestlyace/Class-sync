@@ -10,7 +10,8 @@ export type CourseRosterRow = {
   studentId: string
   name: string
   email: string
-  matricule: string
+  /** Null when the student has no matricule at the school yet. */
+  matricule: string | null
   source: RosterSource
 }
 
@@ -44,12 +45,14 @@ export async function courseRosterQuery(
 
   const onRoster: SQL = sql`((${inClass} and not ${adjustment('exclude')}) or (${adjustment('include')} and ${activeAtSchool}))`
 
-  // Own-class matricule when the student is in the class; otherwise the most recent active
-  // membership at the school (ties broken by class id so the pick is deterministic).
-  const matricule = sql<string>`coalesce(
+  // Own-class matricule when the student has one there; otherwise the one from their most recent
+  // active membership at the school that has one (ties broken by class id so the pick is
+  // deterministic). Null when they have none at the school yet.
+  const matricule = sql<string | null>`coalesce(
     (select own_cs.matricule from ${classStudent} as own_cs
       where own_cs.class_id = ${course.classId} and own_cs.user_id = ${user.id} and own_cs.status = 'active'),
-    (select sch_cs.matricule ${schoolMembership} order by sch_cs.joined_at desc, sch_cs.class_id limit 1)
+    (select sch_cs.matricule ${schoolMembership} and sch_cs.matricule is not null
+      order by sch_cs.joined_at desc, sch_cs.class_id limit 1)
   )`
   const source = sql<RosterSource>`case when ${inClass} then 'class' else 'included' end`
 

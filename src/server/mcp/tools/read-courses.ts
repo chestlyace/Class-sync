@@ -37,7 +37,8 @@ export const getCourseTool = defineTool({
   name: 'get_course',
   title: 'Get a course',
   description:
-    'One course: its details, the roster (student id, name, matricule; `source` is "included" for a student added from ' +
+    'One course: its details, the roster (student id, name, matricule or null while the school has not assigned one; ' +
+    '`source` is "included" for a student added from ' +
     'another class) and its CA settings (points per part, total, participation target, best-of for tests). Needs courseId from list_courses.',
   scope: 'clasync:read',
   input: z.object({ courseId }),

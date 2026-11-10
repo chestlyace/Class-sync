@@ -24,7 +24,7 @@ export type CourseSummary = {
 export { isOnRoster as isOnCourseRoster }
 
 /** A student who could be included in a course. No email: they may be outside my own classes. */
-export type IncludeCandidate = { studentId: string; name: string; matricule: string }
+export type IncludeCandidate = { studentId: string; name: string; matricule: string | null }
 
 // Ruling R16: the school-wide student search must not become a directory of the school.
 const STUDENT_SEARCH_MIN = 2 // matricules match from 2 characters
@@ -276,7 +276,7 @@ export async function setRosterAdjustment(
  * the course's own class (they are managed with exclude/restore) and not already included.
  * Matches any of their matricules at the school from 2 characters, and their name from 3,
  * case-insensitively; at most 10 results. Each student appears once, with their most recent
- * matricule at the school (the same pick as the roster query).
+ * matricule at the school (the same pick as the roster query), or null when they have none.
  *
  * Closed (always []) while the course's own class has no active student: a lecturer cannot open
  * an empty class at a school just to browse its students (Ruling R16).
@@ -292,13 +292,14 @@ export async function searchSchoolStudentsForCourse(
   if (!(await classHasActiveStudent(ctx.db, owned.classId))) return []
   const pattern = containsPattern(q)
 
-  // One row per student active at the school: their most recent membership there.
+  // One row per student active at the school: their most recent membership there with a matricule
+  // (or the most recent one, when none has).
   const membership = ctx.db
     .selectDistinctOn([classStudent.userId], { studentId: classStudent.userId, matricule: classStudent.matricule })
     .from(classStudent)
     .innerJoin(class_, eq(class_.id, classStudent.classId))
     .where(and(eq(class_.schoolId, owned.schoolId), eq(classStudent.status, 'active')))
-    .orderBy(classStudent.userId, desc(classStudent.joinedAt), asc(classStudent.classId))
+    .orderBy(classStudent.userId, sql`${classStudent.matricule} is null`, desc(classStudent.joinedAt), asc(classStudent.classId))
     .as('membership')
 
   const matriculeMatches = sql`exists (

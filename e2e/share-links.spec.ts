@@ -103,7 +103,7 @@ test('join and check-in links, end to end', async ({
       await expect(alice.getByText(schoolName)).toBeVisible()
       await expect(alice.getByLabel('Class code')).toHaveCount(0) // nothing to type but the matricule
       await expectNoHorizontalScroll(alice)
-      await alice.getByLabel('Matricule', { exact: true }).fill('swe 001')
+      await alice.getByLabel('Matricule (Optional)', { exact: true }).fill('swe 001')
       await alice.getByRole('button', { name: `Join ${className}`, exact: true }).click()
       await expect(alice).toHaveURL(classUrl)
 
@@ -132,7 +132,7 @@ test('join and check-in links, end to end', async ({
     await test.step('a signed-in student opens the join link and joins', async () => {
       await signUp(bob, { name: 'Bob Tabi', email: emailOf('bob'), role: 'student' }, EN)
       await bob.goto(studentLink)
-      await bob.getByLabel('Matricule', { exact: true }).fill('swe 002')
+      await bob.getByLabel('Matricule (Optional)', { exact: true }).fill('swe 002')
       await bob.getByRole('button', { name: `Join ${className}`, exact: true }).click()
       await expect(bob).toHaveURL(classUrl)
     })

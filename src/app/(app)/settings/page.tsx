@@ -20,7 +20,7 @@ import {
 import { getSchool, type School } from '@/server/schools/service'
 import { loadPage } from '../load-page'
 import { AiAssistantsSection, type AppRow, type TokenRow } from './ai-assistants'
-import { ChangePasswordForm, LanguageSwitch, NameForm, SchoolLocationButton } from './settings-forms'
+import { AddMatriculeForm, ChangePasswordForm, LanguageSwitch, NameForm, SchoolLocationButton } from './settings-forms'
 
 export async function generateMetadata() {
   const t = await getTranslations('settings')
@@ -211,10 +211,15 @@ export default async function SettingsPage() {
                     <span className="text-sm text-muted-foreground">
                       {cls.schoolName} · {cls.academicYear}
                     </span>
-                    {cls.myMatricule && (
+                    {cls.myMatricule ? (
                       <span className="font-mono text-xs tracking-[0.04em] text-[#48484a] uppercase">
                         {t('classes.matricule', { matricule: cls.myMatricule })}
                       </span>
+                    ) : (
+                      <>
+                        <span className="text-sm text-muted-foreground">{t('classes.noMatricule')}</span>
+                        <AddMatriculeForm classId={cls.id} />
+                      </>
                     )}
                   </Panel>
                 </li>

@@ -117,7 +117,7 @@ export async function createCourse(page: Page, title: string) {
 export async function joinClassAsStudent(page: Page, classUrl: string, code: string, matricule: string) {
   await page.goto('/join')
   await page.getByLabel('Class code', { exact: true }).fill(code)
-  await page.getByLabel('Matricule', { exact: true }).fill(matricule)
+  await page.getByLabel('Matricule (Optional)', { exact: true }).fill(matricule)
   await page.getByRole('button', { name: 'Join class', exact: true }).click()
   await expect(page).toHaveURL(classUrl)
 }

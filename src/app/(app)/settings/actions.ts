@@ -2,8 +2,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { toActionResult, type ActionResult } from '@/lib/action-result'
+import { formString } from '@/lib/form-data'
 import { parsePosition } from '@/lib/position'
 import { getCtx } from '@/server/auth/session'
+import { addMyMatricule } from '@/server/classes/service'
 import { AppError } from '@/server/core/errors'
 import {
   createAccessToken,
@@ -14,6 +16,15 @@ import {
   type TokenExpiryDays,
 } from '@/server/mcp/connections'
 import { setSchoolLocation } from '@/server/schools/service'
+
+/** Adds the matricule a student joined a class without. The service checks it was missing. */
+export async function addMatriculeAction(_prev: ActionResult<null> | null, data: FormData): Promise<ActionResult<null>> {
+  return toActionResult(async () => {
+    await addMyMatricule(await getCtx(), formString(data, 'classId'), formString(data, 'matricule'))
+    revalidatePath('/settings')
+    return null
+  })
+}
 
 /** Sets a school's campus to where the lecturer is standing. The service checks who may do it. */
 export async function setSchoolLocationAction(schoolId: string, position: unknown): Promise<ActionResult<null>> {

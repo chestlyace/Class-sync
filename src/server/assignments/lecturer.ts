@@ -62,7 +62,7 @@ export type AssignmentListItem = AssignmentDetail & {
 export type SubmissionRow = {
   studentId: string
   name: string
-  matricule: string
+  matricule: string | null
   state: 'missing' | 'submitted' | 'late'
   submissionId: string | null
   submittedAt: Date | null
@@ -75,7 +75,7 @@ export type SubmissionRow = {
 
 export type LecturerSubmissionView = {
   assignment: AssignmentDetail
-  student: { id: string; name: string; matricule: string }
+  student: { id: string; name: string; matricule: string | null }
   text: Block[] | null
   files: FileInfo[]
   submittedAt: Date
@@ -477,7 +477,7 @@ export async function listSubmissions(
 }
 
 /** The student's matricule for this course: from the roster, else their latest one in the course's class. */
-async function matriculeFor(db: Db, course: CourseSummary, studentId: string): Promise<string> {
+async function matriculeFor(db: Db, course: CourseSummary, studentId: string): Promise<string | null> {
   const [onRoster] = await courseRosterQuery(db, { courseId: course.id, studentId })
   if (onRoster) return onRoster.matricule
   const [membership] = await db
@@ -486,7 +486,7 @@ async function matriculeFor(db: Db, course: CourseSummary, studentId: string): P
     .where(and(eq(classStudent.classId, course.classId), eq(classStudent.userId, studentId)))
     .orderBy(desc(classStudent.joinedAt))
     .limit(1)
-  return membership?.matricule ?? ''
+  return membership?.matricule ?? null
 }
 
 export async function getSubmissionForLecturer(ctx: Ctx, submissionId: string): Promise<LecturerSubmissionView> {

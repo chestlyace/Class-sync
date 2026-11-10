@@ -351,7 +351,7 @@ function StudentTable({
                       row.name
                     )}
                   </TableHead>
-                  <TableCell className="font-mono tracking-[0.04em]">{row.matricule}</TableCell>
+                  <TableCell className="font-mono tracking-[0.04em]">{row.matricule ?? '—'}</TableCell>
                   <TableCell>
                     <Badge variant={STATUS_VARIANT[row.status]}>{t(`status.${row.status}`)}</Badge>
                   </TableCell>

@@ -15,7 +15,7 @@ export type GridSession = { id: string; createdAt: Date; requireOnCampus: boolea
 export type GridRow = {
   studentId: string
   name: string
-  matricule: string
+  matricule: string | null
   /** sessionId → status (null: nothing to judge yet). */
   statuses: Record<string, AttendanceStatus | null>
   /** sessionId → whether the lecturer set that status by hand. */
