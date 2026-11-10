@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { Logo } from '@/components/logo'
 import { buttonVariants } from '@/components/ui/button'
+import { isPreviewDeployment } from '@/server/core/config'
 import type { SessionUser } from '@/server/core/context'
 import { LanguageSwitcher } from './language-switcher'
 import { BottomNav, TopNavLinks } from './nav-links'
@@ -34,6 +35,11 @@ export async function SiteNav({ user, sections }: { user: SessionUser | null; se
           >
             <Logo className="h-[22px]" title={t('common.appName')} />
           </Link>
+          {isPreviewDeployment() && (
+            <span className="mr-auto rounded-full border px-2 font-mono text-[11px] tracking-[0.08em] text-muted-foreground uppercase">
+              {t('nav.staging')}
+            </span>
+          )}
           {user && <TopNavLinks role={user.role} />}
           {!user && sections && (
             <ul

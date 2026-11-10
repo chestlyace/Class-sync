@@ -5,7 +5,7 @@
  */
 export function isAllowedRecipient(
   to: string,
-  env: { VERCEL_ENV?: string; EMAIL_ALLOWLIST?: string } = process.env,
+  env: Record<string, string | undefined> = process.env,
 ): boolean {
   if (env.VERCEL_ENV === 'production') return true
   const list = (env.EMAIL_ALLOWLIST ?? '')
