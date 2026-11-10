@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { config } from '@/server/core/config'
 import type { Ctx, SessionUser } from '@/server/core/context'
 import type { Db } from '@/server/db'
@@ -361,11 +361,34 @@ describe('admin read models', () => {
     expect(prod.files).toEqual({ count: 1, bytes: 1234 })
   })
 
-  it('getHealth is stale in production when the cron has never run, and fresh after a recent run', async () => {
+  it('getHealth with no cron run is stale in production only once events have been recorded for over 26 hours', async () => {
     const fresh = await getHealth(adminCtx, new Date(cronAt.getTime() + HOUR), { VERCEL_ENV: 'production' })
     expect(fresh.cron.stale).toBe(false)
+    // Recording for 9 days (the oldest event), still no run: stale.
     const before = await getHealth(adminCtx, new Date(cronAt.getTime() - HOUR), { VERCEL_ENV: 'production' })
     expect(before.cron).toMatchObject({ lastRunAt: null, ok: null, stale: true, runsHere: true })
+    // Right after release: the oldest event is an hour old, so no warning yet.
+    const oldest = (await db.select({ at: opsEvent.at }).from(opsEvent).orderBy(opsEvent.at).limit(1))[0].at
+    const justReleased = await getHealth(adminCtx, new Date(oldest.getTime() + HOUR), { VERCEL_ENV: 'production' })
+    expect(justReleased.cron).toMatchObject({ lastRunAt: null, ok: null, stale: false, runsHere: true })
+    // Nothing recorded at all yet: no warning either.
+    const empty = await getHealth(adminCtx, new Date(oldest.getTime() - HOUR), { VERCEL_ENV: 'production' })
+    expect(empty.cron).toMatchObject({ lastRunAt: null, stale: false })
+  })
+
+  it('getHealth shows an unknown migration count when the migrations table cannot be read', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await db.execute(sql`alter table drizzle.__drizzle_migrations rename to __drizzle_migrations_hidden`)
+    let h
+    try {
+      h = await getHealth(adminCtx, new Date(), {})
+      expect(logged).toHaveBeenCalled()
+    } finally {
+      await db.execute(sql`alter table drizzle.__drizzle_migrations_hidden rename to __drizzle_migrations`)
+      logged.mockRestore()
+    }
+    expect(h.env.migrations).toBeNull()
+    expect(h.files).toEqual({ count: 1, bytes: 1234 })
   })
 
   it('getHealth gives a null recipient for a failed batch', async () => {
@@ -402,6 +425,42 @@ describe('admin read models', () => {
     expect(credits).not.toHaveBeenCalled()
     await expect(getHealth(ctx, at, {})).rejects.toMatchObject({ code: 'NOT_FOUND' })
     await expect(listAudit(ctx, 1)).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+})
+
+describe('daily series and the time zone', () => {
+  // 23:30 UTC is already the next day in Douala (UTC+1, no daylight saving).
+  const at = new Date('2026-11-05T12:00:00Z')
+  const lateEvening = new Date('2026-11-03T23:30:00Z')
+  let db: Db
+  let ctx: Ctx
+
+  beforeAll(async () => {
+    expect(config.timeZone).toBe('Africa/Douala')
+    db = await createTestDb()
+    const admin = await makeUser(db, { role: 'lecturer', email: `admin-${crypto.randomUUID().slice(0, 8)}@example.com` })
+    vi.stubEnv('ADMIN_EMAILS', admin.email)
+    ctx = ctxFor(db, admin)
+    const student = await makeUser(db, { role: 'student' })
+    await db.update(user).set({ createdAt: lateEvening }).where(eq(user.id, student.id))
+    await db.insert(resource).values({ ownerId: admin.id, kind: 'note', title: 'Late', createdAt: lateEvening })
+  })
+  afterAll(() => {
+    vi.unstubAllEnvs()
+  })
+
+  const valueOn = (series: DailyPoint[], day: string) => series.find((p) => p.day === day)?.value
+
+  it('puts a sign-up at 23:30 UTC (timestamp without time zone) on the next local day', async () => {
+    const { signups } = await getOverview(ctx, at)
+    expect(valueOn(signups.students, '2026-11-04')).toBe(1)
+    expect(valueOn(signups.students, '2026-11-03')).toBe(0)
+  })
+
+  it('puts a note added at 23:30 UTC (timestamptz) on the next local day', async () => {
+    const { resourcesAdded } = await getUsage(ctx, at)
+    expect(valueOn(resourcesAdded, '2026-11-04')).toBe(1)
+    expect(valueOn(resourcesAdded, '2026-11-03')).toBe(0)
   })
 })
 

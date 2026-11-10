@@ -105,7 +105,10 @@ export default async function AdminHealthPage() {
                 label: t('health.env.commit'),
                 value: env.commit ? <span className="font-mono">{env.commit}</span> : t('health.env.noCommit'),
               },
-              { label: t('health.env.migrations'), value: f.number(env.migrations) },
+              {
+                label: t('health.env.migrations'),
+                value: env.migrations === null ? t('health.env.unknownMigrations') : f.number(env.migrations),
+              },
             ]}
           />
         </Panel>

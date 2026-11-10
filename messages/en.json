@@ -2440,7 +2440,8 @@
         "name": "Environment",
         "commit": "Commit",
         "noCommit": "Not a deployment",
-        "migrations": "Migrations applied"
+        "migrations": "Migrations applied",
+        "unknownMigrations": "Unknown"
       },
       "logs": {
         "title": "Server errors",

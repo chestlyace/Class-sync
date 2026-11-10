@@ -440,7 +440,8 @@ export type Health = {
   cron: { lastRunAt: Date | null; ok: boolean | null; assignments?: number; reminded?: number; stale: boolean; runsHere: boolean }
   email: { sent7d: number; failed7d: number; recentFailures: { at: Date; kind: string | null; to: string | null; error: string | null }[] }
   files: { count: number; bytes: number }
-  env: { name: string; commit: string | null; migrations: number }
+  /** `migrations` is null when drizzle's migrations table can't be read. */
+  env: { name: string; commit: string | null; migrations: number | null }
 }
 
 const detailText = (field: string) => sql<string | null>`${opsEvent.detail}->>${field}`
@@ -452,7 +453,7 @@ export async function getHealth(ctx: Ctx, at: Date, env: Env = process.env): Pro
   requireAdmin(ctx)
   const { db } = ctx
   const runsHere = env.VERCEL_ENV === 'production'
-  const [[cron], [email], recentFailures, [files], migrations] = await Promise.all([
+  const [[cron], [email], recentFailures, [files], migrations, [{ oldestEventAt }]] = await Promise.all([
     db
       .select({
         at: opsEvent.at,
@@ -483,8 +484,18 @@ export async function getHealth(ctx: Ctx, at: Date, env: Env = process.env): Pro
       .select({ count: count(), bytes: sql<number>`coalesce(sum(${file.sizeBytes}), 0)`.mapWith(Number) })
       .from(file)
       .where(isNotNull(file.confirmedAt)),
-    // The table drizzle's migrator writes, one row per applied migration.
-    db.select({ n: count() }).from(sql`drizzle.__drizzle_migrations`),
+    // The table drizzle's migrator writes, one row per applied migration. If it's missing or
+    // unreadable the page still renders, with the count unknown.
+    db
+      .select({ n: count() })
+      .from(sql`drizzle.__drizzle_migrations`)
+      .then(([row]) => row.n)
+      .catch((error: unknown) => {
+        console.error('[admin] could not count applied migrations', error)
+        return null
+      }),
+    // How long the app has been recording health events: the cron can't be overdue before that.
+    db.select({ oldestEventAt: sql<Date | null>`min(${opsEvent.at})`.mapWith(opsEvent.at) }).from(opsEvent).where(lte(opsEvent.at, at)),
   ])
   const cronInfo: Health['cron'] = cron
     ? {
@@ -495,7 +506,14 @@ export async function getHealth(ctx: Ctx, at: Date, env: Env = process.env): Pro
         stale: runsHere && at.getTime() - cron.at.getTime() > CRON_STALE_MS,
         runsHere,
       }
-    : { lastRunAt: null, ok: null, stale: runsHere, runsHere }
+    : // Never run: overdue only once events have been recorded for longer than the cron's period,
+      // so a fresh release doesn't warn before the first run was due.
+      {
+        lastRunAt: null,
+        ok: null,
+        stale: runsHere && oldestEventAt !== null && at.getTime() - oldestEventAt.getTime() > CRON_STALE_MS,
+        runsHere,
+      }
   return {
     cron: cronInfo,
     email: {
@@ -508,7 +526,7 @@ export async function getHealth(ctx: Ctx, at: Date, env: Env = process.env): Pro
     env: {
       name: env.VERCEL_ENV || 'local',
       commit: env.VERCEL_GIT_COMMIT_SHA ? env.VERCEL_GIT_COMMIT_SHA.slice(0, 7) : null,
-      migrations: migrations[0].n,
+      migrations,
     },
   }
 }
