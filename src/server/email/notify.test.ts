@@ -63,6 +63,27 @@ describe('sendNotifications with a key', () => {
     setRetryWaitForTests(null)
   })
 
+  it('on a preview, sends only to EMAIL_ALLOWLIST addresses and counts the rest as skipped', async () => {
+    vi.stubEnv('VERCEL_ENV', 'preview')
+    vi.stubEnv('EMAIL_ALLOWLIST', 'student1@example.com')
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    send.mockResolvedValue({ data: { data: [] }, error: null })
+    const result = await sendNotifications(items(3))
+    expect(result).toEqual({ sent: 1, skipped: 2, failed: 0 })
+    expect(send).toHaveBeenCalledTimes(1)
+    expect(send.mock.calls[0]![0].map((p: { to: string }) => p.to)).toEqual(['student1@example.com'])
+    expect(JSON.stringify(info.mock.calls)).not.toContain('student0@example.com')
+  })
+
+  it('on a preview without EMAIL_ALLOWLIST, sends nothing', async () => {
+    vi.stubEnv('VERCEL_ENV', 'preview')
+    vi.stubEnv('EMAIL_ALLOWLIST', '')
+    vi.spyOn(console, 'info').mockImplementation(() => {})
+    const result = await sendNotifications(items(3))
+    expect(result).toEqual({ sent: 0, skipped: 3, failed: 0 })
+    expect(send).not.toHaveBeenCalled()
+  })
+
   it('sends 230 items in 3 batch calls of at most 100', async () => {
     send.mockResolvedValue({ data: { data: [] }, error: null })
     const result = await sendNotifications(items(230))

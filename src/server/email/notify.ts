@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import { Resend } from 'resend'
 import type { Locale } from '@/server/core/context'
 import { runAfterResponse } from '@/server/lib/after-response'
+import { isAllowedRecipient } from './allowlist'
 
 export type Notification = { to: string; locale: Locale; subject: string; react: ReactElement }
 
@@ -57,12 +58,18 @@ export async function sendNotifications(
   items: Notification[],
 ): Promise<{ sent: number; skipped: number; failed: number }> {
   const result = { sent: 0, skipped: 0, failed: 0 }
+  const allowed = items.filter((n) => isAllowedRecipient(n.to))
+  if (allowed.length < items.length) {
+    result.skipped = items.length - allowed.length
+    console.info(`[notify] ${result.skipped} notification email(s) to recipients not on EMAIL_ALLOWLIST not sent`)
+    items = allowed
+  }
   if (items.length === 0) return result
 
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {
     console.warn(`[notify] RESEND_API_KEY is not set: ${items.length} notification email(s) not sent`)
-    result.skipped = items.length
+    result.skipped += items.length
     return result
   }
 
