@@ -4,9 +4,11 @@ import { describe, expect, it } from 'vitest'
 
 // The data fence: admins see counts across the platform and account facts about people, never
 // students' marks, submissions, answers, content, per-student attendance or credentials. This
-// test reads the admin code as text, so a new query cannot cross the fence without failing here.
+// test reads the admin code (the server read models and the admin pages and actions) as text, so
+// a new query cannot cross the fence without failing here.
 
 const ADMIN_DIR = path.resolve(process.cwd(), 'src/server/admin')
+const ADMIN_APP_DIR = path.resolve(process.cwd(), 'src/app/(app)/admin')
 const SRC_DIR = path.resolve(process.cwd(), 'src')
 
 /** (a) Feature modules that read marks, submissions, answers or content: admin code imports none of them. */
@@ -79,6 +81,7 @@ const FORBIDDEN_MEMBERS = [
   'isCorrect',
   'isLate',
   'studentId',
+  'optionId',
   'latitude',
   'longitude',
   'accuracyM',
@@ -86,7 +89,10 @@ const FORBIDDEN_MEMBERS = [
 const FORBIDDEN_MEMBER_RE = new RegExp(`\\.(${FORBIDDEN_MEMBERS.join('|')})\\b`, 'g')
 /** The same columns by their SQL names, for raw `sql` fragments. */
 const FORBIDDEN_SQL_COLUMN_RE =
-  /\b(suggested_mark|suggested_reason|suggested_feedback|storage_key|body_text|private_key|client_secret|is_late|is_correct|student_id|accuracy_m)\b/g
+  /\b(suggested_mark|suggested_reason|suggested_feedback|storage_key|body_text|private_key|client_secret|is_late|is_correct|student_id|option_id|accuracy_m)\b/g
+
+/** The literal key of a translation call, `t('a.b')` or `t.rich("a.b", …)`. */
+const TRANSLATION_KEY_RE = /(\bt(?:\.\w+)?\(\s*)(['"])[\w.]*\2/g
 
 /** Identifiers of tables (not the constant lists) that admin code may import. */
 const TABLE_NAMES = [...ADMIN_ALLOWED_TABLES].filter((n) => !/^[A-Z_]+$/.test(n)).join('|')
@@ -117,7 +123,7 @@ function walk(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
     const full = path.join(dir, e.name)
     if (e.isDirectory()) return walk(full)
-    return e.isFile() && e.name.endsWith('.ts') && !e.name.endsWith('.test.ts') ? [full] : []
+    return e.isFile() && /\.tsx?$/.test(e.name) && !/\.test\.tsx?$/.test(e.name) ? [full] : []
   })
 }
 
@@ -158,8 +164,10 @@ function fenceViolations(file: string, src: string): string[] {
     }
   }
 
-  // (c) Forbidden columns, by property name or SQL name.
-  for (const m of src.matchAll(FORBIDDEN_MEMBER_RE)) out.push(`${rel}: reads .${m[1]}`)
+  // (c) Forbidden columns, by property name or SQL name. Translation keys in the pages
+  // (`t('revoke.body')`) are message names, not columns: they are blanked first.
+  const code = src.replace(TRANSLATION_KEY_RE, '$1$2$2')
+  for (const m of code.matchAll(FORBIDDEN_MEMBER_RE)) out.push(`${rel}: reads .${m[1]}`)
   for (const m of src.matchAll(FORBIDDEN_SQL_COLUMN_RE)) out.push(`${rel}: names column ${m[1]}`)
 
   // (d) Whole-row reads: select() without columns, the relational query API, a whole table as a
@@ -180,10 +188,20 @@ function fenceViolations(file: string, src: string): string[] {
 }
 
 describe('admin data fence', () => {
-  const files = walk(ADMIN_DIR)
+  const files = [...walk(ADMIN_DIR), ...walk(ADMIN_APP_DIR)]
 
-  it('finds the admin code', () => {
-    expect(files.map((f) => path.basename(f))).toEqual(expect.arrayContaining(['actions.ts', 'queries.ts']))
+  it('finds the admin code, server and pages', () => {
+    const rel = files.map((f) => path.relative(process.cwd(), f).split(path.sep).join('/'))
+    expect(rel).toEqual(
+      expect.arrayContaining([
+        'src/server/admin/actions.ts',
+        'src/server/admin/queries.ts',
+        'src/app/(app)/admin/actions.ts',
+        'src/app/(app)/admin/health/page.tsx',
+        'src/app/(app)/admin/people/[id]/page.tsx',
+      ]),
+    )
+    expect(rel.some((f) => f.endsWith('.test.ts'))).toBe(false)
   })
 
   it('admin code stays inside the fence', () => {
@@ -221,6 +239,12 @@ describe('admin data fence', () => {
       expect(check(`db.select({ x: classStudent.userId, y: oauthClient.name, z: apikey.lastRequest })`)).toEqual([])
     })
 
+    it('(c) in page code, but not translation keys', () => {
+      expect(check(`<p>{row.mark}</p>`)).toHaveLength(1)
+      expect(check(`<ConfirmAction body={t('revoke.body')} label={t.rich("person.connections.token", {})} />`)).toEqual([])
+      expect(check(`t(key).feedback`)).toHaveLength(1)
+    })
+
     it('(d) select() without columns and the relational API', () => {
       expect(check(`db.select().from(user)`)).toHaveLength(1)
       expect(check(`db.selectDistinct( ).from(user)`)).toHaveLength(1)
@@ -233,6 +257,8 @@ describe('admin data fence', () => {
         expect(check(`db.select({ x: ${col} })`)).toHaveLength(1)
       }
       expect(check('sql`select is_late, student_id from submission`')).toHaveLength(2)
+      expect(check(`db.select({ x: testAnswer.optionId })`)).toHaveLength(1)
+      expect(check('sql`select option_id from test_answer`')).toHaveLength(1)
     })
 
     it('(d) a whole table as a select value, by key, shorthand or spread', () => {
