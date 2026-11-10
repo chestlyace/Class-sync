@@ -128,6 +128,17 @@ The response is JSON like `{"assignments":2,"reminded":14}`; `reminded` counts e
 
 An assignment published less than 24 hours before it is due is inside the reminder window at once, so its students may get the reminder soon after the "new assignment" email. When a lecturer moves the due date later, the reminders already sent for that assignment are forgotten and the new deadline gets its own reminder.
 
+## Admin
+
+A signed-in user is an admin when their email is listed in `ADMIN_EMAILS` (comma-separated, case-insensitive) and that email is verified, whatever `AUTH_REQUIRE_EMAIL_VERIFICATION` says. Admins get the `/admin` area: Overview, People, Usage, AI & MCP, Health and Audit. Everyone else gets the not-found page.
+
+The area shows counts and account facts only. It never shows students' marks, CA, test answers, submission content or files, AI-suggested marks, or per-student attendance. There is no impersonation.
+Admins can suspend or unsuspend an account, sign a user out everywhere, and resend a verification email. Every such action is written to the audit log.
+
+`SUPPORT_EMAIL` is optional. When it is set, a suspended user who tries to sign in is told to contact that address.
+
+Set `ADMIN_EMAILS` and `SUPPORT_EMAIL` separately for each Vercel environment (Production and Preview), so the admins on staging are staging accounts.
+
 ## Deploying
 
 Clasync runs in three places, each with its own database and file store:
