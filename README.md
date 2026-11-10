@@ -146,7 +146,7 @@ Clasync runs in three places, each with its own database and file store:
 | | Production | Staging | Local |
 |---|---|---|---|
 | Branch | `main` | `Development` | your branch |
-| URL | https://clasync.online | https://staging.clasync.online (behind Vercel login) | http://localhost:3000 |
+| URL | https://clasync.online | https://staging.clasync.online (public, no Vercel login) | http://localhost:3000 |
 | Vercel environment | Production | Preview | none |
 | Database and files | production Prisma Postgres and Blob store | staging Prisma Postgres and Blob store | a local Postgres and `STORAGE_DRIVER=local` |
 | Email | everyone | only `EMAIL_ALLOWLIST` addresses | logged, unless `RESEND_API_KEY` is set |
