@@ -60,9 +60,11 @@ describe('admin Server Actions', () => {
     expect(revalidatePath).not.toHaveBeenCalled()
   })
 
-  it('refuses a signed-out caller', async () => {
+  it('refuses a signed-out caller with NOT_FOUND too', async () => {
     const target = await makeUser(db)
-    expect(await suspendAction(target.id, '')).toEqual({ ok: false, code: 'UNAUTHENTICATED' })
+    for (const action of [suspendAction, unsuspendAction, revokeSessionsAction, resendVerificationAction]) {
+      expect(await action(target.id, '')).toEqual({ ok: false, code: 'NOT_FOUND' })
+    }
   })
 
   it('lets an admin suspend a user, with the reason, and refreshes the person page', async () => {
@@ -79,6 +81,23 @@ describe('admin Server Actions', () => {
 
     expect(await unsuspendAction(target.id, '')).toEqual({ ok: true, data: null })
     expect((await inspect(admin, target.id)).person.suspendedAt).toBeNull()
+  })
+
+  it('signing yourself out everywhere sends you to sign-in, after the revoke', async () => {
+    const admin = await makeAdmin()
+    current = admin
+    await expect(revokeSessionsAction(admin.user.id, '')).rejects.toMatchObject({
+      digest: expect.stringMatching(/^NEXT_REDIRECT;\w+;\/sign-in;/),
+    })
+    expect((await inspect(admin, admin.user.id)).audit).toMatchObject([{ action: 'revoke_sessions' }])
+  })
+
+  it('signing someone else out everywhere stays on their page', async () => {
+    const admin = await makeAdmin()
+    const target = await makeUser(db)
+    current = admin
+    expect(await revokeSessionsAction(target.id, '')).toEqual({ ok: true, data: null })
+    expect(revalidatePath).toHaveBeenCalledWith(`/admin/people/${target.id}`)
   })
 
   it('passes service refusals through as results', async () => {
