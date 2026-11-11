@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { googleErrorKey } from '@/lib/auth-errors'
+import { supportEmail } from '@/lib/contact'
 import { safeNextPath } from '@/lib/next-path'
 import { oauthResumePath } from '@/lib/oauth-resume'
 import { isGoogleSignInEnabled } from '@/server/auth/google'
@@ -29,7 +30,7 @@ export default async function SignInPage({ searchParams }: PageProps<'/sign-in'>
       </div>
       <SignInForm
         next={next}
-        supportEmail={process.env.SUPPORT_EMAIL || undefined}
+        supportEmail={supportEmail()}
         google={isGoogleSignInEnabled()}
         // A Google sign-in that failed comes back here with `error` (and `next`, kept).
         googleError={googleErrorKey(search.error)}

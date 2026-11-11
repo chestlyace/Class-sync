@@ -36,7 +36,8 @@
       "submitting": "Creating account…",
       "haveAccount": "Already have an account?",
       "roleRequired": "Choose whether you are a lecturer or a student.",
-      "roleHint": "You can't change this later."
+      "roleHint": "You can't change this later.",
+      "legal": "By creating an account, you accept the <terms>terms of use</terms> and the <privacy>privacy policy</privacy>."
     },
     "signIn": {
       "title": "Welcome back",
@@ -700,11 +701,9 @@
     "cta": {
       "title": "Start with your next class.",
       "primary": "Create your account",
-      "secondary": "Sign in"
-    },
-    "footer": {
-      "copyright": "© {year} Clasync",
-      "madeBy": "Made by Chestly Ace"
+      "secondary": "Sign in",
+      "schools": "Running a department or a whole school?",
+      "schoolsLink": "Clasync for schools"
     }
   },
   "verifyBanner": {
@@ -2546,5 +2545,249 @@
       "body": "If this policy changes, the date at the top of the page changes too. Important changes will be announced in the app."
     },
     "link": "Privacy"
+  },
+  "footer": {
+    "tagline": "Attendance, assignments, tests and marks for lecturers who teach across several classes and schools.",
+    "product": "Product",
+    "company": "Company",
+    "legal": "Legal",
+    "features": "Features",
+    "assistant": "AI assistant",
+    "how": "How it works",
+    "faq": "Questions",
+    "about": "About",
+    "contact": "Contact",
+    "support": "Support",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "copyright": "© {year} Clasync. All rights reserved.",
+    "languages": "English & français",
+    "changelog": "What's new",
+    "schools": "For schools",
+    "security": "Security"
+  },
+  "terms": {
+    "title": "Terms of use",
+    "description": "The rules for using Clasync, for lecturers and students.",
+    "updated": "Last updated {date}",
+    "intro": "These terms apply to everyone who uses Clasync at clasync.online. By creating an account, you accept them. They go with the <privacy>privacy policy</privacy>, which explains what Clasync keeps about you. For any question, write to <email>{address}</email>.",
+    "accounts": {
+      "title": "Your account",
+      "real": "Use your real name and an email address you can read. Students should enter their matricule as their school gives it.",
+      "yours": "An account is for one person. Keep your password to yourself, and write to <email>{address}</email> if you think someone else has used your account.",
+      "lecturers": "Lecturers are responsible for the classes and courses they create, and for having their school's agreement to run them in Clasync."
+    },
+    "use": {
+      "title": "Fair use",
+      "checkIn": "Don't check in for someone who isn't in the room, or pass check-in codes to people outside it.",
+      "others": "Don't try to see or change other people's classes, marks or work.",
+      "tests": "Don't get help from someone else during a test, or use their account, unless your lecturer allows it.",
+      "content": "Don't upload anything illegal or harmful, or anything you don't have the right to share.",
+      "service": "Don't disrupt the service, probe it for weaknesses, or collect data from it automatically."
+    },
+    "content": {
+      "title": "Your work and materials",
+      "own": "What you upload stays yours: notes, assignments, answers and files.",
+      "license": "You allow Clasync to store it and show it to the people it is meant for, such as your lecturer or the students of your course, only to run the service.",
+      "marks": "Lecturers set marks, attendance and CA. If you think one is wrong, talk to your lecturer."
+    },
+    "ai": {
+      "title": "AI features",
+      "suggestions": "Suggested marks come from an AI model and can be wrong. Nothing counts until the lecturer confirms it.",
+      "assistants": "An AI assistant connected by a lecturer works with that lecturer's access and only creates drafts. The lecturer stays responsible for what they publish."
+    },
+    "service": {
+      "title": "The service",
+      "body": "Clasync is provided as it is. It is looked after carefully, but it may sometimes be interrupted or contain mistakes, and features may change as it improves. Keep your own copy of anything you can't afford to lose, such as the CA export."
+    },
+    "ending": {
+      "title": "Suspension and leaving",
+      "leave": "You can stop using Clasync at any time. To have your account deleted, follow the <privacy>privacy policy</privacy>.",
+      "suspend": "Clasync may suspend an account that breaks these terms or puts other users at risk. A suspended user can write to <email>{address}</email> to ask why."
+    },
+    "liability": {
+      "title": "Responsibility",
+      "body": "As far as the law allows, Clasync is not responsible for indirect losses, or for decisions based on marks, attendance or AI suggestions that were not checked."
+    },
+    "changes": {
+      "title": "Changes to these terms",
+      "body": "If these terms change, the date at the top of the page changes too. Important changes will be announced in the app before they apply."
+    },
+    "link": "Terms"
+  },
+  "about": {
+    "eyebrow": "About",
+    "title": "Built for lecturers who teach in more than one place.",
+    "metaTitle": "About",
+    "description": "Why Clasync exists and what it holds to.",
+    "story": {
+      "title": "Why Clasync",
+      "p1": "Many lecturers teach the same course to several classes, often at more than one school. Each class comes with its own attendance sheets, its own Excel file of marks and its own group chat for assignments.",
+      "p2": "Clasync brings all of it into one place. Check-ins go on the projector, work and tests are handed in from a phone, and the CA works itself out. The time saved goes back to teaching."
+    },
+    "principles": {
+      "title": "What we believe",
+      "lecturers": {
+        "title": "Lecturers stay in charge",
+        "body": "AI suggests and drafts. Nothing reaches students until a lecturer approves it."
+      },
+      "privacy": {
+        "title": "Students' data stays private",
+        "body": "No ads, no selling, no tracking. Each person sees only what concerns them."
+      },
+      "phone": {
+        "title": "Made for the phone in every pocket",
+        "body": "Nothing to install, English and French, and photos shrunk before upload to save data."
+      }
+    },
+    "contact": {
+      "title": "Get in touch",
+      "body": "Questions, ideas, or a school that wants to use Clasync: we'd like to hear from you.",
+      "hello": "General",
+      "support": "Help with an account",
+      "cta": "Create your account"
+    }
+  },
+  "changelog": {
+    "title": "What's new",
+    "description": "Everything that has shipped in Clasync, newest first.",
+    "eyebrow": "Changelog",
+    "items": {
+      "google": {
+        "title": "Sign in with Google",
+        "body": "Create an account or sign in with your Google account, and connect or disconnect Google from Settings."
+      },
+      "legal": {
+        "title": "Privacy policy, terms and security pages",
+        "body": "Plain-words pages, in English and French, on what Clasync keeps, the rules of use and how your data is protected."
+      },
+      "matricule": {
+        "title": "Join before you have a matricule",
+        "body": "Students can join a class right away and add their matricule later."
+      },
+      "receipts": {
+        "title": "Email receipts",
+        "body": "Students get an email for every assignment and test they hand in, and class joins are confirmed to everyone concerned."
+      },
+      "links": {
+        "title": "One-tap links",
+        "body": "Share a link that joins a class in one tap, or a check-in link while attendance is open."
+      },
+      "checklist": {
+        "title": "Setup checklist",
+        "body": "New lecturers and students see the few steps to get going on their dashboard, ticked off as they go."
+      },
+      "assistant": {
+        "title": "Connect your AI assistant",
+        "body": "Claude, ChatGPT or any MCP app can read your courses and draft assignments, tests, notes and marks. Nothing reaches students until you approve it."
+      },
+      "notes": {
+        "title": "Notes and revision",
+        "body": "Share notes, files and links with a course, and give students practice rounds before a test."
+      },
+      "tests": {
+        "title": "Tests on students' phones",
+        "body": "Write a test, run it in class, mark short answers question by question with AI suggestions, and release the results."
+      },
+      "ca": {
+        "title": "Continuous assessment",
+        "body": "The CA works itself out from attendance, assignments, tests and participation, with an Excel export."
+      },
+      "launch": {
+        "title": "First version",
+        "body": "Schools, shared classes with join codes, courses, attendance with a rotating code on the projector, and assignments with reminders, in English and French."
+      }
+    }
+  },
+  "forSchools": {
+    "eyebrow": "For schools",
+    "title": "Bring your whole department.",
+    "metaTitle": "For schools",
+    "description": "Clasync for departments and schools: attendance, assignments, tests and CA for every lecturer, in one place.",
+    "lead": "When every lecturer in a department uses Clasync, attendance is checked the same way, the CA follows the same rules, and students find all their courses in one place.",
+    "benefits": {
+      "title": "What a school gets",
+      "attendance": {
+        "title": "Attendance you can trust",
+        "body": "A code on the projector that changes every minute, and a check that the student is at the school."
+      },
+      "ca": {
+        "title": "The same CA everywhere",
+        "body": "The CA works itself out from attendance, assignments, tests and participation, and exports to Excel."
+      },
+      "shared": {
+        "title": "Classes shared between lecturers",
+        "body": "Colleagues who teach the same class share its student list, and nothing else."
+      },
+      "phone": {
+        "title": "Nothing to install",
+        "body": "It runs in the phone's browser, in English and French, and saves students' data."
+      }
+    },
+    "steps": {
+      "title": "Getting started",
+      "talk": {
+        "title": "Write to us",
+        "body": "Tell us about your school and departments, and we'll help your lecturers get started."
+      },
+      "setup": {
+        "title": "Lecturers set up their classes",
+        "body": "Each lecturer creates an account, finds the school and adds their classes and courses in a few minutes."
+      },
+      "join": {
+        "title": "Students join with a code",
+        "body": "Students join from their phone with the class code or a one-tap link."
+      }
+    },
+    "contact": {
+      "title": "Talk to us",
+      "body": "Questions about a department or a whole school? Write to us.",
+      "cta": "Email us",
+      "subject": "Clasync for our school",
+      "secondary": "Read about security"
+    }
+  },
+  "security": {
+    "title": "Security",
+    "description": "How Clasync protects lecturers' and students' data.",
+    "updated": "Last updated {date}",
+    "intro": "Clasync holds students' work and marks, so it is built to keep them to the people who should see them. This page explains how. What Clasync keeps, and why, is in the <privacy>privacy policy</privacy>.",
+    "accounts": {
+      "title": "Accounts and sign-in",
+      "passwords": "Passwords are stored hashed, never in plain text. You can also sign in with Google instead.",
+      "verify": "An email address must be confirmed before the account is used.",
+      "limits": "Sign-in and sign-up attempts are rate-limited to slow down password guessing.",
+      "suspend": "A suspended account is refused everywhere: at sign-in, on every page and through AI assistants."
+    },
+    "access": {
+      "title": "Who can see what",
+      "lecturers": "Each lecturer sees only their own courses. Colleagues who share a class share its student list, and nothing else.",
+      "students": "Students see only their own work, marks and attendance.",
+      "admins": "The admin pages never show marks, test answers, submitted work or attendance. Every admin action is recorded in an audit log."
+    },
+    "data": {
+      "title": "Data and files",
+      "https": "Everything travels over HTTPS.",
+      "files": "Uploaded files are kept in private storage and only shown to people allowed to see them.",
+      "errors": "Error reports have IP addresses removed.",
+      "sold": "No ads, no selling of data, no tracking across other sites."
+    },
+    "ai": {
+      "title": "AI",
+      "suggest": "AI only suggests. A mark counts only once the lecturer confirms it.",
+      "names": "When a mark is suggested, the AI service sees the question, the marking guide and the answer, never a name, matricule or email.",
+      "assistants": "A connected AI assistant works with its lecturer's access, can only create drafts and is rate-limited. Lecturers see connected assistants in Settings and can disconnect them at any time."
+    },
+    "integrity": {
+      "title": "Fair attendance and tests",
+      "codes": "Check-in codes change every minute, and a check-in also confirms the student is at the school.",
+      "timer": "A test's timer runs on the server, so refreshing the page doesn't reset it.",
+      "leave": "Leaving the test page is recorded and shown to the lecturer."
+    },
+    "report": {
+      "title": "Reporting a problem",
+      "body": "If you find a security problem, write to <email>{address}</email>. Please don't share it publicly until it is fixed."
+    },
+    "link": "Security"
   }
 }
