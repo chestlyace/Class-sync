@@ -111,7 +111,21 @@ describe('sendNotifications with a key', () => {
       to: 'student0@example.com',
       subject: 'Subject 0',
       replyTo: 'support@clasync.online',
+      text: expect.stringContaining('Hi 0'),
     })
+    expect(send.mock.calls[0]![0][0].text).not.toMatch(/<[a-z]/i)
+  })
+
+  it('counts a chunk as failed, without throwing or sending, when an email cannot be rendered', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const Broken = () => {
+      throw new Error('bad template')
+    }
+    const broken = [{ ...items(1)[0]!, react: createElement(Broken) }]
+    await expect(sendNotifications(broken)).resolves.toEqual({ sent: 0, skipped: 0, failed: 1 })
+    expect(send).not.toHaveBeenCalled()
+    expect(error).toHaveBeenCalled()
+    expect(await db.select().from(opsEvent)).toMatchObject([{ kind: 'email_failed', ok: false }])
   })
 
   it('retries a failing batch once and counts it as failed when the retry fails too', async () => {
