@@ -38,6 +38,11 @@ export default async function SignUpPage({ searchParams }: PageProps<'/sign-up'>
           {(await getTranslations('nav'))('signIn')}
         </Link>
       </p>
+      <p className="text-center text-[13px] text-muted-foreground">
+        <Link href="/privacy" className="underline-offset-4 hover:text-foreground hover:underline">
+          {(await getTranslations('privacy'))('link')}
+        </Link>
+      </p>
     </>
   )
 }
