@@ -7,6 +7,7 @@ import { ctxFor, makeUser } from '@/test/factories'
 import { createSchool } from '@/server/schools/service'
 import { eq } from 'drizzle-orm'
 import {
+  addMyMatricule,
   createClass,
   getClassRoster,
   isClassLecturer,
@@ -432,6 +433,66 @@ describe('classes service', () => {
       await expect(previewJoinCode(student, cls.studentCode!)).resolves.toMatchObject({ suggestedMatricule: null })
       await joinClassAsStudent(student, other.studentCode!, 'ub-42')
       await expect(previewJoinCode(student, cls.studentCode!)).resolves.toMatchObject({ suggestedMatricule: 'UB-42' })
+    })
+
+    it('does not suggest from a class the student joined without a matricule', async () => {
+      const { lecturer, sch, cls } = await setup()
+      const other = await createClass(lecturer, { schoolId: sch.id, name: 'Maths L3', academicYear: '2026/27' })
+      const student = await studentCtx()
+      await joinClassAsStudent(student, other.studentCode!, '')
+      await expect(previewJoinCode(student, cls.studentCode!)).resolves.toMatchObject({ suggestedMatricule: null })
+    })
+  })
+
+  describe('joining without a matricule', () => {
+    it('a blank matricule joins with none; several students may have none', async () => {
+      const { lecturer, cls } = await setup()
+      const a = await studentCtx({ name: 'Alice', email: 'alice-blank@example.com' })
+      const b = await studentCtx({ name: 'Bob', email: 'bob-blank@example.com' })
+      await expect(joinClassAsStudent(a, cls.studentCode!, '')).resolves.toEqual({ classId: cls.id })
+      await expect(joinClassAsStudent(b, cls.studentCode!, '   ')).resolves.toEqual({ classId: cls.id })
+      expect(await getClassRoster(lecturer, cls.id)).toEqual([
+        { studentId: a.user.id, name: 'Alice', email: 'alice-blank@example.com', matricule: null },
+        { studentId: b.user.id, name: 'Bob', email: 'bob-blank@example.com', matricule: null },
+      ])
+      expect((await listMyClasses(a))[0]).toMatchObject({ id: cls.id, myMatricule: null })
+    })
+
+    it('a blank resubmit by an active student keeps their matricule; a removed one rejoins without', async () => {
+      const { lecturer, cls } = await setup()
+      const student = await studentCtx()
+      await joinClassAsStudent(student, cls.studentCode!, 'UB1')
+      await joinClassAsStudent(student, cls.studentCode!, '')
+      expect((await getClassRoster(lecturer, cls.id))[0]?.matricule).toBe('UB1')
+      await removeStudentFromClass(lecturer, cls.id, student.user.id)
+      await joinClassAsStudent(student, cls.studentCode!, '')
+      expect((await getClassRoster(lecturer, cls.id))[0]?.matricule).toBeNull()
+    })
+
+    it('addMyMatricule fills a missing matricule, normalised, once', async () => {
+      const { lecturer, cls } = await setup()
+      const student = await studentCtx()
+      await joinClassAsStudent(student, cls.studentCode!, '')
+      await addMyMatricule(student, cls.id, '  ub20  s1 ')
+      expect((await getClassRoster(lecturer, cls.id))[0]?.matricule).toBe('UB20 S1')
+      // Changing it afterwards still goes through a lecturer.
+      await expect(addMyMatricule(student, cls.id, 'UB99')).rejects.toMatchObject({ code: 'FORBIDDEN' })
+      expect((await getClassRoster(lecturer, cls.id))[0]?.matricule).toBe('UB20 S1')
+    })
+
+    it('addMyMatricule: taken is CONFLICT, junk is VALIDATION, not a member is NOT_FOUND, lecturer is FORBIDDEN', async () => {
+      const { lecturer, cls } = await setup()
+      const a = await studentCtx()
+      const b = await studentCtx()
+      await joinClassAsStudent(a, cls.studentCode!, 'UB1')
+      await joinClassAsStudent(b, cls.studentCode!, '')
+      await expect(addMyMatricule(b, cls.id, 'ub1')).rejects.toMatchObject({ code: 'CONFLICT' })
+      await expect(addMyMatricule(b, cls.id, ' a ')).rejects.toMatchObject({ code: 'VALIDATION' })
+      const outsider = await studentCtx()
+      await expect(addMyMatricule(outsider, cls.id, 'UB5')).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      await removeStudentFromClass(lecturer, cls.id, b.user.id)
+      await expect(addMyMatricule(b, cls.id, 'UB5')).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      await expect(addMyMatricule(lecturer, cls.id, 'UB5')).rejects.toMatchObject({ code: 'FORBIDDEN' })
     })
   })
 })

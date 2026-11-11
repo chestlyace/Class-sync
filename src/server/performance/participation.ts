@@ -94,7 +94,7 @@ export async function undoLastTap(ctx: Ctx, courseId: string): Promise<UndoneTap
   }
 }
 
-export type ParticipationRow = { studentId: string; name: string; matricule: string; today: number; net: number }
+export type ParticipationRow = { studentId: string; name: string; matricule: string | null; today: number; net: number }
 
 /**
  * The tap board's data: the current roster with each student's taps today (local day) and

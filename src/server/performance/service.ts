@@ -12,7 +12,7 @@ export { getCaSettings } from './inputs'
 export type StudentCa = {
   studentId: string
   name: string
-  matricule: string
+  matricule: string | null
   result: ReturnType<typeof computeCa>
   attendanceRatio: number | null
   countedSessions: number

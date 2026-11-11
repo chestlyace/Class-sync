@@ -114,9 +114,11 @@ export default async function AttendanceGridPage({ params }: PageProps<'/courses
                       <TableHead scope="row" className="sticky left-0 z-10 bg-card px-4 font-normal">
                         <span className="flex flex-col">
                           <span className="max-w-48 truncate font-medium">{row.name}</span>
-                          <span className="font-mono text-xs tracking-[0.04em] text-muted-foreground">
-                            {row.matricule}
-                          </span>
+                          {row.matricule && (
+                            <span className="font-mono text-xs tracking-[0.04em] text-muted-foreground">
+                              {row.matricule}
+                            </span>
+                          )}
                         </span>
                       </TableHead>
                       {sessions.map((s) => (

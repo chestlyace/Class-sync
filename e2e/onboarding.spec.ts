@@ -109,7 +109,7 @@ test('setup checklist for a new lecturer and a new student', async ({
       await studentCard.getByRole('link', { name: 'Enter the code' }).click()
       await expect(student).toHaveURL(/\/join$/)
       await student.getByLabel('Class code', { exact: true }).fill(studentCode)
-      await student.getByLabel('Matricule', { exact: true }).fill('UB24-001')
+      await student.getByLabel('Matricule (Optional)', { exact: true }).fill('UB24-001')
       await student.getByRole('button', { name: 'Join class', exact: true }).click()
       await expect(student).toHaveURL(/\/classes\/[^/?]+$/)
       await student.goto('/dashboard')

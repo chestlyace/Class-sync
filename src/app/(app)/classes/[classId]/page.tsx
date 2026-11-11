@@ -159,7 +159,7 @@ async function LecturerClass({
                   </div>
                   <span className="font-mono text-sm tracking-[0.04em]">
                     <span className="sr-only">{t('matricule')} </span>
-                    {student.matricule}
+                    {student.matricule ?? '—'}
                   </span>
                   <ConfirmAction
                     action={removeStudentAction}

@@ -12,8 +12,9 @@ import { joinClassAction } from './actions'
 
 /**
  * The join form. With `confirm` (opened from a join link whose class is known), the code is not
- * asked for: the button names the class, and students only add their matricule, prefilled from
- * another class of the same school when there is one.
+ * asked for: the button names the class, and students only add their matricule (optional: some
+ * schools assign them later in the year), prefilled from another class of the same school when
+ * there is one.
  */
 export function JoinForm({
   role,
@@ -25,6 +26,7 @@ export function JoinForm({
   confirm?: { className: string; suggestedMatricule: string | null }
 }) {
   const t = useTranslations('join')
+  const tCommon = useTranslations('common')
   const [state, dispatch, pending] = useActionState(joinClassAction, null)
   const matriculeInvalid = isInvalidField(state, 'matricule') || undefined
 
@@ -52,7 +54,9 @@ export function JoinForm({
         )}
         {role === 'student' && (
           <Field data-invalid={matriculeInvalid}>
-            <FieldLabel htmlFor="join-matricule">{t('matricule')}</FieldLabel>
+            <FieldLabel htmlFor="join-matricule">
+              {t('matricule')} <span className="font-normal text-muted-foreground">({tCommon('optional')})</span>
+            </FieldLabel>
             <Input
               id="join-matricule"
               name="matricule"

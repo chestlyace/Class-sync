@@ -10,7 +10,7 @@ import type { ActionResult } from '@/lib/action-result'
 import type { ErrorCode } from '@/server/core/errors'
 import { tapParticipationAction, undoLastTapAction } from './performance-actions'
 
-export type BoardRow = { studentId: string; name: string; matricule: string; today: number; net: number }
+export type BoardRow = { studentId: string; name: string; matricule: string | null; today: number; net: number }
 
 type Delta = 1 | -1
 /** A tap shown on screen but not yet confirmed by the server. */
@@ -163,9 +163,11 @@ export function ParticipationBoard({ courseId, initial }: { courseId: string; in
             <li key={row.studentId} className="flex items-center gap-3 px-3 py-3 sm:px-5" aria-busy={mine.length > 0}>
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="truncate font-medium">{row.name}</span>
-                <span className="truncate font-mono text-xs tracking-[0.04em] text-muted-foreground">
-                  {row.matricule}
-                </span>
+                {row.matricule && (
+                  <span className="truncate font-mono text-xs tracking-[0.04em] text-muted-foreground">
+                    {row.matricule}
+                  </span>
+                )}
                 <span className="text-sm text-muted-foreground">
                   <span className="whitespace-nowrap">
                     {t('today')} <span className="font-mono text-foreground">{signed(today)}</span>

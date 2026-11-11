@@ -21,7 +21,7 @@ export type MarkingAnswer = {
   attemptId: string
   studentId: string
   name: string
-  matricule: string
+  matricule: string | null
   text: string
   suggestion: { mark: number; reason: string } | null
   mark: number | null

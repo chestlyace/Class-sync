@@ -120,9 +120,11 @@ export default async function AttendanceSessionPage({
                 >
                   <div className="flex min-w-0 flex-1 basis-48 flex-col">
                     <span className="truncate font-medium">{student.name}</span>
-                    <span className="font-mono text-sm tracking-[0.04em] text-muted-foreground">
-                      {student.matricule}
-                    </span>
+                    {student.matricule && (
+                      <span className="font-mono text-sm tracking-[0.04em] text-muted-foreground">
+                        {student.matricule}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-4 text-sm">
                     <CheckMark

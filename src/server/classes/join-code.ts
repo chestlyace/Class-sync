@@ -35,3 +35,8 @@ export function normalizeMatricule(input: string): string {
   }
   return value
 }
+
+/** Like normalizeMatricule, but a blank input means "none yet" (null). */
+export function normalizeOptionalMatricule(input: string): string | null {
+  return input.trim() === '' ? null : normalizeMatricule(input)
+}

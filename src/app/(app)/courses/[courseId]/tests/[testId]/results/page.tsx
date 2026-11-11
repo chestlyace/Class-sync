@@ -196,7 +196,7 @@ export default async function TestResultsPage({ params }: PageProps<'/courses/[c
                     <TableHead scope="row" className="px-4 font-medium">
                       {row.name}
                     </TableHead>
-                    <TableCell className="font-mono tracking-[0.04em]">{row.matricule}</TableCell>
+                    <TableCell className="font-mono tracking-[0.04em]">{row.matricule ?? '—'}</TableCell>
                     <TableCell>
                       <Badge variant={row.status === 'ended' ? 'destructive' : row.status === 'not_joined' ? 'outline' : 'secondary'}>
                         {t(`live.status.${row.status}`)}
