@@ -505,9 +505,6 @@ export default async function Home() {
             <a href={`mailto:${HELLO_EMAIL}`} className={cn('text-subtle hover:text-foreground', focusRing, 'rounded-full')}>
               {HELLO_EMAIL}
             </a>
-            <a href="https://chestlyace.online" className={cn('text-subtle hover:text-foreground', focusRing, 'rounded-full')}>
-              {t('footer.madeBy')}
-            </a>
           </span>
         </div>
       </footer>

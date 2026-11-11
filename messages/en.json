@@ -703,8 +703,7 @@
       "secondary": "Sign in"
     },
     "footer": {
-      "copyright": "© {year} Clasync",
-      "madeBy": "Made by Chestly Ace"
+      "copyright": "© {year} Clasync"
     }
   },
   "verifyBanner": {

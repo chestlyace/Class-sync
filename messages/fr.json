@@ -703,8 +703,7 @@
       "secondary": "Se connecter"
     },
     "footer": {
-      "copyright": "© {year} Clasync",
-      "madeBy": "Créé par Chestly Ace"
+      "copyright": "© {year} Clasync"
     }
   },
   "verifyBanner": {
