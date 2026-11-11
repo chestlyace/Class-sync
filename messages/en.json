@@ -36,7 +36,8 @@
       "submitting": "Creating account…",
       "haveAccount": "Already have an account?",
       "roleRequired": "Choose whether you are a lecturer or a student.",
-      "roleHint": "You can't change this later."
+      "roleHint": "You can't change this later.",
+      "legal": "By creating an account, you accept the <terms>terms of use</terms> and the <privacy>privacy policy</privacy>."
     },
     "signIn": {
       "title": "Welcome back",
@@ -701,9 +702,6 @@
       "title": "Start with your next class.",
       "primary": "Create your account",
       "secondary": "Sign in"
-    },
-    "footer": {
-      "copyright": "© {year} Clasync"
     }
   },
   "verifyBanner": {
@@ -2545,5 +2543,104 @@
       "body": "If this policy changes, the date at the top of the page changes too. Important changes will be announced in the app."
     },
     "link": "Privacy"
+  },
+  "footer": {
+    "tagline": "Attendance, assignments, tests and marks for lecturers who teach across several classes and schools.",
+    "product": "Product",
+    "company": "Company",
+    "legal": "Legal",
+    "features": "Features",
+    "assistant": "AI assistant",
+    "how": "How it works",
+    "faq": "Questions",
+    "about": "About",
+    "contact": "Contact",
+    "support": "Support",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "copyright": "© {year} Clasync. All rights reserved.",
+    "languages": "English & français"
+  },
+  "terms": {
+    "title": "Terms of use",
+    "description": "The rules for using Clasync, for lecturers and students.",
+    "updated": "Last updated {date}",
+    "intro": "These terms apply to everyone who uses Clasync at clasync.online. By creating an account, you accept them. They go with the <privacy>privacy policy</privacy>, which explains what Clasync keeps about you. For any question, write to <email>{address}</email>.",
+    "accounts": {
+      "title": "Your account",
+      "real": "Use your real name and an email address you can read. Students should enter their matricule as their school gives it.",
+      "yours": "An account is for one person. Keep your password to yourself, and write to <email>{address}</email> if you think someone else has used your account.",
+      "lecturers": "Lecturers are responsible for the classes and courses they create, and for having their school's agreement to run them in Clasync."
+    },
+    "use": {
+      "title": "Fair use",
+      "checkIn": "Don't check in for someone who isn't in the room, or pass check-in codes to people outside it.",
+      "others": "Don't try to see or change other people's classes, marks or work.",
+      "tests": "Don't get help from someone else during a test, or use their account, unless your lecturer allows it.",
+      "content": "Don't upload anything illegal or harmful, or anything you don't have the right to share.",
+      "service": "Don't disrupt the service, probe it for weaknesses, or collect data from it automatically."
+    },
+    "content": {
+      "title": "Your work and materials",
+      "own": "What you upload stays yours: notes, assignments, answers and files.",
+      "license": "You allow Clasync to store it and show it to the people it is meant for, such as your lecturer or the students of your course, only to run the service.",
+      "marks": "Lecturers set marks, attendance and CA. If you think one is wrong, talk to your lecturer."
+    },
+    "ai": {
+      "title": "AI features",
+      "suggestions": "Suggested marks come from an AI model and can be wrong. Nothing counts until the lecturer confirms it.",
+      "assistants": "An AI assistant connected by a lecturer works with that lecturer's access and only creates drafts. The lecturer stays responsible for what they publish."
+    },
+    "service": {
+      "title": "The service",
+      "body": "Clasync is provided as it is. It is looked after carefully, but it may sometimes be interrupted or contain mistakes, and features may change as it improves. Keep your own copy of anything you can't afford to lose, such as the CA export."
+    },
+    "ending": {
+      "title": "Suspension and leaving",
+      "leave": "You can stop using Clasync at any time. To have your account deleted, follow the <privacy>privacy policy</privacy>.",
+      "suspend": "Clasync may suspend an account that breaks these terms or puts other users at risk. A suspended user can write to <email>{address}</email> to ask why."
+    },
+    "liability": {
+      "title": "Responsibility",
+      "body": "As far as the law allows, Clasync is not responsible for indirect losses, or for decisions based on marks, attendance or AI suggestions that were not checked."
+    },
+    "changes": {
+      "title": "Changes to these terms",
+      "body": "If these terms change, the date at the top of the page changes too. Important changes will be announced in the app before they apply."
+    },
+    "link": "Terms"
+  },
+  "about": {
+    "eyebrow": "About",
+    "title": "Built for lecturers who teach in more than one place.",
+    "metaTitle": "About",
+    "description": "Why Clasync exists and what it holds to.",
+    "story": {
+      "title": "Why Clasync",
+      "p1": "Many lecturers teach the same course to several classes, often at more than one school. Each class comes with its own attendance sheets, its own Excel file of marks and its own group chat for assignments.",
+      "p2": "Clasync brings all of it into one place. Check-ins go on the projector, work and tests are handed in from a phone, and the CA works itself out. The time saved goes back to teaching."
+    },
+    "principles": {
+      "title": "What we believe",
+      "lecturers": {
+        "title": "Lecturers stay in charge",
+        "body": "AI suggests and drafts. Nothing reaches students until a lecturer approves it."
+      },
+      "privacy": {
+        "title": "Students' data stays private",
+        "body": "No ads, no selling, no tracking. Each person sees only what concerns them."
+      },
+      "phone": {
+        "title": "Made for the phone in every pocket",
+        "body": "Nothing to install, English and French, and photos shrunk before upload to save data."
+      }
+    },
+    "contact": {
+      "title": "Get in touch",
+      "body": "Questions, ideas, or a school that wants to use Clasync: we'd like to hear from you.",
+      "hello": "General",
+      "support": "Help with an account",
+      "cta": "Create your account"
+    }
   }
 }

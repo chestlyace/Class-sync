@@ -23,11 +23,10 @@ import { ExchangeExample, MarkingExample } from '@/components/landing/assistant-
 import { AttendanceExample, PhoneExample, ProjectorExample, SubmissionsExample } from '@/components/landing/examples'
 import { CaExample, NotesExample, StructureDiagram, TestPhoneExample } from '@/components/landing/product-examples'
 import { Reveal } from '@/components/landing/reveal'
-import { Logo } from '@/components/logo'
 import { Eyebrow } from '@/components/page-header'
+import { SiteFooter } from '@/components/site-footer'
 import { SiteNav } from '@/components/site-nav'
 import { buttonVariants } from '@/components/ui/button'
-import { HELLO_EMAIL } from '@/lib/contact'
 import { cn } from '@/lib/utils'
 import { getSessionUser } from '@/server/auth/session'
 
@@ -492,22 +491,7 @@ export default async function Home() {
         </section>
       </main>
 
-      <footer className="border-t">
-        <div className={cn(container, 'flex flex-wrap items-center justify-between gap-4 py-8 text-sm text-muted-foreground')}>
-          <span className="flex items-center gap-3.5">
-            <Logo className="h-5 text-foreground" />
-            {t('footer.copyright', { year: new Date().getFullYear() })}
-          </span>
-          <span className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            <Link href="/privacy" className={cn('text-subtle hover:text-foreground', focusRing, 'rounded-full')}>
-              {(await getTranslations('privacy'))('link')}
-            </Link>
-            <a href={`mailto:${HELLO_EMAIL}`} className={cn('text-subtle hover:text-foreground', focusRing, 'rounded-full')}>
-              {HELLO_EMAIL}
-            </a>
-          </span>
-        </div>
-      </footer>
+      <SiteFooter />
     </>
   )
 }
