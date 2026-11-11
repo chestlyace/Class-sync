@@ -36,6 +36,7 @@ export function ConfirmAction({
   renderError,
   open: openProp,
   onOpenChange,
+  children,
 }: {
   action: FormAction
   fields: Record<string, string>
@@ -57,6 +58,8 @@ export function ConfirmAction({
   /** Controls the dialog from outside; the trigger button is then not shown. */
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  /** Extra form fields submitted with `fields` (e.g. an optional reason). */
+  children?: React.ReactNode
 }) {
   const t = useTranslations('common')
   const [innerOpen, setInnerOpen] = useState(false)
@@ -101,6 +104,7 @@ export function ConfirmAction({
           {Object.entries(fields).map(([name, value]) => (
             <input key={name} type="hidden" name={name} value={value} />
           ))}
+          {children}
           {renderError ? renderError(state) : <ActionError state={state} />}
           <DialogFooter>
             <DialogClose asChild>

@@ -2,8 +2,12 @@ import type { ReactElement } from 'react'
 import { Resend } from 'resend'
 import type { Locale } from '@/server/core/context'
 import { runAfterResponse } from '@/server/lib/after-response'
+import { dropSuspendedRecipients, recordOpsEvent, scrubError } from '@/server/ops/events'
+import { isAllowedRecipient } from './allowlist'
+import { emailDb } from './db'
+import type { EmailKind } from './templates/verify-email'
 
-export type Notification = { to: string; locale: Locale; subject: string; react: ReactElement }
+export type Notification = { to: string; locale: Locale; subject: string; react: ReactElement; kind: EmailKind }
 
 type BatchPayload = Array<{ from: string; to: string; subject: string; react: ReactElement }>
 
@@ -36,35 +40,61 @@ function createClient(apiKey: string): NotifyClient {
   return new Resend(apiKey) as unknown as NotifyClient
 }
 
-async function sendChunk(client: NotifyClient, payload: BatchPayload): Promise<boolean> {
+/** Whether the chunk went out; on failure, the provider's or the thrown error's message. */
+async function sendChunk(client: NotifyClient, payload: BatchPayload): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
     const { error } = await client.batch.send(payload)
-    if (!error) return true
+    if (!error) return { ok: true }
     console.error('[notify] batch failed', { size: payload.length, message: error.message })
+    return { ok: false, error: error.message }
   } catch (error) {
     console.error('[notify] batch threw', { size: payload.length, error })
+    return { ok: false, error: error instanceof Error ? error.message : 'batch threw' }
   }
-  return false
 }
 
 /**
  * Best-effort notification delivery through Resend's batch API (100 emails per call, one retry
  * per failed chunk after a short pause). It never throws, in any environment: a missing key or a provider outage must
  * not fail the action that triggered the notification. Without RESEND_API_KEY nothing is sent and
- * a single warning with the count (never the addresses) is logged.
+ * a single warning with the count (never the addresses) is logged. Suspended users' addresses are
+ * dropped before sending and counted as skipped (if that lookup fails nothing is sent). Each
+ * chunk records one `email_sent` or `email_failed` health event with its size, never addresses.
  */
 export async function sendNotifications(
   items: Notification[],
 ): Promise<{ sent: number; skipped: number; failed: number }> {
   const result = { sent: 0, skipped: 0, failed: 0 }
+  const allowed = items.filter((n) => isAllowedRecipient(n.to))
+  if (allowed.length < items.length) {
+    result.skipped = items.length - allowed.length
+    console.info(`[notify] ${result.skipped} notification email(s) to recipients not on EMAIL_ALLOWLIST not sent`)
+    items = allowed
+  }
   if (items.length === 0) return result
 
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {
     console.warn(`[notify] RESEND_API_KEY is not set: ${items.length} notification email(s) not sent`)
-    result.skipped = items.length
+    result.skipped += items.length
     return result
   }
+
+  const db = emailDb()
+  try {
+    const suspended = await dropSuspendedRecipients(db, items.map((n) => n.to))
+    if (suspended.size > 0) {
+      const active = items.filter((n) => !suspended.has(n.to.trim().toLowerCase()))
+      result.skipped += items.length - active.length
+      console.info(`[notify] ${items.length - active.length} notification email(s) to suspended users not sent`)
+      items = active
+    }
+  } catch (error) {
+    console.error('[notify] could not check for suspended recipients, nothing sent', error)
+    result.failed = items.length
+    return result
+  }
+  if (items.length === 0) return result
 
   let client: NotifyClient
   try {
@@ -79,13 +109,22 @@ export async function sendNotifications(
   for (let i = 0; i < items.length; i += BATCH_SIZE) {
     const chunk = items.slice(i, i + BATCH_SIZE)
     const payload: BatchPayload = chunk.map((n) => ({ from, to: n.to, subject: n.subject, react: n.react }))
-    let ok = await sendChunk(client, payload)
-    if (!ok) {
+    let outcome = await sendChunk(client, payload)
+    if (!outcome.ok) {
       await wait(RETRY_DELAY_MS)
-      ok = await sendChunk(client, payload)
+      outcome = await sendChunk(client, payload)
     }
-    if (ok) result.sent += chunk.length
-    else result.failed += chunk.length
+    if (outcome.ok) {
+      result.sent += chunk.length
+      await recordOpsEvent(db, { kind: 'email_sent', ok: true, detail: { kind: 'batch', count: chunk.length } })
+    } else {
+      result.failed += chunk.length
+      await recordOpsEvent(db, {
+        kind: 'email_failed',
+        ok: false,
+        detail: { kind: 'batch', count: chunk.length, error: scrubError(outcome.error) },
+      })
+    }
   }
   return result
 }

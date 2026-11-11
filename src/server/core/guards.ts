@@ -1,3 +1,4 @@
+import { isAdmin, type Env } from './admin'
 import { config } from './config'
 import type { Ctx, Role, SessionUser } from './context'
 import { AppError } from './errors'
@@ -17,5 +18,12 @@ export function requireRole(ctx: Ctx, role: Role): void {
   requireVerified(ctx)
   if (ctx.user.role !== role) {
     throw new AppError('FORBIDDEN', `This action requires the ${role} role`)
+  }
+}
+
+/** Admins only. Non-admins get NOT_FOUND so the admin area does not reveal that it exists. */
+export function requireAdmin(ctx: Ctx, env?: Env): void {
+  if (!isAdmin(ctx.user, env)) {
+    throw new AppError('NOT_FOUND')
   }
 }

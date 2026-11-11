@@ -1,7 +1,9 @@
 import { eq } from 'drizzle-orm'
 import { verifyJwsAccessToken } from 'better-auth/oauth2'
 import { isLocale } from '@/i18n/locale'
+import { checkAccount } from '@/server/auth/account-state'
 import { API_KEY_PREFIX, mcpResourceUrl, resolveAppOrigin } from '@/server/auth/auth'
+import { now } from '@/server/core/clock'
 import type { Ctx, SessionUser } from '@/server/core/context'
 import { isVerificationPending } from '@/server/core/guards'
 import { db as defaultDb, type Db } from '@/server/db'
@@ -59,6 +61,23 @@ export function clientIp(req: Request): string {
   const forwarded = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
   // An IPv6 address is at most 45 characters; cut anything longer a non-Vercel proxy let through.
   return (forwarded || req.headers.get('x-real-ip')?.trim() || 'unknown').slice(0, 64)
+}
+
+/**
+ * Refusals sent before any token was looked at: no bearer token, or the IP already used up its
+ * failed authentications. They cost no lookup, so they record no health event either (a loop of
+ * anonymous requests must not grow the ops_event table).
+ */
+const refusedBeforeTokenCheck = new WeakSet<Response>()
+
+function beforeTokenCheck(res: Response): Response {
+  refusedBeforeTokenCheck.add(res)
+  return res
+}
+
+/** Whether `resolveMcpCaller` refused this request before checking any token. */
+export function wasRefusedBeforeTokenCheck(res: Response): boolean {
+  return refusedBeforeTokenCheck.has(res)
 }
 
 /** 401 with the challenge MCP clients use to discover the authorization server. */
@@ -129,16 +148,17 @@ async function verifyOAuthToken(auth: AuthInstance, token: string, origin: strin
  * Who is calling the MCP endpoint. `Bearer cls_…` is a personal access token (both scopes);
  * anything else must be an OAuth access token (JWT) bound to `<origin>/api/mcp`, whose scopes
  * come from the token and whose app is still connected. The user must be a lecturer with a
- * verified email. Returns the caller, or the Response to send (401 / 403 / 429; see MCP_RATE_LIMITS).
+ * verified email, and not suspended (a suspended account gets the 401 of an unknown token).
+ * Returns the caller, or the Response to send (401 / 403 / 429; see MCP_RATE_LIMITS).
  */
 export async function resolveMcpCaller(req: Request, deps?: McpAuthDeps): Promise<McpCaller | Response> {
   const { auth, db, origin } = deps ?? (await defaultDeps())
   const token = bearerToken(req)
-  if (!token) return unauthorized(origin, false)
+  if (!token) return beforeTokenCheck(unauthorized(origin, false))
 
   const ipKey = `mcp:auth-fail:${clientIp(req)}`
   const blocked = await isRateLimited(db, ipKey, MCP_RATE_LIMITS.failedAuthPerIp)
-  if (blocked.limited) return tooManyRequests(blocked.retryAfter)
+  if (blocked.limited) return beforeTokenCheck(tooManyRequests(blocked.retryAfter))
   const rejected = async () => {
     await hitRateLimit(db, ipKey, MCP_RATE_LIMITS.failedAuthPerIp)
     return unauthorized(origin, true)
@@ -168,6 +188,8 @@ export async function resolveMcpCaller(req: Request, deps?: McpAuthDeps): Promis
     .where(eq(user.id, verified.userId))
   if (!row) return rejected()
   if (verified.viaOAuth && !(await hasConsent(db, row.id, verified.clientId))) return rejected()
+  // Suspended: the same 401 as an unknown token. Otherwise this records the activity.
+  if ((await checkAccount(db, row.id, now())).suspended) return rejected()
 
   if (row.role !== 'lecturer') return jsonRpcError(403, LECTURERS_ONLY)
   const sessionUser: SessionUser = {

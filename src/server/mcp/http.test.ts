@@ -4,7 +4,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { config, setConfigForTests } from '@/server/core/config'
 import { AppError } from '@/server/core/errors'
 import type { Db } from '@/server/db'
-import { rateLimit } from '@/server/db/schema'
+import { opsEvent, rateLimit } from '@/server/db/schema'
+import { setAfterResponseForTests } from '@/server/lib/after-response'
 import { hitRateLimit } from '@/server/lib/rate-limit'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
@@ -14,6 +15,20 @@ import { createAccessToken, type AuthInstance } from './connections'
 import { handleMcpPost, mcpMethodNotAllowed, mcpPreflight } from './http'
 import { runTool } from './server'
 import { defineTool } from './tool'
+
+const serverMock = vi.hoisted(() => ({ throwNext: false }))
+vi.mock('./server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./server')>()
+  return {
+    ...actual,
+    createMcpServerHandler: (...args: Parameters<typeof actual.createMcpServerHandler>) => {
+      if (!serverMock.throwNext) return actual.createMcpServerHandler(...args)
+      return async () => {
+        throw new Error('handler exploded')
+      }
+    },
+  }
+})
 
 type RpcResponse = { jsonrpc: '2.0'; id: number; result?: Record<string, unknown>; error?: { code: number; message: string } }
 
@@ -82,21 +97,114 @@ describe('POST /api/mcp', () => {
     expect(res.headers.get('access-control-expose-headers')).toContain('www-authenticate')
   })
 
-  it('throttled: 429 with Retry-After, readable cross-origin', async () => {
+  /** Captures the after-response work so a test can tell whether a health event was scheduled. */
+  function captureAfterResponse() {
+    const tasks: Array<() => Promise<void>> = []
+    setAfterResponseForTests((task) => {
+      tasks.push(task)
+    })
+    return tasks
+  }
+  const mcpEvents = () => db.select().from(opsEvent).where(eq(opsEvent.kind, 'mcp_request')).orderBy(opsEvent.at)
+
+  it('records no health event for a request without a bearer token', async () => {
+    const tasks = captureAfterResponse()
+    try {
+      await db.delete(opsEvent)
+      const res = await handleMcpPost(rpc('initialize', INIT), deps)
+      expect(res.status).toBe(401)
+      expect(tasks).toHaveLength(0)
+      expect(await mcpEvents()).toHaveLength(0)
+    } finally {
+      setAfterResponseForTests(null)
+    }
+  })
+
+  it('records an mcp_request health event after the response, for an invalid token (401) and a valid one (200)', async () => {
+    const tasks = captureAfterResponse()
+    try {
+      await db.delete(opsEvent)
+      const denied = await handleMcpPost(rpc('initialize', INIT, `cls_${'d'.repeat(64)}`), deps)
+      expect(denied.status).toBe(401)
+      // Nothing is written until the response has gone out.
+      expect(await mcpEvents()).toHaveLength(0)
+      expect(tasks).toHaveLength(1)
+      await tasks[0]!()
+      const ok = await handleMcpPost(rpc('tools/list', {}, key), deps)
+      expect(ok.status).toBe(200)
+      await tasks[1]!()
+      const rows = await mcpEvents()
+      expect(rows.map((r) => r.detail)).toEqual([{ status: 401 }, { status: 200 }])
+      expect(rows.map((r) => r.ok)).toEqual([true, true])
+    } finally {
+      setAfterResponseForTests(null)
+      await db.delete(opsEvent)
+      await db.delete(rateLimit).where(eq(rateLimit.key, 'mcp:auth-fail:unknown'))
+    }
+  })
+
+  it('records a 500 and rethrows when the MCP handler throws', async () => {
+    const tasks = captureAfterResponse()
+    serverMock.throwNext = true
+    try {
+      await db.delete(opsEvent)
+      await expect(handleMcpPost(rpc('tools/list', {}, key), deps)).rejects.toThrow('handler exploded')
+      expect(tasks).toHaveLength(1)
+      await tasks[0]!()
+      expect(await mcpEvents()).toMatchObject([{ ok: false, detail: { status: 500 } }])
+    } finally {
+      serverMock.throwNext = false
+      setAfterResponseForTests(null)
+      await db.delete(opsEvent)
+    }
+  })
+
+  it('records a 429 when the caller is over its own limit', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const windowStart = Math.floor(Date.now() / 60_000) * 60_000
+    vi.setSystemTime(windowStart + 5_000)
+    const lecturer = ctxFor(db, await makeUser(db, { role: 'lecturer' }))
+    const token = await createAccessToken(lecturer, { name: 'Busy', expiresInDays: 30 }, auth)
+    const callerKey = `mcp:caller:${lecturer.user.id}:token:${token.id}`
+    await db.insert(rateLimit).values({ key: callerKey, windowStart: new Date(windowStart), count: MCP_RATE_LIMITS.caller.max })
+    const tasks = captureAfterResponse()
+    try {
+      await db.delete(opsEvent)
+      const res = await handleMcpPost(rpc('tools/list', {}, token.key), deps)
+      expect(res.status).toBe(429)
+      expect(tasks).toHaveLength(1)
+      await tasks[0]!()
+      expect(await mcpEvents()).toMatchObject([{ ok: true, detail: { status: 429 } }])
+    } finally {
+      setAfterResponseForTests(null)
+      await db.delete(opsEvent)
+      vi.useRealTimers()
+      await db.delete(rateLimit).where(eq(rateLimit.key, callerKey))
+    }
+  })
+
+  it('throttled: 429 with Retry-After, readable cross-origin, and no health event', async () => {
     // Hold the clock inside one window. Without x-forwarded-for the IP is "unknown": use up its failures.
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(Math.floor(Date.now() / 60_000) * 60_000 + 5_000)
     for (let i = 0; i < MCP_RATE_LIMITS.failedAuthPerIp.max; i++) {
       await hitRateLimit(db, 'mcp:auth-fail:unknown', MCP_RATE_LIMITS.failedAuthPerIp)
     }
+    const tasks429 = captureAfterResponse()
     try {
+      await db.delete(opsEvent)
       const res = await handleMcpPost(rpc('initialize', INIT, key), deps)
       expect(res.status).toBe(429)
+      // Refused by the IP's failed-auth limit before any token check: nothing is recorded.
+      expect(tasks429).toHaveLength(0)
+      expect(await mcpEvents()).toHaveLength(0)
       expect(Number(res.headers.get('retry-after'))).toBeGreaterThan(0)
       expect(res.headers.get('access-control-allow-origin')).toBe('*')
       expect(res.headers.get('access-control-expose-headers')).toContain('retry-after')
       expect(await res.json()).toMatchObject({ jsonrpc: '2.0', error: { code: -32000 }, id: null })
     } finally {
+      setAfterResponseForTests(null)
+      await db.delete(opsEvent)
       vi.useRealTimers()
       await db.delete(rateLimit).where(eq(rateLimit.key, 'mcp:auth-fail:unknown'))
     }

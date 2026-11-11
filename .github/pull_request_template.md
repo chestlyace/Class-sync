@@ -1,0 +1,3 @@
+- [ ] Tested on https://staging.clasync.online
+- [ ] English and French strings both updated
+- [ ] Into `main` only: production database migrated first (`npm run db:migrate` against production)

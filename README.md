@@ -128,12 +128,41 @@ The response is JSON like `{"assignments":2,"reminded":14}`; `reminded` counts e
 
 An assignment published less than 24 hours before it is due is inside the reminder window at once, so its students may get the reminder soon after the "new assignment" email. When a lecturer moves the due date later, the reminders already sent for that assignment are forgotten and the new deadline gets its own reminder.
 
+## Admin
+
+A signed-in user is an admin when their email is listed in `ADMIN_EMAILS` (comma-separated, case-insensitive) and that email is verified, whatever `AUTH_REQUIRE_EMAIL_VERIFICATION` says. Admins get the `/admin` area: Overview, People, Usage, AI & MCP, Health and Audit. Everyone else gets the not-found page.
+
+The area shows counts and account facts only. It never shows students' marks, CA, test answers, submission content or files, AI-suggested marks, or per-student attendance. There is no impersonation.
+Admins can suspend or unsuspend an account, sign a user out everywhere, and resend a verification email. Every such action is written to the audit log.
+
+`SUPPORT_EMAIL` is optional. When it is set, a suspended user who tries to sign in is told to contact that address.
+
+Set `ADMIN_EMAILS` and `SUPPORT_EMAIL` separately for each Vercel environment (Production and Preview), so the admins on staging are staging accounts.
+
 ## Deploying
 
-Run the migrations against the production database **before** deploying code that needs new tables or columns:
+Clasync runs in three places, each with its own database and file store:
+
+| | Production | Staging | Local |
+|---|---|---|---|
+| Branch | `main` | `Development` | your branch |
+| URL | https://clasync.online | https://staging.clasync.online (public, no Vercel login) | http://localhost:3000 |
+| Vercel environment | Production | Preview | none |
+| Database and files | production Prisma Postgres and Blob store | staging Prisma Postgres and Blob store | a local Postgres and `STORAGE_DRIVER=local` |
+| Email | everyone | everyone (`EMAIL_ALLOWLIST=*`; a list of addresses limits it, and no list sends nothing) | logged, unless `RESEND_API_KEY` is set |
+
+Work flows one way: a feature branch, a pull request into `Development` (CI runs lint, typecheck and tests), a check on staging, then a pull request from `Development` into `main`. Pull requests into `main` from any other branch fail CI.
+
+Other branches also get a preview deployment on the staging database and store, but only `Development` signs in properly (staging's `BETTER_AUTH_URL`) and only `Development` migrates.
+
+**Staging migrates itself:** each `Development` build runs `npm run db:migrate` against the staging database before building (`scripts/vercel-build.sh`). A feature branch that adds tables won't work on its own preview until it reaches `Development`.
+
+**Production migrations stay manual.** Run them against the production database **before** merging `Development` into `main`:
 
 ```bash
 DATABASE_URL=<production connection string> npm run db:migrate
 ```
 
 The new code fails on a database without its tables. Keep migrations additive (new tables, columns, indexes) so the version still running keeps working on the migrated database; a migration that drops or renames something needs a deploy in two steps.
+
+Never point local development at the production or staging database (don't use `vercel env pull` for `DATABASE_URL`): a local `npm run db:migrate` on an unfinished branch would change that database's schema.

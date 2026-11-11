@@ -253,6 +253,7 @@ async function lecturerJoinedEmails(ctx: Ctx, classId: string): Promise<Notifica
       to: me.email,
       locale: me.locale,
       subject: emailSubject('lecturerJoinedClass', me.locale, { className, schoolName }),
+      kind: 'lecturerJoinedClass',
       react: createElement(LecturerJoinedClassEmail, { locale: me.locale, lecturerName: me.name, className, schoolName, url }),
     },
   ]
@@ -262,6 +263,7 @@ async function lecturerJoinedEmails(ctx: Ctx, classId: string): Promise<Notifica
       to: c.email,
       locale,
       subject: emailSubject('colleagueJoinedClass', locale, { colleagueName: me.name, className }),
+      kind: 'colleagueJoinedClass',
       react: createElement(ColleagueJoinedClassEmail, {
         locale,
         recipientName: c.name,
@@ -283,6 +285,7 @@ async function studentJoinedEmails(ctx: Ctx, classId: string): Promise<Notificat
       to: me.email,
       locale: me.locale,
       subject: emailSubject('classJoined', me.locale, { className, schoolName }),
+      kind: 'classJoined',
       react: createElement(ClassJoinedEmail, {
         locale: me.locale,
         studentName: me.name,

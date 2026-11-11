@@ -25,7 +25,7 @@ export default async function SignInPage({ searchParams }: PageProps<'/sign-in'>
         <h1 className="font-display text-5xl leading-[0.95] tracking-[0.01em]">{t('title')}</h1>
         <p className="text-sm text-muted-foreground">{t('description')}</p>
       </div>
-      <SignInForm next={next} />
+      <SignInForm next={next} supportEmail={process.env.SUPPORT_EMAIL || undefined} />
       <p className="text-center text-sm text-[#48484a]">
         {t('noAccount')}{' '}
         <Link href={next ? `/sign-up?next=${encodeURIComponent(next)}` : '/sign-up'} className="font-medium text-primary underline-offset-4 hover:underline">
