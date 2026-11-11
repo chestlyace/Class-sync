@@ -64,7 +64,19 @@
       "emailNotVerified": "Please verify your email address before signing in. We just sent you a new verification link.",
       "tooManyAttempts": "Too many attempts. Wait a moment and try again.",
       "accountSuspended": "This account is suspended.",
-      "accountSuspendedContact": "Contact {email}."
+      "accountSuspendedContact": "Contact {email}.",
+      "signInAgain": "For your security, sign out and sign in again, then try once more."
+    },
+    "google": {
+      "continue": "Continue with Google",
+      "redirecting": "Opening Google…",
+      "or": "or",
+      "orEmail": "or with your email",
+      "noAccount": "There is no Clasync account for this Google account yet. Create one: choose whether you are a lecturer or a student, then continue with Google.",
+      "notLinked": "An account with this email already exists. Sign in with your password, then connect Google in Settings.",
+      "linkedElsewhere": "This Google account already signs in to another Clasync account.",
+      "cancelled": "Google sign-in was cancelled.",
+      "failed": "Signing in with Google didn't work. Try again."
     }
   },
   "nav": {
@@ -828,6 +840,19 @@
       "savingMatricule": "Saving…",
       "matriculeTaken": "This matricule is already used in this class.",
       "matriculeHint": "Wrong matricule? Ask a lecturer of the class to remove you, then join again with the right one."
+    },
+    "signInMethods": {
+      "title": "Sign-in methods",
+      "description": "Choose how you sign in to Clasync.",
+      "google": "Google",
+      "connected": "Connected",
+      "notConnected": "Not connected",
+      "connect": "Connect Google",
+      "connecting": "Opening Google…",
+      "disconnect": "Disconnect",
+      "disconnecting": "Disconnecting…",
+      "onlyMethod": "Google is how you sign in, so it can't be disconnected.",
+      "connectHint": "Connect it to sign in with one tap. It can be a Google account with a different email address."
     },
     "password": {
       "title": "Password",

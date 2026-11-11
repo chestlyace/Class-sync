@@ -139,6 +139,20 @@ Admins can suspend or unsuspend an account, sign a user out everywhere, and rese
 
 Set `ADMIN_EMAILS` and `SUPPORT_EMAIL` separately for each Vercel environment (Production and Preview), so the admins on staging are staging accounts.
 
+## Sign in with Google
+
+"Continue with Google" appears on the sign-in and sign-up pages, and as "Sign-in methods" in Settings, once `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are both set. Without them the app is email and password only.
+
+1. In Google Cloud, create an OAuth client ID of type "Web application" (APIs & Services, Credentials). Set up the consent screen first if asked: app name Clasync, scopes email, profile and openid.
+2. Add the authorized redirect URI `<BETTER_AUTH_URL>/api/auth/callback/google`, for example `https://clasync.online/api/auth/callback/google`, `https://staging.clasync.online/api/auth/callback/google` or `http://localhost:3000/api/auth/callback/google`.
+3. Set the two variables in each Vercel environment (Production and Preview) and in `.env.local`, then redeploy.
+
+How it behaves:
+
+- **Sign-up:** the visitor picks Lecturer or Student, then continues with Google. Name and email come from Google, and the email counts as verified. Students add their matricule when they join a class, as with email sign-up.
+- **Sign-in:** a Google account with no Clasync account is sent to sign-up to pick a role first. A Google account whose email matches an existing, verified Clasync account signs in to that account and is connected to it. An unverified account is never joined this way: its owner signs in with their password and connects Google from Settings.
+- **Settings:** connect Google to an existing account (the Google address may differ from the account's), or disconnect it while the account still has a password. Accounts created with Google have no password, so the "Change password" section is hidden for them.
+
 ## Deploying
 
 Clasync runs in three places, each with its own database and file store:

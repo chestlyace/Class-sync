@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useActionState, useState, useTransition } from 'react'
 import { setLocale } from '@/app/actions/locale'
 import { ActionError, isInvalidField } from '@/components/action-error'
+import { GoogleMark } from '@/components/google-button'
 import { PasswordInput } from '@/components/password-input'
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
@@ -211,6 +212,97 @@ export function SchoolLocationButton({ schoolId }: { schoolId: string }) {
         </p>
       )}
       <ActionError state={state} />
+    </div>
+  )
+}
+
+/**
+ * Google as a way to sign in: connect it to this account (any Google address), or disconnect it
+ * while a password remains. `error`: the message key of a connection that came back failed.
+ */
+export function GoogleSignInMethod({
+  googleAccountId,
+  hasPassword,
+  error = null,
+}: {
+  /** The Google account row's id; null when Google isn't connected. */
+  googleAccountId: string | null
+  hasPassword: boolean
+  error?: string | null
+}) {
+  const connected = googleAccountId !== null
+  const t = useTranslations('settings.signInMethods')
+  const tRoot = useTranslations()
+  const router = useRouter()
+  const [pending, setPending] = useState(false)
+  const [message, setMessage] = useState<string | null>(() => (error ? tRoot(error) : null))
+
+  async function connect() {
+    setPending(true)
+    setMessage(null)
+    try {
+      const { error: authError } = await authClient.linkSocial({
+        provider: 'google',
+        callbackURL: '/settings#sign-in-methods',
+        // Better Auth appends `?error=…`, so no fragment here.
+        errorCallbackURL: '/settings',
+      })
+      if (authError) {
+        setMessage(tRoot(authErrorKey(authError.code, authError.status)))
+        setPending(false)
+      }
+      // Otherwise the browser is on its way to Google: keep the button disabled.
+    } catch {
+      setMessage(tRoot('common.genericError'))
+      setPending(false)
+    }
+  }
+
+  async function disconnect() {
+    if (!googleAccountId) return
+    setPending(true)
+    setMessage(null)
+    try {
+      const { error: authError } = await authClient.unlinkAccount({ accountId: googleAccountId })
+      if (authError) {
+        setMessage(tRoot(authErrorKey(authError.code, authError.status)))
+        return
+      }
+      router.refresh()
+    } catch {
+      setMessage(tRoot('common.genericError'))
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+        <GoogleMark className="size-5 shrink-0" />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="font-semibold">{t('google')}</span>
+          <span className="text-sm text-muted-foreground">{connected ? t('connected') : t('notConnected')}</span>
+        </div>
+        {!connected ? (
+          <Button type="button" variant="outline" onClick={connect} disabled={pending}>
+            {pending ? t('connecting') : t('connect')}
+          </Button>
+        ) : (
+          hasPassword && (
+            <Button type="button" variant="ghost" onClick={disconnect} disabled={pending}>
+              {pending ? t('disconnecting') : t('disconnect')}
+            </Button>
+          )
+        )}
+      </div>
+      {!connected && <p className="text-[13px] text-muted-foreground">{t('connectHint')}</p>}
+      {connected && !hasPassword && <p className="text-[13px] text-muted-foreground">{t('onlyMethod')}</p>}
+      {message && (
+        <p role="alert" className="text-sm text-destructive">
+          {message}
+        </p>
+      )}
     </div>
   )
 }

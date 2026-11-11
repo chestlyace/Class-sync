@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { GoogleButton, OrDivider } from '@/components/google-button'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -14,13 +15,59 @@ import { needsFullNavigation } from '@/lib/oauth-resume'
 /**
  * `next`: a same-site path (already checked with safeNextPath) to open after signing in.
  * `supportEmail`: the address a suspended account is told to contact (none: no contact line).
+ * `google`: offer "Continue with Google". `googleError`: the message key of a Google sign-in that
+ * came back failed (googleErrorKey of the page's `error` parameter).
  */
-export function SignInForm({ next = null, supportEmail }: { next?: string | null; supportEmail?: string }) {
+export function SignInForm({
+  next = null,
+  supportEmail,
+  google = false,
+  googleError = null,
+}: {
+  next?: string | null
+  supportEmail?: string
+  google?: boolean
+  googleError?: string | null
+}) {
   const t = useTranslations('auth.signIn')
+  const tGoogle = useTranslations('auth.google')
   const tRoot = useTranslations()
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const [googleMessage, setGoogleMessage] = useState<string | null>(() => (googleError ? messageFor(googleError) : null))
+  const [googlePending, setGooglePending] = useState(false)
+
+  /** The translated message for a key; a suspended account also gets the contact line. */
+  function messageFor(key: string): string {
+    const message = tRoot(key)
+    return key === 'auth.errors.accountSuspended' && supportEmail
+      ? `${message} ${tRoot('auth.errors.accountSuspendedContact', { email: supportEmail })}`
+      : message
+  }
+
+  async function continueWithGoogle() {
+    setGooglePending(true)
+    setGoogleMessage(null)
+    setError(null)
+    try {
+      // No account is created from here (the server refuses implicit sign-up): an unknown Google
+      // account comes back with `error=signup_disabled`, keeping `next`.
+      const { error: authError } = await authClient.signIn.social({
+        provider: 'google',
+        callbackURL: next ?? '/',
+        errorCallbackURL: next ? `/sign-in?next=${encodeURIComponent(next)}` : '/sign-in',
+      })
+      if (authError) {
+        setGoogleMessage(messageFor(authErrorKey(authError.code, authError.status)))
+        setGooglePending(false)
+      }
+      // Otherwise the browser is on its way to Google: keep the button disabled.
+    } catch {
+      setGoogleMessage(tRoot('common.genericError'))
+      setGooglePending(false)
+    }
+  }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -41,12 +88,7 @@ export function SignInForm({ next = null, supportEmail }: { next?: string | null
           window.location.assign(next)
           return
         }
-        const message = tRoot(authErrorKey(authError.code, authError.status))
-        setError(
-          authError.code === 'ACCOUNT_SUSPENDED' && supportEmail
-            ? `${message} ${tRoot('auth.errors.accountSuspendedContact', { email: supportEmail })}`
-            : message,
-        )
+        setError(messageFor(authErrorKey(authError.code, authError.status)))
         return
       }
       // An assistant's authorization in progress: the server answers with where it continues
@@ -68,7 +110,7 @@ export function SignInForm({ next = null, supportEmail }: { next?: string | null
     }
   }
 
-  return (
+  const emailForm = (
     <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
       <FieldGroup>
         <Field>
@@ -86,5 +128,26 @@ export function SignInForm({ next = null, supportEmail }: { next?: string | null
         {pending ? t('submitting') : t('submit')}
       </Button>
     </form>
+  )
+  if (!google) return emailForm
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-2">
+        <GoogleButton
+          onClick={continueWithGoogle}
+          pending={googlePending}
+          label={tGoogle('continue')}
+          pendingLabel={tGoogle('redirecting')}
+        />
+        {googleMessage && (
+          <p role="alert" className="text-sm text-destructive">
+            {googleMessage}
+          </p>
+        )}
+      </div>
+      <OrDivider label={tGoogle('or')} />
+      {emailForm}
+    </div>
   )
 }

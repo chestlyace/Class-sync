@@ -5,7 +5,7 @@ import { mcp } from '@better-auth/mcp'
 import { betterAuth } from 'better-auth'
 import { eq } from 'drizzle-orm'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api'
+import { APIError, createAuthMiddleware, getOAuthState, getSessionFromCtx } from 'better-auth/api'
 import { nextCookies } from 'better-auth/next-js'
 import { jwt } from 'better-auth/plugins'
 import { isLocale } from '@/i18n/locale'
@@ -16,11 +16,14 @@ import { db, type Db } from '@/server/db'
 import * as schema from '@/server/db/schema'
 import { sendEmail } from '@/server/email/send'
 import { emailSubject, VerifyEmail } from '@/server/email/templates/verify-email'
+import { googleCredentials, signupFieldsFromOAuthState } from './google'
 import { assertValidSignup, assertValidUserUpdate } from './signup-rules'
 
 type CreateAuthOptions = {
   baseURL?: string
   secret?: string
+  /** Google sign-in credentials; defaults to GOOGLE_CLIENT_ID/SECRET. Null turns Google off. */
+  google?: { clientId: string; clientSecret: string } | null
   /** Disable in tests: the plugin needs Next's request scope to set cookies. */
   nextCookies?: boolean
   /** Tests only: Better Auth rate-limits in production only unless this is set. */
@@ -79,6 +82,7 @@ function toApiError(err: unknown): unknown {
 
 export function createAuth(database: Db, options: CreateAuthOptions = {}) {
   const origin = resolveAppOrigin(options.baseURL)
+  const google = options.google === undefined ? googleCredentials() : options.google
   return betterAuth({
     baseURL: origin,
     ...(options.secret ? { secret: options.secret } : {}),
@@ -114,6 +118,30 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
       enabled: true,
       requireEmailVerification: config.requireEmailVerification,
     },
+    socialProviders: google
+      ? {
+          google: {
+            ...google,
+            prompt: 'select_account',
+            // Only the sign-up page creates accounts with Google (it sends the chosen role along
+            // as `requestSignUp`): from the sign-in page an unknown Google account is sent to
+            // sign-up instead of getting an account with no role.
+            disableImplicitSignUp: true,
+            mapProfileToUser: async () => signupFieldsFromOAuthState(await getOAuthState()),
+          },
+        }
+      : {},
+    account: {
+      accountLinking: {
+        // Signing in with Google under the email of an existing account joins that account, but
+        // only once its email is verified: otherwise someone could register another person's
+        // address with a password and keep access after the owner arrives through Google.
+        requireLocalEmailVerified: true,
+        // Linking from Settings (signed in) may use a Google account with another address, e.g. a
+        // personal Gmail for an account made with a school email.
+        allowDifferentEmails: true,
+      },
+    },
     emailVerification: {
       sendOnSignUp: config.requireEmailVerification,
       // An unverified user who signs in (e.g. after the first link expired) gets a fresh link,
@@ -140,6 +168,7 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
       storage: 'memory',
       customRules: {
         '/sign-in/email': SIGN_IN_RULE,
+        '/sign-in/social': SIGN_IN_RULE,
         '/sign-up/email': SIGN_UP_RULE,
       },
     },
