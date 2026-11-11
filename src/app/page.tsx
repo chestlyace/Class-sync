@@ -497,9 +497,14 @@ export default async function Home() {
             <Logo className="h-5 text-foreground" />
             {t('footer.copyright', { year: new Date().getFullYear() })}
           </span>
-          <a href="https://chestlyace.online" className={cn('text-subtle hover:text-foreground', focusRing, 'rounded-full')}>
-            {t('footer.madeBy')}
-          </a>
+          <span className="flex items-center gap-5">
+            <Link href="/privacy" className={cn('text-subtle hover:text-foreground', focusRing, 'rounded-full')}>
+              {(await getTranslations('privacy'))('link')}
+            </Link>
+            <a href="https://chestlyace.online" className={cn('text-subtle hover:text-foreground', focusRing, 'rounded-full')}>
+              {t('footer.madeBy')}
+            </a>
+          </span>
         </div>
       </footer>
     </>

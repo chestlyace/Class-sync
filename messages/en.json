@@ -2494,5 +2494,57 @@
         "resend_verification": "Resent the verification email"
       }
     }
+  },
+  "privacy": {
+    "title": "Privacy policy",
+    "description": "How Clasync handles the information of lecturers and students.",
+    "updated": "Last updated {date}",
+    "intro": "Clasync is run by Chestly Ace. This page explains, in plain words, what Clasync keeps about you, why, and who can see it. For any question or request, write to <email>{address}</email>.",
+    "collect": {
+      "title": "What Clasync keeps",
+      "account": "Your account: name, email address, whether you are a lecturer or a student, and your language.",
+      "google": "If you use Continue with Google: the name and email address of your Google account. Clasync never sees your Google password.",
+      "classes": "Your classes and courses: your matricule, attendance, assignments and the files you hand in, test answers, marks and continuous assessment (CA).",
+      "tests": "During a test: when you leave the test page and for how long, so your lecturer can see it.",
+      "location": "At an attendance check-in only: your position at that moment, to confirm you are at the school. Clasync does not follow your location at any other time.",
+      "signIns": "When you sign in: the IP address and browser of that session, to keep your account secure."
+    },
+    "access": {
+      "title": "Who can see it",
+      "lecturers": "Your lecturers see your work, marks and attendance for the courses they teach, and nothing from other lecturers' courses.",
+      "you": "You see your own classes, work and marks.",
+      "admins": "The Clasync administrator sees counts and account details (name, email, role) to keep the service running. The admin pages never show marks, test answers, submitted work or anyone's attendance.",
+      "sold": "Clasync does not sell your data, show ads or track you across other sites."
+    },
+    "services": {
+      "title": "Services Clasync relies on",
+      "intro": "Clasync uses a few providers to run. Each one only gets what it needs for its job:",
+      "vercel": "Vercel hosts the app and stores uploaded files.",
+      "database": "Prisma Postgres stores the database.",
+      "email": "Resend sends emails such as verification links and assignment reminders.",
+      "errors": "Sentry receives error reports so problems can be fixed, with IP addresses removed.",
+      "ai": "Vercel AI Gateway sends a written test answer and its question to an AI model when a lecturer asks for a suggested mark, without your name, matricule or email. The lecturer decides the mark.",
+      "google": "Google, only if you choose Continue with Google."
+    },
+    "assistants": {
+      "title": "AI assistants connected by lecturers",
+      "body": "A lecturer can connect an AI assistant (such as Claude or ChatGPT) to their own Clasync account. The assistant can read that lecturer's courses, including students' work and marks, to help them, and can only create drafts that the lecturer reviews. It cannot publish anything, send emails or see other lecturers' courses. What the assistant reads is also handled by its provider, under that provider's privacy policy."
+    },
+    "cookies": {
+      "title": "Cookies",
+      "body": "Clasync only uses cookies to keep you signed in and to remember your language. There are no advertising or analytics cookies."
+    },
+    "rights": {
+      "title": "Your choices",
+      "edit": "You can change your name and language in Settings, and add your matricule to a class.",
+      "google": "You can connect or disconnect Google in Settings.",
+      "delete": "To get a copy of your data or have your account deleted, write to <email>{address}</email>. Deleting an account deletes its data with it.",
+      "keep": "Clasync keeps your data while your account exists."
+    },
+    "changes": {
+      "title": "Changes to this page",
+      "body": "If this policy changes, the date at the top of the page changes too. Important changes will be announced in the app."
+    },
+    "link": "Privacy"
   }
 }
