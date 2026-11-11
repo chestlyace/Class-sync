@@ -36,7 +36,8 @@
       "submitting": "Création du compte…",
       "haveAccount": "Vous avez déjà un compte ?",
       "roleRequired": "Indiquez si vous êtes enseignant ou étudiant.",
-      "roleHint": "Ce choix ne pourra pas être modifié."
+      "roleHint": "Ce choix ne pourra pas être modifié.",
+      "legal": "En créant un compte, vous acceptez les <terms>conditions d'utilisation</terms> et la <privacy>politique de confidentialité</privacy>."
     },
     "signIn": {
       "title": "Content de vous revoir",
@@ -700,11 +701,9 @@
     "cta": {
       "title": "Commencez avec votre prochain cours.",
       "primary": "Créer votre compte",
-      "secondary": "Se connecter"
-    },
-    "footer": {
-      "copyright": "© {year} Clasync",
-      "madeBy": "Créé par Chestly Ace"
+      "secondary": "Se connecter",
+      "schools": "Vous dirigez un département ou un établissement ?",
+      "schoolsLink": "Clasync pour les établissements"
     }
   },
   "verifyBanner": {
@@ -2546,5 +2545,249 @@
       "body": "Si cette politique change, la date en haut de la page change aussi. Les changements importants seront annoncés dans l'application."
     },
     "link": "Confidentialité"
+  },
+  "footer": {
+    "tagline": "Présences, devoirs, tests et notes pour les enseignants qui ont plusieurs classes, dans un ou plusieurs établissements.",
+    "product": "Produit",
+    "company": "Entreprise",
+    "legal": "Légal",
+    "features": "Fonctionnalités",
+    "assistant": "Assistant IA",
+    "how": "Comment ça marche",
+    "faq": "Questions",
+    "about": "À propos",
+    "contact": "Contact",
+    "support": "Assistance",
+    "privacy": "Confidentialité",
+    "terms": "Conditions",
+    "copyright": "© {year} Clasync. Tous droits réservés.",
+    "languages": "English & français",
+    "changelog": "Nouveautés",
+    "schools": "Pour les établissements",
+    "security": "Sécurité"
+  },
+  "terms": {
+    "title": "Conditions d'utilisation",
+    "description": "Les règles d'utilisation de Clasync, pour les enseignants et les étudiants.",
+    "updated": "Dernière mise à jour : {date}",
+    "intro": "Ces conditions s'appliquent à toute personne qui utilise Clasync sur clasync.online. En créant un compte, vous les acceptez. Elles accompagnent la <privacy>politique de confidentialité</privacy>, qui explique ce que Clasync conserve à votre sujet. Pour toute question, écrivez à <email>{address}</email>.",
+    "accounts": {
+      "title": "Votre compte",
+      "real": "Utilisez votre vrai nom et une adresse e-mail que vous consultez. Les étudiants saisissent leur matricule tel que leur établissement le donne.",
+      "yours": "Un compte est personnel. Gardez votre mot de passe pour vous, et écrivez à <email>{address}</email> si vous pensez que quelqu'un d'autre a utilisé votre compte.",
+      "lecturers": "Les enseignants sont responsables des classes et des cours qu'ils créent, et doivent avoir l'accord de leur établissement pour les gérer dans Clasync."
+    },
+    "use": {
+      "title": "Bon usage",
+      "checkIn": "Ne pointez pas pour une personne absente de la salle, et ne transmettez pas les codes de pointage à l'extérieur.",
+      "others": "N'essayez pas de voir ou de modifier les classes, les notes ou les travaux d'autres personnes.",
+      "tests": "Ne vous faites pas aider pendant un test et n'utilisez pas le compte de quelqu'un d'autre, sauf si votre enseignant l'autorise.",
+      "content": "Ne déposez rien d'illégal ou de nuisible, ni rien que vous n'avez pas le droit de partager.",
+      "service": "Ne perturbez pas le service, n'en cherchez pas les failles et n'en extrayez pas de données de façon automatisée."
+    },
+    "content": {
+      "title": "Vos travaux et documents",
+      "own": "Ce que vous déposez reste à vous : notes de cours, devoirs, réponses et fichiers.",
+      "license": "Vous autorisez Clasync à le conserver et à le montrer aux personnes à qui il est destiné, comme votre enseignant ou les étudiants de votre cours, uniquement pour faire fonctionner le service.",
+      "marks": "Les enseignants fixent les notes, les présences et le CC. Si l'un d'eux vous semble faux, parlez-en à votre enseignant."
+    },
+    "ai": {
+      "title": "Fonctions d'IA",
+      "suggestions": "Les notes suggérées viennent d'un modèle d'IA et peuvent être fausses. Rien ne compte tant que l'enseignant ne l'a pas confirmé.",
+      "assistants": "Un assistant IA connecté par un enseignant agit avec les accès de cet enseignant et ne crée que des brouillons. L'enseignant reste responsable de ce qu'il publie."
+    },
+    "service": {
+      "title": "Le service",
+      "body": "Clasync est fourni tel quel. Il est entretenu avec soin, mais il peut parfois être interrompu ou contenir des erreurs, et ses fonctions peuvent évoluer. Gardez votre propre copie de ce que vous ne pouvez pas perdre, comme l'export du CC."
+    },
+    "ending": {
+      "title": "Suspension et départ",
+      "leave": "Vous pouvez arrêter d'utiliser Clasync à tout moment. Pour faire supprimer votre compte, suivez la <privacy>politique de confidentialité</privacy>.",
+      "suspend": "Clasync peut suspendre un compte qui enfreint ces conditions ou met d'autres utilisateurs en danger. La personne concernée peut écrire à <email>{address}</email> pour en connaître la raison."
+    },
+    "liability": {
+      "title": "Responsabilité",
+      "body": "Dans la mesure permise par la loi, Clasync n'est pas responsable des pertes indirectes, ni des décisions prises à partir de notes, de présences ou de suggestions de l'IA qui n'ont pas été vérifiées."
+    },
+    "changes": {
+      "title": "Modifications de ces conditions",
+      "body": "Si ces conditions changent, la date en haut de la page change aussi. Les changements importants seront annoncés dans l'application avant de s'appliquer."
+    },
+    "link": "Conditions"
+  },
+  "about": {
+    "eyebrow": "À propos",
+    "title": "Conçu pour les enseignants qui interviennent à plusieurs endroits.",
+    "metaTitle": "À propos",
+    "description": "Pourquoi Clasync existe et ce qui compte pour nous.",
+    "story": {
+      "title": "Pourquoi Clasync",
+      "p1": "Beaucoup d'enseignants donnent le même cours à plusieurs classes, souvent dans plusieurs établissements. Chaque classe a ses feuilles de présence, son fichier Excel de notes et son groupe de discussion pour les devoirs.",
+      "p2": "Clasync réunit tout au même endroit. Le pointage s'affiche au projecteur, les travaux et les tests se rendent depuis un téléphone, et le CC se calcule tout seul. Le temps gagné retourne à l'enseignement."
+    },
+    "principles": {
+      "title": "Ce qui compte pour nous",
+      "lecturers": {
+        "title": "L'enseignant garde la main",
+        "body": "L'IA suggère et prépare des brouillons. Rien n'arrive aux étudiants sans l'accord de l'enseignant."
+      },
+      "privacy": {
+        "title": "Les données des étudiants restent privées",
+        "body": "Pas de publicité, pas de revente, pas de pistage. Chacun ne voit que ce qui le concerne."
+      },
+      "phone": {
+        "title": "Pensé pour le téléphone de chacun",
+        "body": "Rien à installer, en anglais et en français, et les photos sont allégées avant l'envoi pour économiser les données."
+      }
+    },
+    "contact": {
+      "title": "Nous écrire",
+      "body": "Une question, une idée, ou un établissement qui souhaite utiliser Clasync : écrivez-nous.",
+      "hello": "Général",
+      "support": "Aide pour un compte",
+      "cta": "Créer votre compte"
+    }
+  },
+  "changelog": {
+    "title": "Nouveautés",
+    "description": "Tout ce qui est arrivé dans Clasync, du plus récent au plus ancien.",
+    "eyebrow": "Journal des changements",
+    "items": {
+      "google": {
+        "title": "Connexion avec Google",
+        "body": "Créez un compte ou connectez-vous avec votre compte Google, et associez ou dissociez Google dans les Paramètres."
+      },
+      "legal": {
+        "title": "Pages confidentialité, conditions et sécurité",
+        "body": "Des pages simples, en anglais et en français, sur ce que Clasync conserve, les règles d'utilisation et la protection de vos données."
+      },
+      "matricule": {
+        "title": "Rejoindre sans matricule",
+        "body": "Les étudiants peuvent rejoindre une classe tout de suite et ajouter leur matricule plus tard."
+      },
+      "receipts": {
+        "title": "Accusés de réception par e-mail",
+        "body": "Les étudiants reçoivent un e-mail pour chaque devoir et chaque test rendus, et chaque arrivée dans une classe est confirmée aux personnes concernées."
+      },
+      "links": {
+        "title": "Liens en un geste",
+        "body": "Partagez un lien qui fait rejoindre une classe d'un geste, ou un lien de pointage pendant que l'appel est ouvert."
+      },
+      "checklist": {
+        "title": "Liste de démarrage",
+        "body": "Les nouveaux enseignants et étudiants voient les quelques étapes pour commencer sur leur tableau de bord, cochées au fur et à mesure."
+      },
+      "assistant": {
+        "title": "Connectez votre assistant IA",
+        "body": "Claude, ChatGPT ou toute application MCP peut lire vos cours et préparer des devoirs, des tests, des notes de cours et des notes. Rien n'arrive aux étudiants sans votre accord."
+      },
+      "notes": {
+        "title": "Notes de cours et révisions",
+        "body": "Partagez des notes, des fichiers et des liens avec un cours, et proposez aux étudiants des séries d'entraînement avant un test."
+      },
+      "tests": {
+        "title": "Des tests sur le téléphone des étudiants",
+        "body": "Rédigez un test, lancez-le en classe, corrigez les réponses courtes question par question avec des suggestions de l'IA, puis publiez les résultats."
+      },
+      "ca": {
+        "title": "Contrôle continu",
+        "body": "Le CC se calcule tout seul à partir des présences, des devoirs, des tests et de la participation, avec un export Excel."
+      },
+      "launch": {
+        "title": "Première version",
+        "body": "Établissements, classes partagées avec codes d'accès, cours, appel avec un code qui change au projecteur, et devoirs avec rappels, en anglais et en français."
+      }
+    }
+  },
+  "forSchools": {
+    "eyebrow": "Pour les établissements",
+    "title": "Équipez tout votre département.",
+    "metaTitle": "Pour les établissements",
+    "description": "Clasync pour les départements et les établissements : présences, devoirs, tests et CC pour chaque enseignant, au même endroit.",
+    "lead": "Quand tous les enseignants d'un département utilisent Clasync, l'appel se fait de la même façon, le CC suit les mêmes règles, et les étudiants retrouvent tous leurs cours au même endroit.",
+    "benefits": {
+      "title": "Ce qu'un établissement y gagne",
+      "attendance": {
+        "title": "Des présences fiables",
+        "body": "Un code au projecteur qui change chaque minute, et une vérification que l'étudiant est bien dans l'établissement."
+      },
+      "ca": {
+        "title": "Le même CC partout",
+        "body": "Le CC se calcule tout seul à partir des présences, des devoirs, des tests et de la participation, et s'exporte vers Excel."
+      },
+      "shared": {
+        "title": "Des classes partagées entre enseignants",
+        "body": "Les collègues qui enseignent à la même classe partagent sa liste d'étudiants, et rien d'autre."
+      },
+      "phone": {
+        "title": "Rien à installer",
+        "body": "Tout fonctionne dans le navigateur du téléphone, en anglais et en français, en économisant les données des étudiants."
+      }
+    },
+    "steps": {
+      "title": "Pour commencer",
+      "talk": {
+        "title": "Écrivez-nous",
+        "body": "Parlez-nous de votre établissement et de vos départements, et nous aiderons vos enseignants à démarrer."
+      },
+      "setup": {
+        "title": "Les enseignants créent leurs classes",
+        "body": "Chaque enseignant crée un compte, trouve l'établissement et ajoute ses classes et ses cours en quelques minutes."
+      },
+      "join": {
+        "title": "Les étudiants rejoignent avec un code",
+        "body": "Les étudiants rejoignent depuis leur téléphone avec le code de la classe ou un lien en un geste."
+      }
+    },
+    "contact": {
+      "title": "Parlons-en",
+      "body": "Des questions pour un département ou tout un établissement ? Écrivez-nous.",
+      "cta": "Nous écrire",
+      "subject": "Clasync pour notre établissement",
+      "secondary": "Lire la page sécurité"
+    }
+  },
+  "security": {
+    "title": "Sécurité",
+    "description": "Comment Clasync protège les données des enseignants et des étudiants.",
+    "updated": "Dernière mise à jour : {date}",
+    "intro": "Clasync conserve les travaux et les notes des étudiants : il est conçu pour qu'ils ne soient vus que par les bonnes personnes. Cette page explique comment. Ce que Clasync conserve, et pourquoi, figure dans la <privacy>politique de confidentialité</privacy>.",
+    "accounts": {
+      "title": "Comptes et connexion",
+      "passwords": "Les mots de passe sont stockés sous forme hachée, jamais en clair. Vous pouvez aussi vous connecter avec Google.",
+      "verify": "Une adresse e-mail doit être confirmée avant que le compte soit utilisé.",
+      "limits": "Les tentatives de connexion et d'inscription sont limitées pour freiner les essais de mots de passe.",
+      "suspend": "Un compte suspendu est refusé partout : à la connexion, sur chaque page et via les assistants IA."
+    },
+    "access": {
+      "title": "Qui voit quoi",
+      "lecturers": "Chaque enseignant ne voit que ses propres cours. Les collègues qui partagent une classe partagent sa liste d'étudiants, et rien d'autre.",
+      "students": "Les étudiants ne voient que leurs propres travaux, notes et présences.",
+      "admins": "Les pages d'administration ne montrent jamais les notes, les réponses aux tests, les travaux rendus ni les présences. Chaque action d'administration est inscrite dans un journal."
+    },
+    "data": {
+      "title": "Données et fichiers",
+      "https": "Tout circule en HTTPS.",
+      "files": "Les fichiers déposés sont conservés dans un stockage privé et ne sont montrés qu'aux personnes autorisées.",
+      "errors": "Les rapports d'erreur sont débarrassés des adresses IP.",
+      "sold": "Pas de publicité, pas de revente de données, pas de pistage sur d'autres sites."
+    },
+    "ai": {
+      "title": "IA",
+      "suggest": "L'IA ne fait que suggérer. Une note ne compte qu'une fois confirmée par l'enseignant.",
+      "names": "Pour suggérer une note, le service d'IA voit la question, le guide de correction et la réponse, jamais un nom, un matricule ou un e-mail.",
+      "assistants": "Un assistant IA connecté agit avec les accès de son enseignant, ne crée que des brouillons et voit son nombre de requêtes limité. Les enseignants voient les assistants connectés dans les Paramètres et peuvent les déconnecter à tout moment."
+    },
+    "integrity": {
+      "title": "Présences et tests équitables",
+      "codes": "Les codes de pointage changent chaque minute, et un pointage vérifie aussi que l'étudiant est dans l'établissement.",
+      "timer": "Le minuteur d'un test tourne sur le serveur : recharger la page ne le remet pas à zéro.",
+      "leave": "Quitter la page du test est enregistré et signalé à l'enseignant."
+    },
+    "report": {
+      "title": "Signaler un problème",
+      "body": "Si vous trouvez un problème de sécurité, écrivez à <email>{address}</email>. Merci de ne pas le rendre public avant qu'il soit corrigé."
+    },
+    "link": "Sécurité"
   }
 }

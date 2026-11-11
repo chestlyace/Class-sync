@@ -23,8 +23,8 @@ import { ExchangeExample, MarkingExample } from '@/components/landing/assistant-
 import { AttendanceExample, PhoneExample, ProjectorExample, SubmissionsExample } from '@/components/landing/examples'
 import { CaExample, NotesExample, StructureDiagram, TestPhoneExample } from '@/components/landing/product-examples'
 import { Reveal } from '@/components/landing/reveal'
-import { Logo } from '@/components/logo'
 import { Eyebrow } from '@/components/page-header'
+import { SiteFooter } from '@/components/site-footer'
 import { SiteNav } from '@/components/site-nav'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -488,25 +488,17 @@ export default async function Home() {
               </Link>
             </div>
           </div>
+          <p className="mt-6 text-center text-subtle">
+            {t('cta.schools')}{' '}
+            <Link href="/for-schools" className={cn('font-medium text-primary underline-offset-4 hover:underline', focusRing, 'rounded-full')}>
+              {t('cta.schoolsLink')}
+              <ArrowRight aria-hidden="true" className="ml-1 inline size-4 align-[-0.125em]" />
+            </Link>
+          </p>
         </section>
       </main>
 
-      <footer className="border-t">
-        <div className={cn(container, 'flex flex-wrap items-center justify-between gap-4 py-8 text-sm text-muted-foreground')}>
-          <span className="flex items-center gap-3.5">
-            <Logo className="h-5 text-foreground" />
-            {t('footer.copyright', { year: new Date().getFullYear() })}
-          </span>
-          <span className="flex items-center gap-5">
-            <Link href="/privacy" className={cn('text-subtle hover:text-foreground', focusRing, 'rounded-full')}>
-              {(await getTranslations('privacy'))('link')}
-            </Link>
-            <a href="https://chestlyace.online" className={cn('text-subtle hover:text-foreground', focusRing, 'rounded-full')}>
-              {t('footer.madeBy')}
-            </a>
-          </span>
-        </div>
-      </footer>
+      <SiteFooter />
     </>
   )
 }

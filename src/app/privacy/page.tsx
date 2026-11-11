@@ -1,5 +1,6 @@
 import { getLocale, getTranslations } from 'next-intl/server'
 import { PageHeader, Panel, SectionHeading } from '@/components/page-header'
+import { SiteFooter } from '@/components/site-footer'
 import { SiteNav } from '@/components/site-nav'
 import { getSessionUser } from '@/server/auth/session'
 
@@ -68,6 +69,7 @@ export default async function PrivacyPage() {
           </section>
         ))}
       </main>
+      <SiteFooter />
     </>
   )
 }

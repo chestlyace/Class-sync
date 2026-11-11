@@ -107,7 +107,11 @@ describe('sendNotifications with a key', () => {
     expect(result).toEqual({ sent: 230, skipped: 0, failed: 0 })
     expect(send).toHaveBeenCalledTimes(3)
     expect(send.mock.calls.map((c) => c[0].length)).toEqual([100, 100, 30])
-    expect(send.mock.calls[0]![0][0]).toMatchObject({ to: 'student0@example.com', subject: 'Subject 0' })
+    expect(send.mock.calls[0]![0][0]).toMatchObject({
+      to: 'student0@example.com',
+      subject: 'Subject 0',
+      replyTo: 'support@clasync.online',
+    })
   })
 
   it('retries a failing batch once and counts it as failed when the retry fails too', async () => {

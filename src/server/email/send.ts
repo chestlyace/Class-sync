@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { Resend } from 'resend'
+import { supportEmail } from '@/lib/contact'
 import { dropSuspendedRecipients, maskEmail, recordOpsEvent, scrubError } from '@/server/ops/events'
 import { isAllowedRecipient } from './allowlist'
 import { emailDb } from './db'
@@ -47,6 +48,7 @@ export async function sendEmail(args: {
   }
   const { error } = await new Resend(apiKey).emails.send({
     from: process.env.EMAIL_FROM || DEFAULT_FROM,
+    replyTo: supportEmail(),
     to: args.to,
     subject: args.subject,
     react: args.react,

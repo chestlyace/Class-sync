@@ -87,6 +87,15 @@ describe('sendEmail health events and suspension', () => {
     expect(JSON.stringify(rows[0]!.detail)).not.toContain('ada@')
   })
 
+  it('sets the reply-to to support@, or to SUPPORT_EMAIL when set', async () => {
+    send.mockResolvedValue({ data: { id: 'x' }, error: null })
+    await sendEmail(message)
+    expect(send.mock.calls[0]![0]).toMatchObject({ replyTo: 'support@clasync.online' })
+    vi.stubEnv('SUPPORT_EMAIL', 'help@example.com')
+    await sendEmail(message)
+    expect(send.mock.calls[1]![0]).toMatchObject({ replyTo: 'help@example.com' })
+  })
+
   it('records email_failed and still throws when Resend reports an error', async () => {
     send.mockResolvedValue({ data: null, error: { message: 'domain not verified' } })
     await expect(sendEmail(message)).rejects.toThrow('Failed to send email: domain not verified')
