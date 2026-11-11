@@ -170,7 +170,7 @@ export async function getSession(
 ): Promise<{
   session: SessionSummary
   course: CourseSummary
-  students: ({ studentId: string; name: string; matricule: string } & StudentSessionState)[]
+  students: ({ studentId: string; name: string; matricule: string | null } & StudentSessionState)[]
 }> {
   const { session, course: owned } = await requireOwnedSession(ctx, sessionId)
   const at = now()

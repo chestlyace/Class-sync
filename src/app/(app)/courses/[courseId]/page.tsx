@@ -146,7 +146,7 @@ function StudentRow({ student, children }: { student: RosterEntry; children: Rea
         <span className="truncate font-medium">{student.name}</span>
         <span className="truncate text-sm text-muted-foreground">{student.email}</span>
       </div>
-      <span className="font-mono text-sm tracking-[0.04em]">{student.matricule}</span>
+      <span className="font-mono text-sm tracking-[0.04em]">{student.matricule ?? '—'}</span>
       <div className="flex items-center gap-2">{children}</div>
     </li>
   )

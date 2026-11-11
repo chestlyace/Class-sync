@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, isNotNull, ne, or, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm'
 import { createElement } from 'react'
 import { z } from 'zod'
 import { AppError } from '@/server/core/errors'
@@ -17,6 +17,7 @@ import {
   isWellFormedJoinCode,
   normalizeJoinCode,
   normalizeMatricule,
+  normalizeOptionalMatricule,
 } from './join-code'
 
 export type ClassSummary = {
@@ -30,11 +31,11 @@ export type ClassSummary = {
   studentCode?: string
   /** Present only when the caller is a lecturer of the class. */
   lecturerCode?: string
-  /** Present only when the caller is a student of the class: the matricule they joined with. */
-  myMatricule?: string
+  /** Present only when the caller is a student of the class: their matricule, null until they add one. */
+  myMatricule?: string | null
 }
 
-export type RosterEntry = { studentId: string; name: string; email: string; matricule: string }
+export type RosterEntry = { studentId: string; name: string; email: string; matricule: string | null }
 
 const MAX_CODE_ATTEMPTS = 5
 const STUDENT_CODE_CONSTRAINT = 'class_student_code_unique'
@@ -203,7 +204,7 @@ export async function previewJoinCode(ctx: Ctx, raw: string): Promise<JoinCodePr
     .where(and(eq(classStudent.userId, ctx.user.id), eq(classStudent.status, 'active')))
     .orderBy(desc(classStudent.joinedAt))
   if (mine.some((m) => m.classId === row.cls.id)) return { status: 'member', ...details, suggestedMatricule: null }
-  const sameSchool = mine.find((m) => m.schoolId === row.cls.schoolId)
+  const sameSchool = mine.find((m) => m.schoolId === row.cls.schoolId && m.matricule !== null)
   return { status: 'ready', ...details, suggestedMatricule: sameSchool?.matricule ?? null }
 }
 
@@ -252,6 +253,7 @@ async function lecturerJoinedEmails(ctx: Ctx, classId: string): Promise<Notifica
       to: me.email,
       locale: me.locale,
       subject: emailSubject('lecturerJoinedClass', me.locale, { className, schoolName }),
+      kind: 'lecturerJoinedClass',
       react: createElement(LecturerJoinedClassEmail, { locale: me.locale, lecturerName: me.name, className, schoolName, url }),
     },
   ]
@@ -261,6 +263,7 @@ async function lecturerJoinedEmails(ctx: Ctx, classId: string): Promise<Notifica
       to: c.email,
       locale,
       subject: emailSubject('colleagueJoinedClass', locale, { colleagueName: me.name, className }),
+      kind: 'colleagueJoinedClass',
       react: createElement(ColleagueJoinedClassEmail, {
         locale,
         recipientName: c.name,
@@ -282,6 +285,7 @@ async function studentJoinedEmails(ctx: Ctx, classId: string): Promise<Notificat
       to: me.email,
       locale: me.locale,
       subject: emailSubject('classJoined', me.locale, { className, schoolName }),
+      kind: 'classJoined',
       react: createElement(ClassJoinedEmail, {
         locale: me.locale,
         studentName: me.name,
@@ -293,6 +297,11 @@ async function studentJoinedEmails(ctx: Ctx, classId: string): Promise<Notificat
   ]
 }
 
+/**
+ * Joins the class as a student. The matricule is optional (some schools assign them weeks into
+ * the year): blank joins without one, to be added later with addMyMatricule. A blank resubmit by
+ * an active student keeps the matricule they have.
+ */
 export async function joinClassAsStudent(
   ctx: Ctx,
   code: string,
@@ -300,12 +309,13 @@ export async function joinClassAsStudent(
 ): Promise<{ classId: string }> {
   requireRole(ctx, 'student')
   const classId = await findClassByCode(ctx.db, 'student', code)
-  const normalized = normalizeMatricule(matricule)
+  const normalized = normalizeOptionalMatricule(matricule)
   // Only a join that makes the student active (new, or back after removal) is confirmed by email.
   const [before] = await ctx.db
     .select({ status: classStudent.status })
     .from(classStudent)
     .where(and(eq(classStudent.classId, classId), eq(classStudent.userId, ctx.user.id)))
+  const keepMatricule = normalized === null && before?.status === 'active'
   try {
     // An existing row (active or removed) is reactivated with the matricule given now.
     await ctx.db
@@ -313,7 +323,7 @@ export async function joinClassAsStudent(
       .values({ classId, userId: ctx.user.id, matricule: normalized, status: 'active' })
       .onConflictDoUpdate({
         target: [classStudent.classId, classStudent.userId],
-        set: { status: 'active', matricule: normalized },
+        set: keepMatricule ? { status: 'active' } : { status: 'active', matricule: normalized },
       })
   } catch (err) {
     if (isUniqueViolation(err, MATRICULE_CONSTRAINT)) {
@@ -325,6 +335,44 @@ export async function joinClassAsStudent(
     await queueNotifications('joinClassAsStudent', () => studentJoinedEmails(ctx, classId))
   }
   return { classId }
+}
+
+/**
+ * Adds the matricule a student joined without. Only a missing one can be added this way: a wrong
+ * matricule is still fixed by a lecturer removing the student, who then joins again.
+ */
+export async function addMyMatricule(ctx: Ctx, classId: string, matricule: string): Promise<void> {
+  requireRole(ctx, 'student')
+  const normalized = normalizeMatricule(matricule)
+  const [row] = await ctx.db
+    .select({ matricule: classStudent.matricule })
+    .from(classStudent)
+    .where(
+      and(eq(classStudent.classId, classId), eq(classStudent.userId, ctx.user.id), eq(classStudent.status, 'active')),
+    )
+  if (!row) throw new AppError('NOT_FOUND', 'Class not found')
+  if (row.matricule !== null) throw new AppError('FORBIDDEN', 'Your matricule is already set')
+  try {
+    const updated = await ctx.db
+      .update(classStudent)
+      .set({ matricule: normalized })
+      .where(
+        and(
+          eq(classStudent.classId, classId),
+          eq(classStudent.userId, ctx.user.id),
+          eq(classStudent.status, 'active'),
+          isNull(classStudent.matricule),
+        ),
+      )
+      .returning({ classId: classStudent.classId })
+    // Lost a race with another tab that set it first.
+    if (updated.length === 0) throw new AppError('FORBIDDEN', 'Your matricule is already set')
+  } catch (err) {
+    if (isUniqueViolation(err, MATRICULE_CONSTRAINT)) {
+      throw new AppError('CONFLICT', 'This matricule is already used in this class')
+    }
+    throw err
+  }
 }
 
 export async function regenerateJoinCode(
@@ -369,7 +417,7 @@ export async function listMyClasses(ctx: Ctx): Promise<ClassSummary[]> {
   requireRole(ctx, ctx.user.role)
 
   const selection = { cls: class_, schoolName: school.name }
-  const rows: { cls: typeof class_.$inferSelect; schoolName: string; matricule?: string }[] = isLecturer
+  const rows: { cls: typeof class_.$inferSelect; schoolName: string; matricule?: string | null }[] = isLecturer
     ? await ctx.db
         .select(selection)
         .from(classLecturer)

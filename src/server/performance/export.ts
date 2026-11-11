@@ -49,8 +49,12 @@ export async function buildCaWorkbook(input: {
 
   const components = COMPONENTS.filter((c) => c.points(settings) > 0)
   const collator = new Intl.Collator(locale, { numeric: true })
+  // Students still without a matricule go last, by name.
   const sorted = [...rows].sort(
-    (a, b) => collator.compare(a.matricule, b.matricule) || collator.compare(a.name, b.name),
+    (a, b) =>
+      Number(a.matricule === null) - Number(b.matricule === null) ||
+      collator.compare(a.matricule ?? '', b.matricule ?? '') ||
+      collator.compare(a.name, b.name),
   )
 
   const workbook = new ExcelJS.Workbook()

@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { config, setConfigForTests } from './config'
-import { isVerificationPending, requireRole, requireVerified } from './guards'
+import { isVerificationPending, requireAdmin, requireRole, requireVerified } from './guards'
 import type { Ctx, SessionUser } from './context'
 import type { Db } from '../db'
+import { AppError } from './errors'
 
 const baseUser: SessionUser = {
   id: 'u1',
@@ -61,5 +62,34 @@ describe('guards', () => {
     expect(() => requireRole(ctx({ emailVerified: false }), 'lecturer')).toThrow(
       expect.objectContaining({ code: 'EMAIL_UNVERIFIED' }),
     )
+  })
+
+  describe('requireAdmin', () => {
+    const adminEnv = { ADMIN_EMAILS: 'u1@example.com' }
+
+    function thrownBy(fn: () => void): unknown {
+      try {
+        fn()
+      } catch (error) {
+        return error
+      }
+      return undefined
+    }
+
+    it('throws NOT_FOUND for a user who is not an admin', () => {
+      const error = thrownBy(() => requireAdmin(ctx({ email: 'other@example.com' }), adminEnv))
+      expect(error).toBeInstanceOf(AppError)
+      expect((error as AppError).code).toBe('NOT_FOUND')
+    })
+
+    it('throws NOT_FOUND for an admin email that is not verified', () => {
+      const error = thrownBy(() => requireAdmin(ctx({ emailVerified: false }), adminEnv))
+      expect(error).toBeInstanceOf(AppError)
+      expect((error as AppError).code).toBe('NOT_FOUND')
+    })
+
+    it('does not throw for a verified admin', () => {
+      expect(() => requireAdmin(ctx(), adminEnv)).not.toThrow()
+    })
   })
 })

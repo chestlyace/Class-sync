@@ -92,6 +92,20 @@
       "when": 1794188529802,
       "tag": "0012_mcp_rate_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794310630796,
+      "tag": "0013_admin",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794366925333,
+      "tag": "0014_optional_matricule",
+      "breakpoints": true
     }
   ]
 }

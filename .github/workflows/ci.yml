@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [Development, main]
+    # `edited` re-runs the checks when a pull request is retargeted (e.g. from Development to main).
+    types: [opened, synchronize, reopened, edited]
+  push:
+    branches: [Development]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+
+  # Production only takes what was tested on staging. Runs on every pull request, so a skipped
+  # result can never stand in for a pass; it fails only when the target is main.
+  source-branch:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ "$BASE_REF" = "main" ] && { [ "$HEAD_REF" != "Development" ] || [ "$HEAD_REPO" != "$REPO" ]; }; then
+            echo "::error::Pull requests into main must come from this repository's Development branch (this one is from $HEAD_REPO:$HEAD_REF)"
+            exit 1
+          fi

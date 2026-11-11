@@ -7,6 +7,7 @@ const AUTH_ERROR_KEYS: Record<string, string> = {
   PASSWORD_TOO_LONG: 'auth.errors.passwordTooLong',
   INVALID_EMAIL: 'auth.errors.invalidEmail',
   EMAIL_NOT_VERIFIED: 'auth.errors.emailNotVerified',
+  ACCOUNT_SUSPENDED: 'auth.errors.accountSuspended',
   VALIDATION: 'errors.VALIDATION',
   VALIDATION_ERROR: 'errors.VALIDATION',
 }

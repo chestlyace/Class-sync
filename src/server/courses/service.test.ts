@@ -237,6 +237,19 @@ describe('courses service', () => {
     expect((await getCourseRoster(lecturer, algo.id))[0]).toMatchObject({ matricule: 'NEW1', source: 'included' })
   })
 
+  it('a student without a matricule is null, or shows the one from another class at the school', async () => {
+    const { lecturer, sch, cls, algo } = await setup()
+    const waiting = await studentCtx({ name: 'Alice' })
+    await enroll(waiting, cls.studentCode!, '')
+    expect((await getCourseRoster(lecturer, algo.id))[0]).toMatchObject({ matricule: null, source: 'class' })
+    // Joined a newer class at the school without one too: the older class's matricule still shows.
+    const older = await createClass(lecturer, { schoolId: sch.id, name: 'CS L2', academicYear: '2025/26' })
+    const newer = await createClass(lecturer, { schoolId: sch.id, name: 'CS L4', academicYear: '2027/28' })
+    await enroll(waiting, older.studentCode!, 'UB19S4')
+    await enroll(waiting, newer.studentCode!, '')
+    expect((await getCourseRoster(lecturer, algo.id))[0]).toMatchObject({ matricule: 'UB19S4', source: 'class' })
+  })
+
   it('including a student from a different school is VALIDATION', async () => {
     const { lecturer, algo } = await setup()
     const otherSchool = await createSchool(lecturer, { name: 'Other University', town: 'Douala' })

@@ -20,7 +20,7 @@ export type LiveStatus = 'not_joined' | 'waiting' | 'working' | 'away' | 'ended'
 export type LiveRow = {
   studentId: string
   name: string
-  matricule: string
+  matricule: string | null
   attemptId: string | null
   status: LiveStatus
   answered: number
@@ -51,7 +51,7 @@ export type LogEntry = {
 export type ResultRow = {
   studentId: string
   name: string
-  matricule: string
+  matricule: string | null
   status: LiveStatus
   score: number
   outOf: number

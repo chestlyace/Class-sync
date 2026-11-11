@@ -13,6 +13,7 @@ import {
   submission,
   user,
 } from '@/server/db/schema'
+import { setEmailDbForTests } from '@/server/email/db'
 import { setResendClientFactoryForTests, setRetryWaitForTests, type NotifyClient } from '@/server/email/notify'
 import { setAfterResponseForTests } from '@/server/lib/after-response'
 import { createTestDb } from '@/test/db'
@@ -44,6 +45,7 @@ describe('sendDueReminders', () => {
         },
       },
     }
+    setEmailDbForTests(db)
     setResendClientFactoryForTests(() => client)
     setRetryWaitForTests(async () => {})
     // Class-join confirmations of the setup are scheduled after the response: drop them, so only
@@ -52,6 +54,7 @@ describe('sendDueReminders', () => {
   })
   afterEach(async () => {
     vi.unstubAllEnvs()
+    setEmailDbForTests(null)
     setResendClientFactoryForTests(null)
     setRetryWaitForTests(null)
     setAfterResponseForTests(null)

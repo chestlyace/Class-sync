@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Db } from '@/server/db'
 import { class_, classLecturer, classStudent, school } from '@/server/db/schema'
+import { setEmailDbForTests } from '@/server/email/db'
 import { setResendClientFactoryForTests, setRetryWaitForTests, type NotifyClient } from '@/server/email/notify'
 import { setAfterResponseForTests } from '@/server/lib/after-response'
 import { createSchool } from '@/server/schools/service'
@@ -33,6 +34,7 @@ describe('class join confirmation emails', () => {
         },
       },
     }
+    setEmailDbForTests(db)
     setResendClientFactoryForTests(() => client)
     setRetryWaitForTests(async () => {})
     vi.stubEnv('RESEND_API_KEY', 're_test')
@@ -40,6 +42,7 @@ describe('class join confirmation emails', () => {
   })
   afterEach(async () => {
     setAfterResponseForTests(null)
+    setEmailDbForTests(null)
     setResendClientFactoryForTests(null)
     setRetryWaitForTests(null)
     vi.unstubAllEnvs()

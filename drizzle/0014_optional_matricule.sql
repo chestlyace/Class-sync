@@ -1,0 +1,1 @@
+ALTER TABLE "class_student" ALTER COLUMN "matricule" DROP NOT NULL;

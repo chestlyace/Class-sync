@@ -3,9 +3,9 @@
 import { LocateFixed } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useActionState, useState, useTransition } from 'react'
 import { setLocale } from '@/app/actions/locale'
-import { ActionError } from '@/components/action-error'
+import { ActionError, isInvalidField } from '@/components/action-error'
 import { PasswordInput } from '@/components/password-input'
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
@@ -13,8 +13,9 @@ import { Input } from '@/components/ui/input'
 import type { ActionResult } from '@/lib/action-result'
 import { authClient } from '@/lib/auth-client'
 import { authErrorKey } from '@/lib/auth-errors'
+import { submitWith } from '@/lib/form-submit'
 import type { Locale } from '@/i18n/locale'
-import { setSchoolLocationAction } from './actions'
+import { addMatriculeAction, setSchoolLocationAction } from './actions'
 
 /** Edit the display name in place. */
 export function NameForm({ initialName }: { initialName: string }) {
@@ -110,6 +111,54 @@ export function LanguageSwitch({ locale }: { locale: Locale }) {
         ))}
       </div>
     </FieldSet>
+  )
+}
+
+/** For a class the student joined without a matricule: add it once the school assigns one. */
+export function AddMatriculeForm({ classId }: { classId: string }) {
+  const t = useTranslations('settings.classes')
+  const tCommon = useTranslations('common')
+  const [editing, setEditing] = useState(false)
+  const [state, dispatch, pending] = useActionState(addMatriculeAction, null)
+  const invalid = isInvalidField(state, 'matricule') || undefined
+  const inputId = `matricule-${classId}`
+
+  if (!editing) {
+    return (
+      <Button type="button" variant="outline" size="sm" onClick={() => setEditing(true)} className="mt-2 self-start">
+        {t('addMatricule')}
+      </Button>
+    )
+  }
+  return (
+    <form onSubmit={submitWith(dispatch)} noValidate className="mt-3 flex w-full flex-col gap-3">
+      <input type="hidden" name="classId" value={classId} />
+      <Field data-invalid={invalid}>
+        <FieldLabel htmlFor={inputId}>{t('matriculeLabel')}</FieldLabel>
+        <Input
+          id={inputId}
+          name="matricule"
+          autoComplete="off"
+          autoCapitalize="characters"
+          spellCheck={false}
+          maxLength={30}
+          autoFocus
+          aria-describedby={`${inputId}-hint`}
+          aria-invalid={invalid}
+          className="max-w-72 font-mono uppercase"
+        />
+        <FieldDescription id={`${inputId}-hint`}>{t('addMatriculeHint')}</FieldDescription>
+        <ActionError state={state} overrides={{ CONFLICT: t('matriculeTaken') }} />
+      </Field>
+      <div className="flex gap-2">
+        <Button type="submit" disabled={pending}>
+          {pending ? t('savingMatricule') : t('saveMatricule')}
+        </Button>
+        <Button type="button" variant="ghost" onClick={() => setEditing(false)}>
+          {tCommon('cancel')}
+        </Button>
+      </div>
+    </form>
   )
 }
 

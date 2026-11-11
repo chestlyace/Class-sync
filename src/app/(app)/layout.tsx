@@ -1,5 +1,5 @@
 import { headers } from 'next/headers'
-import { redirect } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { SiteNav } from '@/components/site-nav'
 import { VerifyBanner } from '@/components/verify-banner'
 import { REQUEST_PATH_HEADER, safeNextPath } from '@/lib/next-path'
@@ -10,8 +10,11 @@ import { isVerificationPending } from '@/server/core/guards'
 export default async function AppLayout({ children }: LayoutProps<'/'>) {
   const user = await getSessionUser()
   if (!user) {
+    const requested = (await headers()).get(REQUEST_PATH_HEADER)
+    // The admin area doesn't reveal itself, signed in or not.
+    if (requested && /^\/admin(?:[/?#]|$)/.test(requested)) notFound()
     // Back to the page asked for after signing in (e.g. a join or check-in link someone shared).
-    const next = safeNextPath((await headers()).get(REQUEST_PATH_HEADER))
+    const next = safeNextPath(requested)
     redirect(next && next !== '/dashboard' ? `/sign-in?next=${encodeURIComponent(next)}` : '/sign-in')
   }
   return (

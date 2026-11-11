@@ -50,14 +50,16 @@ export const classStudent = pgTable(
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
-    matricule: text('matricule').notNull(),
+    // Null until the school assigns one: some classes get their matricules weeks into the year.
+    matricule: text('matricule'),
     status: text('status', { enum: CLASS_STUDENT_STATUSES }).notNull().default('active'),
     joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     primaryKey({ columns: [t.classId, t.userId] }),
     // A matricule is held only while its row is active: once a student is removed, someone else
-    // in the class may use it (and a rejoin is checked against the active rows only).
+    // in the class may use it (and a rejoin is checked against the active rows only). Nulls never
+    // collide, so any number of students may be waiting for theirs.
     uniqueIndex('class_student_active_matricule_unique')
       .on(t.classId, t.matricule)
       .where(sql`${t.status} = 'active'`),

@@ -101,7 +101,7 @@ export function IncludeSearch({ courseId }: { courseId: string }) {
                 className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-5"
               >
                 <span className="min-w-0 flex-1 truncate font-medium">{student.name}</span>
-                <span className="font-mono text-sm tracking-[0.04em]">{student.matricule}</span>
+                <span className="font-mono text-sm tracking-[0.04em]">{student.matricule ?? '—'}</span>
                 <RosterButton
                   courseId={courseId}
                   studentId={student.studentId}

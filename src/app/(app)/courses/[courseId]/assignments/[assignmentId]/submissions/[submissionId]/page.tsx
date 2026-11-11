@@ -62,7 +62,7 @@ export default async function SubmissionPage({
         eyebrow={`${t('eyebrow')} · ${assignment.title}`}
         title={student.name}
         description={
-          <span className="font-mono text-sm tracking-[0.04em]">{student.matricule}</span>
+          student.matricule && <span className="font-mono text-sm tracking-[0.04em]">{student.matricule}</span>
         }
         actions={
           <Link href={href} className={buttonVariants({ variant: 'outline' })}>

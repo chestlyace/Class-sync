@@ -32,6 +32,9 @@ export type NotificationKind = 'assignmentPublished' | 'assignmentReminder' | 'g
 export type TestNotificationKind = 'testResultsReleased' | 'testHandedIn'
 export type ClassNotificationKind = 'classJoined' | 'lecturerJoinedClass'
 
+/** Every kind of email Clasync sends; health events and `emailSubject` name them the same way. */
+export type EmailKind = 'verify' | NotificationKind | TestNotificationKind | ClassNotificationKind | 'colleagueJoinedClass'
+
 export function emailSubject(kind: 'verify', locale: Locale): string
 export function emailSubject(
   kind: NotificationKind,
@@ -54,7 +57,7 @@ export function emailSubject(
   vars: { colleagueName: string; className: string },
 ): string
 export function emailSubject(
-  kind: 'verify' | NotificationKind | TestNotificationKind | ClassNotificationKind | 'colleagueJoinedClass',
+  kind: EmailKind,
   locale: Locale,
   vars?: Record<string, string>,
 ): string {

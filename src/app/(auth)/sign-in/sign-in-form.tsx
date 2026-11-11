@@ -11,8 +11,11 @@ import { authClient } from '@/lib/auth-client'
 import { authErrorKey } from '@/lib/auth-errors'
 import { needsFullNavigation } from '@/lib/oauth-resume'
 
-/** `next`: a same-site path (already checked with safeNextPath) to open after signing in. */
-export function SignInForm({ next = null }: { next?: string | null }) {
+/**
+ * `next`: a same-site path (already checked with safeNextPath) to open after signing in.
+ * `supportEmail`: the address a suspended account is told to contact (none: no contact line).
+ */
+export function SignInForm({ next = null, supportEmail }: { next?: string | null; supportEmail?: string }) {
   const t = useTranslations('auth.signIn')
   const tRoot = useTranslations()
   const router = useRouter()
@@ -38,7 +41,12 @@ export function SignInForm({ next = null }: { next?: string | null }) {
           window.location.assign(next)
           return
         }
-        setError(tRoot(authErrorKey(authError.code, authError.status)))
+        const message = tRoot(authErrorKey(authError.code, authError.status))
+        setError(
+          authError.code === 'ACCOUNT_SUSPENDED' && supportEmail
+            ? `${message} ${tRoot('auth.errors.accountSuspendedContact', { email: supportEmail })}`
+            : message,
+        )
         return
       }
       // An assistant's authorization in progress: the server answers with where it continues

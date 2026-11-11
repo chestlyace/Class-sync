@@ -3,6 +3,7 @@ import type { ReactElement } from 'react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Db } from '@/server/db'
 import { testAnswer } from '@/server/db/schema'
+import { setEmailDbForTests } from '@/server/email/db'
 import { setResendClientFactoryForTests, type NotifyClient } from '@/server/email/notify'
 import { setAfterResponseForTests } from '@/server/lib/after-response'
 import { createTestDb } from '@/test/db'
@@ -46,12 +47,14 @@ describe('releasing test results', () => {
         },
       },
     }
+    setEmailDbForTests(db)
     setResendClientFactoryForTests(() => client)
     vi.stubEnv('RESEND_API_KEY', 're_test')
     vi.stubEnv('BETTER_AUTH_URL', 'https://clasync.test/')
   })
   afterEach(async () => {
     setAfterResponseForTests(null)
+    setEmailDbForTests(null)
     setResendClientFactoryForTests(null)
     setMarkSuggesterForTests(undefined)
     vi.unstubAllEnvs()

@@ -15,10 +15,15 @@ export const user = pgTable(
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
     role: text('role').notNull(),
     locale: text('locale').notNull().default('en'),
+    lastSignInAt: timestamp('last_sign_in_at', { withTimezone: true }),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
+    suspendedAt: timestamp('suspended_at', { withTimezone: true }),
+    suspendedReason: text('suspended_reason'),
   },
   (t) => [
     check('user_role_check', sql`${t.role} in ('lecturer', 'student')`),
     check('user_locale_check', sql`${t.locale} in ('en', 'fr')`),
+    index('user_suspended_at_idx').on(t.suspendedAt).where(sql`${t.suspendedAt} is not null`),
   ],
 )
 

@@ -96,6 +96,7 @@ export async function releaseResults(ctx: Ctx, testId: string): Promise<{ releas
         to: student.email,
         locale,
         subject: emailSubject('testResultsReleased', locale, { courseTitle: owned.title, testTitle: test.title }),
+        kind: 'testResultsReleased',
         react: createElement(TestResultsReleasedEmail, {
           locale,
           studentName: student.name,

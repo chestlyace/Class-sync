@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { createTestDb } from '@/test/db'
 import { makeUser } from '@/test/factories'
 import {
+  adminAction,
   assignment,
   assignmentAttachment,
   assignmentReminder,
@@ -18,6 +19,7 @@ import {
   courseRosterAdjustment,
   courseTest,
   file,
+  opsEvent,
   participationEvent,
   resource,
   revisionGroup,
@@ -879,5 +881,54 @@ describe('schema', () => {
       expect(await db.select().from(table)).toHaveLength(0)
     }
     expect(await db.select().from(resource)).toHaveLength(1)
+  })
+})
+
+describe('admin schema', () => {
+  it('stores an audit row and refuses an unknown action', async () => {
+    const db = await createTestDb()
+    const admin = await makeUser(db)
+    const target = await makeUser(db)
+    const id = crypto.randomUUID()
+    await db.insert(adminAction).values({ id, adminId: admin.id, action: 'suspend', targetUserId: target.id, reason: 'spam' })
+    const [row] = await db.select().from(adminAction)
+    expect(row).toMatchObject({ id, adminId: admin.id, action: 'suspend', targetUserId: target.id, reason: 'spam' })
+    expect(row.at).toBeInstanceOf(Date)
+    await expect(
+      db.insert(adminAction).values({
+        id: crypto.randomUUID(),
+        adminId: admin.id,
+        action: 'delete' as 'suspend',
+        targetUserId: target.id,
+      }),
+    ).rejects.toThrow()
+  })
+
+  it('stores an ops event and refuses an unknown kind', async () => {
+    const db = await createTestDb()
+    const id = crypto.randomUUID()
+    const detail = { kind: 'verify', to: 'a***@example.com' }
+    await db.insert(opsEvent).values({ id, kind: 'email_sent', ok: true, detail })
+    const [row] = await db.select().from(opsEvent)
+    expect(row.detail).toEqual(detail)
+    expect(row.ok).toBe(true)
+    await expect(
+      db.insert(opsEvent).values({ id: crypto.randomUUID(), kind: 'other' as 'email_sent', ok: true }),
+    ).rejects.toThrow()
+  })
+
+  it('user has the activity and suspension columns, null by default', async () => {
+    const db = await createTestDb()
+    const u = await makeUser(db)
+    const [row] = await db
+      .select({
+        lastSignInAt: user.lastSignInAt,
+        lastSeenAt: user.lastSeenAt,
+        suspendedAt: user.suspendedAt,
+        suspendedReason: user.suspendedReason,
+      })
+      .from(user)
+      .where(sql`${user.id} = ${u.id}`)
+    expect(row).toEqual({ lastSignInAt: null, lastSeenAt: null, suspendedAt: null, suspendedReason: null })
   })
 })

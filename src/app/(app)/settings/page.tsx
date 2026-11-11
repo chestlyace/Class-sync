@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { ChevronRight, Plus, ShieldCheck } from 'lucide-react'
 import { getLocale, getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
@@ -7,6 +7,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { DEFAULT_LOCALE, isLocale, type Locale } from '@/i18n/locale'
 import { mcpResourceUrl, resolveAppOrigin } from '@/server/auth/auth'
 import { getSessionUser } from '@/server/auth/session'
+import { isAdmin } from '@/server/core/admin'
 import { listMyClasses, type ClassSummary } from '@/server/classes/service'
 import { config } from '@/server/core/config'
 import {
@@ -20,7 +21,7 @@ import {
 import { getSchool, type School } from '@/server/schools/service'
 import { loadPage } from '../load-page'
 import { AiAssistantsSection, type AppRow, type TokenRow } from './ai-assistants'
-import { ChangePasswordForm, LanguageSwitch, NameForm, SchoolLocationButton } from './settings-forms'
+import { AddMatriculeForm, ChangePasswordForm, LanguageSwitch, NameForm, SchoolLocationButton } from './settings-forms'
 
 export async function generateMetadata() {
   const t = await getTranslations('settings')
@@ -83,6 +84,8 @@ export default async function SettingsPage() {
   const user = await getSessionUser()
   if (!user) return null
   const t = await getTranslations('settings')
+  // Server-side only: the admin strings aren't sent to the browser outside the admin area.
+  const tAdmin = await getTranslations('admin')
   const rawLocale = await getLocale()
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
   const isLecturer = user.role === 'lecturer'
@@ -127,6 +130,20 @@ export default async function SettingsPage() {
         </div>
         <NameForm initialName={user.name} />
       </Panel>
+
+      {isAdmin(user) && (
+        <Link
+          href="/admin"
+          className="group flex items-center gap-4 rounded-3xl border bg-card px-5 py-4 outline-none transition-colors hover:border-foreground/30 focus-visible:ring-3 focus-visible:ring-ring/50 sm:px-7"
+        >
+          <ShieldCheck aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="font-semibold">{tAdmin('settingsLink.title')}</span>
+            <span className="text-sm text-muted-foreground">{tAdmin('settingsLink.description')}</span>
+          </span>
+          <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+        </Link>
+      )}
 
       <section aria-labelledby="preferences" className="flex flex-col gap-4">
         <SectionHeading id="preferences">{t('preferences.title')}</SectionHeading>
@@ -211,10 +228,15 @@ export default async function SettingsPage() {
                     <span className="text-sm text-muted-foreground">
                       {cls.schoolName} · {cls.academicYear}
                     </span>
-                    {cls.myMatricule && (
+                    {cls.myMatricule ? (
                       <span className="font-mono text-xs tracking-[0.04em] text-[#48484a] uppercase">
                         {t('classes.matricule', { matricule: cls.myMatricule })}
                       </span>
+                    ) : (
+                      <>
+                        <span className="text-sm text-muted-foreground">{t('classes.noMatricule')}</span>
+                        <AddMatriculeForm classId={cls.id} />
+                      </>
                     )}
                   </Panel>
                 </li>
