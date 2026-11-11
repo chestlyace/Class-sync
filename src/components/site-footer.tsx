@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 const link = 'rounded-full text-subtle outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50'
 
 /**
- * The footer of the public pages (landing, about, privacy, terms): the logo and a line on what
+ * The footer of the public pages (landing and the pages it links to): the logo and a line on what
  * Clasync is, then Product, Company and Legal columns. Product links point at the landing sections.
  */
 export async function SiteFooter() {
@@ -20,12 +20,14 @@ export async function SiteFooter() {
         { href: '/#assistant', label: t('assistant') },
         { href: '/#how', label: t('how') },
         { href: '/#faq', label: t('faq') },
+        { href: '/changelog', label: t('changelog') },
       ],
     },
     {
       key: 'company',
       links: [
         { href: '/about', label: t('about') },
+        { href: '/for-schools', label: t('schools') },
         { href: `mailto:${HELLO_EMAIL}`, label: t('contact') },
         { href: `mailto:${supportEmail()}`, label: t('support') },
       ],
@@ -35,6 +37,7 @@ export async function SiteFooter() {
       links: [
         { href: '/privacy', label: t('privacy') },
         { href: '/terms', label: t('terms') },
+        { href: '/security', label: t('security') },
       ],
     },
   ] as const

@@ -488,6 +488,13 @@ export default async function Home() {
               </Link>
             </div>
           </div>
+          <p className="mt-6 text-center text-subtle">
+            {t('cta.schools')}{' '}
+            <Link href="/for-schools" className={cn('font-medium text-primary underline-offset-4 hover:underline', focusRing, 'rounded-full')}>
+              {t('cta.schoolsLink')}
+              <ArrowRight aria-hidden="true" className="ml-1 inline size-4 align-[-0.125em]" />
+            </Link>
+          </p>
         </section>
       </main>
 

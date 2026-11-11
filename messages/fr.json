@@ -701,7 +701,9 @@
     "cta": {
       "title": "Commencez avec votre prochain cours.",
       "primary": "Créer votre compte",
-      "secondary": "Se connecter"
+      "secondary": "Se connecter",
+      "schools": "Vous dirigez un département ou un établissement ?",
+      "schoolsLink": "Clasync pour les établissements"
     }
   },
   "verifyBanner": {
@@ -2559,7 +2561,10 @@
     "privacy": "Confidentialité",
     "terms": "Conditions",
     "copyright": "© {year} Clasync. Tous droits réservés.",
-    "languages": "English & français"
+    "languages": "English & français",
+    "changelog": "Nouveautés",
+    "schools": "Pour les établissements",
+    "security": "Sécurité"
   },
   "terms": {
     "title": "Conditions d'utilisation",
@@ -2642,5 +2647,147 @@
       "support": "Aide pour un compte",
       "cta": "Créer votre compte"
     }
+  },
+  "changelog": {
+    "title": "Nouveautés",
+    "description": "Tout ce qui est arrivé dans Clasync, du plus récent au plus ancien.",
+    "eyebrow": "Journal des changements",
+    "items": {
+      "google": {
+        "title": "Connexion avec Google",
+        "body": "Créez un compte ou connectez-vous avec votre compte Google, et associez ou dissociez Google dans les Paramètres."
+      },
+      "legal": {
+        "title": "Pages confidentialité, conditions et sécurité",
+        "body": "Des pages simples, en anglais et en français, sur ce que Clasync conserve, les règles d'utilisation et la protection de vos données."
+      },
+      "matricule": {
+        "title": "Rejoindre sans matricule",
+        "body": "Les étudiants peuvent rejoindre une classe tout de suite et ajouter leur matricule plus tard."
+      },
+      "receipts": {
+        "title": "Accusés de réception par e-mail",
+        "body": "Les étudiants reçoivent un e-mail pour chaque devoir et chaque test rendus, et chaque arrivée dans une classe est confirmée aux personnes concernées."
+      },
+      "links": {
+        "title": "Liens en un geste",
+        "body": "Partagez un lien qui fait rejoindre une classe d'un geste, ou un lien de pointage pendant que l'appel est ouvert."
+      },
+      "checklist": {
+        "title": "Liste de démarrage",
+        "body": "Les nouveaux enseignants et étudiants voient les quelques étapes pour commencer sur leur tableau de bord, cochées au fur et à mesure."
+      },
+      "assistant": {
+        "title": "Connectez votre assistant IA",
+        "body": "Claude, ChatGPT ou toute application MCP peut lire vos cours et préparer des devoirs, des tests, des notes de cours et des notes. Rien n'arrive aux étudiants sans votre accord."
+      },
+      "notes": {
+        "title": "Notes de cours et révisions",
+        "body": "Partagez des notes, des fichiers et des liens avec un cours, et proposez aux étudiants des séries d'entraînement avant un test."
+      },
+      "tests": {
+        "title": "Des tests sur le téléphone des étudiants",
+        "body": "Rédigez un test, lancez-le en classe, corrigez les réponses courtes question par question avec des suggestions de l'IA, puis publiez les résultats."
+      },
+      "ca": {
+        "title": "Contrôle continu",
+        "body": "Le CC se calcule tout seul à partir des présences, des devoirs, des tests et de la participation, avec un export Excel."
+      },
+      "launch": {
+        "title": "Première version",
+        "body": "Établissements, classes partagées avec codes d'accès, cours, appel avec un code qui change au projecteur, et devoirs avec rappels, en anglais et en français."
+      }
+    }
+  },
+  "forSchools": {
+    "eyebrow": "Pour les établissements",
+    "title": "Équipez tout votre département.",
+    "metaTitle": "Pour les établissements",
+    "description": "Clasync pour les départements et les établissements : présences, devoirs, tests et CC pour chaque enseignant, au même endroit.",
+    "lead": "Quand tous les enseignants d'un département utilisent Clasync, l'appel se fait de la même façon, le CC suit les mêmes règles, et les étudiants retrouvent tous leurs cours au même endroit.",
+    "benefits": {
+      "title": "Ce qu'un établissement y gagne",
+      "attendance": {
+        "title": "Des présences fiables",
+        "body": "Un code au projecteur qui change chaque minute, et une vérification que l'étudiant est bien dans l'établissement."
+      },
+      "ca": {
+        "title": "Le même CC partout",
+        "body": "Le CC se calcule tout seul à partir des présences, des devoirs, des tests et de la participation, et s'exporte vers Excel."
+      },
+      "shared": {
+        "title": "Des classes partagées entre enseignants",
+        "body": "Les collègues qui enseignent à la même classe partagent sa liste d'étudiants, et rien d'autre."
+      },
+      "phone": {
+        "title": "Rien à installer",
+        "body": "Tout fonctionne dans le navigateur du téléphone, en anglais et en français, en économisant les données des étudiants."
+      }
+    },
+    "steps": {
+      "title": "Pour commencer",
+      "talk": {
+        "title": "Écrivez-nous",
+        "body": "Parlez-nous de votre établissement et de vos départements, et nous aiderons vos enseignants à démarrer."
+      },
+      "setup": {
+        "title": "Les enseignants créent leurs classes",
+        "body": "Chaque enseignant crée un compte, trouve l'établissement et ajoute ses classes et ses cours en quelques minutes."
+      },
+      "join": {
+        "title": "Les étudiants rejoignent avec un code",
+        "body": "Les étudiants rejoignent depuis leur téléphone avec le code de la classe ou un lien en un geste."
+      }
+    },
+    "contact": {
+      "title": "Parlons-en",
+      "body": "Des questions pour un département ou tout un établissement ? Écrivez-nous.",
+      "cta": "Nous écrire",
+      "subject": "Clasync pour notre établissement",
+      "secondary": "Lire la page sécurité"
+    }
+  },
+  "security": {
+    "title": "Sécurité",
+    "description": "Comment Clasync protège les données des enseignants et des étudiants.",
+    "updated": "Dernière mise à jour : {date}",
+    "intro": "Clasync conserve les travaux et les notes des étudiants : il est conçu pour qu'ils ne soient vus que par les bonnes personnes. Cette page explique comment. Ce que Clasync conserve, et pourquoi, figure dans la <privacy>politique de confidentialité</privacy>.",
+    "accounts": {
+      "title": "Comptes et connexion",
+      "passwords": "Les mots de passe sont stockés sous forme hachée, jamais en clair. Vous pouvez aussi vous connecter avec Google.",
+      "verify": "Une adresse e-mail doit être confirmée avant que le compte soit utilisé.",
+      "limits": "Les tentatives de connexion et d'inscription sont limitées pour freiner les essais de mots de passe.",
+      "suspend": "Un compte suspendu est refusé partout : à la connexion, sur chaque page et via les assistants IA."
+    },
+    "access": {
+      "title": "Qui voit quoi",
+      "lecturers": "Chaque enseignant ne voit que ses propres cours. Les collègues qui partagent une classe partagent sa liste d'étudiants, et rien d'autre.",
+      "students": "Les étudiants ne voient que leurs propres travaux, notes et présences.",
+      "admins": "Les pages d'administration ne montrent jamais les notes, les réponses aux tests, les travaux rendus ni les présences. Chaque action d'administration est inscrite dans un journal."
+    },
+    "data": {
+      "title": "Données et fichiers",
+      "https": "Tout circule en HTTPS.",
+      "files": "Les fichiers déposés sont conservés dans un stockage privé et ne sont montrés qu'aux personnes autorisées.",
+      "errors": "Les rapports d'erreur sont débarrassés des adresses IP.",
+      "sold": "Pas de publicité, pas de revente de données, pas de pistage sur d'autres sites."
+    },
+    "ai": {
+      "title": "IA",
+      "suggest": "L'IA ne fait que suggérer. Une note ne compte qu'une fois confirmée par l'enseignant.",
+      "names": "Pour suggérer une note, le service d'IA voit la question, le guide de correction et la réponse, jamais un nom, un matricule ou un e-mail.",
+      "assistants": "Un assistant IA connecté agit avec les accès de son enseignant, ne crée que des brouillons et voit son nombre de requêtes limité. Les enseignants voient les assistants connectés dans les Paramètres et peuvent les déconnecter à tout moment."
+    },
+    "integrity": {
+      "title": "Présences et tests équitables",
+      "codes": "Les codes de pointage changent chaque minute, et un pointage vérifie aussi que l'étudiant est dans l'établissement.",
+      "timer": "Le minuteur d'un test tourne sur le serveur : recharger la page ne le remet pas à zéro.",
+      "leave": "Quitter la page du test est enregistré et signalé à l'enseignant."
+    },
+    "report": {
+      "title": "Signaler un problème",
+      "body": "Si vous trouvez un problème de sécurité, écrivez à <email>{address}</email>. Merci de ne pas le rendre public avant qu'il soit corrigé."
+    },
+    "link": "Sécurité"
   }
 }
