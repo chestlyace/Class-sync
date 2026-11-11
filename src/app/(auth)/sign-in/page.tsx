@@ -1,7 +1,9 @@
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
+import { googleErrorKey } from '@/lib/auth-errors'
 import { safeNextPath } from '@/lib/next-path'
 import { oauthResumePath } from '@/lib/oauth-resume'
+import { isGoogleSignInEnabled } from '@/server/auth/google'
 import { redirectIfSignedIn } from '../redirect-if-signed-in'
 import { SignInForm } from './sign-in-form'
 
@@ -25,7 +27,13 @@ export default async function SignInPage({ searchParams }: PageProps<'/sign-in'>
         <h1 className="font-display text-5xl leading-[0.95] tracking-[0.01em]">{t('title')}</h1>
         <p className="text-sm text-muted-foreground">{t('description')}</p>
       </div>
-      <SignInForm next={next} supportEmail={process.env.SUPPORT_EMAIL || undefined} />
+      <SignInForm
+        next={next}
+        supportEmail={process.env.SUPPORT_EMAIL || undefined}
+        google={isGoogleSignInEnabled()}
+        // A Google sign-in that failed comes back here with `error` (and `next`, kept).
+        googleError={googleErrorKey(search.error)}
+      />
       <p className="text-center text-sm text-[#48484a]">
         {t('noAccount')}{' '}
         <Link href={next ? `/sign-up?next=${encodeURIComponent(next)}` : '/sign-up'} className="font-medium text-primary underline-offset-4 hover:underline">

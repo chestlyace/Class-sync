@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import en from '../../messages/en.json'
 import fr from '../../messages/fr.json'
-import { authErrorKey } from './auth-errors'
+import { authErrorKey, googleErrorKey } from './auth-errors'
 
 function lookup(key: string, messages: unknown = en): unknown {
   return key.split('.').reduce<unknown>((o, k) => (o as Record<string, unknown> | undefined)?.[k], messages)
@@ -35,5 +35,23 @@ describe('authErrorKey', () => {
   it('falls back to the generic error', () => {
     expect(authErrorKey('SOMETHING_NEW')).toBe('common.genericError')
     expect(authErrorKey(undefined)).toBe('common.genericError')
+  })
+})
+
+describe('googleErrorKey', () => {
+  it('maps the codes a Google round trip comes back with to existing messages in both languages', () => {
+    for (const code of ['signup_disabled', 'account_not_linked', 'account_already_linked_to_different_user', 'ACCOUNT_SUSPENDED', 'access_denied', 'invalid_code']) {
+      const key = googleErrorKey(code)!
+      expect(typeof lookup(key), code).toBe('string')
+      expect(typeof lookup(key, fr), code).toBe('string')
+    }
+    expect(googleErrorKey('signup_disabled')).toBe('auth.google.noAccount')
+    expect(googleErrorKey('invalid_code')).toBe('auth.google.failed')
+  })
+
+  it('is null without an error', () => {
+    expect(googleErrorKey(undefined)).toBeNull()
+    expect(googleErrorKey('')).toBeNull()
+    expect(googleErrorKey(['a', 'b'])).toBeNull()
   })
 })

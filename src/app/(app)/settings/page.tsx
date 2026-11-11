@@ -5,8 +5,11 @@ import { ErrorState } from '@/components/error-state'
 import { PageHeader, Panel, SectionHeading } from '@/components/page-header'
 import { buttonVariants } from '@/components/ui/button'
 import { DEFAULT_LOCALE, isLocale, type Locale } from '@/i18n/locale'
+import { googleErrorKey } from '@/lib/auth-errors'
 import { mcpResourceUrl, resolveAppOrigin } from '@/server/auth/auth'
+import { isGoogleSignInEnabled } from '@/server/auth/google'
 import { getSessionUser } from '@/server/auth/session'
+import { listSignInMethods } from '@/server/auth/sign-in-methods'
 import { isAdmin } from '@/server/core/admin'
 import { listMyClasses, type ClassSummary } from '@/server/classes/service'
 import { config } from '@/server/core/config'
@@ -21,7 +24,14 @@ import {
 import { getSchool, type School } from '@/server/schools/service'
 import { loadPage } from '../load-page'
 import { AiAssistantsSection, type AppRow, type TokenRow } from './ai-assistants'
-import { AddMatriculeForm, ChangePasswordForm, LanguageSwitch, NameForm, SchoolLocationButton } from './settings-forms'
+import {
+  AddMatriculeForm,
+  ChangePasswordForm,
+  GoogleSignInMethod,
+  LanguageSwitch,
+  NameForm,
+  SchoolLocationButton,
+} from './settings-forms'
 
 export async function generateMetadata() {
   const t = await getTranslations('settings')
@@ -80,7 +90,9 @@ function toAppRows(apps: ConnectedApp[], day: (d: Date) => string): AppRow[] {
   }))
 }
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: PageProps<'/settings'>) {
+  // Connecting Google that failed comes back here with `error`.
+  const googleError = googleErrorKey((await searchParams).error)
   const user = await getSessionUser()
   if (!user) return null
   const t = await getTranslations('settings')
@@ -91,8 +103,8 @@ export default async function SettingsPage() {
   const isLecturer = user.role === 'lecturer'
 
   const data = await loadPage(async (ctx) => {
-    const classes = await listMyClasses(ctx)
-    if (!isLecturer) return { classes, schools: [] as SchoolGroup[], tokens: [], apps: [] }
+    const [classes, signIn] = await Promise.all([listMyClasses(ctx), listSignInMethods(ctx)])
+    if (!isLecturer) return { classes, signIn, schools: [] as SchoolGroup[], tokens: [], apps: [] }
     const schoolIds = [...new Set(classes.map((c) => c.schoolId))]
     const [schools, tokens, apps] = await Promise.all([
       Promise.all(schoolIds.map((id) => getSchool(ctx, id))),
@@ -101,13 +113,14 @@ export default async function SettingsPage() {
     ])
     return {
       classes,
+      signIn,
       schools: schools.map((school) => ({ school, classes: classes.filter((c) => c.schoolId === school.id) })),
       tokens,
       apps,
     }
   })
   if (!data.ok) return <ErrorState code={data.code} />
-  const { classes, schools, tokens, apps } = data.data
+  const { classes, signIn, schools, tokens, apps } = data.data
   const day = dayFormatter(locale)
 
   return (
@@ -257,12 +270,27 @@ export default async function SettingsPage() {
         />
       )}
 
-      <section aria-labelledby="password" className="flex flex-col gap-4">
-        <SectionHeading id="password">{t('password.title')}</SectionHeading>
-        <Panel>
-          <ChangePasswordForm />
-        </Panel>
-      </section>
+      {(isGoogleSignInEnabled() || signIn.googleAccountId) && (
+        <section aria-labelledby="sign-in-methods" className="flex scroll-mt-24 flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <SectionHeading id="sign-in-methods">{t('signInMethods.title')}</SectionHeading>
+            <p className="text-sm text-muted-foreground">{t('signInMethods.description')}</p>
+          </div>
+          <Panel>
+            <GoogleSignInMethod googleAccountId={signIn.googleAccountId} hasPassword={signIn.password} error={googleError} />
+          </Panel>
+        </section>
+      )}
+
+      {/* An account made with Google has no password to change. */}
+      {signIn.password && (
+        <section aria-labelledby="password" className="flex flex-col gap-4">
+          <SectionHeading id="password">{t('password.title')}</SectionHeading>
+          <Panel>
+            <ChangePasswordForm />
+          </Panel>
+        </section>
+      )}
     </>
   )
 }
