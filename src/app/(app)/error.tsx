@@ -1,5 +1,6 @@
 'use client'
 
+import * as Sentry from '@sentry/nextjs'
 import { RotateCcw, TriangleAlert } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
@@ -13,6 +14,7 @@ export default function AppError({ error, retry }: { error: unknown; retry: () =
 
   useEffect(() => {
     console.error(error)
+    Sentry.captureException(error)
   }, [error])
 
   return (
