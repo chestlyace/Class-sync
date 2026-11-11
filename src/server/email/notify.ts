@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { Resend } from 'resend'
+import { supportEmail } from '@/lib/contact'
 import type { Locale } from '@/server/core/context'
 import { runAfterResponse } from '@/server/lib/after-response'
 import { dropSuspendedRecipients, recordOpsEvent, scrubError } from '@/server/ops/events'
@@ -9,7 +10,7 @@ import type { EmailKind } from './templates/verify-email'
 
 export type Notification = { to: string; locale: Locale; subject: string; react: ReactElement; kind: EmailKind }
 
-type BatchPayload = Array<{ from: string; to: string; subject: string; react: ReactElement }>
+type BatchPayload = Array<{ from: string; replyTo: string; to: string; subject: string; react: ReactElement }>
 
 /** The slice of the Resend client this module uses, so tests can substitute it. */
 export type NotifyClient = {
@@ -106,9 +107,10 @@ export async function sendNotifications(
   }
 
   const from = process.env.EMAIL_FROM || DEFAULT_FROM
+  const replyTo = supportEmail()
   for (let i = 0; i < items.length; i += BATCH_SIZE) {
     const chunk = items.slice(i, i + BATCH_SIZE)
-    const payload: BatchPayload = chunk.map((n) => ({ from, to: n.to, subject: n.subject, react: n.react }))
+    const payload: BatchPayload = chunk.map((n) => ({ from, replyTo, to: n.to, subject: n.subject, react: n.react }))
     let outcome = await sendChunk(client, payload)
     if (!outcome.ok) {
       await wait(RETRY_DELAY_MS)

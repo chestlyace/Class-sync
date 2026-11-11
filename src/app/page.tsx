@@ -27,6 +27,7 @@ import { Logo } from '@/components/logo'
 import { Eyebrow } from '@/components/page-header'
 import { SiteNav } from '@/components/site-nav'
 import { buttonVariants } from '@/components/ui/button'
+import { HELLO_EMAIL } from '@/lib/contact'
 import { cn } from '@/lib/utils'
 import { getSessionUser } from '@/server/auth/session'
 
@@ -497,10 +498,13 @@ export default async function Home() {
             <Logo className="h-5 text-foreground" />
             {t('footer.copyright', { year: new Date().getFullYear() })}
           </span>
-          <span className="flex items-center gap-5">
+          <span className="flex flex-wrap items-center gap-x-5 gap-y-2">
             <Link href="/privacy" className={cn('text-subtle hover:text-foreground', focusRing, 'rounded-full')}>
               {(await getTranslations('privacy'))('link')}
             </Link>
+            <a href={`mailto:${HELLO_EMAIL}`} className={cn('text-subtle hover:text-foreground', focusRing, 'rounded-full')}>
+              {HELLO_EMAIL}
+            </a>
             <a href="https://chestlyace.online" className={cn('text-subtle hover:text-foreground', focusRing, 'rounded-full')}>
               {t('footer.madeBy')}
             </a>

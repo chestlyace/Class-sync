@@ -135,7 +135,7 @@ A signed-in user is an admin when their email is listed in `ADMIN_EMAILS` (comma
 The area shows counts and account facts only. It never shows students' marks, CA, test answers, submission content or files, AI-suggested marks, or per-student attendance. There is no impersonation.
 Admins can suspend or unsuspend an account, sign a user out everywhere, and resend a verification email. Every such action is written to the audit log.
 
-`SUPPORT_EMAIL` is optional. When it is set, a suspended user who tries to sign in is told to contact that address.
+`SUPPORT_EMAIL` is optional and defaults to support@clasync.online. Every email the app sends uses it as the reply-to, and a suspended user who tries to sign in is told to contact it.
 
 Set `ADMIN_EMAILS` and `SUPPORT_EMAIL` separately for each Vercel environment (Production and Preview), so the admins on staging are staging accounts.
 
