@@ -2789,5 +2789,18 @@
       "body": "If you find a security problem, write to <email>{address}</email>. Please don't share it publicly until it is fixed."
     },
     "link": "Security"
+  },
+  "push": {
+    "checkInOpened": "Check-in is open. Closes at {time}.",
+    "checkOutOpened": "Check-out is open. Closes at {time}.",
+    "testStarted": "{test} has started.",
+    "notesAdded": "New: {item}",
+    "topicReleased": "{topic} is now available.",
+    "assignmentPublished": "New assignment: {assignment}, due {date}.",
+    "assignmentReminder": "{assignment} is due {date}.",
+    "gradesReleased": "Your grade for {assignment} is out.",
+    "testResultsReleased": "Your results for {test} are out.",
+    "colleagueJoinedClass": "{colleague} joined {class}.",
+    "test": "Notifications are working on this device."
   }
 }

@@ -2789,5 +2789,18 @@
       "body": "Si vous trouvez un problème de sécurité, écrivez à <email>{address}</email>. Merci de ne pas le rendre public avant qu'il soit corrigé."
     },
     "link": "Sécurité"
+  },
+  "push": {
+    "checkInOpened": "L'appel est ouvert. Il se ferme à {time}.",
+    "checkOutOpened": "La sortie est ouverte. Elle se ferme à {time}.",
+    "testStarted": "{test} a commencé.",
+    "notesAdded": "Nouveau : {item}",
+    "topicReleased": "{topic} est maintenant disponible.",
+    "assignmentPublished": "Nouveau devoir : {assignment}, à rendre le {date}.",
+    "assignmentReminder": "{assignment} est à rendre le {date}.",
+    "gradesReleased": "Votre note pour {assignment} est disponible.",
+    "testResultsReleased": "Vos résultats pour {test} sont disponibles.",
+    "colleagueJoinedClass": "{colleague} a rejoint {class}.",
+    "test": "Les notifications fonctionnent sur cet appareil."
   }
 }
