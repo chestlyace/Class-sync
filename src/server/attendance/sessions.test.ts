@@ -21,6 +21,7 @@ import { ctxFor, makeUser } from '@/test/factories'
 import { createSchool, setSchoolLocation } from '@/server/schools/service'
 import { createClass, joinClassAsLecturer, joinClassAsStudent } from '@/server/classes/service'
 import { createCourse, setRosterAdjustment } from '@/server/courses/service'
+import { sendPush } from '@/server/push/send'
 import { codeForSlot } from './code'
 import { loadStatusMatrix } from './matrix'
 import {
@@ -33,10 +34,15 @@ import {
   setAttendanceOverride,
 } from './sessions'
 
-vi.mock('@/server/push/send', () => ({
-  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
-  queuePush: vi.fn(async () => {}),
-}))
+vi.mock('@/server/push/send', () => {
+  const sendPush = vi.fn(async (items: unknown[]) => ({ sent: 0, skipped: items.length, failed: 0, removed: 0 }))
+  return {
+    sendPush,
+    queuePush: vi.fn(async (_context: string, build: () => Promise<unknown[]>) => {
+      await sendPush(await build())
+    }),
+  }
+})
 
 const MIN = 60_000
 
@@ -107,6 +113,19 @@ describe('attendance sessions', () => {
     const [row] = await db.select({ secret: attendanceWindow.secret }).from(attendanceWindow).where(eq(attendanceWindow.id, windowId))
     return row.secret
   }
+
+  it('opening the same window kind twice pushes once', async () => {
+    const { lecturer, algo } = await setup()
+    const push = vi.mocked(sendPush)
+    push.mockClear()
+    const session = await createSession(lecturer, algo.id, { requireOnCampus: false })
+    await openWindow(lecturer, session.id, 'start')
+    await expect(openWindow(lecturer, session.id, 'start')).rejects.toMatchObject({ code: 'CONFLICT' })
+    expect(push).toHaveBeenCalledTimes(1)
+    const items = push.mock.calls[0][0] as { userId: string; payload: { url: string; kind: string } }[]
+    expect(items).toHaveLength(2)
+    expect(items.every((i) => i.payload.url === '/check-in' && i.payload.kind === 'checkInOpened')).toBe(true)
+  })
 
   it('owner creates a session; a colleague sharing the class gets FORBIDDEN on every function', async () => {
     const { lecturer, colleague, algo, alice } = await setup()

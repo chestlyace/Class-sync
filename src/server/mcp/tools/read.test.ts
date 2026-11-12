@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { createAssignment } from '@/server/assignments/lecturer'
 import { submitAssignment } from '@/server/assignments/student'
 import { createSession, setAttendanceOverride } from '@/server/attendance/sessions'
@@ -16,6 +16,11 @@ import { at, insertStartedTest, joinTest, putAnswer, setClock } from '@/test/mar
 import type { McpTool } from '../tool'
 import { mcpTools } from './index'
 import { richTextToPlain } from './read-shared'
+
+vi.mock('@/server/push/send', () => ({
+  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
+  queuePush: vi.fn(async () => {}),
+}))
 
 const DAY = 24 * 60 * 60_000
 

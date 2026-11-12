@@ -1,6 +1,8 @@
-import { asc, count, eq, inArray, max } from 'drizzle-orm'
+import { and, asc, count, eq, inArray, max } from 'drizzle-orm'
 import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
+import { now } from '@/server/core/clock'
+import { pushTopicReleased } from '@/server/push/course-events'
 import { requireCourseOwner } from '@/server/courses/service'
 import type { Db } from '@/server/db'
 import { courseTopic, resourcePlacement, revisionGroup, revisionQuestion } from '@/server/db/schema'
@@ -74,8 +76,18 @@ export async function renameTopic(ctx: Ctx, topicId: string, input: { title: str
 }
 
 export async function setTopicHidden(ctx: Ctx, topicId: string, hidden: boolean): Promise<void> {
-  await requireOwnedTopic(ctx, topicId)
-  await ctx.db.update(courseTopic).set({ hidden, updatedAt: new Date() }).where(eq(courseTopic.id, topicId))
+  const { courseId } = await requireOwnedTopic(ctx, topicId)
+  if (hidden) {
+    await ctx.db.update(courseTopic).set({ hidden, updatedAt: new Date() }).where(eq(courseTopic.id, topicId))
+    return
+  }
+  // Only a real hidden -> visible change is announced.
+  const released = await ctx.db
+    .update(courseTopic)
+    .set({ hidden, updatedAt: new Date() })
+    .where(and(eq(courseTopic.id, topicId), eq(courseTopic.hidden, true)))
+    .returning({ title: courseTopic.title })
+  if (released[0]) await pushTopicReleased(ctx.db, courseId, released[0].title, now())
 }
 
 /** One place up or down among the course's topics; at either end it does nothing. */

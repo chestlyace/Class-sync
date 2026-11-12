@@ -37,12 +37,18 @@ import {
   letBackIn,
   startTest,
 } from './run'
+import { sendPush } from '@/server/push/send'
 import { loadTestScores } from './scores'
 
-vi.mock('@/server/push/send', () => ({
-  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
-  queuePush: vi.fn(async () => {}),
-}))
+vi.mock('@/server/push/send', () => {
+  const sendPush = vi.fn(async (items: unknown[]) => ({ sent: 0, skipped: items.length, failed: 0, removed: 0 }))
+  return {
+    sendPush,
+    queuePush: vi.fn(async (_context: string, build: () => Promise<unknown[]>) => {
+      await sendPush(await build())
+    }),
+  }
+})
 
 const MIN = 60_000
 /** Statements per call; a change here should be deliberate. */
@@ -245,6 +251,19 @@ describe('running a test (lecturer)', () => {
     expect(row.startedAt).toEqual(T0)
     expect(row.deadlineAt).toEqual(at(30))
     expect(row.endedAt).toBeNull()
+  })
+
+  it('starting a started test pushes nothing', async () => {
+    const { lecturer, algo } = await setup()
+    const { test } = await insertTest(lecturer, algo.id)
+    const push = vi.mocked(sendPush)
+    push.mockClear()
+    setClock(T0)
+    await startTest(lecturer, test.id)
+    expect(push).toHaveBeenCalledTimes(1)
+    expect((push.mock.calls[0][0] as { payload: { url: string } }[])[0].payload.url).toBe(`/t/${test.code}`)
+    await startTest(lecturer, test.id)
+    expect(push).toHaveBeenCalledTimes(1)
   })
 
   it('starting twice keeps the first deadline', async () => {

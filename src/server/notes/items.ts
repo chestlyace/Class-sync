@@ -5,11 +5,13 @@ import { AppError } from '@/server/core/errors'
 import { requireRole } from '@/server/core/guards'
 import { requireCourseOwner } from '@/server/courses/service'
 import type { Db } from '@/server/db'
-import { resource, resourcePlacement, type ResourceKind } from '@/server/db/schema'
+import { courseTopic, resource, resourcePlacement, type ResourceKind } from '@/server/db/schema'
 import { isUniqueViolation } from '@/server/lib/db-errors'
 import { claimResourceFile, deleteStoredFile } from '@/server/files/service'
 import { richTextPlainText } from '@/lib/rich-text-content'
 import { parseLinkUrl, parseTitle, swapPositions } from './rules'
+import { now } from '@/server/core/clock'
+import { pushNotesAdded } from '@/server/push/course-events'
 import { assertTopicHidden, assertTopicInCourse } from './topics'
 
 type Executor = Pick<Db, 'select' | 'insert' | 'update' | 'delete'>
@@ -53,6 +55,11 @@ async function nextPosition(db: Executor, topicId: string): Promise<number> {
   return (last?.position ?? 0) + 1
 }
 
+async function topicIsHidden(db: Executor, topicId: string): Promise<boolean> {
+  const [row] = await db.select({ hidden: courseTopic.hidden }).from(courseTopic).where(eq(courseTopic.id, topicId))
+  return row?.hidden === true
+}
+
 /** `hiddenTopicOnly`: CONFLICT visible_topic unless the topic is hidden (an assistant's draft). */
 type NewItem = { courseId: string; topicId: string; hiddenTopicOnly?: boolean }
 
@@ -69,7 +76,7 @@ async function insertItem(
   }>,
 ): Promise<{ id: string }> {
   await requireCourseOwner(ctx, input.courseId)
-  return ctx.db.transaction(async (tx) => {
+  const placed = await ctx.db.transaction(async (tx) => {
     await assertTopicInCourse(tx, input.topicId, input.courseId)
     if (input.hiddenTopicOnly) await assertTopicHidden(tx, input.topicId)
     const v = await values(tx)
@@ -98,8 +105,11 @@ async function insertItem(
       topicId: input.topicId,
       position: await nextPosition(tx, input.topicId),
     })
-    return { id: row.id }
+    return { id: row.id, title: v.title, visible: !(await topicIsHidden(tx, input.topicId)) }
   })
+  // After the transaction, so a rolled-back item is never announced; a hidden topic is not announced.
+  if (placed.visible) await pushNotesAdded(ctx.db, input.courseId, placed.title, now())
+  return { id: placed.id }
 }
 
 export async function createNote(
@@ -201,10 +211,16 @@ export async function moveItem(
 ): Promise<void> {
   await requireCourseOwner(ctx, input.courseId)
   await requireOwnedResource(ctx.db, ctx, input.resourceId)
+  let announce: string | null = null
   await ctx.db.transaction(async (tx) => {
+    announce = null
     const placement = await requirePlacement(tx, input.resourceId, input.courseId)
     if (input.topicId !== undefined && input.topicId !== placement.topicId) {
       await assertTopicInCourse(tx, input.topicId, input.courseId)
+      if ((await topicIsHidden(tx, placement.topicId)) && !(await topicIsHidden(tx, input.topicId))) {
+        const [item] = await tx.select({ title: resource.title }).from(resource).where(eq(resource.id, input.resourceId))
+        announce = item?.title ?? null
+      }
       await tx
         .update(resourcePlacement)
         .set({ topicId: input.topicId, position: await nextPosition(tx, input.topicId) })
@@ -228,6 +244,7 @@ export async function moveItem(
         .where(and(eq(resourcePlacement.resourceId, item.id), eq(resourcePlacement.topicId, placement.topicId)))
     }
   })
+  if (announce !== null) await pushNotesAdded(ctx.db, input.courseId, announce, now())
 }
 
 /** Places the same item in another of the lecturer's courses (last place of the chosen topic). */
@@ -237,7 +254,7 @@ export async function shareItem(
 ): Promise<void> {
   await requireCourseOwner(ctx, input.targetCourseId)
   await requireOwnedResource(ctx.db, ctx, input.resourceId)
-  await ctx.db.transaction(async (tx) => {
+  const announce = await ctx.db.transaction(async (tx) => {
     await assertTopicInCourse(tx, input.targetTopicId, input.targetCourseId)
     const inserted = await tx
       .insert(resourcePlacement)
@@ -252,7 +269,11 @@ export async function shareItem(
     if (inserted.length === 0) {
       throw new AppError('CONFLICT', 'This item is already in that course', { reason: 'already_there' })
     }
+    if (await topicIsHidden(tx, input.targetTopicId)) return null
+    const [item] = await tx.select({ title: resource.title }).from(resource).where(eq(resource.id, input.resourceId))
+    return item?.title ?? null
   })
+  if (announce !== null) await pushNotesAdded(ctx.db, input.targetCourseId, announce, now())
 }
 
 /**

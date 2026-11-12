@@ -17,6 +17,7 @@ import { courseRosterQuery } from '@/server/courses/roster'
 import { isOnCourseRoster, requireCourseOwner, type CourseSummary } from '@/server/courses/service'
 import { getSchool } from '@/server/schools/service'
 import { isUniqueViolation } from '@/server/lib/db-errors'
+import { pushWindowOpened } from '@/server/push/course-events'
 import { currentCode, newWindowSecret } from './code'
 import { checkInLinkPath, signCheckInLink } from './link'
 import { loadStatusMatrixForRoster, type StudentSessionState } from './matrix'
@@ -245,6 +246,7 @@ export async function openWindow(ctx: Ctx, sessionId: string, kind: WindowKind):
     }
     throw err
   }
+  await pushWindowOpened(ctx.db, session.courseId, kind, new Date(at.getTime() + WINDOW_MAX_MS))
   return liveWindow(ctx.db, created, session.courseId, at)
 }
 
