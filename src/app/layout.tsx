@@ -2,7 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { Bebas_Neue, Inter, JetBrains_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
+import Script from "next/script";
 import { ServiceWorker } from "@/components/service-worker";
+import { CAPTURE_INSTALL_PROMPT_SCRIPT } from "@/lib/push-client";
 import "./globals.css";
 
 const inter = Inter({
@@ -55,6 +57,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col bg-background text-foreground">
         <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
         <ServiceWorker />
+        {/* Keeps Chrome's install prompt even when it fires before React hydrates. */}
+        <Script id="capture-install-prompt" strategy="beforeInteractive">
+          {CAPTURE_INSTALL_PROMPT_SCRIPT}
+        </Script>
       </body>
     </html>
   );

@@ -21,9 +21,11 @@ import {
   type AccessTokenSummary,
   type ConnectedApp,
 } from '@/server/mcp/connections'
+import { listMyDevices } from '@/server/push/subscriptions'
 import { getSchool, type School } from '@/server/schools/service'
 import { loadPage } from '../load-page'
 import { AiAssistantsSection, type AppRow, type TokenRow } from './ai-assistants'
+import { NotificationsSettings } from './notifications'
 import {
   AddMatriculeForm,
   ChangePasswordForm,
@@ -103,8 +105,8 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
   const isLecturer = user.role === 'lecturer'
 
   const data = await loadPage(async (ctx) => {
-    const [classes, signIn] = await Promise.all([listMyClasses(ctx), listSignInMethods(ctx)])
-    if (!isLecturer) return { classes, signIn, schools: [] as SchoolGroup[], tokens: [], apps: [] }
+    const [classes, signIn, devices] = await Promise.all([listMyClasses(ctx), listSignInMethods(ctx), listMyDevices(ctx)])
+    if (!isLecturer) return { classes, signIn, devices, schools: [] as SchoolGroup[], tokens: [], apps: [] }
     const schoolIds = [...new Set(classes.map((c) => c.schoolId))]
     const [schools, tokens, apps] = await Promise.all([
       Promise.all(schoolIds.map((id) => getSchool(ctx, id))),
@@ -114,13 +116,14 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
     return {
       classes,
       signIn,
+      devices,
       schools: schools.map((school) => ({ school, classes: classes.filter((c) => c.schoolId === school.id) })),
       tokens,
       apps,
     }
   })
   if (!data.ok) return <ErrorState code={data.code} />
-  const { classes, signIn, schools, tokens, apps } = data.data
+  const { classes, signIn, devices, schools, tokens, apps } = data.data
   const day = dayFormatter(locale)
 
   return (
@@ -164,6 +167,17 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
           <LanguageSwitch locale={locale} />
         </Panel>
       </section>
+
+      <section aria-labelledby="notifications" className="flex scroll-mt-24 flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <SectionHeading id="notifications">{t('notifications.title')}</SectionHeading>
+          <p className="text-sm text-muted-foreground">{t('notifications.description')}</p>
+        </div>
+        <Panel>
+          <NotificationsSettings devices={devices.map((d) => ({ id: d.id, label: d.label, added: day(d.createdAt) }))} />
+        </Panel>
+      </section>
+
 
       {isLecturer ? (
         <section aria-labelledby="where-you-teach" className="flex flex-col gap-4">

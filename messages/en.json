@@ -800,6 +800,24 @@
           "action": "Enter the code"
         }
       }
+    },
+    "notificationsCard": {
+      "enableTitle": "Turn on notifications",
+      "enableBody": "Get notified when your lecturer opens check-in, posts work or releases results.",
+      "turnOn": "Turn on",
+      "turningOn": "Turning on…",
+      "notNow": "Not now",
+      "denied": "Your browser blocked notifications. You can allow them later from Settings.",
+      "failed": "Notifications couldn't be turned on. You can try again from Settings.",
+      "iosTitle": "Add Clasync to your Home Screen",
+      "iosBodyStudent": "On iPhone and iPad, Clasync can notify you once it is on your Home Screen.",
+      "iosBodyLecturer": "Open Clasync like an app, straight from your Home Screen.",
+      "iosStep1": "In Safari, tap Share",
+      "iosStep2": "Choose Add to Home Screen",
+      "installTitleComputer": "Install Clasync on this computer",
+      "installTitlePhone": "Install Clasync on this phone",
+      "installBody": "It opens in its own window, one tap from your home screen, dock or taskbar.",
+      "install": "Install"
     }
   },
   "settings": {
@@ -818,6 +836,42 @@
       "title": "Preferences",
       "language": "Language",
       "languageHint": "For the app and every email Clasync sends you."
+    },
+    "notifications": {
+      "title": "Notifications and app",
+      "description": "Notifications reach this device even when Clasync is closed.",
+      "thisDevice": "This device",
+      "checking": "Checking this device…",
+      "on": "Notifications are on for this device.",
+      "off": "Notifications are off for this device.",
+      "turnOn": "Turn on",
+      "turnOff": "Turn off",
+      "turningOn": "Turning on…",
+      "turningOff": "Turning off…",
+      "blocked": "Your browser blocked notifications for Clasync. To allow them, open the site settings (the icon next to the address), set Notifications to Allow, then reload this page.",
+      "failed": "Notifications couldn't be turned on. Try again.",
+      "unsupported": "This browser can't show notifications. Try Chrome, Edge, Firefox or Safari.",
+      "needsInstall": "On iPhone and iPad, notifications work once Clasync is on your Home Screen. Add it with the steps below, open it from there, then turn notifications on.",
+      "test": "Send a test notification",
+      "testSending": "Sending…",
+      "testSent": "Sent. It should arrive in a few seconds.",
+      "testNone": "Nothing was sent: no device has notifications on.",
+      "testLimited": "You've sent several test notifications already. Try again in {minutes} min.",
+      "devicesTitle": "Devices with notifications on",
+      "devicesEmpty": "No device yet.",
+      "deviceLabel": "{browser} on {os}",
+      "unknownBrowser": "Browser",
+      "added": "Added {date}",
+      "remove": "Remove",
+      "removeLabel": "Remove {device}",
+      "install": {
+        "title": "Install the app",
+        "button": "Install app",
+        "installed": "Installed. Clasync is running as an app on this device.",
+        "hint": "To install Clasync, use your browser's Install option in the address bar or the menu.",
+        "iosStep1": "In Safari, tap Share",
+        "iosStep2": "Choose Add to Home Screen"
+      }
     },
     "schools": {
       "title": "Where you teach",

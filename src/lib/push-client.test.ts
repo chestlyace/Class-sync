@@ -1,5 +1,13 @@
-import { describe, expect, it } from 'vitest'
-import { pickClientToNavigate, pushSupport, urlBase64ToUint8Array } from './push-client'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  CAPTURE_INSTALL_PROMPT_SCRIPT,
+  onInstallPromptChange,
+  pickClientToNavigate,
+  pushSupport,
+  rememberInstallPrompt,
+  storedInstallPrompt,
+  urlBase64ToUint8Array,
+} from './push-client'
 
 const full = { hasServiceWorker: true, hasPushManager: true }
 
@@ -62,5 +70,52 @@ describe('urlBase64ToUint8Array', () => {
     expect(Array.from(decoded)).toEqual(Array.from(bytes))
     expect(Array.from(urlBase64ToUint8Array('AQID'))).toEqual([1, 2, 3])
     expect(Array.from(urlBase64ToUint8Array('AQ'))).toEqual([1])
+  })
+})
+
+describe('install prompt', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  /** A window with just enough for the early script: its listeners, by event name. */
+  function fakeWindow() {
+    const listeners = new Map<string, (event: unknown) => void>()
+    const win = { addEventListener: (name: string, fn: (event: unknown) => void) => listeners.set(name, fn) }
+    vi.stubGlobal('window', win)
+    return listeners
+  }
+
+  it('keeps an install prompt that fired before React hydrated', () => {
+    const listeners = fakeWindow()
+    // What the root layout's beforeInteractive script runs, ahead of any React code.
+    new Function(CAPTURE_INSTALL_PROMPT_SCRIPT)()
+    expect(storedInstallPrompt()).toBeNull()
+
+    const event = { preventDefault: vi.fn(), prompt: vi.fn(), userChoice: Promise.resolve({ outcome: 'accepted' }) }
+    listeners.get('beforeinstallprompt')!(event)
+    expect(event.preventDefault).toHaveBeenCalled()
+    expect(storedInstallPrompt()).toBe(event)
+
+    listeners.get('appinstalled')!({})
+    expect(storedInstallPrompt()).toBeNull()
+  })
+
+  it('rememberInstallPrompt stores the prompt and tells listeners', () => {
+    fakeWindow()
+    const listener = vi.fn()
+    const stop = onInstallPromptChange(listener)
+    const event = { preventDefault: vi.fn() } as unknown as Parameters<typeof rememberInstallPrompt>[0]
+    rememberInstallPrompt(event)
+    expect(storedInstallPrompt()).toBe(event)
+    expect(listener).toHaveBeenCalledTimes(1)
+    stop()
+    rememberInstallPrompt(null)
+    expect(storedInstallPrompt()).toBeNull()
+    expect(listener).toHaveBeenCalledTimes(1)
+  })
+
+  it('has no prompt during server rendering', () => {
+    expect(storedInstallPrompt()).toBeNull()
   })
 })

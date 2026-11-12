@@ -49,6 +49,31 @@ export async function currentSubscription(): Promise<PushSubscription | null> {
   }
 }
 
+export type DeviceState = {
+  support: PushSupport
+  permission: NotificationPermission | 'unsupported'
+  /** This browser holds a push subscription for Clasync. */
+  subscribed: boolean
+  /** Running as the installed app. */
+  installed: boolean
+  ios: boolean
+}
+
+/** Everything the Settings section and the first-open card need to know about this browser. Browser only. */
+export async function readDeviceState(): Promise<DeviceState> {
+  const ios = isIos()
+  const installed = isStandalone()
+  const support = pushSupport({
+    hasServiceWorker: 'serviceWorker' in navigator,
+    hasPushManager: 'PushManager' in window,
+    isIos: ios,
+    isStandalone: installed,
+  })
+  const permission = 'Notification' in window ? Notification.permission : 'unsupported'
+  const subscribed = support === 'supported' && (await currentSubscription()) !== null
+  return { support, permission, subscribed, installed, ios }
+}
+
 /** A Server Action result that says it failed (`{ ok: false }`); anything else counts as saved. */
 function isFailedResult(result: unknown): boolean {
   return typeof result === 'object' && result !== null && (result as { ok?: unknown }).ok === false
@@ -164,17 +189,28 @@ export type InstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
-let installPrompt: InstallPromptEvent | null = null
+/** Where the install prompt is kept: on `window`, so the early script below can store it too. */
+const INSTALL_PROMPT_KEY = '__clasyncInstallPrompt'
+type WindowWithPrompt = { [INSTALL_PROMPT_KEY]?: InstallPromptEvent | null }
+
+/**
+ * Run from the root layout before React hydrates (`next/script`, `beforeInteractive`): Chrome can
+ * fire `beforeinstallprompt` before <ServiceWorker />'s effect listens, and it fires only once per
+ * page load. Plain ES5, no imports; it stores the event where `storedInstallPrompt()` reads it.
+ */
+export const CAPTURE_INSTALL_PROMPT_SCRIPT = `(function(){var k=${JSON.stringify(INSTALL_PROMPT_KEY)};window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window[k]=e});window.addEventListener('appinstalled',function(){window[k]=null})})()`
+
 const installPromptListeners = new Set<() => void>()
 
 /** The install prompt the browser offered on this page load, if it hasn't been used or installed. */
 export function storedInstallPrompt(): InstallPromptEvent | null {
-  return installPrompt
+  if (typeof window === 'undefined') return null
+  return (window as unknown as WindowWithPrompt)[INSTALL_PROMPT_KEY] ?? null
 }
 
 /** Kept by <ServiceWorker />; null once the app is installed or the prompt was used. */
 export function rememberInstallPrompt(event: InstallPromptEvent | null): void {
-  installPrompt = event
+  if (typeof window !== 'undefined') (window as unknown as WindowWithPrompt)[INSTALL_PROMPT_KEY] = event
   for (const listener of installPromptListeners) listener()
 }
 

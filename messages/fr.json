@@ -800,6 +800,24 @@
           "action": "Saisir le code"
         }
       }
+    },
+    "notificationsCard": {
+      "enableTitle": "Activer les notifications",
+      "enableBody": "Soyez averti quand votre enseignant ouvre le pointage, publie un travail ou publie des résultats.",
+      "turnOn": "Activer",
+      "turningOn": "Activation…",
+      "notNow": "Plus tard",
+      "denied": "Votre navigateur a bloqué les notifications. Vous pourrez les autoriser plus tard depuis les paramètres.",
+      "failed": "Impossible d'activer les notifications. Vous pourrez réessayer depuis les paramètres.",
+      "iosTitle": "Ajoutez Clasync à votre écran d'accueil",
+      "iosBodyStudent": "Sur iPhone et iPad, Clasync peut vous avertir une fois ajouté à l'écran d'accueil.",
+      "iosBodyLecturer": "Ouvrez Clasync comme une application, directement depuis l'écran d'accueil.",
+      "iosStep1": "Dans Safari, touchez Partager",
+      "iosStep2": "Choisissez Sur l'écran d'accueil",
+      "installTitleComputer": "Installez Clasync sur cet ordinateur",
+      "installTitlePhone": "Installez Clasync sur ce téléphone",
+      "installBody": "Il s'ouvre dans sa propre fenêtre, à un geste de l'écran d'accueil, du Dock ou de la barre des tâches.",
+      "install": "Installer"
     }
   },
   "settings": {
@@ -818,6 +836,42 @@
       "title": "Préférences",
       "language": "Langue",
       "languageHint": "Pour l'application et tous les e-mails que Clasync vous envoie."
+    },
+    "notifications": {
+      "title": "Notifications et application",
+      "description": "Les notifications arrivent sur cet appareil même quand Clasync est fermé.",
+      "thisDevice": "Cet appareil",
+      "checking": "Vérification de cet appareil…",
+      "on": "Les notifications sont activées sur cet appareil.",
+      "off": "Les notifications sont désactivées sur cet appareil.",
+      "turnOn": "Activer",
+      "turnOff": "Désactiver",
+      "turningOn": "Activation…",
+      "turningOff": "Désactivation…",
+      "blocked": "Votre navigateur a bloqué les notifications de Clasync. Pour les autoriser, ouvrez les paramètres du site (l'icône à côté de l'adresse), choisissez Autoriser pour les notifications, puis rechargez la page.",
+      "failed": "Impossible d'activer les notifications. Réessayez.",
+      "unsupported": "Ce navigateur ne peut pas afficher de notifications. Essayez Chrome, Edge, Firefox ou Safari.",
+      "needsInstall": "Sur iPhone et iPad, les notifications fonctionnent une fois Clasync ajouté à l'écran d'accueil. Ajoutez-le avec les étapes ci-dessous, ouvrez-le depuis l'écran d'accueil, puis activez les notifications.",
+      "test": "Envoyer une notification de test",
+      "testSending": "Envoi…",
+      "testSent": "Envoyée. Elle devrait arriver dans quelques secondes.",
+      "testNone": "Rien n'a été envoyé : aucun appareil n'a les notifications activées.",
+      "testLimited": "Vous avez déjà envoyé plusieurs notifications de test. Réessayez dans {minutes} min.",
+      "devicesTitle": "Appareils avec les notifications activées",
+      "devicesEmpty": "Aucun appareil pour l'instant.",
+      "deviceLabel": "{browser} sur {os}",
+      "unknownBrowser": "Navigateur",
+      "added": "Ajouté le {date}",
+      "remove": "Retirer",
+      "removeLabel": "Retirer {device}",
+      "install": {
+        "title": "Installer l'application",
+        "button": "Installer l'application",
+        "installed": "Installée. Clasync fonctionne comme une application sur cet appareil.",
+        "hint": "Pour installer Clasync, utilisez l'option Installer de votre navigateur, dans la barre d'adresse ou le menu.",
+        "iosStep1": "Dans Safari, touchez Partager",
+        "iosStep2": "Choisissez Sur l'écran d'accueil"
+      }
     },
     "schools": {
       "title": "Où vous enseignez",

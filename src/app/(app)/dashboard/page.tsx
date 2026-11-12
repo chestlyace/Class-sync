@@ -24,6 +24,7 @@ import { lastSessionFigure, pickLikelyNow, type LastSession } from './attendance
 import { orEmptyOnError } from './fallback'
 import { groupDashboard } from './group'
 import { DueSoon } from './due-soon'
+import { NotificationsCard } from './notifications-card'
 import { OpenCheckIns } from './open-check-ins'
 import { SetupChecklist } from './setup-checklist'
 import { SETUP_DISMISSED_COOKIE } from './setup-cookie'
@@ -103,6 +104,7 @@ export default async function DashboardPage() {
     return (
       <>
         {header}
+        <NotificationsCard role={user.role} />
         {/* The checklist already says what to do first; the empty panel is for those who hid it. */}
         {setup ?? (
           <Panel className="flex flex-col items-start gap-2">
@@ -117,6 +119,7 @@ export default async function DashboardPage() {
   return (
     <>
       {header}
+      <NotificationsCard role={user.role} />
       {setup}
       {!isLecturer && <OpenCheckIns initial={data.data.openCheckIns} />}
       {!isLecturer && <DueSoon items={data.data.dueSoon} locale={locale} now={now} />}
