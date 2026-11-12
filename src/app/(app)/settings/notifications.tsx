@@ -190,20 +190,28 @@ function StatusLine({ icon, text }: { icon: React.ReactElement; text: string }) 
 
 function TestNotification() {
   const t = useTranslations('settings.notifications')
+  const tCommon = useTranslations('common')
   const [pending, setPending] = useState(false)
   const [result, setResult] = useState<ActionResult<{ sent: number }> | null>(null)
+  // A network failure or an unexpected server error (not an AppError result).
+  const [unexpected, setUnexpected] = useState(false)
 
   async function send() {
     setPending(true)
+    setUnexpected(false)
     try {
       setResult(await sendTestPushAction())
+    } catch {
+      setResult(null)
+      setUnexpected(true)
     } finally {
       setPending(false)
     }
   }
 
   let message: React.ReactNode = null
-  if (result?.ok) message = result.data.sent > 0 ? t('testSent') : t('testNone')
+  if (unexpected) message = tCommon('genericError')
+  else if (result?.ok) message = result.data.sent > 0 ? t('testSent') : t('testNone')
   else if (result && result.code === 'CONFLICT' && result.details?.reason === 'rate_limited') {
     const seconds = Number(result.details.retryAfter) || 3600
     message = t('testLimited', { minutes: Math.max(1, Math.ceil(seconds / 60)) })
@@ -227,16 +235,21 @@ function TestNotification() {
 function DeviceItem({ row }: { row: DeviceRow }) {
   const t = useTranslations('settings.notifications')
   const [pending, setPending] = useState(false)
-  const [error, setError] = useState<ActionResult<null> | null>(null)
+  const tCommon = useTranslations('common')
+  // An error result, or 'unexpected' for a network failure or an unexpected server error.
+  const [error, setError] = useState<ActionResult<null> | 'unexpected' | null>(null)
   // Stored as "Browser on OS" (fixed English names): only the joining word is translated.
   const [browser, os] = row.label.split(' on ')
   const label = os ? t('deviceLabel', { browser, os }) : browser === 'Browser' ? t('unknownBrowser') : row.label
 
   async function remove() {
     setPending(true)
+    setError(null)
     try {
       const result = await removeDeviceAction(row.id)
       if (!result.ok) setError(result)
+    } catch {
+      setError('unexpected')
     } finally {
       setPending(false)
     }
@@ -247,10 +260,17 @@ function DeviceItem({ row }: { row: DeviceRow }) {
       <div className="flex min-w-0 flex-col gap-0.5">
         <span className="font-medium break-words">{label}</span>
         <span className="text-[13px] text-muted-foreground">{t('added', { date: row.added })}</span>
-        {error && !error.ok && (
+        {error === 'unexpected' ? (
           <span role="alert" className="text-sm text-destructive">
-            <ErrorCodeMessage code={error.code} />
+            {tCommon('genericError')}
           </span>
+        ) : (
+          error &&
+          !error.ok && (
+            <span role="alert" className="text-sm text-destructive">
+              <ErrorCodeMessage code={error.code} />
+            </span>
+          )
         )}
       </div>
       <Button

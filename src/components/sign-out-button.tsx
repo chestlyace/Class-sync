@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button'
 import { authClient } from '@/lib/auth-client'
 import { turnOffPush } from '@/lib/push-client'
 
+const PUSH_OFF_TIMEOUT_MS = 2500
+
 export function SignOutButton() {
   const t = useTranslations('nav')
   const router = useRouter()
@@ -17,11 +19,16 @@ export function SignOutButton() {
   async function signOut() {
     setPending(true)
     try {
-      // Signing out on purpose takes this device off the account's notifications (while still signed in).
+      // Signing out on purpose takes this device off the account's notifications (while still
+      // signed in). Never blocks signing out: errors are ignored and a slow network gets
+      // PUSH_OFF_TIMEOUT_MS (a device left behind is removed on the next send that fails).
       try {
-        await turnOffPush(unsubscribePushAction)
+        await Promise.race([
+          turnOffPush(unsubscribePushAction),
+          new Promise((resolve) => setTimeout(resolve, PUSH_OFF_TIMEOUT_MS)),
+        ])
       } catch {
-        // Never blocks signing out.
+        // Ignored, see above.
       }
       await authClient.signOut()
       router.push('/sign-in')

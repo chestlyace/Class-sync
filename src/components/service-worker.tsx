@@ -6,7 +6,7 @@ import { rememberInstallPrompt, type InstallPromptEvent } from '@/lib/push-clien
 /**
  * Registers public/sw.js on every page (install works from the landing page too) and keeps
  * Chrome's install prompt for an "Install" button instead of the browser's own banner. A prompt that
- * fires before this effect runs is kept by the root layout's early script (CAPTURE_INSTALL_PROMPT_SCRIPT);
+ * fires before this effect runs is kept by the inline script in the root layout's <head> (CAPTURE_INSTALL_PROMPT_SCRIPT);
  * this listener also tells mounted components when the prompt changes.
  */
 export function ServiceWorker() {

@@ -194,9 +194,10 @@ const INSTALL_PROMPT_KEY = '__clasyncInstallPrompt'
 type WindowWithPrompt = { [INSTALL_PROMPT_KEY]?: InstallPromptEvent | null }
 
 /**
- * Run from the root layout before React hydrates (`next/script`, `beforeInteractive`): Chrome can
- * fire `beforeinstallprompt` before <ServiceWorker />'s effect listens, and it fires only once per
- * page load. Plain ES5, no imports; it stores the event where `storedInstallPrompt()` reads it.
+ * Inlined in the root layout's <head> (<InlineScript />), so the browser runs it while parsing the
+ * HTML, before any Next.js or React code loads. Chrome can fire `beforeinstallprompt` before
+ * <ServiceWorker />'s effect listens, and only once per page load. Plain ES5, no imports; it
+ * stores the event where `storedInstallPrompt()` reads it.
  */
 export const CAPTURE_INSTALL_PROMPT_SCRIPT = `(function(){var k=${JSON.stringify(INSTALL_PROMPT_KEY)};window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window[k]=e});window.addEventListener('appinstalled',function(){window[k]=null})})()`
 

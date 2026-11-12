@@ -88,7 +88,7 @@ describe('install prompt', () => {
 
   it('keeps an install prompt that fired before React hydrated', () => {
     const listeners = fakeWindow()
-    // What the root layout's beforeInteractive script runs, ahead of any React code.
+    // What the inline script in the root layout's <head> runs while the HTML is parsed.
     new Function(CAPTURE_INSTALL_PROMPT_SCRIPT)()
     expect(storedInstallPrompt()).toBeNull()
 
