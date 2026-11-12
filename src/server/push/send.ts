@@ -23,8 +23,17 @@ const MAX_IN_FLIGHT = 20
 const DAY_S = 86_400
 /** Milliseconds one push-service request may take before it counts as a failure. */
 const SEND_TIMEOUT_MS = 10_000
-/** A device that failed this many sends in a row (without a success) is deleted. */
+/** A device whose subscription was rejected this many sends in a row (without a success) is deleted. */
 export const MAX_CONSECUTIVE_FAILURES = 5
+
+/**
+ * Only a 400 says the push service rejects this one subscription. 401/403 (our VAPID credentials),
+ * 413 (our payload), 429, 5xx and timeouts are ours or passing, and hit every device alike: counting
+ * them would delete everyone's devices after one outage or a mistyped key.
+ */
+function isRejectedSubscription(status: number | undefined): boolean {
+  return status === 400
+}
 
 let testClient: PushClient | null = null
 let realClient: PushClient | null = null
@@ -60,7 +69,7 @@ function deliveryOptions(kind: PushKind): DeliveryOptions {
 }
 
 type Job = { id: string; endpoint: string; keys: { p256dh: string; auth: string }; payload: PushPayload }
-type Failure = { id: string; gone: boolean; error: string }
+type Failure = { id: string; gone: boolean; counts: boolean; error: string }
 type Outcome = { id: string; ok: true } | ({ ok: false } & Failure)
 
 async function runLimited<T, R>(list: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
@@ -81,8 +90,9 @@ async function runLimited<T, R>(list: T[], limit: number, fn: (item: T) => Promi
  * or a push-service outage must not fail the action that triggered the notification. Without keys
  * (and no test client) nothing is sent, one warning with the count is logged and the database is
  * not touched. Suspended users' devices are skipped. A device the push service reports gone
- * (404/410) is deleted; other failures (a request times out after 10 s) count against it, and a
- * device that reaches MAX_CONSECUTIVE_FAILURES in a row is deleted too (counted in `removed`).
+ * (404/410) is deleted; a 400 rejection counts against it, and a device that reaches
+ * MAX_CONSECUTIVE_FAILURES in a row is deleted too (counted in `removed`). Other failures (an
+ * outage, a request that times out after 10 s) are reported but leave the device alone.
  * One `push_sent` and/or one `push_failed` health event records counts only, never endpoints;
  * malformed VAPID keys record one `push_failed` for every device that was not sent to.
  */
@@ -151,7 +161,13 @@ export async function sendPush(
       } catch (error) {
         const e = error as { statusCode?: number; message?: string } | null
         const status = e?.statusCode
-        return { id: job.id, ok: false, gone: status === 404 || status === 410, error: String(e?.message ?? 'send failed') }
+        return {
+          id: job.id,
+          ok: false,
+          gone: status === 404 || status === 410,
+          counts: isRejectedSubscription(status),
+          error: String(e?.message ?? 'send failed'),
+        }
       }
     })
 
@@ -175,14 +191,15 @@ export async function sendPush(
           .where(inArray(pushSubscription.id, okIds))
       }
       if (goneIds.length) await conn.delete(pushSubscription).where(inArray(pushSubscription.id, goneIds))
-      if (failures.length) {
+      const rejected = failures.filter((f) => f.counts)
+      if (rejected.length) {
         const counted = await conn
           .update(pushSubscription)
           .set({ failureCount: sql`${pushSubscription.failureCount} + 1` })
           .where(
             inArray(
               pushSubscription.id,
-              failures.map((f) => f.id),
+              rejected.map((f) => f.id),
             ),
           )
           .returning({ id: pushSubscription.id, failureCount: pushSubscription.failureCount })

@@ -10,12 +10,20 @@ import {
   urlBase64ToUint8Array,
 } from './push-client'
 
-const full = { hasServiceWorker: true, hasPushManager: true }
+const full = { hasServiceWorker: true, hasPushManager: true, hasServerKey: true }
 
 describe('pushSupport', () => {
+  it('is unavailable on every browser while the server has no push key', () => {
+    expect(pushSupport({ ...full, hasServerKey: false, isIos: false, isStandalone: false })).toBe('unavailable')
+    expect(pushSupport({ ...full, hasServerKey: false, isIos: true, isStandalone: false })).toBe('unavailable')
+    expect(
+      pushSupport({ hasServiceWorker: false, hasPushManager: false, hasServerKey: false, isIos: false, isStandalone: false }),
+    ).toBe('unavailable')
+  })
+
   it('iPhone Safari not installed needs install', () => {
     // Safari on iOS only exposes PushManager to a Home Screen app.
-    expect(pushSupport({ hasServiceWorker: true, hasPushManager: false, isIos: true, isStandalone: false })).toBe(
+    expect(pushSupport({ hasServiceWorker: true, hasPushManager: false, hasServerKey: true, isIos: true, isStandalone: false })).toBe(
       'needs-install',
     )
     expect(pushSupport({ ...full, isIos: true, isStandalone: false })).toBe('needs-install')
@@ -27,14 +35,14 @@ describe('pushSupport', () => {
   })
 
   it('no PushManager is unsupported', () => {
-    expect(pushSupport({ hasServiceWorker: true, hasPushManager: false, isIos: false, isStandalone: false })).toBe(
+    expect(pushSupport({ hasServiceWorker: true, hasPushManager: false, hasServerKey: true, isIos: false, isStandalone: false })).toBe(
       'unsupported',
     )
-    expect(pushSupport({ hasServiceWorker: false, hasPushManager: false, isIos: false, isStandalone: true })).toBe(
+    expect(pushSupport({ hasServiceWorker: false, hasPushManager: false, hasServerKey: true, isIos: false, isStandalone: true })).toBe(
       'unsupported',
     )
     // An installed iPhone app without push (iOS before 16.4) can't be helped by installing again.
-    expect(pushSupport({ hasServiceWorker: true, hasPushManager: false, isIos: true, isStandalone: true })).toBe(
+    expect(pushSupport({ hasServiceWorker: true, hasPushManager: false, hasServerKey: true, isIos: true, isStandalone: true })).toBe(
       'unsupported',
     )
   })

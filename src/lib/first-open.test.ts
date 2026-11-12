@@ -48,6 +48,15 @@ describe('firstOpenCard', () => {
     expect(firstOpenCard({ ...studentOnAndroid, support: 'unsupported', permission: 'unsupported' })).toBeNull()
   })
 
+  it('student sees nothing while the server has no push key, on Android or iPhone', () => {
+    expect(firstOpenCard({ ...studentOnAndroid, support: 'unavailable' })).toBeNull()
+    expect(firstOpenCard({ ...studentOnAndroid, support: 'unavailable', ios: true })).toBeNull()
+  })
+
+  it('lecturer still sees install while the server has no push key', () => {
+    expect(firstOpenCard({ ...lecturerOnDesktopChrome, support: 'unavailable' })).toBe('install')
+  })
+
   it('lecturer on desktop Chrome sees install', () => {
     expect(firstOpenCard(lecturerOnDesktopChrome)).toBe('install')
   })

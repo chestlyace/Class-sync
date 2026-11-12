@@ -850,6 +850,7 @@
       "turningOff": "Désactivation…",
       "blocked": "Votre navigateur a bloqué les notifications de Clasync. Pour les autoriser, ouvrez les paramètres du site (l'icône à côté de l'adresse), choisissez Autoriser pour les notifications, puis rechargez la page.",
       "failed": "Impossible d'activer les notifications. Réessayez.",
+      "unavailable": "Les notifications ne sont pas encore disponibles sur Clasync.",
       "unsupported": "Ce navigateur ne peut pas afficher de notifications. Essayez Chrome, Edge, Firefox ou Safari.",
       "needsInstall": "Sur iPhone et iPad, les notifications fonctionnent une fois Clasync ajouté à l'écran d'accueil. Ajoutez-le avec les étapes ci-dessous, ouvrez-le depuis l'écran d'accueil, puis activez les notifications.",
       "test": "Envoyer une notification de test",
