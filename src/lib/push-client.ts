@@ -4,18 +4,21 @@
  * Everything that touches `window`/`navigator` is safe to import during server rendering.
  */
 
-export type PushSupport = 'supported' | 'needs-install' | 'unsupported'
+export type PushSupport = 'supported' | 'needs-install' | 'unsupported' | 'unavailable'
 
 /**
  * Whether this browser can take push notifications. Safari on iPhone/iPad only offers push to an
- * app added to the Home Screen, so there the answer is "install first".
+ * app added to the Home Screen, so there the answer is "install first". Without the server's
+ * public key (NEXT_PUBLIC_VAPID_PUBLIC_KEY unset) no browser can subscribe: "unavailable".
  */
 export function pushSupport(env: {
   hasServiceWorker: boolean
   hasPushManager: boolean
+  hasServerKey: boolean
   isIos: boolean
   isStandalone: boolean
 }): PushSupport {
+  if (!env.hasServerKey) return 'unavailable'
   if (!env.hasServiceWorker) return 'unsupported'
   if (env.isIos && !env.isStandalone) return 'needs-install'
   return env.hasPushManager ? 'supported' : 'unsupported'
@@ -91,6 +94,7 @@ export async function readDeviceState(isMine: IsMine): Promise<DeviceState> {
   const support = pushSupport({
     hasServiceWorker: 'serviceWorker' in navigator,
     hasPushManager: 'PushManager' in window,
+    hasServerKey: Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY),
     isIos: ios,
     isStandalone: installed,
   })

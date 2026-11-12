@@ -108,6 +108,8 @@ export function NotificationsSettings({ devices }: { devices: DeviceRow[] }) {
         </h3>
         {device === null ? (
           <p className="text-sm text-muted-foreground">{t('checking')}</p>
+        ) : device.support === 'unavailable' ? (
+          <StatusLine icon={<BellOff />} text={t('unavailable')} />
         ) : device.support === 'unsupported' ? (
           <StatusLine icon={<BellOff />} text={t('unsupported')} />
         ) : device.support === 'needs-install' ? (

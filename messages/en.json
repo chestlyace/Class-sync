@@ -850,6 +850,7 @@
       "turningOff": "Turning off…",
       "blocked": "Your browser blocked notifications for Clasync. To allow them, open the site settings (the icon next to the address), set Notifications to Allow, then reload this page.",
       "failed": "Notifications couldn't be turned on. Try again.",
+      "unavailable": "Notifications aren't available on Clasync yet.",
       "unsupported": "This browser can't show notifications. Try Chrome, Edge, Firefox or Safari.",
       "needsInstall": "On iPhone and iPad, notifications work once Clasync is on your Home Screen. Add it with the steps below, open it from there, then turn notifications on.",
       "test": "Send a test notification",

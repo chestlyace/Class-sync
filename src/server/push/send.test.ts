@@ -117,16 +117,37 @@ describe('sendPush', () => {
     expect(rows.map((r) => r.endpoint)).toEqual(['https://push.example/ok'])
   })
 
-  it('counts other failures and increments failureCount', async () => {
+  it('counts a 400 rejection of the subscription against the device', async () => {
     const a = await makeUser(db)
     await device(a.id, 'https://push.example/bad')
     fakeClient(async () => {
-      throw { statusCode: 500, message: 'boom' }
+      throw { statusCode: 400, message: 'Bad Request' }
     })
     const result = await sendPush([{ userId: a.id, payload: payload() }], db)
     expect(result).toEqual({ sent: 0, skipped: 0, failed: 1, removed: 0 })
     const [row] = await db.select().from(pushSubscription)
     expect(row.failureCount).toBe(1)
+  })
+
+  it.each([
+    ['a push-service outage', { statusCode: 503, message: 'Service Unavailable' }],
+    ['a server error', { statusCode: 500, message: 'boom' }],
+    ['rate limiting', { statusCode: 429, message: 'Too Many Requests' }],
+    ['wrong VAPID credentials', { statusCode: 403, message: 'Forbidden' }],
+    ['a rejected VAPID header', { statusCode: 401, message: 'Unauthorized' }],
+    ['a payload that is too large', { statusCode: 413, message: 'Payload Too Large' }],
+    ['a timeout', { message: 'Socket timeout' }],
+  ])('reports %s as failed but never counts it against the device', async (_, rejection) => {
+    const a = await makeUser(db)
+    await device(a.id, 'https://push.example/a')
+    await db.update(pushSubscription).set({ failureCount: 4 })
+    fakeClient(async () => {
+      throw rejection
+    })
+    const result = await sendPush([{ userId: a.id, payload: payload() }], db)
+    expect(result).toEqual({ sent: 0, skipped: 0, failed: 1, removed: 0 })
+    const [row] = await db.select().from(pushSubscription)
+    expect(row.failureCount).toBe(4)
   })
 
   it('deletes a device on its fifth failure in a row and counts it as removed', async () => {
@@ -136,7 +157,7 @@ describe('sendPush', () => {
     await db.update(pushSubscription).set({ failureCount: 4 }).where(eq(pushSubscription.endpoint, 'https://push.example/worn'))
     await db.update(pushSubscription).set({ failureCount: 2 }).where(eq(pushSubscription.endpoint, 'https://push.example/flaky'))
     fakeClient(async () => {
-      throw { statusCode: 500, message: 'boom' }
+      throw { statusCode: 400, message: 'Bad Request' }
     })
     const result = await sendPush([{ userId: a.id, payload: payload() }], db)
     expect(result).toEqual({ sent: 0, skipped: 0, failed: 1, removed: 1 })
@@ -153,7 +174,7 @@ describe('sendPush', () => {
     fakeClient()
     await sendPush([{ userId: a.id, payload: payload() }], db)
     fakeClient(async () => {
-      throw { statusCode: 500, message: 'boom' }
+      throw { statusCode: 400, message: 'Bad Request' }
     })
     expect(await sendPush([{ userId: a.id, payload: payload() }], db)).toMatchObject({ failed: 1, removed: 0 })
     const [row] = await db.select().from(pushSubscription)
