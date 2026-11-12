@@ -7,6 +7,7 @@ import { Eyebrow, PageHeader, Panel, SectionHeading } from '@/components/page-he
 import { buttonVariants } from '@/components/ui/button'
 import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
 import { listMyAssignments } from '@/server/assignments/student'
+import { firstName } from '@/lib/person-name'
 import { cn } from '@/lib/utils'
 import { listOpenCheckIns } from '@/server/attendance/check-in'
 import { getAttendanceGrid } from '@/server/attendance/reports'
@@ -24,6 +25,7 @@ import { lastSessionFigure, pickLikelyNow, type LastSession } from './attendance
 import { orEmptyOnError } from './fallback'
 import { groupDashboard } from './group'
 import { DueSoon } from './due-soon'
+import { NotificationsCard } from './notifications-card'
 import { OpenCheckIns } from './open-check-ins'
 import { SetupChecklist } from './setup-checklist'
 import { SETUP_DISMISSED_COOKIE } from './setup-cookie'
@@ -59,7 +61,7 @@ export default async function DashboardPage() {
             }).format(now)
           : t('studentEyebrow')
       }
-      title={t('greeting', { name: user.name.split(/\s+/)[0] || user.name })}
+      title={t('greeting', { name: firstName(user.name) })}
       // Unverified users get the layout's banner instead of create/join actions.
       actions={pending ? undefined : isLecturer ? <LecturerActions /> : <StudentActions />}
     />
@@ -103,6 +105,7 @@ export default async function DashboardPage() {
     return (
       <>
         {header}
+        <NotificationsCard role={user.role} />
         {/* The checklist already says what to do first; the empty panel is for those who hid it. */}
         {setup ?? (
           <Panel className="flex flex-col items-start gap-2">
@@ -117,6 +120,7 @@ export default async function DashboardPage() {
   return (
     <>
       {header}
+      <NotificationsCard role={user.role} />
       {setup}
       {!isLecturer && <OpenCheckIns initial={data.data.openCheckIns} />}
       {!isLecturer && <DueSoon items={data.data.dueSoon} locale={locale} now={now} />}

@@ -31,7 +31,17 @@ const nextConfig: NextConfig = {
     ];
   },
   async headers() {
-    return ["/oauth/:path*", "/sign-in", "/sign-up"].map((source) => ({ source, headers: NO_FRAMING }));
+    return [
+      ...["/oauth/:path*", "/sign-in", "/sign-up"].map((source) => ({ source, headers: NO_FRAMING })),
+      // The service worker: always checked for a new version, never served from a cache.
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+        ],
+      },
+    ];
   },
   // cacheComponents / partialPrefetching are deliberately off: every page is per-user
   // and reads the session cookie.

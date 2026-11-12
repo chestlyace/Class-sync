@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { drain, enqueue } from './practice-queue'
 
+vi.mock('@/server/push/send', () => ({
+  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
+  queuePush: vi.fn(async () => {}),
+}))
+
 /** A minimal in-memory Storage (jsdom is not a dependency; other tests stub it the same way). */
 function memoryStorage(): Storage {
   const map = new Map<string, string>()

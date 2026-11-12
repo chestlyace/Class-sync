@@ -5,7 +5,7 @@ import { user } from './auth'
 export const ADMIN_ACTIONS = ['suspend', 'unsuspend', 'revoke_sessions', 'resend_verification'] as const
 export type AdminActionKind = (typeof ADMIN_ACTIONS)[number]
 
-export const OPS_EVENT_KINDS = ['cron_reminders', 'email_sent', 'email_failed', 'mcp_request'] as const
+export const OPS_EVENT_KINDS = ['cron_reminders', 'email_sent', 'email_failed', 'mcp_request', 'push_sent', 'push_failed'] as const
 export type OpsEventKind = (typeof OPS_EVENT_KINDS)[number]
 
 /** Audit trail of what an admin did to which account. Rows are never deleted with their users. */
@@ -44,7 +44,7 @@ export const opsEvent = pgTable(
     detail: jsonb('detail').notNull().default({}),
   },
   (t) => [
-    check('ops_event_kind_check', sql`${t.kind} in ('cron_reminders', 'email_sent', 'email_failed', 'mcp_request')`),
+    check('ops_event_kind_check', sql`${t.kind} in ('cron_reminders', 'email_sent', 'email_failed', 'mcp_request', 'push_sent', 'push_failed')`),
     index('ops_event_kind_at_idx').on(t.kind, t.at),
   ],
 )

@@ -142,7 +142,7 @@ export default async function CoursePage({ params }: PageProps<'/courses/[course
 function StudentRow({ student, children }: { student: RosterEntry; children: React.ReactNode }) {
   return (
     <li className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-5">
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-[1_1_12rem] flex-col">
         <span className="truncate font-medium">{student.name}</span>
         <span className="truncate text-sm text-muted-foreground">{student.email}</span>
       </div>

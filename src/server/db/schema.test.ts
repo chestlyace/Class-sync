@@ -21,6 +21,8 @@ import {
   file,
   opsEvent,
   participationEvent,
+  pushCooldown,
+  pushSubscription,
   resource,
   revisionGroup,
   revisionOption,
@@ -915,6 +917,38 @@ describe('admin schema', () => {
     await expect(
       db.insert(opsEvent).values({ id: crypto.randomUUID(), kind: 'other' as 'email_sent', ok: true }),
     ).rejects.toThrow()
+  })
+
+  it('stores one push subscription per endpoint', async () => {
+    const db = await createTestDb()
+    const u = await makeUser(db)
+    const values = { userId: u.id, endpoint: 'https://push.example/abc', p256dh: 'k', auth: 'a', label: 'Chrome on Windows' }
+    await db.insert(pushSubscription).values(values)
+    const [row] = await db.select().from(pushSubscription)
+    expect(row).toMatchObject({ failureCount: 0, lastSuccessAt: null })
+    expect(row.createdAt).toBeInstanceOf(Date)
+    await expect(db.insert(pushSubscription).values(values)).rejects.toThrow()
+    await db.insert(pushCooldown).values({ key: 'k1', until: new Date() })
+    expect(await db.select().from(pushCooldown)).toHaveLength(1)
+  })
+
+  it('deletes push subscriptions with their user', async () => {
+    const db = await createTestDb()
+    const u = await makeUser(db)
+    await db
+      .insert(pushSubscription)
+      .values({ userId: u.id, endpoint: 'https://push.example/x', p256dh: 'k', auth: 'a', label: 'Phone' })
+    await db.delete(user).where(sql`${user.id} = ${u.id}`)
+    expect(await db.select().from(pushSubscription)).toHaveLength(0)
+  })
+
+  it('accepts push_sent and push_failed ops events', async () => {
+    const db = await createTestDb()
+    await db.insert(opsEvent).values([
+      { id: crypto.randomUUID(), kind: 'push_sent', ok: true },
+      { id: crypto.randomUUID(), kind: 'push_failed', ok: false },
+    ])
+    expect(await db.select().from(opsEvent)).toHaveLength(2)
   })
 
   it('user has the activity and suspension columns, null by default', async () => {

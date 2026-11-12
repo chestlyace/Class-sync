@@ -11,6 +11,9 @@ import { sendNotifications, type Notification } from '@/server/email/notify'
 import { TestResultsReleasedEmail } from '@/server/email/templates/test-results-released'
 import { emailSubject } from '@/server/email/templates/verify-email'
 import { runAfterResponse } from '@/server/lib/after-response'
+import { safePushItems } from '@/server/push/build'
+import { pushPayload } from '@/server/push/payload'
+import { sendPush } from '@/server/push/send'
 import { automatic, requireFinal } from './marking'
 import { scoreAttempt, type ScoringAnswer } from './paper'
 import { canSeeResult, testPhase } from './phase'
@@ -106,9 +109,20 @@ export async function releaseResults(ctx: Ctx, testId: string): Promise<{ releas
         }),
       }
     })
-    // Best effort: sendNotifications never throws, and a failure here never undoes the release.
+    // Best effort: neither send throws, and a failure here never undoes the release.
     runAfterResponse(async () => {
-      await sendNotifications(items)
+      const pushItems = safePushItems('releaseResults', () =>
+        recipients.map((student) => ({
+          userId: student.studentId,
+          payload: pushPayload('testResultsReleased', locales.get(student.studentId) ?? 'en', {
+            courseTitle: owned.title,
+            testTitle: test.title,
+            url: '/t/' + encodeURIComponent(test.code),
+            tag: `results-${test.id}`,
+          }),
+        })),
+      )
+      await Promise.all([sendNotifications(items), sendPush(pushItems)])
     })
   }
   return { released: recipients.length }

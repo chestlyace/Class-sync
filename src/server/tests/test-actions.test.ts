@@ -41,6 +41,11 @@ import {
   startTestAction,
 } from '@/app/(app)/courses/test-actions'
 
+vi.mock('@/server/push/send', () => ({
+  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
+  queuePush: vi.fn(async () => {}),
+}))
+
 const T0 = new Date('2026-11-09T08:00:00Z')
 
 function editor(over: Partial<EditorValues> = {}): EditorValues {

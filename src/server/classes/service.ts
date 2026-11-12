@@ -11,6 +11,8 @@ import { ClassJoinedEmail } from '@/server/email/templates/class-joined'
 import { ColleagueJoinedClassEmail, LecturerJoinedClassEmail } from '@/server/email/templates/lecturer-joined-class'
 import { emailSubject } from '@/server/email/templates/verify-email'
 import { isUniqueViolation } from '@/server/lib/db-errors'
+import { pushPayload } from '@/server/push/payload'
+import { queuePush, type PushItem } from '@/server/push/send'
 import { getSchool } from '@/server/schools/service'
 import {
   generateJoinCode,
@@ -233,12 +235,23 @@ export async function joinClassAsLecturer(ctx: Ctx, code: string): Promise<{ cla
     .onConflictDoNothing()
     .returning({ classId: classLecturer.classId })
   if (inserted.length > 0) {
-    await queueNotifications('joinClassAsLecturer', () => lecturerJoinedEmails(ctx, classId))
+    // One lookup feeds both the emails and the push, so the two recipient lists cannot drift.
+    let gathered: Promise<LecturerJoinData> | undefined
+    const gather = () => (gathered ??= gatherLecturerJoinData(ctx, classId))
+    await queueNotifications('joinClassAsLecturer', async () => lecturerJoinedEmails(ctx, classId, await gather()))
+    await queuePush('joinClassAsLecturer', async () => colleagueJoinedPush(ctx, classId, await gather()))
   }
   return { classId }
 }
 
-async function lecturerJoinedEmails(ctx: Ctx, classId: string): Promise<Notification[]> {
+type LecturerJoinData = {
+  className: string
+  schoolName: string
+  colleagues: Array<{ id: string; name: string; email: string; locale: string }>
+}
+
+/** The class names and the class's other lecturers (and its creator), excluding the joiner. */
+async function gatherLecturerJoinData(ctx: Ctx, classId: string): Promise<LecturerJoinData> {
   const { className, schoolName } = await classNames(ctx.db, classId)
   const colleagues = await ctx.db
     .selectDistinct({ id: user.id, name: user.name, email: user.email, locale: user.locale })
@@ -246,6 +259,11 @@ async function lecturerJoinedEmails(ctx: Ctx, classId: string): Promise<Notifica
     .leftJoin(classLecturer, and(eq(classLecturer.userId, user.id), eq(classLecturer.classId, classId)))
     .leftJoin(class_, and(eq(class_.createdBy, user.id), eq(class_.id, classId)))
     .where(and(or(isNotNull(classLecturer.userId), isNotNull(class_.id)), ne(user.id, ctx.user.id)))
+  return { className, schoolName, colleagues }
+}
+
+function lecturerJoinedEmails(ctx: Ctx, classId: string, data: LecturerJoinData): Notification[] {
+  const { className, schoolName, colleagues } = data
   const url = appLinkBuilder('joinClassAsLecturer')(`/classes/${encodeURIComponent(classId)}`)
   const me = ctx.user
   const items: Notification[] = [
@@ -275,6 +293,20 @@ async function lecturerJoinedEmails(ctx: Ctx, classId: string): Promise<Notifica
     })
   }
   return items
+}
+
+/** Push to the class's other lecturers only: the joining lecturer's own confirmation is email only. */
+function colleagueJoinedPush(ctx: Ctx, classId: string, data: LecturerJoinData): PushItem[] {
+  const { className, colleagues } = data
+  return colleagues.map((c) => ({
+    userId: c.id,
+    payload: pushPayload('colleagueJoinedClass', c.locale === 'fr' ? 'fr' : 'en', {
+      className,
+      colleagueName: ctx.user.name,
+      url: '/classes/' + encodeURIComponent(classId),
+      tag: `colleague-${classId}-${ctx.user.id}`,
+    }),
+  }))
 }
 
 async function studentJoinedEmails(ctx: Ctx, classId: string): Promise<Notification[]> {

@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { setNowForTests } from '@/server/core/clock'
 import type { Db } from '@/server/db'
 import { class_, classLecturer, classStudent, course, courseCaSettings, school } from '@/server/db/schema'
@@ -10,6 +10,11 @@ import { createClass, joinClassAsLecturer, joinClassAsStudent } from '@/server/c
 import { createCourse } from '@/server/courses/service'
 import { DEFAULT_SETTINGS } from './rules'
 import { updateCaSettings } from './settings'
+
+vi.mock('@/server/push/send', () => ({
+  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
+  queuePush: vi.fn(async () => {}),
+}))
 
 describe('CA settings', () => {
   let db: Db

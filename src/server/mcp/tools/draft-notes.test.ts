@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { Db } from '@/server/db'
 import { courseTopic, resource, resourcePlacement, revisionGroup, revisionQuestion } from '@/server/db/schema'
 import { createNote } from '@/server/notes/items'
@@ -13,6 +13,11 @@ import { createTestDb } from '@/test/db'
 import { clearMarkingData, setupCourse } from '@/test/marking-fixture'
 import { callTool, parseToolInput } from '@/test/mcp'
 import { VISIBLE_TOPIC_MESSAGE } from './draft-notes'
+
+vi.mock('@/server/push/send', () => ({
+  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
+  queuePush: vi.fn(async () => {}),
+}))
 
 const mcq = {
   kind: 'mcq',

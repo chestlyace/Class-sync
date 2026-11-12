@@ -729,6 +729,11 @@
     "backHome": "Retour à l'accueil",
     "backToDashboard": "Retour au tableau de bord"
   },
+  "offline": {
+    "title": "Vous êtes hors ligne",
+    "body": "Clasync a besoin d'une connexion pour charger cette page. Vérifiez vos données mobiles ou le Wi-Fi, puis réessayez.",
+    "retry": "Réessayer"
+  },
   "dashboard": {
     "title": "Tableau de bord",
     "greeting": "Bonjour, {name}",
@@ -795,6 +800,24 @@
           "action": "Saisir le code"
         }
       }
+    },
+    "notificationsCard": {
+      "enableTitle": "Activer les notifications",
+      "enableBody": "Soyez averti quand votre enseignant ouvre le pointage, publie un travail ou publie des résultats.",
+      "turnOn": "Activer",
+      "turningOn": "Activation…",
+      "notNow": "Plus tard",
+      "denied": "Votre navigateur a bloqué les notifications. Vous pourrez les autoriser plus tard depuis les paramètres.",
+      "failed": "Impossible d'activer les notifications. Vous pourrez réessayer depuis les paramètres.",
+      "iosTitle": "Ajoutez Clasync à votre écran d'accueil",
+      "iosBodyStudent": "Sur iPhone et iPad, Clasync peut vous avertir une fois ajouté à l'écran d'accueil.",
+      "iosBodyLecturer": "Ouvrez Clasync comme une application, directement depuis l'écran d'accueil.",
+      "iosStep1": "Dans Safari, touchez Partager",
+      "iosStep2": "Choisissez Sur l'écran d'accueil",
+      "installTitleComputer": "Installez Clasync sur cet ordinateur",
+      "installTitlePhone": "Installez Clasync sur ce téléphone",
+      "installBody": "Il s'ouvre dans sa propre fenêtre, à un geste de l'écran d'accueil, du Dock ou de la barre des tâches.",
+      "install": "Installer"
     }
   },
   "settings": {
@@ -813,6 +836,43 @@
       "title": "Préférences",
       "language": "Langue",
       "languageHint": "Pour l'application et tous les e-mails que Clasync vous envoie."
+    },
+    "notifications": {
+      "title": "Notifications et application",
+      "description": "Les notifications arrivent sur cet appareil même quand Clasync est fermé.",
+      "thisDevice": "Cet appareil",
+      "checking": "Vérification de cet appareil…",
+      "on": "Les notifications sont activées sur cet appareil.",
+      "off": "Les notifications sont désactivées sur cet appareil.",
+      "turnOn": "Activer",
+      "turnOff": "Désactiver",
+      "turningOn": "Activation…",
+      "turningOff": "Désactivation…",
+      "blocked": "Votre navigateur a bloqué les notifications de Clasync. Pour les autoriser, ouvrez les paramètres du site (l'icône à côté de l'adresse), choisissez Autoriser pour les notifications, puis rechargez la page.",
+      "failed": "Impossible d'activer les notifications. Réessayez.",
+      "unavailable": "Les notifications ne sont pas encore disponibles sur Clasync.",
+      "unsupported": "Ce navigateur ne peut pas afficher de notifications. Essayez Chrome, Edge, Firefox ou Safari.",
+      "needsInstall": "Sur iPhone et iPad, les notifications fonctionnent une fois Clasync ajouté à l'écran d'accueil. Ajoutez-le avec les étapes ci-dessous, ouvrez-le depuis l'écran d'accueil, puis activez les notifications.",
+      "test": "Envoyer une notification de test",
+      "testSending": "Envoi…",
+      "testSent": "Envoyée. Elle devrait arriver dans quelques secondes.",
+      "testNone": "Rien n'a été envoyé : aucun appareil n'a les notifications activées.",
+      "testLimited": "Vous avez déjà envoyé plusieurs notifications de test. Réessayez dans {minutes} min.",
+      "devicesTitle": "Appareils avec les notifications activées",
+      "devicesEmpty": "Aucun appareil pour l'instant.",
+      "deviceLabel": "{browser} sur {os}",
+      "unknownBrowser": "Navigateur",
+      "added": "Ajouté le {date}",
+      "remove": "Retirer",
+      "removeLabel": "Retirer {device}",
+      "install": {
+        "title": "Installer l'application",
+        "button": "Installer l'application",
+        "installed": "Installée. Clasync fonctionne comme une application sur cet appareil.",
+        "hint": "Pour installer Clasync, utilisez l'option Installer de votre navigateur, dans la barre d'adresse ou le menu.",
+        "iosStep1": "Dans Safari, touchez Partager",
+        "iosStep2": "Choisissez Sur l'écran d'accueil"
+      }
     },
     "schools": {
       "title": "Où vous enseignez",
@@ -2451,6 +2511,11 @@
         "reminded": "Rappels envoyés",
         "stale": "Aucune exécution depuis 26 heures. Consultez les journaux."
       },
+      "push": {
+        "title": "Notifications",
+        "sent": "Envoyées aux appareils, 7 derniers jours",
+        "failed": "Échecs, 7 derniers jours"
+      },
       "email": {
         "title": "E-mails",
         "sent": "Envoyés, 7 derniers jours",
@@ -2522,6 +2587,7 @@
       "database": "Prisma Postgres héberge la base de données.",
       "email": "Resend envoie les e-mails, comme les liens de vérification et les rappels de devoirs.",
       "errors": "Sentry reçoit les rapports d'erreurs pour corriger les problèmes, sans les adresses IP.",
+      "push": "Si vous activez les notifications, le service de notifications du fabricant de votre navigateur (Google, Apple, Mozilla ou Microsoft) les livre à votre appareil. Il ne voit qu'un message chiffré.",
       "ai": "Vercel AI Gateway envoie une réponse rédigée et sa question à un modèle d'IA quand un enseignant demande une note suggérée, sans votre nom, matricule ni e-mail. L'enseignant décide de la note.",
       "google": "Google, uniquement si vous choisissez Continuer avec Google."
     },
@@ -2653,6 +2719,14 @@
     "description": "Tout ce qui est arrivé dans Clasync, du plus récent au plus ancien.",
     "eyebrow": "Journal des changements",
     "items": {
+      "app": {
+        "title": "Installez Clasync comme une application",
+        "body": "Ajoutez Clasync à votre téléphone ou à votre ordinateur et ouvrez-le comme n'importe quelle application."
+      },
+      "notifications": {
+        "title": "Notifications",
+        "body": "Recevez une notification pour l'appel, les tests, les nouvelles notes de cours, les devoirs et les résultats. Activez-les ou désactivez-les dans les Paramètres."
+      },
       "google": {
         "title": "Connexion avec Google",
         "body": "Créez un compte ou connectez-vous avec votre compte Google, et associez ou dissociez Google dans les Paramètres."
@@ -2789,5 +2863,18 @@
       "body": "Si vous trouvez un problème de sécurité, écrivez à <email>{address}</email>. Merci de ne pas le rendre public avant qu'il soit corrigé."
     },
     "link": "Sécurité"
+  },
+  "push": {
+    "checkInOpened": "Le pointage de début de cours est ouvert. Il se ferme à {time}.",
+    "checkOutOpened": "Le pointage de fin de cours est ouvert. Il se ferme à {time}.",
+    "testStarted": "{test} a commencé.",
+    "notesAdded": "Nouveau : {item}",
+    "topicReleased": "{topic} est maintenant disponible.",
+    "assignmentPublished": "Nouveau devoir : {assignment}, à rendre le {date}.",
+    "assignmentReminder": "{assignment} est à rendre le {date}.",
+    "gradesReleased": "Votre note pour {assignment} est disponible.",
+    "testResultsReleased": "Vos résultats pour {test} sont disponibles.",
+    "colleagueJoinedClass": "{colleague} a rejoint {class}.",
+    "test": "Les notifications fonctionnent sur cet appareil."
   }
 }
