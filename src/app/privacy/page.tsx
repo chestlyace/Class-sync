@@ -8,7 +8,7 @@ import { getSessionUser } from '@/server/auth/session'
 const PRIVACY_CONTACT = 'chestlyace@clasync.online'
 
 /** Change along with the text: shown as "Last updated". */
-const UPDATED = new Date('2026-11-11T12:00:00Z')
+const UPDATED = new Date('2026-11-12T12:00:00Z')
 
 export async function generateMetadata() {
   const t = await getTranslations('privacy')

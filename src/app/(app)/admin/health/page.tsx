@@ -95,7 +95,7 @@ export default async function AdminHealthPage() {
         </StatGrid>
       </section>
 
-      <section aria-labelledby="files"className="flex flex-col gap-4">
+      <section aria-labelledby="files" className="flex flex-col gap-4">
         <SectionHeading id="files">{t('health.files.title')}</SectionHeading>
         <StatGrid className="sm:grid-cols-2 lg:grid-cols-2">
           <Stat label={t('health.files.count')} value={f.number(files.count)} />

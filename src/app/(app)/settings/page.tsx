@@ -178,7 +178,6 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
         </Panel>
       </section>
 
-
       {isLecturer ? (
         <section aria-labelledby="where-you-teach" className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
