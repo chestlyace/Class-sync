@@ -19,7 +19,7 @@ export async function generateMetadata() {
 const sections = [
   { key: 'collect', items: ['account', 'google', 'classes', 'tests', 'location', 'signIns'] },
   { key: 'access', items: ['lecturers', 'you', 'admins', 'sold'] },
-  { key: 'services', intro: true, items: ['vercel', 'database', 'email', 'errors', 'ai', 'google'] },
+  { key: 'services', intro: true, items: ['vercel', 'database', 'email', 'errors', 'push', 'ai', 'google'] },
   { key: 'assistants', items: ['body'] },
   { key: 'cookies', items: ['body'] },
   { key: 'rights', items: ['edit', 'google', 'delete', 'keep'] },

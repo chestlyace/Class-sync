@@ -20,7 +20,7 @@ export default async function AdminHealthPage() {
   const [t, f] = await Promise.all([getTranslations('admin'), getFormatters()])
   const result = await loadAdminPage((ctx) => getHealth(ctx, now()))
   if (!result.ok) return <ErrorState code={result.code} />
-  const { cron, email, files, env } = result.data
+  const { cron, email, push, files, env } = result.data
 
   return (
     <>
@@ -87,7 +87,15 @@ export default async function AdminHealthPage() {
         </Card>
       </section>
 
-      <section aria-labelledby="files" className="flex flex-col gap-4">
+      <section aria-labelledby="push" className="flex flex-col gap-4">
+        <SectionHeading id="push">{t('health.push.title')}</SectionHeading>
+        <StatGrid className="sm:grid-cols-2 lg:grid-cols-2">
+          <Stat label={t('health.push.sent')} value={f.number(push.sent7d)} />
+          <Stat label={t('health.push.failed')} value={f.number(push.failed7d)} />
+        </StatGrid>
+      </section>
+
+      <section aria-labelledby="files"className="flex flex-col gap-4">
         <SectionHeading id="files">{t('health.files.title')}</SectionHeading>
         <StatGrid className="sm:grid-cols-2 lg:grid-cols-2">
           <Stat label={t('health.files.count')} value={f.number(files.count)} />

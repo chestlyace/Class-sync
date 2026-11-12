@@ -2510,6 +2510,11 @@
         "reminded": "Reminders sent",
         "stale": "No run in the last 26 hours. Check the logs."
       },
+      "push": {
+        "title": "Notifications",
+        "sent": "Pushed to devices, last 7 days",
+        "failed": "Failed, last 7 days"
+      },
       "email": {
         "title": "Email",
         "sent": "Sent, last 7 days",
@@ -2581,6 +2586,7 @@
       "database": "Prisma Postgres stores the database.",
       "email": "Resend sends emails such as verification links and assignment reminders.",
       "errors": "Sentry receives error reports so problems can be fixed, with IP addresses removed.",
+      "push": "If you turn on notifications, the push service of your browser's maker (Google, Apple, Mozilla or Microsoft) delivers them to your device. It only sees an encrypted message.",
       "ai": "Vercel AI Gateway sends a written test answer and its question to an AI model when a lecturer asks for a suggested mark, without your name, matricule or email. The lecturer decides the mark.",
       "google": "Google, only if you choose Continue with Google."
     },
@@ -2712,6 +2718,14 @@
     "description": "Everything that has shipped in Clasync, newest first.",
     "eyebrow": "Changelog",
     "items": {
+      "app": {
+        "title": "Install Clasync as an app",
+        "body": "Add Clasync to your phone or computer and open it like any other app."
+      },
+      "notifications": {
+        "title": "Notifications",
+        "body": "Get a notification for attendance check-in, tests, new notes, assignments and results. Turn them on or off in Settings."
+      },
       "google": {
         "title": "Sign in with Google",
         "body": "Create an account or sign in with your Google account, and connect or disconnect Google from Settings."

@@ -2510,6 +2510,11 @@
         "reminded": "Rappels envoyés",
         "stale": "Aucune exécution depuis 26 heures. Consultez les journaux."
       },
+      "push": {
+        "title": "Notifications",
+        "sent": "Envoyées aux appareils, 7 derniers jours",
+        "failed": "Échecs, 7 derniers jours"
+      },
       "email": {
         "title": "E-mails",
         "sent": "Envoyés, 7 derniers jours",
@@ -2581,6 +2586,7 @@
       "database": "Prisma Postgres héberge la base de données.",
       "email": "Resend envoie les e-mails, comme les liens de vérification et les rappels de devoirs.",
       "errors": "Sentry reçoit les rapports d'erreurs pour corriger les problèmes, sans les adresses IP.",
+      "push": "Si vous activez les notifications, le service de notifications du fabricant de votre navigateur (Google, Apple, Mozilla ou Microsoft) les livre à votre appareil. Il ne voit qu'un message chiffré.",
       "ai": "Vercel AI Gateway envoie une réponse rédigée et sa question à un modèle d'IA quand un enseignant demande une note suggérée, sans votre nom, matricule ni e-mail. L'enseignant décide de la note.",
       "google": "Google, uniquement si vous choisissez Continuer avec Google."
     },
@@ -2712,6 +2718,14 @@
     "description": "Tout ce qui est arrivé dans Clasync, du plus récent au plus ancien.",
     "eyebrow": "Journal des changements",
     "items": {
+      "app": {
+        "title": "Installez Clasync comme une application",
+        "body": "Ajoutez Clasync à votre téléphone ou à votre ordinateur et ouvrez-le comme n'importe quelle application."
+      },
+      "notifications": {
+        "title": "Notifications",
+        "body": "Recevez une notification pour l'appel, les tests, les nouvelles notes de cours, les devoirs et les résultats. Activez-les ou désactivez-les dans les Paramètres."
+      },
       "google": {
         "title": "Connexion avec Google",
         "body": "Créez un compte ou connectez-vous avec votre compte Google, et associez ou dissociez Google dans les Paramètres."

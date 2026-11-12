@@ -186,6 +186,9 @@ describe('admin read models', () => {
       { kind: 'email_failed', ok: false, at: new Date(now - HOUR), detail: { kind: 'reset', to: 'b***@example.com', error: 'boom' } },
       { kind: 'email_sent', ok: true, at: new Date(now - 3 * HOUR), detail: { kind: 'batch', count: 3 } },
       { kind: 'email_sent', ok: true, at: new Date(now - 8 * DAY), detail: { kind: 'verification', to: 'c***@example.com' } },
+      { kind: 'push_sent', ok: true, at: new Date(now - 2 * HOUR), detail: { count: 4 } },
+      { kind: 'push_sent', ok: true, at: new Date(now - 9 * DAY), detail: { count: 7 } },
+      { kind: 'push_failed', ok: false, at: new Date(now - HOUR), detail: { count: 3, removed: 2, error: 'boom' } },
       { kind: 'mcp_request', ok: true, at: new Date(now - HOUR), detail: { status: 200 } },
       { kind: 'mcp_request', ok: true, at: new Date(now - HOUR), detail: { status: 429 } },
       { kind: 'mcp_request', ok: true, at: new Date(now - 9 * DAY), detail: { status: 200 } },
@@ -359,6 +362,11 @@ describe('admin read models', () => {
     expect(prod.email.failed7d).toBe(1)
     expect(prod.email.recentFailures).toEqual([{ at: expect.any(Date), kind: 'reset', to: 'b***@example.com', error: 'boom' }])
     expect(prod.files).toEqual({ count: 1, bytes: 1234 })
+  })
+
+  it('counts push sent and failed over 7 days', async () => {
+    const h = await getHealth(adminCtx, new Date(), {})
+    expect(h.push).toEqual({ sent7d: 4, failed7d: 3 })
   })
 
   it('getHealth with no cron run is stale in production only once events have been recorded for over 26 hours', async () => {
