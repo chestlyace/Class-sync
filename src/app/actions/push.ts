@@ -7,7 +7,7 @@ import { AppError } from '@/server/core/errors'
 import { hitRateLimit } from '@/server/lib/rate-limit'
 import { pushPayload } from '@/server/push/payload'
 import { sendPush } from '@/server/push/send'
-import { removeDevice, subscribe, unsubscribe } from '@/server/push/subscriptions'
+import { isMyDevice, removeDevice, subscribe, unsubscribe } from '@/server/push/subscriptions'
 
 /** Test notifications per user per hour. */
 const TEST_PUSH_RULE = { max: 5, windowMs: 3_600_000 }
@@ -26,6 +26,14 @@ export async function unsubscribePushAction(endpoint: string): Promise<ActionRes
     await unsubscribe(await getCtx(), endpoint)
     return null
   })
+}
+
+/**
+ * Whether this browser's subscription (its endpoint) is stored for the signed-in user, so the UI
+ * shows "on" only when notifications for this account actually reach this device.
+ */
+export async function isMyDeviceAction(endpoint: string): Promise<ActionResult<boolean>> {
+  return toActionResult(async () => isMyDevice(await getCtx(), endpoint))
 }
 
 /** Removes one of the caller's devices from the Settings list. */
@@ -47,7 +55,7 @@ export async function sendTestPushAction(): Promise<ActionResult<{ sent: number 
     const { limited, retryAfter } = await hitRateLimit(ctx.db, `push-test:${ctx.user.id}`, TEST_PUSH_RULE)
     if (limited) throw new AppError('CONFLICT', 'Too many test notifications', { reason: 'rate_limited', retryAfter })
     const { sent } = await sendPush(
-      [{ userId: ctx.user.id, payload: pushPayload('test', ctx.user.locale, { url: '/settings' }) }],
+      [{ userId: ctx.user.id, payload: pushPayload('test', ctx.user.locale, { url: '/settings', tag: 'test' }) }],
       ctx.db,
     )
     return { sent }

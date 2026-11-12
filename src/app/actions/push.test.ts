@@ -16,7 +16,13 @@ vi.mock('@/server/auth/session', () => ({
 const revalidatePath = vi.fn()
 vi.mock('next/cache', () => ({ revalidatePath: (path: string) => revalidatePath(path) }))
 
-import { removeDeviceAction, sendTestPushAction, subscribePushAction, unsubscribePushAction } from './push'
+import {
+  isMyDeviceAction,
+  removeDeviceAction,
+  sendTestPushAction,
+  subscribePushAction,
+  unsubscribePushAction,
+} from './push'
 
 const ANDROID_CHROME =
   'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36'
@@ -92,6 +98,26 @@ describe('push Server Actions', () => {
       details: { reason: 'rate_limited', retryAfter: expect.any(Number) },
     })
     expect(sent).toHaveLength(5)
-    expect(JSON.parse(sent[0])).toMatchObject({ kind: 'test', url: '/settings' })
+    expect(JSON.parse(sent[0])).toMatchObject({ kind: 'test', url: '/settings', tag: 'test' })
+  })
+
+  it('isMyDeviceAction answers for the signed-in user only', async () => {
+    const endpoint = subscription('f').endpoint
+    expect(await isMyDeviceAction(endpoint)).toEqual({ ok: false, code: 'UNAUTHENTICATED' })
+    const owner = ctxFor(db, await makeUser(db))
+    current = owner
+    expect(await isMyDeviceAction(endpoint)).toEqual({ ok: true, data: false })
+    await subscribePushAction(subscription('f'))
+    expect(await isMyDeviceAction(endpoint)).toEqual({ ok: true, data: true })
+
+    // The same browser, now signed in as someone else: not theirs.
+    current = ctxFor(db, await makeUser(db))
+    expect(await isMyDeviceAction(endpoint)).toEqual({ ok: true, data: false })
+
+    // Removed from the owner's device list: off again.
+    current = owner
+    const [row] = await listMyDevices(owner)
+    await removeDeviceAction(row.id)
+    expect(await isMyDeviceAction(endpoint)).toEqual({ ok: true, data: false })
   })
 })

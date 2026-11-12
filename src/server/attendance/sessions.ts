@@ -246,7 +246,11 @@ export async function openWindow(ctx: Ctx, sessionId: string, kind: WindowKind):
     }
     throw err
   }
-  await pushWindowOpened(ctx.db, session.courseId, kind, new Date(at.getTime() + WINDOW_MAX_MS))
+  await pushWindowOpened(ctx.db, session.courseId, {
+    id: created.id,
+    kind,
+    closesAt: new Date(at.getTime() + WINDOW_MAX_MS),
+  })
   return liveWindow(ctx.db, created, session.courseId, at)
 }
 

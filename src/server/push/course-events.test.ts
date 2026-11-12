@@ -32,21 +32,27 @@ beforeEach(async () => {
 
 describe('course push events', () => {
   it('window push goes to every roster student with url /check-in', async () => {
-    await pushWindowOpened(db, fx.courseA, 'start', new Date('2026-11-12T08:15:00Z'))
+    await pushWindowOpened(db, fx.courseA, { id: 'w-start', kind: 'start', closesAt: new Date('2026-11-12T08:15:00Z') })
     const list = items()
     expect(list.map((i) => i.userId).sort()).toEqual([fx.alice, fx.bob, fx.carol, fx.dave].map((s) => s.user.id).sort())
     for (const i of list) {
       expect(i.payload.url).toBe('/check-in')
       expect(i.payload.kind).toBe('checkInOpened')
-      expect(i.payload.tag).toBe(`checkin-${fx.courseA}`)
+      expect(i.payload.tag).toBe('checkin-w-start')
     }
-    await pushWindowOpened(db, fx.courseA, 'end', new Date('2026-11-12T09:15:00Z'))
-    expect(items(1)[0].payload.kind).toBe('checkOutOpened')
+    await pushWindowOpened(db, fx.courseA, { id: 'w-end', kind: 'end', closesAt: new Date('2026-11-12T09:15:00Z') })
+    // Each window has its own tag: the check-out never silently replaces the check-in.
+    expect(items(1)[0].payload).toMatchObject({ kind: 'checkOutOpened', tag: 'checkin-w-end' })
   })
 
-  it('test start links to the test page', async () => {
-    await pushTestStarted(db, fx.courseA, { title: 'CA 1', code: 'ABC123' })
-    expect(items()[0].payload).toMatchObject({ kind: 'testStarted', url: '/t/ABC123' })
+  it('test start links to the test page, tagged per test', async () => {
+    await pushTestStarted(db, fx.courseA, { id: 'test-1', title: 'CA 1', code: 'ABC123' })
+    expect(items()[0].payload).toMatchObject({ kind: 'testStarted', url: '/t/ABC123', tag: 'test-test-1' })
+  })
+
+  it('test start encodes the code in the link', async () => {
+    await pushTestStarted(db, fx.courseA, { id: 'test-2', title: 'CA 2', code: 'A/B?C' })
+    expect(items()[0].payload.url).toBe('/t/A%2FB%3FC')
   })
 
   it('notes: three items in a row push once', async () => {

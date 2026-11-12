@@ -23,7 +23,11 @@ export type PushPayload = { title: string; body: string; url: string; tag: strin
 
 export type PushVars = {
   url: string
-  tag?: string
+  /**
+   * A newer notification with the same tag replaces the older one on the device, so it is one
+   * per event (e.g. `assignment-<id>`): distinct notifications must never share a tag.
+   */
+  tag: string
   courseTitle?: string
   assignmentTitle?: string
   testTitle?: string
@@ -83,5 +87,5 @@ export function pushPayload(kind: PushKind, locale: Locale, vars: PushVars): Pus
       : kind === 'colleagueJoinedClass'
         ? singleLine(vars.className)
         : singleLine(vars.courseTitle)
-  return { title, body, url: vars.url, tag: vars.tag ?? kind, kind }
+  return { title, body, url: vars.url, tag: vars.tag, kind }
 }

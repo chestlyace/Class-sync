@@ -108,6 +108,8 @@ export async function sendDueReminders(db: Db, at: Date): Promise<{ assignments:
             assignmentTitle: a.title,
             dueAt: a.dueAt,
             url: '/assignments/' + encodeURIComponent(a.id),
+            // Same tag as the "published" push: the reminder replaces it instead of stacking.
+            tag: `assignment-${a.id}`,
           }),
         })),
     )

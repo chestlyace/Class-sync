@@ -13,12 +13,18 @@ export type PushClient = {
   send(
     sub: { endpoint: string; keys: { p256dh: string; auth: string } },
     body: string,
-    opts: { TTL: number; urgency: 'normal' | 'high' },
+    opts: DeliveryOptions,
   ): Promise<void>
 }
 
+type DeliveryOptions = { TTL: number; urgency: 'normal' | 'high'; timeout: number }
+
 const MAX_IN_FLIGHT = 20
 const DAY_S = 86_400
+/** Milliseconds one push-service request may take before it counts as a failure. */
+const SEND_TIMEOUT_MS = 10_000
+/** A device that failed this many sends in a row (without a success) is deleted. */
+export const MAX_CONSECUTIVE_FAILURES = 5
 
 let testClient: PushClient | null = null
 let realClient: PushClient | null = null
@@ -46,10 +52,11 @@ async function createRealClient(publicKey: string, privateKey: string): Promise<
   return realClient
 }
 
-function deliveryOptions(kind: PushKind): { TTL: number; urgency: 'normal' | 'high' } {
-  if (kind === 'checkInOpened' || kind === 'checkOutOpened') return { TTL: 900, urgency: 'high' }
-  if (kind === 'testStarted') return { TTL: 3600, urgency: 'high' }
-  return { TTL: DAY_S, urgency: 'normal' }
+function deliveryOptions(kind: PushKind): DeliveryOptions {
+  const timeout = SEND_TIMEOUT_MS
+  if (kind === 'checkInOpened' || kind === 'checkOutOpened') return { TTL: 900, urgency: 'high', timeout }
+  if (kind === 'testStarted') return { TTL: 3600, urgency: 'high', timeout }
+  return { TTL: DAY_S, urgency: 'normal', timeout }
 }
 
 type Job = { id: string; endpoint: string; keys: { p256dh: string; auth: string }; payload: PushPayload }
@@ -74,8 +81,10 @@ async function runLimited<T, R>(list: T[], limit: number, fn: (item: T) => Promi
  * or a push-service outage must not fail the action that triggered the notification. Without keys
  * (and no test client) nothing is sent, one warning with the count is logged and the database is
  * not touched. Suspended users' devices are skipped. A device the push service reports gone
- * (404/410) is deleted; other failures count against it. One `push_sent` and/or one `push_failed`
- * health event records counts only, never endpoints.
+ * (404/410) is deleted; other failures (a request times out after 10 s) count against it, and a
+ * device that reaches MAX_CONSECUTIVE_FAILURES in a row is deleted too (counted in `removed`).
+ * One `push_sent` and/or one `push_failed` health event records counts only, never endpoints;
+ * malformed VAPID keys record one `push_failed` for every device that was not sent to.
  */
 export async function sendPush(
   items: PushItem[],
@@ -117,7 +126,20 @@ export async function sendPush(
     }
     if (jobs.length === 0) return result
 
-    const client = testClient ?? (await createRealClient(keys!.publicKey, keys!.privateKey))
+    let client: PushClient
+    try {
+      client = testClient ?? (await createRealClient(keys!.publicKey, keys!.privateKey))
+    } catch (error) {
+      // Malformed VAPID keys: a misconfiguration, so it shows on the admin health page.
+      console.error('[push] could not set up the push client', error)
+      result.failed = jobs.length
+      await recordOpsEvent(conn, {
+        kind: 'push_failed',
+        ok: false,
+        detail: { count: jobs.length, error: scrubError(String((error as Error | null)?.message ?? error)) },
+      })
+      return result
+    }
     const outcomes = await runLimited(jobs, MAX_IN_FLIGHT, async (job): Promise<Outcome> => {
       try {
         await client.send(
@@ -154,7 +176,7 @@ export async function sendPush(
       }
       if (goneIds.length) await conn.delete(pushSubscription).where(inArray(pushSubscription.id, goneIds))
       if (failures.length) {
-        await conn
+        const counted = await conn
           .update(pushSubscription)
           .set({ failureCount: sql`${pushSubscription.failureCount} + 1` })
           .where(
@@ -163,6 +185,17 @@ export async function sendPush(
               failures.map((f) => f.id),
             ),
           )
+          .returning({ id: pushSubscription.id, failureCount: pushSubscription.failureCount })
+        // Failing every time: stop trying this device.
+        const worn = counted.filter((r) => r.failureCount >= MAX_CONSECUTIVE_FAILURES).map((r) => r.id)
+        if (worn.length) {
+          const deleted = await conn
+            .delete(pushSubscription)
+            .where(inArray(pushSubscription.id, worn))
+            .returning({ id: pushSubscription.id })
+          result.removed += deleted.length
+          result.failed -= deleted.length
+        }
       }
     } catch (error) {
       console.error('[push] could not update subscriptions after sending', error)

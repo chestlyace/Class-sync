@@ -181,7 +181,11 @@ describe('releasing test results', () => {
     const pushed = pushedItems()
     expect(pushed.map((i) => i.userId).sort()).toEqual([s.alice.user.id, s.bob.user.id, s.carol.user.id].sort())
     for (const i of pushed) {
-      expect(i.payload).toMatchObject({ kind: 'testResultsReleased', url: `/t/${s.test.code}` })
+      expect(i.payload).toMatchObject({
+        kind: 'testResultsReleased',
+        url: `/t/${s.test.code}`,
+        tag: `results-${s.test.id}`,
+      })
       expect(i.payload.title + i.payload.body).not.toMatch(/\d\s*\/\s*\d/)
     }
     setClock(at(50))

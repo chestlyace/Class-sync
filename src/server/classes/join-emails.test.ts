@@ -171,7 +171,11 @@ describe('class join confirmation emails', () => {
     expect(pushed.map((i) => i.userId).sort()).toEqual([owner.user.id, first.user.id].sort())
     expect(pushed.map((i) => i.userId)).not.toContain(second.user.id)
     for (const i of pushed) {
-      expect(i.payload).toMatchObject({ kind: 'colleagueJoinedClass', url: `/classes/${classId}` })
+      expect(i.payload).toMatchObject({
+        kind: 'colleagueJoinedClass',
+        url: `/classes/${classId}`,
+        tag: `colleague-${classId}-${second.user.id}`,
+      })
       expect(i.payload.body).toContain('Dr Second')
     }
   })

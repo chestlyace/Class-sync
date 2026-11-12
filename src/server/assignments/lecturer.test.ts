@@ -491,7 +491,11 @@ describe('lecturer assignment services', () => {
     expect(pushed.map((i) => i.userId)).not.toContain(outsider.user.id)
     expect(sentNotifications().map((n) => n.to).sort()).toEqual([alice.user.email, bob.user.email].sort())
     const bobItem = pushed.find((i) => i.userId === bob.user.id)!
-    expect(bobItem.payload).toMatchObject({ kind: 'assignmentPublished', url: `/assignments/${a.id}` })
+    expect(bobItem.payload).toMatchObject({
+      kind: 'assignmentPublished',
+      url: `/assignments/${a.id}`,
+      tag: `assignment-${a.id}`,
+    })
     expect(bobItem.payload.body).toContain('Sorting lab')
   })
 
@@ -515,7 +519,11 @@ describe('lecturer assignment services', () => {
     await releaseGrades(lecturer, a.id)
     await runScheduled()
     expect(pushedItems().map((i) => i.userId)).toEqual([alice.user.id])
-    expect(pushedItems()[0].payload).toMatchObject({ kind: 'gradesReleased', url: `/assignments/${a.id}` })
+    expect(pushedItems()[0].payload).toMatchObject({
+      kind: 'gradesReleased',
+      url: `/assignments/${a.id}`,
+      tag: `grades-${a.id}`,
+    })
     expect(pushedItems()[0].payload.body).not.toContain('16')
     await releaseGrades(lecturer, a.id)
     await runScheduled()

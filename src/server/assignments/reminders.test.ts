@@ -155,7 +155,11 @@ describe('sendDueReminders', () => {
 
     await sendDueReminders(db, at)
     expect(pushedItems().map((i) => i.userId).sort()).toEqual([students[1].user.id, students[2].user.id].sort())
-    expect(pushedItems()[0].payload).toMatchObject({ kind: 'assignmentReminder', url: `/assignments/${a.id}` })
+    expect(pushedItems()[0].payload).toMatchObject({
+      kind: 'assignmentReminder',
+      url: `/assignments/${a.id}`,
+      tag: `assignment-${a.id}`,
+    })
 
     push.mockClear()
     await sendDueReminders(db, new Date(at.getTime() + HOUR))

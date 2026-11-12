@@ -129,16 +129,68 @@ describe('sendPush', () => {
     expect(row.failureCount).toBe(1)
   })
 
-  it('uses 15-minute TTL and high urgency for check-in', async () => {
+  it('deletes a device on its fifth failure in a row and counts it as removed', async () => {
+    const a = await makeUser(db)
+    await device(a.id, 'https://push.example/worn')
+    await device(a.id, 'https://push.example/flaky')
+    await db.update(pushSubscription).set({ failureCount: 4 }).where(eq(pushSubscription.endpoint, 'https://push.example/worn'))
+    await db.update(pushSubscription).set({ failureCount: 2 }).where(eq(pushSubscription.endpoint, 'https://push.example/flaky'))
+    fakeClient(async () => {
+      throw { statusCode: 500, message: 'boom' }
+    })
+    const result = await sendPush([{ userId: a.id, payload: payload() }], db)
+    expect(result).toEqual({ sent: 0, skipped: 0, failed: 1, removed: 1 })
+    const rows = await db.select().from(pushSubscription)
+    expect(rows.map((r) => [r.endpoint, r.failureCount])).toEqual([['https://push.example/flaky', 3]])
+    const [failed] = await db.select().from(opsEvent).where(eq(opsEvent.kind, 'push_failed'))
+    expect(failed.detail).toMatchObject({ count: 2, removed: 1 })
+  })
+
+  it('a success resets the failure count, so only failures in a row remove a device', async () => {
+    const a = await makeUser(db)
+    await device(a.id, 'https://push.example/a')
+    await db.update(pushSubscription).set({ failureCount: 4 })
+    fakeClient()
+    await sendPush([{ userId: a.id, payload: payload() }], db)
+    fakeClient(async () => {
+      throw { statusCode: 500, message: 'boom' }
+    })
+    expect(await sendPush([{ userId: a.id, payload: payload() }], db)).toMatchObject({ failed: 1, removed: 0 })
+    const [row] = await db.select().from(pushSubscription)
+    expect(row.failureCount).toBe(1)
+  })
+
+  it('records one push_failed when the VAPID keys are malformed, and never throws', async () => {
+    vi.stubEnv('NEXT_PUBLIC_VAPID_PUBLIC_KEY', 'not-a-key')
+    vi.stubEnv('VAPID_PRIVATE_KEY', 'not-a-key-either')
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const a = await makeUser(db)
+    await device(a.id, 'https://push.example/a1')
+    await device(a.id, 'https://push.example/a2')
+    await expect(sendPush([{ userId: a.id, payload: payload() }], db)).resolves.toEqual({
+      sent: 0,
+      skipped: 0,
+      failed: 2,
+      removed: 0,
+    })
+    const events = await db.select().from(opsEvent)
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({ kind: 'push_failed', ok: false, detail: { count: 2, error: expect.any(String) } })
+    expect(JSON.stringify(events[0].detail)).not.toContain('not-a-key')
+    // The devices are left alone: the fault is the server's, not theirs.
+    expect((await db.select().from(pushSubscription)).every((r) => r.failureCount === 0)).toBe(true)
+  })
+
+  it('uses 15-minute TTL and high urgency for check-in, and a 10-second timeout for every send', async () => {
     const a = await makeUser(db)
     await device(a.id, 'https://push.example/a')
     const send = fakeClient()
     await sendPush([{ userId: a.id, payload: payload('checkInOpened') }], db)
     await sendPush([{ userId: a.id, payload: payload('testStarted') }], db)
     await sendPush([{ userId: a.id, payload: payload('notesAdded') }], db)
-    expect(send.mock.calls[0][2]).toEqual({ TTL: 900, urgency: 'high' })
-    expect(send.mock.calls[1][2]).toEqual({ TTL: 3600, urgency: 'high' })
-    expect(send.mock.calls[2][2]).toEqual({ TTL: 86400, urgency: 'normal' })
+    expect(send.mock.calls[0][2]).toEqual({ TTL: 900, urgency: 'high', timeout: 10_000 })
+    expect(send.mock.calls[1][2]).toEqual({ TTL: 3600, urgency: 'high', timeout: 10_000 })
+    expect(send.mock.calls[2][2]).toEqual({ TTL: 86400, urgency: 'normal', timeout: 10_000 })
   })
 
   it('records push_sent and push_failed counts without endpoints', async () => {

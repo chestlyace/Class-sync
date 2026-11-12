@@ -389,6 +389,7 @@ export async function publishAssignment(ctx: Ctx, assignmentId: string): Promise
             assignmentTitle: updated.title,
             dueAt: updated.dueAt,
             url: '/assignments/' + encodeURIComponent(updated.id),
+            tag: `assignment-${updated.id}`,
           }),
         })),
       )
@@ -678,6 +679,7 @@ export async function releaseGrades(ctx: Ctx, assignmentId: string): Promise<{ r
             courseTitle: course.title,
             assignmentTitle: row.title,
             url: '/assignments/' + encodeURIComponent(row.id),
+            tag: `grades-${row.id}`,
           }),
         })),
       )

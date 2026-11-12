@@ -32,14 +32,21 @@ async function toRoster(
   )
 }
 
-/** A check-in or check-out window opened. Links to plain /check-in, never the signed link. */
-export async function pushWindowOpened(db: Db, courseId: string, kind: WindowKind, closesAt: Date): Promise<void> {
+/**
+ * A check-in or check-out window opened. Links to plain /check-in, never the signed link. Tagged
+ * per window, so a check-out never silently replaces the check-in notification.
+ */
+export async function pushWindowOpened(
+  db: Db,
+  courseId: string,
+  window: { id: string; kind: WindowKind; closesAt: Date },
+): Promise<void> {
   await queuePush('window-opened', () =>
-    toRoster(db, courseId, kind === 'start' ? 'checkInOpened' : 'checkOutOpened', (courseTitle) => ({
+    toRoster(db, courseId, window.kind === 'start' ? 'checkInOpened' : 'checkOutOpened', (courseTitle) => ({
       courseTitle,
-      closesAt,
+      closesAt: window.closesAt,
       url: '/check-in',
-      tag: `checkin-${courseId}`,
+      tag: `checkin-${window.id}`,
     })),
   )
 }
@@ -47,13 +54,14 @@ export async function pushWindowOpened(db: Db, courseId: string, kind: WindowKin
 export async function pushTestStarted(
   db: Db,
   courseId: string,
-  test: { title: string; code: string },
+  test: { id: string; title: string; code: string },
 ): Promise<void> {
   await queuePush('test-started', () =>
     toRoster(db, courseId, 'testStarted', (courseTitle) => ({
       courseTitle,
       testTitle: test.title,
-      url: `/t/${test.code}`,
+      url: '/t/' + encodeURIComponent(test.code),
+      tag: `test-${test.id}`,
     })),
   )
 }

@@ -119,12 +119,14 @@ describe('attendance sessions', () => {
     const push = vi.mocked(sendPush)
     push.mockClear()
     const session = await createSession(lecturer, algo.id, { requireOnCampus: false })
-    await openWindow(lecturer, session.id, 'start')
+    const opened = await openWindow(lecturer, session.id, 'start')
     await expect(openWindow(lecturer, session.id, 'start')).rejects.toMatchObject({ code: 'CONFLICT' })
     expect(push).toHaveBeenCalledTimes(1)
-    const items = push.mock.calls[0][0] as { userId: string; payload: { url: string; kind: string } }[]
+    const items = push.mock.calls[0][0] as { userId: string; payload: { url: string; kind: string; tag: string } }[]
     expect(items).toHaveLength(2)
     expect(items.every((i) => i.payload.url === '/check-in' && i.payload.kind === 'checkInOpened')).toBe(true)
+    // Tagged per window, not per course.
+    expect(items.every((i) => i.payload.tag === `checkin-${opened.windowId}`)).toBe(true)
   })
 
   it('owner creates a session; a colleague sharing the class gets FORBIDDEN on every function', async () => {

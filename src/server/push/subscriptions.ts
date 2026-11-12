@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, ne, notInArray } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
@@ -24,8 +24,34 @@ const endpointField = z
     }
   }, 'Endpoint must be an https URL')
 
+/** At most this many devices per account: a new one past it replaces the oldest. */
+export const MAX_DEVICES_PER_USER = 10
+
+/**
+ * The browsers' push services. The server posts to whatever endpoint is stored, so anything else
+ * (an internal address, an arbitrary site) is refused.
+ */
+export function isPushServiceHost(hostname: string): boolean {
+  const host = hostname.toLowerCase()
+  return (
+    host === 'fcm.googleapis.com' ||
+    host === 'updates.push.services.mozilla.com' ||
+    host === 'web.push.apple.com' ||
+    host.endsWith('.push.apple.com') ||
+    host.endsWith('.notify.windows.com')
+  )
+}
+
+const pushEndpointField = endpointField.refine((v) => {
+  try {
+    return isPushServiceHost(new URL(v).hostname)
+  } catch {
+    return false
+  }
+}, 'Endpoint must be a known push service')
+
 const subscriptionSchema = z.object({
-  endpoint: endpointField,
+  endpoint: pushEndpointField,
   keys: z.object({ p256dh: base64url, auth: base64url }),
   userAgent: z.string().max(1024).optional(),
 })
@@ -70,7 +96,10 @@ export function deviceLabel(userAgent: string | undefined): string {
   return os ? `${browser} on ${os}` : browser
 }
 
-/** Registers or refreshes this device for the caller. The endpoint is unique: a re-subscribe updates the row. */
+/**
+ * Registers or refreshes this device for the caller. The endpoint is unique: a re-subscribe updates
+ * the row. Past MAX_DEVICES_PER_USER, the caller's oldest other devices are removed.
+ */
 export async function subscribe(ctx: Ctx, input: unknown): Promise<{ id: string }> {
   const data = parse(subscriptionSchema, input)
   const values = {
@@ -85,6 +114,22 @@ export async function subscribe(ctx: Ctx, input: unknown): Promise<{ id: string 
     .values({ endpoint: data.endpoint, ...values })
     .onConflictDoUpdate({ target: pushSubscription.endpoint, set: values })
     .returning({ id: pushSubscription.id })
+  // Keep this device and the caller's newest others, up to the cap.
+  const newestOthers = ctx.db
+    .select({ id: pushSubscription.id })
+    .from(pushSubscription)
+    .where(and(eq(pushSubscription.userId, ctx.user.id), ne(pushSubscription.id, row.id)))
+    .orderBy(desc(pushSubscription.createdAt), desc(pushSubscription.id))
+    .limit(MAX_DEVICES_PER_USER - 1)
+  await ctx.db
+    .delete(pushSubscription)
+    .where(
+      and(
+        eq(pushSubscription.userId, ctx.user.id),
+        ne(pushSubscription.id, row.id),
+        notInArray(pushSubscription.id, newestOthers),
+      ),
+    )
   return { id: row.id }
 }
 
@@ -94,6 +139,21 @@ export async function unsubscribe(ctx: Ctx, endpoint: unknown): Promise<void> {
   await ctx.db
     .delete(pushSubscription)
     .where(and(eq(pushSubscription.endpoint, value), eq(pushSubscription.userId, ctx.user.id)))
+}
+
+/**
+ * Whether this browser's endpoint is stored for the caller. False when it is someone else's, was
+ * removed in Settings, or was deleted after the push service reported it gone: the browser still
+ * holds a subscription, but nothing reaches this account through it.
+ */
+export async function isMyDevice(ctx: Ctx, endpoint: unknown): Promise<boolean> {
+  const value = parse(endpointField, endpoint)
+  const [row] = await ctx.db
+    .select({ id: pushSubscription.id })
+    .from(pushSubscription)
+    .where(and(eq(pushSubscription.endpoint, value), eq(pushSubscription.userId, ctx.user.id)))
+    .limit(1)
+  return row !== undefined
 }
 
 export async function listMyDevices(ctx: Ctx): Promise<MyDevice[]> {

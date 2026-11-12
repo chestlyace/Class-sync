@@ -304,6 +304,7 @@ function colleagueJoinedPush(ctx: Ctx, classId: string, data: LecturerJoinData):
       className,
       colleagueName: ctx.user.name,
       url: '/classes/' + encodeURIComponent(classId),
+      tag: `colleague-${classId}-${ctx.user.id}`,
     }),
   }))
 }

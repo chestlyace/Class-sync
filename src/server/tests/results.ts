@@ -118,6 +118,7 @@ export async function releaseResults(ctx: Ctx, testId: string): Promise<{ releas
             courseTitle: owned.title,
             testTitle: test.title,
             url: '/t/' + encodeURIComponent(test.code),
+            tag: `results-${test.id}`,
           }),
         })),
       )

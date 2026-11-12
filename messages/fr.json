@@ -2864,8 +2864,8 @@
     "link": "Sécurité"
   },
   "push": {
-    "checkInOpened": "L'appel est ouvert. Il se ferme à {time}.",
-    "checkOutOpened": "La sortie est ouverte. Elle se ferme à {time}.",
+    "checkInOpened": "Le pointage de début de cours est ouvert. Il se ferme à {time}.",
+    "checkOutOpened": "Le pointage de fin de cours est ouvert. Il se ferme à {time}.",
     "testStarted": "{test} a commencé.",
     "notesAdded": "Nouveau : {item}",
     "topicReleased": "{topic} est maintenant disponible.",
