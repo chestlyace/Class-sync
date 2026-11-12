@@ -6,6 +6,7 @@ import { testAnswer } from '@/server/db/schema'
 import { setEmailDbForTests } from '@/server/email/db'
 import { setResendClientFactoryForTests, type NotifyClient } from '@/server/email/notify'
 import { setAfterResponseForTests } from '@/server/lib/after-response'
+import { sendPush, type PushItem } from '@/server/push/send'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
 import {
@@ -23,6 +24,19 @@ import { setMarkSuggesterForTests } from './ai/suggester'
 import { confirmMark, getMarkingQuestion, suggestMarks } from './marking'
 import { getMyTestResult, releaseResults } from './results'
 
+vi.mock('@/server/push/send', () => {
+  const sendPush = vi.fn(async (items: unknown[]) => ({ sent: 0, skipped: items.length, failed: 0, removed: 0 }))
+  return {
+    sendPush,
+    queuePush: vi.fn(async (_context: string, build: () => Promise<unknown[]>) => {
+      await sendPush(await build())
+    }),
+  }
+})
+
+const push = vi.mocked(sendPush)
+const pushedItems = (): PushItem[] => push.mock.calls.flatMap((c) => c[0] as PushItem[])
+
 type Sent = { from: string; to: string; subject: string; react: ReactElement<{ url: string; locale: string; studentName: string }> }
 
 describe('releasing test results', () => {
@@ -36,6 +50,7 @@ describe('releasing test results', () => {
   beforeEach(() => {
     tasks = []
     sent = []
+    push.mockClear()
     setAfterResponseForTests((task) => {
       tasks.push(task)
     })
@@ -73,6 +88,7 @@ describe('releasing test results', () => {
   async function scenario() {
     const c = await setupCourse(db)
     tasks.splice(0) // the class-join confirmations of the setup; these tests are about result emails
+    push.mockClear()
     const t = await insertStartedTest(db, c.lecturer, c.bio.id)
     const q2 = t.q2!
     const q3 = t.q3!
@@ -154,6 +170,24 @@ describe('releasing test results', () => {
     await flush()
     expect(sent).toHaveLength(3)
     expect((await testRowOf(db, s.test.id)).resultsReleasedAt).toEqual(at(40))
+  })
+
+  it('releasing test results pushes to students who took it, without the score', async () => {
+    const s = await scenario()
+    await confirmAll(s)
+    await releaseResults(s.lecturer, s.test.id)
+    expect(push).not.toHaveBeenCalled()
+    await flush()
+    const pushed = pushedItems()
+    expect(pushed.map((i) => i.userId).sort()).toEqual([s.alice.user.id, s.bob.user.id, s.carol.user.id].sort())
+    for (const i of pushed) {
+      expect(i.payload).toMatchObject({ kind: 'testResultsReleased', url: `/t/${s.test.code}` })
+      expect(i.payload.title + i.payload.body).not.toMatch(/\d\s*\/\s*\d/)
+    }
+    setClock(at(50))
+    await releaseResults(s.lecturer, s.test.id)
+    await flush()
+    expect(push).toHaveBeenCalledTimes(1)
   })
 
   it('a send failure never fails the release', async () => {

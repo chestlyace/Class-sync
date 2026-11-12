@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { config, setConfigForTests } from '@/server/core/config'
 import type { Db } from '@/server/db'
 import { class_, classLecturer, classStudent, school } from '@/server/db/schema'
@@ -18,6 +18,16 @@ import {
   regenerateJoinCode,
   removeStudentFromClass,
 } from './service'
+
+vi.mock('@/server/push/send', () => {
+  const sendPush = vi.fn(async (items: unknown[]) => ({ sent: 0, skipped: items.length, failed: 0, removed: 0 }))
+  return {
+    sendPush,
+    queuePush: vi.fn(async (_context: string, build: () => Promise<unknown[]>) => {
+      await sendPush(await build())
+    }),
+  }
+})
 
 describe('classes service', () => {
   let db: Db

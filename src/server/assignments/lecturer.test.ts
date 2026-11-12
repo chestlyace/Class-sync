@@ -23,6 +23,7 @@ import { createCourse, setRosterAdjustment } from '@/server/courses/service'
 import { createSchool } from '@/server/schools/service'
 import { sendNotifications, type Notification } from '@/server/email/notify'
 import { setAfterResponseForTests } from '@/server/lib/after-response'
+import { sendPush, type PushItem } from '@/server/push/send'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
 import {
@@ -43,8 +44,19 @@ vi.mock('@/server/email/notify', async (importOriginal) => {
   return { ...actual, sendNotifications: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0 })) }
 })
 
+vi.mock('@/server/push/send', () => {
+  const sendPush = vi.fn(async (items: unknown[]) => ({ sent: 0, skipped: items.length, failed: 0, removed: 0 }))
+  return {
+    sendPush,
+    queuePush: vi.fn(async (_context: string, build: () => Promise<unknown[]>) => {
+      await sendPush(await build())
+    }),
+  }
+})
+
 const DAY = 24 * 60 * 60_000
 const send = vi.mocked(sendNotifications)
+const push = vi.mocked(sendPush)
 
 const paragraph = (text: string) => ({ type: 'paragraph', content: [{ type: 'text', text, styles: {} }], children: [] })
 
@@ -75,6 +87,7 @@ describe('lecturer assignment services', () => {
       tasks.push(task)
     })
     send.mockClear()
+    push.mockClear()
     vi.stubEnv('BETTER_AUTH_URL', 'https://clasync.test')
   })
   afterEach(async () => {
@@ -103,6 +116,7 @@ describe('lecturer assignment services', () => {
 
   /** Every notification handed to sendNotifications so far, flattened. */
   const sentNotifications = (): Notification[] => send.mock.calls.flatMap((c) => c[0])
+  const pushedItems = (): PushItem[] => push.mock.calls.flatMap((c) => c[0] as PushItem[])
 
   async function setup() {
     const lecturer = ctxFor(db, await makeUser(db, { role: 'lecturer', name: 'Dr Owner' }))
@@ -118,6 +132,7 @@ describe('lecturer assignment services', () => {
     await joinClassAsStudent(bob, cls.studentCode!, 'UB2')
     await joinClassAsStudent(carol, cls.studentCode!, 'UB3')
     tasks = [] // the class-join confirmations; these tests are about assignment emails
+    push.mockClear()
     return { lecturer, colleague, algo, alice, bob, carol, cls }
   }
 
@@ -460,6 +475,51 @@ describe('lecturer assignment services', () => {
     expect(again.publishedAt).toEqual(detail.publishedAt)
     await runScheduled()
     expect(send).toHaveBeenCalledTimes(1)
+  })
+
+  it('publishing pushes to the same students it emails; an off-roster student gets neither', async () => {
+    const { lecturer, algo, alice, bob, carol } = await setup()
+    const outsider = ctxFor(db, await makeUser(db, { role: 'student', name: 'Outsider', locale: 'en' }))
+    await setRosterAdjustment(lecturer, algo.id, carol.user.id, 'exclude')
+    push.mockClear()
+    const a = await createAssignment(lecturer, algo.id, baseInput())
+    await publishAssignment(lecturer, a.id)
+    expect(push).not.toHaveBeenCalled()
+    await runScheduled()
+    const pushed = pushedItems()
+    expect(pushed.map((i) => i.userId).sort()).toEqual([alice.user.id, bob.user.id].sort())
+    expect(pushed.map((i) => i.userId)).not.toContain(outsider.user.id)
+    expect(sentNotifications().map((n) => n.to).sort()).toEqual([alice.user.email, bob.user.email].sort())
+    const bobItem = pushed.find((i) => i.userId === bob.user.id)!
+    expect(bobItem.payload).toMatchObject({ kind: 'assignmentPublished', url: `/assignments/${a.id}` })
+    expect(bobItem.payload.body).toContain('Sorting lab')
+  })
+
+  it('publishing twice pushes once', async () => {
+    const { lecturer, algo } = await setup()
+    const a = await createAssignment(lecturer, algo.id, baseInput())
+    await publishAssignment(lecturer, a.id)
+    await runScheduled()
+    await publishAssignment(lecturer, a.id)
+    await runScheduled()
+    expect(push).toHaveBeenCalledTimes(1)
+  })
+
+  it('releasing grades pushes only to students with a mark', async () => {
+    const { lecturer, algo, alice, bob } = await setup()
+    const a = await published(lecturer, algo.id)
+    const aliceSub = await addSubmission(alice, a.id)
+    await addSubmission(bob, a.id)
+    await gradeSubmission(lecturer, aliceSub, { mark: 16, feedback: null, expectedSubmittedAt: await versionOf(aliceSub) })
+    push.mockClear()
+    await releaseGrades(lecturer, a.id)
+    await runScheduled()
+    expect(pushedItems().map((i) => i.userId)).toEqual([alice.user.id])
+    expect(pushedItems()[0].payload).toMatchObject({ kind: 'gradesReleased', url: `/assignments/${a.id}` })
+    expect(pushedItems()[0].payload.body).not.toContain('16')
+    await releaseGrades(lecturer, a.id)
+    await runScheduled()
+    expect(push).toHaveBeenCalledTimes(1)
   })
 
   it('refuses to publish an assignment whose due date has passed', async () => {

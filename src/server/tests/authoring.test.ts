@@ -34,6 +34,11 @@ import {
 import { loadQuestions, requireOwnedTest } from './queries'
 import type { TestInput } from './rules'
 
+vi.mock('@/server/push/send', () => ({
+  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
+  queuePush: vi.fn(async () => {}),
+}))
+
 vi.mock('@/server/classes/join-code', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/server/classes/join-code')>()
   return { ...actual, generateJoinCode: vi.fn(actual.generateJoinCode) }

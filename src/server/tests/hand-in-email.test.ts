@@ -8,6 +8,11 @@ import { createTestDb } from '@/test/db'
 import { at, clearMarkingData, insertStartedTest, joinTest, setClock, setupCourse } from '@/test/marking-fixture'
 import { handIn, syncAttempt } from './attempt'
 
+vi.mock('@/server/push/send', () => ({
+  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
+  queuePush: vi.fn(async () => {}),
+}))
+
 type Sent = { to: string; subject: string; react: ReactElement<Record<string, unknown>> }
 
 describe('test hand-in receipts', () => {

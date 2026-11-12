@@ -13,6 +13,11 @@ import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
 import { submitAssignment } from './student'
 
+vi.mock('@/server/push/send', () => ({
+  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
+  queuePush: vi.fn(async () => {}),
+}))
+
 type Sent = { to: string; subject: string; react: ReactElement<Record<string, unknown>> }
 
 const BASE = new Date('2026-11-10T08:00:00Z')

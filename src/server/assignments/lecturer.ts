@@ -25,6 +25,8 @@ import { GradesReleasedEmail } from '@/server/email/templates/grades-released'
 import { emailSubject } from '@/server/email/templates/verify-email'
 import { assertConfirmedFilesOwnedBy, type FileInfo } from '@/server/files/service'
 import { runAfterResponse } from '@/server/lib/after-response'
+import { pushPayload } from '@/server/push/payload'
+import { sendPush, type PushItem } from '@/server/push/send'
 import {
   assignmentLinkBuilder,
   loadAssignmentDetail,
@@ -377,8 +379,17 @@ export async function publishAssignment(ctx: Ctx, assignmentId: string): Promise
         }),
       }
     })
+    const pushItems: PushItem[] = roster.map((student) => ({
+      userId: student.studentId,
+      payload: pushPayload('assignmentPublished', locales.get(student.studentId) ?? 'en', {
+        courseTitle: course.title,
+        assignmentTitle: updated.title,
+        dueAt: updated.dueAt,
+        url: '/assignments/' + encodeURIComponent(updated.id),
+      }),
+    }))
     runAfterResponse(async () => {
-      await sendNotifications(items)
+      await Promise.all([sendNotifications(items), sendPush(pushItems)])
     })
   }
   return loadAssignmentDetail(ctx.db, updated)
@@ -656,8 +667,16 @@ export async function releaseGrades(ctx: Ctx, assignmentId: string): Promise<{ r
         }),
       }
     })
+    const pushItems: PushItem[] = recipients.map((student) => ({
+      userId: student.studentId,
+      payload: pushPayload('gradesReleased', locales.get(student.studentId) ?? 'en', {
+        courseTitle: course.title,
+        assignmentTitle: row.title,
+        url: '/assignments/' + encodeURIComponent(row.id),
+      }),
+    }))
     runAfterResponse(async () => {
-      await sendNotifications(items)
+      await Promise.all([sendNotifications(items), sendPush(pushItems)])
     })
   }
   return { released: recipients.length }

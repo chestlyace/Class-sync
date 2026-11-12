@@ -22,6 +22,11 @@ vi.mock('@/server/auth/session', () => ({
 
 import { GET } from '@/app/(app)/courses/[courseId]/performance/export/route'
 
+vi.mock('@/server/push/send', () => ({
+  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
+  queuePush: vi.fn(async () => {}),
+}))
+
 describe('GET /courses/[courseId]/performance/export', () => {
   let db: Db
   const zone = config.timeZone

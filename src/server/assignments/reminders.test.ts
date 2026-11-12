@@ -16,6 +16,7 @@ import {
 import { setEmailDbForTests } from '@/server/email/db'
 import { setResendClientFactoryForTests, setRetryWaitForTests, type NotifyClient } from '@/server/email/notify'
 import { setAfterResponseForTests } from '@/server/lib/after-response'
+import { sendPush, type PushItem } from '@/server/push/send'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
 import { createSchool } from '@/server/schools/service'
@@ -23,7 +24,19 @@ import { createClass, joinClassAsStudent } from '@/server/classes/service'
 import { createCourse, setRosterAdjustment } from '@/server/courses/service'
 import { sendDueReminders } from './reminders'
 
+vi.mock('@/server/push/send', () => {
+  const sendPush = vi.fn(async (items: unknown[]) => ({ sent: 0, skipped: items.length, failed: 0, removed: 0 }))
+  return {
+    sendPush,
+    queuePush: vi.fn(async (_context: string, build: () => Promise<unknown[]>) => {
+      await sendPush(await build())
+    }),
+  }
+})
+
 const HOUR = 3_600_000
+const push = vi.mocked(sendPush)
+const pushedItems = (): PushItem[] => push.mock.calls.flatMap((c) => c[0] as PushItem[])
 
 describe('sendDueReminders', () => {
   let db: Db
@@ -35,6 +48,7 @@ describe('sendDueReminders', () => {
   })
   beforeEach(() => {
     batches = []
+    push.mockClear()
     vi.stubEnv('RESEND_API_KEY', 'test-key')
     vi.stubEnv('BETTER_AUTH_URL', 'https://clasync.test')
     const client: NotifyClient = {
@@ -131,6 +145,21 @@ describe('sendDueReminders', () => {
     batches = []
     await expect(sendDueReminders(db, new Date(at.getTime() + HOUR))).resolves.toEqual({ assignments: 1, reminded: 0 })
     expect(sent()).toHaveLength(0)
+  })
+
+  it('a reminder run pushes to the claimed students only', async () => {
+    const at = new Date()
+    const { lecturer, algo, students } = await setup()
+    const a = await addAssignment(algo.id, lecturer.user.id, at, 23)
+    await db.insert(submission).values({ assignmentId: a.id, studentId: students[0].user.id, submittedAt: at })
+
+    await sendDueReminders(db, at)
+    expect(pushedItems().map((i) => i.userId).sort()).toEqual([students[1].user.id, students[2].user.id].sort())
+    expect(pushedItems()[0].payload).toMatchObject({ kind: 'assignmentReminder', url: `/assignments/${a.id}` })
+
+    push.mockClear()
+    await sendDueReminders(db, new Date(at.getTime() + HOUR))
+    expect(pushedItems()).toHaveLength(0)
   })
 
   it('two concurrent runs remind each student once in total', async () => {

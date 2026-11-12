@@ -50,6 +50,11 @@ import { getCaSettings } from './inputs'
 import { getCourseCa, getMyCa, type StudentCa } from './service'
 import { updateCaSettings } from './settings'
 
+vi.mock('@/server/push/send', () => ({
+  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
+  queuePush: vi.fn(async () => {}),
+}))
+
 const MIN = 60_000
 const DAY = 24 * 60 * MIN
 

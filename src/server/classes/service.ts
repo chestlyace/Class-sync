@@ -11,6 +11,8 @@ import { ClassJoinedEmail } from '@/server/email/templates/class-joined'
 import { ColleagueJoinedClassEmail, LecturerJoinedClassEmail } from '@/server/email/templates/lecturer-joined-class'
 import { emailSubject } from '@/server/email/templates/verify-email'
 import { isUniqueViolation } from '@/server/lib/db-errors'
+import { pushPayload } from '@/server/push/payload'
+import { queuePush, type PushItem } from '@/server/push/send'
 import { getSchool } from '@/server/schools/service'
 import {
   generateJoinCode,
@@ -234,6 +236,7 @@ export async function joinClassAsLecturer(ctx: Ctx, code: string): Promise<{ cla
     .returning({ classId: classLecturer.classId })
   if (inserted.length > 0) {
     await queueNotifications('joinClassAsLecturer', () => lecturerJoinedEmails(ctx, classId))
+    await queuePush('joinClassAsLecturer', () => colleagueJoinedPush(ctx, classId))
   }
   return { classId }
 }
@@ -275,6 +278,25 @@ async function lecturerJoinedEmails(ctx: Ctx, classId: string): Promise<Notifica
     })
   }
   return items
+}
+
+/** Push to the class's other lecturers only: the joining lecturer's own confirmation is email only. */
+async function colleagueJoinedPush(ctx: Ctx, classId: string): Promise<PushItem[]> {
+  const { className } = await classNames(ctx.db, classId)
+  const colleagues = await ctx.db
+    .selectDistinct({ id: user.id, locale: user.locale })
+    .from(user)
+    .leftJoin(classLecturer, and(eq(classLecturer.userId, user.id), eq(classLecturer.classId, classId)))
+    .leftJoin(class_, and(eq(class_.createdBy, user.id), eq(class_.id, classId)))
+    .where(and(or(isNotNull(classLecturer.userId), isNotNull(class_.id)), ne(user.id, ctx.user.id)))
+  return colleagues.map((c) => ({
+    userId: c.id,
+    payload: pushPayload('colleagueJoinedClass', c.locale === 'fr' ? 'fr' : 'en', {
+      className,
+      colleagueName: ctx.user.name,
+      url: '/classes/' + encodeURIComponent(classId),
+    }),
+  }))
 }
 
 async function studentJoinedEmails(ctx: Ctx, classId: string): Promise<Notification[]> {

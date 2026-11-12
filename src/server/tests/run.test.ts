@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/pglite'
 import { migrate } from 'drizzle-orm/pglite/migrator'
 import path from 'node:path'
-import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { setNowForTests } from '@/server/core/clock'
 import type { Ctx } from '@/server/core/context'
 import type { Db } from '@/server/db'
@@ -38,6 +38,11 @@ import {
   startTest,
 } from './run'
 import { loadTestScores } from './scores'
+
+vi.mock('@/server/push/send', () => ({
+  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
+  queuePush: vi.fn(async () => {}),
+}))
 
 const MIN = 60_000
 /** Statements per call; a change here should be deliberate. */

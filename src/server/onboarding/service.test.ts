@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { config, setConfigForTests } from '@/server/core/config'
 import type { Db } from '@/server/db'
 import { class_, classLecturer, classStudent, course, courseRosterAdjustment, school } from '@/server/db/schema'
@@ -9,6 +9,11 @@ import { createClass, joinClassAsLecturer, joinClassAsStudent, removeStudentFrom
 import { createCourse } from '@/server/courses/service'
 import { createSchool } from '@/server/schools/service'
 import { getOnboardingStatus } from './service'
+
+vi.mock('@/server/push/send', () => ({
+  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
+  queuePush: vi.fn(async () => {}),
+}))
 
 describe('onboarding service', () => {
   let db: Db

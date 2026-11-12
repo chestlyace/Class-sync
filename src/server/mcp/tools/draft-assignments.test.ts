@@ -15,6 +15,11 @@ import { createTestDb } from '@/test/db'
 import { clearMarkingData, setupCourse } from '@/test/marking-fixture'
 import { callTool, parseToolInput } from '@/test/mcp'
 
+vi.mock('@/server/push/send', () => ({
+  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
+  queuePush: vi.fn(async () => {}),
+}))
+
 vi.mock('@/server/email/notify', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/server/email/notify')>()
   return { ...actual, sendNotifications: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0 })) }
