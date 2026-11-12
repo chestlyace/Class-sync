@@ -6,6 +6,7 @@ import { PageHeader, Panel, SectionHeading } from '@/components/page-header'
 import { buttonVariants } from '@/components/ui/button'
 import { DEFAULT_LOCALE, isLocale, type Locale } from '@/i18n/locale'
 import { googleErrorKey } from '@/lib/auth-errors'
+import { initials } from '@/lib/person-name'
 import { mcpResourceUrl, resolveAppOrigin } from '@/server/auth/auth'
 import { isGoogleSignInEnabled } from '@/server/auth/google'
 import { getSessionUser } from '@/server/auth/session'
@@ -36,12 +37,6 @@ import {
 export async function generateMetadata() {
   const t = await getTranslations('settings')
   return { title: t('title') }
-}
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  const letters = parts.length > 1 ? [parts[0], parts[parts.length - 1]] : parts
-  return letters.map((p) => p[0]!.toUpperCase()).join('') || '?'
 }
 
 type SchoolGroup = { school: School; classes: ClassSummary[] }

@@ -2,17 +2,12 @@ import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { Logo } from '@/components/logo'
 import { buttonVariants } from '@/components/ui/button'
+import { initials } from '@/lib/person-name'
 import { isPreviewDeployment } from '@/server/core/config'
 import type { SessionUser } from '@/server/core/context'
 import { LanguageSwitcher } from './language-switcher'
 import { BottomNav, TopNavLinks } from './nav-links'
 import { SignOutButton } from './sign-out-button'
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  const letters = parts.length > 1 ? [parts[0], parts[parts.length - 1]] : parts
-  return letters.map((p) => p[0]!.toUpperCase()).join('') || '?'
-}
 
 type Section = { href: string; label: string }
 
