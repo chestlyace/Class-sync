@@ -16,11 +16,6 @@ vi.mock('@/server/ops/events', () => ({
 
 import { GET, POST } from './route'
 
-vi.mock('@/server/push/send', () => ({
-  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
-  queuePush: vi.fn(async () => {}),
-}))
-
 const url = 'http://localhost/api/cron/reminders'
 const post = (headers: Record<string, string> = {}) => POST(new Request(url, { method: 'POST', headers }))
 const get = (headers: Record<string, string> = {}) => GET(new Request(url, { method: 'GET', headers }))

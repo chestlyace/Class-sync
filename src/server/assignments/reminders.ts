@@ -8,16 +8,17 @@ import { assignment, assignmentReminder, course, submission } from '@/server/db/
 import { sendNotifications, type Notification } from '@/server/email/notify'
 import { AssignmentReminderEmail } from '@/server/email/templates/assignment-reminder'
 import { emailSubject } from '@/server/email/templates/verify-email'
+import { safePushItems } from '@/server/push/build'
 import { pushPayload } from '@/server/push/payload'
-import { sendPush, type PushItem } from '@/server/push/send'
+import { sendPush } from '@/server/push/send'
 import { assignmentLinkBuilder, localesOf } from './queries'
 
 export const REMINDER_WINDOW_MS = 24 * 60 * 60 * 1000
 const INSERT_CHUNK = 500
 
 /**
- * Emails every roster student who has not submitted yet for each published assignment (grades not
- * yet released) due within
+ * Emails (and pushes to) every roster student who has not submitted yet for each published assignment
+ * (grades not yet released) due within
  * the next 24 hours (`(at, at + 24 h]`), once per student and assignment. The reminder row is
  * inserted (`on conflict do nothing … returning`) BEFORE sending and only the rows that came back
  * are emailed, so overlapping runs cannot double-send; the price is that a failed send is not
@@ -97,17 +98,19 @@ export async function sendDueReminders(db: Db, at: Date): Promise<{ assignments:
     }
     // Never throws: a provider outage must not fail the cron run (the rows are already claimed).
     await sendNotifications(notifications)
-    const pushItems: PushItem[] = candidates
-      .filter((student) => claimed.has(student.studentId))
-      .map((student) => ({
-        userId: student.studentId,
-        payload: pushPayload('assignmentReminder', localeOf.get(student.studentId) ?? 'en', {
-          courseTitle: a.courseTitle,
-          assignmentTitle: a.title,
-          dueAt: a.dueAt,
-          url: '/assignments/' + encodeURIComponent(a.id),
-        }),
-      }))
+    const pushItems = safePushItems('sendDueReminders', () =>
+      candidates
+        .filter((student) => claimed.has(student.studentId))
+        .map((student) => ({
+          userId: student.studentId,
+          payload: pushPayload('assignmentReminder', localeOf.get(student.studentId) ?? 'en', {
+            courseTitle: a.courseTitle,
+            assignmentTitle: a.title,
+            dueAt: a.dueAt,
+            url: '/assignments/' + encodeURIComponent(a.id),
+          }),
+        })),
+    )
     await sendPush(pushItems) // never throws either
     reminded += notifications.length
   }
