@@ -8,6 +8,8 @@ import { createTestDb } from '@/test/db'
 import { makeUser } from '@/test/factories'
 import { setEmailDbForTests } from './db'
 import { sendEmail } from './send'
+import { VerifyEmail } from './templates/verify-email'
+import fr from '../../../messages/fr.json'
 
 vi.mock('resend', () => ({ Resend: vi.fn() }))
 
@@ -94,6 +96,16 @@ describe('sendEmail health events and suspension', () => {
     vi.stubEnv('SUPPORT_EMAIL', 'help@example.com')
     await sendEmail(message)
     expect(send.mock.calls[1]![0]).toMatchObject({ replyTo: 'help@example.com' })
+  })
+
+  it('sends a plain-text part next to the HTML, with the link written out', async () => {
+    send.mockResolvedValue({ data: { id: 'x' }, error: null })
+    const url = 'https://clasync.online/api/auth/verify-email?token=abc'
+    await sendEmail({ ...message, react: VerifyEmail({ name: 'Ada', url, locale: 'fr' }) })
+    const { text } = send.mock.calls[0]![0] as { text: string }
+    expect(text).toContain(url)
+    expect(text).toContain(fr.email.verify.cta)
+    expect(text).not.toMatch(/<[a-z]/i)
   })
 
   it('records email_failed and still throws when Resend reports an error', async () => {

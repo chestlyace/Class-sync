@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { render } from '@react-email/render'
 import { Resend } from 'resend'
 import { supportEmail } from '@/lib/contact'
 import type { Locale } from '@/server/core/context'
@@ -10,7 +11,7 @@ import type { EmailKind } from './templates/verify-email'
 
 export type Notification = { to: string; locale: Locale; subject: string; react: ReactElement; kind: EmailKind }
 
-type BatchPayload = Array<{ from: string; replyTo: string; to: string; subject: string; react: ReactElement }>
+type BatchPayload = Array<{ from: string; replyTo: string; to: string; subject: string; react: ReactElement; text: string }>
 
 /** The slice of the Resend client this module uses, so tests can substitute it. */
 export type NotifyClient = {
@@ -61,6 +62,8 @@ async function sendChunk(client: NotifyClient, payload: BatchPayload): Promise<{
  * a single warning with the count (never the addresses) is logged. Suspended users' addresses are
  * dropped before sending and counted as skipped (if that lookup fails nothing is sent). Each
  * chunk records one `email_sent` or `email_failed` health event with its size, never addresses.
+ * Each email carries a plain-text part next to the HTML (see `sendEmail`); a chunk whose emails
+ * cannot be rendered counts as failed.
  */
 export async function sendNotifications(
   items: Notification[],
@@ -110,11 +113,27 @@ export async function sendNotifications(
   const replyTo = supportEmail()
   for (let i = 0; i < items.length; i += BATCH_SIZE) {
     const chunk = items.slice(i, i + BATCH_SIZE)
-    const payload: BatchPayload = chunk.map((n) => ({ from, replyTo, to: n.to, subject: n.subject, react: n.react }))
-    let outcome = await sendChunk(client, payload)
-    if (!outcome.ok) {
-      await wait(RETRY_DELAY_MS)
+    let outcome: Awaited<ReturnType<typeof sendChunk>>
+    try {
+      const payload: BatchPayload = await Promise.all(
+        chunk.map(async (n) => ({
+          from,
+          replyTo,
+          to: n.to,
+          subject: n.subject,
+          react: n.react,
+          text: await render(n.react, { plainText: true }),
+        })),
+      )
       outcome = await sendChunk(client, payload)
+      if (!outcome.ok) {
+        await wait(RETRY_DELAY_MS)
+        outcome = await sendChunk(client, payload)
+      }
+    } catch (error) {
+      // Only rendering can throw here: sendChunk reports failures instead of throwing.
+      console.error('[notify] could not render a batch', { size: chunk.length, error })
+      outcome = { ok: false, error: error instanceof Error ? error.message : 'render threw' }
     }
     if (outcome.ok) {
       result.sent += chunk.length
