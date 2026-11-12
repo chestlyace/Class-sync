@@ -52,15 +52,40 @@ export async function currentSubscription(): Promise<PushSubscription | null> {
 export type DeviceState = {
   support: PushSupport
   permission: NotificationPermission | 'unsupported'
-  /** This browser holds a push subscription for Clasync. */
+  /** This browser holds a push subscription that reaches the signed-in account (see subscriptionReachesMe). */
   subscribed: boolean
   /** Running as the installed app. */
   installed: boolean
   ios: boolean
 }
 
+/** Asks the server whether an endpoint is stored for the signed-in user (a Server Action result). */
+export type IsMine = (endpoint: string) => Promise<unknown>
+
+/**
+ * Whether this browser's subscription counts as "on" for the signed-in account: it was made with
+ * the server's current key, and the server has it stored for this user (not someone else who used
+ * this browser, not removed in Settings, not deleted after the push service reported it gone).
+ * Anything that can't be confirmed (signed out, offline, a bad key) counts as off: turning on
+ * again re-saves the same subscription for this user.
+ */
+export async function subscriptionReachesMe(
+  subscription: Pick<PushSubscription, 'endpoint' | 'options'> | null,
+  publicKey: string | undefined,
+  isMine: IsMine,
+): Promise<boolean> {
+  if (!subscription || !publicKey) return false
+  try {
+    if (!sameKey(subscription.options.applicationServerKey, urlBase64ToUint8Array(publicKey))) return false
+    const result = await isMine(subscription.endpoint)
+    return isOkResult(result) && (result as { data?: unknown }).data === true
+  } catch {
+    return false
+  }
+}
+
 /** Everything the Settings section and the first-open card need to know about this browser. Browser only. */
-export async function readDeviceState(): Promise<DeviceState> {
+export async function readDeviceState(isMine: IsMine): Promise<DeviceState> {
   const ios = isIos()
   const installed = isStandalone()
   const support = pushSupport({
@@ -70,13 +95,19 @@ export async function readDeviceState(): Promise<DeviceState> {
     isStandalone: installed,
   })
   const permission = 'Notification' in window ? Notification.permission : 'unsupported'
-  const subscribed = support === 'supported' && (await currentSubscription()) !== null
+  const subscribed =
+    support === 'supported' &&
+    (await subscriptionReachesMe(await currentSubscription(), process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY, isMine))
   return { support, permission, subscribed, installed, ios }
 }
 
 /** A Server Action result that says it failed (`{ ok: false }`); anything else counts as saved. */
 function isFailedResult(result: unknown): boolean {
   return typeof result === 'object' && result !== null && (result as { ok?: unknown }).ok === false
+}
+
+function isOkResult(result: unknown): boolean {
+  return typeof result === 'object' && result !== null && (result as { ok?: unknown }).ok === true
 }
 
 function sameKey(a: ArrayBuffer | null | undefined, b: Uint8Array): boolean {

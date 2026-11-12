@@ -4,7 +4,13 @@ import { Bell, BellOff, Download, Send, Share, SquarePlus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { removeDeviceAction, sendTestPushAction, subscribePushAction, unsubscribePushAction } from '@/app/actions/push'
+import {
+  isMyDeviceAction,
+  removeDeviceAction,
+  sendTestPushAction,
+  subscribePushAction,
+  unsubscribePushAction,
+} from '@/app/actions/push'
 import { ErrorCodeMessage } from '@/components/action-error'
 import { Button } from '@/components/ui/button'
 import type { ActionResult } from '@/lib/action-result'
@@ -35,7 +41,7 @@ export function NotificationsSettings({ devices }: { devices: DeviceRow[] }) {
 
   useEffect(() => {
     let alive = true
-    void readDeviceState().then((state) => {
+    void readDeviceState(isMyDeviceAction).then((state) => {
       if (alive) setDevice(state)
     })
     const syncInstall = () => setCanInstall(storedInstallPrompt() !== null)
@@ -52,7 +58,7 @@ export function NotificationsSettings({ devices }: { devices: DeviceRow[] }) {
     setFailed(false)
     try {
       const result = await turnOnPush(subscribePushAction)
-      setDevice(await readDeviceState())
+      setDevice(await readDeviceState(isMyDeviceAction))
       if (result === 'failed') setFailed(true)
       router.refresh()
     } finally {
@@ -65,11 +71,16 @@ export function NotificationsSettings({ devices }: { devices: DeviceRow[] }) {
     setFailed(false)
     try {
       await turnOffPush(unsubscribePushAction)
-      setDevice(await readDeviceState())
+      setDevice(await readDeviceState(isMyDeviceAction))
       router.refresh()
     } finally {
       setPending(null)
     }
+  }
+
+  /** After a device row is removed: if it was this browser, the switch must read "off" now. */
+  async function refreshDevice() {
+    setDevice(await readDeviceState(isMyDeviceAction))
   }
 
   async function install() {
@@ -83,7 +94,7 @@ export function NotificationsSettings({ devices }: { devices: DeviceRow[] }) {
     } catch {
       // The browser refused to show it.
     }
-    setDevice(await readDeviceState())
+    setDevice(await readDeviceState(isMyDeviceAction))
   }
 
   const on = device !== null && device.subscribed && device.permission === 'granted'
@@ -139,7 +150,7 @@ export function NotificationsSettings({ devices }: { devices: DeviceRow[] }) {
         ) : (
           <ul className="flex flex-col divide-y border-t">
             {devices.map((row) => (
-              <DeviceItem key={row.id} row={row} />
+              <DeviceItem key={row.id} row={row} onRemoved={refreshDevice} />
             ))}
           </ul>
         )}
@@ -232,7 +243,7 @@ function TestNotification() {
   )
 }
 
-function DeviceItem({ row }: { row: DeviceRow }) {
+function DeviceItem({ row, onRemoved }: { row: DeviceRow; onRemoved: () => Promise<void> }) {
   const t = useTranslations('settings.notifications')
   const [pending, setPending] = useState(false)
   const tCommon = useTranslations('common')
@@ -248,6 +259,7 @@ function DeviceItem({ row }: { row: DeviceRow }) {
     try {
       const result = await removeDeviceAction(row.id)
       if (!result.ok) setError(result)
+      else await onRemoved()
     } catch {
       setError('unexpected')
     } finally {

@@ -6,6 +6,7 @@ import {
   pushSupport,
   rememberInstallPrompt,
   storedInstallPrompt,
+  subscriptionReachesMe,
   urlBase64ToUint8Array,
 } from './push-client'
 
@@ -117,5 +118,49 @@ describe('install prompt', () => {
 
   it('has no prompt during server rendering', () => {
     expect(storedInstallPrompt()).toBeNull()
+  })
+})
+
+describe('subscriptionReachesMe', () => {
+  // A base64url key and a different one (65 bytes each, like a real VAPID public key).
+  const KEY = 'B' + 'A'.repeat(86)
+  const OTHER_KEY = 'B' + 'Q'.repeat(86)
+  const subscribedWith = (key: string) =>
+    ({
+      endpoint: 'https://fcm.googleapis.com/fcm/send/x',
+      options: { applicationServerKey: urlBase64ToUint8Array(key).buffer as ArrayBuffer, userVisibleOnly: true },
+    }) as Pick<PushSubscription, 'endpoint' | 'options'>
+  const mine = vi.fn(async () => ({ ok: true, data: true }))
+
+  it('is on when the key matches and the server has it for this user', async () => {
+    expect(await subscriptionReachesMe(subscribedWith(KEY), KEY, mine)).toBe(true)
+    expect(mine).toHaveBeenCalledWith('https://fcm.googleapis.com/fcm/send/x')
+  })
+
+  it('is off when the server does not have it for this user', async () => {
+    // Someone else's subscription, removed in Settings, or deleted after the push service said gone.
+    expect(await subscriptionReachesMe(subscribedWith(KEY), KEY, async () => ({ ok: true, data: false }))).toBe(false)
+    // Signed out (an expired session on a shared phone).
+    expect(
+      await subscriptionReachesMe(subscribedWith(KEY), KEY, async () => ({ ok: false, code: 'UNAUTHENTICATED' })),
+    ).toBe(false)
+    // Offline or a server error.
+    expect(
+      await subscriptionReachesMe(subscribedWith(KEY), KEY, async () => {
+        throw new Error('offline')
+      }),
+    ).toBe(false)
+  })
+
+  it('is off when the subscription was made with another key, without asking the server', async () => {
+    const isMine = vi.fn(async () => ({ ok: true, data: true }))
+    expect(await subscriptionReachesMe(subscribedWith(OTHER_KEY), KEY, isMine)).toBe(false)
+    expect(isMine).not.toHaveBeenCalled()
+  })
+
+  it('is off with no subscription or no configured key', async () => {
+    expect(await subscriptionReachesMe(null, KEY, mine)).toBe(false)
+    expect(await subscriptionReachesMe(subscribedWith(KEY), undefined, mine)).toBe(false)
+    expect(await subscriptionReachesMe(subscribedWith(KEY), '%%%not base64', mine)).toBe(false)
   })
 })

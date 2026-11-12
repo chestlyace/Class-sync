@@ -3,7 +3,7 @@
 import { Bell, Download, Share, SquarePlus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
-import { subscribePushAction } from '@/app/actions/push'
+import { isMyDeviceAction, subscribePushAction } from '@/app/actions/push'
 import { Button } from '@/components/ui/button'
 import { firstOpenCard, readFirstOpenDismissed, rememberFirstOpenDismissed } from '@/lib/first-open'
 import {
@@ -42,7 +42,7 @@ export function NotificationsCard({ role }: { role: Role }) {
   useEffect(() => {
     let alive = true
     async function read() {
-      const device = await readDeviceState()
+      const device = await readDeviceState(isMyDeviceAction)
       if (!alive) return
       setSeen({
         ...device,
