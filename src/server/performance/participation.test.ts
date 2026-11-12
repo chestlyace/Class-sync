@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { config, setConfigForTests } from '@/server/core/config'
 import { setNowForTests } from '@/server/core/clock'
 import type { Db } from '@/server/db'
@@ -11,6 +11,11 @@ import { createClass, joinClassAsLecturer, joinClassAsStudent } from '@/server/c
 import { createCourse, setRosterAdjustment } from '@/server/courses/service'
 import { listParticipationToday, tapParticipation, undoLastTap } from './participation'
 import { updateCaSettings } from './settings'
+
+vi.mock('@/server/push/send', () => ({
+  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
+  queuePush: vi.fn(async () => {}),
+}))
 
 const MIN = 60_000
 

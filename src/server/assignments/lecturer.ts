@@ -25,6 +25,9 @@ import { GradesReleasedEmail } from '@/server/email/templates/grades-released'
 import { emailSubject } from '@/server/email/templates/verify-email'
 import { assertConfirmedFilesOwnedBy, type FileInfo } from '@/server/files/service'
 import { runAfterResponse } from '@/server/lib/after-response'
+import { safePushItems } from '@/server/push/build'
+import { pushPayload } from '@/server/push/payload'
+import { sendPush } from '@/server/push/send'
 import {
   assignmentLinkBuilder,
   loadAssignmentDetail,
@@ -378,7 +381,19 @@ export async function publishAssignment(ctx: Ctx, assignmentId: string): Promise
       }
     })
     runAfterResponse(async () => {
-      await sendNotifications(items)
+      const pushItems = safePushItems('publishAssignment', () =>
+        roster.map((student) => ({
+          userId: student.studentId,
+          payload: pushPayload('assignmentPublished', locales.get(student.studentId) ?? 'en', {
+            courseTitle: course.title,
+            assignmentTitle: updated.title,
+            dueAt: updated.dueAt,
+            url: '/assignments/' + encodeURIComponent(updated.id),
+            tag: `assignment-${updated.id}`,
+          }),
+        })),
+      )
+      await Promise.all([sendNotifications(items), sendPush(pushItems)])
     })
   }
   return loadAssignmentDetail(ctx.db, updated)
@@ -657,7 +672,18 @@ export async function releaseGrades(ctx: Ctx, assignmentId: string): Promise<{ r
       }
     })
     runAfterResponse(async () => {
-      await sendNotifications(items)
+      const pushItems = safePushItems('releaseGrades', () =>
+        recipients.map((student) => ({
+          userId: student.studentId,
+          payload: pushPayload('gradesReleased', locales.get(student.studentId) ?? 'en', {
+            courseTitle: course.title,
+            assignmentTitle: row.title,
+            url: '/assignments/' + encodeURIComponent(row.id),
+            tag: `grades-${row.id}`,
+          }),
+        })),
+      )
+      await Promise.all([sendNotifications(items), sendPush(pushItems)])
     })
   }
   return { released: recipients.length }

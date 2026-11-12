@@ -19,6 +19,11 @@ import { setMarkSuggesterForTests, type MarkSuggester, type SuggestInput } from 
 import { confirmMark, getMarkingQuestion, suggestMarks } from './marking'
 import { releaseResults } from './results'
 
+vi.mock('@/server/push/send', () => ({
+  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
+  queuePush: vi.fn(async () => {}),
+}))
+
 describe('marking short answers', () => {
   let db: Db
 

@@ -438,6 +438,8 @@ export async function getAiAndMcp(ctx: Ctx, at: Date, credits: () => Promise<Cre
 
 export type Health = {
   cron: { lastRunAt: Date | null; ok: boolean | null; assignments?: number; reminded?: number; stale: boolean; runsHere: boolean }
+  /** Devices pushed to, last 7 days; `failed7d` includes devices removed after the push service said they were gone. */
+  push: { sent7d: number; failed7d: number }
   email: { sent7d: number; failed7d: number; recentFailures: { at: Date; kind: string | null; to: string | null; error: string | null }[] }
   files: { count: number; bytes: number }
   /** `migrations` is null when drizzle's migrations table can't be read. */
@@ -453,7 +455,7 @@ export async function getHealth(ctx: Ctx, at: Date, env: Env = process.env): Pro
   requireAdmin(ctx)
   const { db } = ctx
   const runsHere = env.VERCEL_ENV === 'production'
-  const [[cron], [email], recentFailures, [files], migrations, [{ oldestEventAt }]] = await Promise.all([
+  const [[cron], [email], [push], recentFailures, [files], migrations, [{ oldestEventAt }]] = await Promise.all([
     db
       .select({
         at: opsEvent.at,
@@ -474,6 +476,13 @@ export async function getHealth(ctx: Ctx, at: Date, env: Env = process.env): Pro
       .where(
         and(inArray(opsEvent.kind, ['email_sent', 'email_failed']), gte(opsEvent.at, daysBefore(at, 7)), lte(opsEvent.at, at)),
       ),
+    db
+      .select({
+        sent7d: sql<number>`coalesce(sum(${emailsInEvent}) filter (where ${opsEvent.kind} = 'push_sent'), 0)`.mapWith(Number),
+        failed7d: sql<number>`coalesce(sum(${emailsInEvent}) filter (where ${opsEvent.kind} = 'push_failed'), 0)`.mapWith(Number),
+      })
+      .from(opsEvent)
+      .where(and(inArray(opsEvent.kind, ['push_sent', 'push_failed']), gte(opsEvent.at, daysBefore(at, 7)), lte(opsEvent.at, at))),
     db
       .select({ at: opsEvent.at, kind: detailText('kind'), to: detailText('to'), error: detailText('error') })
       .from(opsEvent)
@@ -522,6 +531,7 @@ export async function getHealth(ctx: Ctx, at: Date, env: Env = process.env): Pro
       // Already masked when recorded; a batch has no single recipient.
       recentFailures: recentFailures.map((f) => ({ ...f, to: f.kind === 'batch' ? null : f.to })),
     },
+    push: { sent7d: push.sent7d, failed7d: push.failed7d },
     files: { count: files.count, bytes: files.bytes },
     env: {
       name: env.VERCEL_ENV || 'local',

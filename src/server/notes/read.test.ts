@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Db } from '@/server/db'
 import { courseTest, revisionGroup, revisionQuestion } from '@/server/db/schema'
 import { createTestDb } from '@/test/db'
@@ -7,6 +7,11 @@ import { createFileItem, createLink, createNote, updateNote } from './items'
 import { getCourseNotes, getItemForEdit, getNote, listCourseTopics, openItem } from './read'
 import { doc, insertResourceFile, setupNotes } from './test-support'
 import { createTopic, moveTopic, setTopicHidden } from './topics'
+
+vi.mock('@/server/push/send', () => ({
+  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
+  queuePush: vi.fn(async () => {}),
+}))
 
 let db: Db
 let fx: Awaited<ReturnType<typeof setupNotes>>

@@ -6,6 +6,11 @@ import { doc, insertResourceFile, setupNotes } from '@/server/notes/test-support
 import { setTopicHidden } from '@/server/notes/topics'
 import { createTestDb } from '@/test/db'
 
+vi.mock('@/server/push/send', () => ({
+  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
+  queuePush: vi.fn(async () => {}),
+}))
+
 let current: Ctx | null = null
 vi.mock('@/server/auth/session', () => ({
   getCtx: async () => {

@@ -1,10 +1,23 @@
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import type { Db } from '@/server/db'
+import { sendPush } from '@/server/push/send'
 import { createTestDb } from '@/test/db'
 import { createNote } from './items'
 import { doc, setupNotes } from './test-support'
 import { createTopic, deleteTopic, moveTopic, renameTopic, setTopicHidden } from './topics'
 import { listCourseTopics } from './read'
+
+vi.mock('@/server/push/send', () => {
+  const sendPush = vi.fn(async (items: unknown[]) => ({ sent: 0, skipped: items.length, failed: 0, removed: 0 }))
+  return {
+    sendPush,
+    queuePush: vi.fn(async (_context: string, build: () => Promise<unknown[]>) => {
+      await sendPush(await build())
+    }),
+  }
+})
+
+const push = vi.mocked(sendPush)
 
 let db: Db
 let fx: Awaited<ReturnType<typeof setupNotes>>
@@ -17,6 +30,17 @@ beforeAll(async () => {
 const titles = async (courseId: string) => (await listCourseTopics(fx.lecturer, courseId)).map((t) => t.title)
 
 describe('topics', () => {
+  it('unhiding an already visible topic pushes nothing; releasing a hidden one pushes', async () => {
+    push.mockClear()
+    await setTopicHidden(fx.lecturer, fx.topicA, false)
+    expect(push).not.toHaveBeenCalled()
+    const t = await createTopic(fx.lecturer, fx.courseA, { title: 'Draft', hidden: true })
+    await setTopicHidden(fx.lecturer, t.id, false)
+    expect(push).toHaveBeenCalledTimes(1)
+    await setTopicHidden(fx.lecturer, t.id, false)
+    expect(push).toHaveBeenCalledTimes(1)
+  })
+
   it('moves a topic up, does nothing at the ends', async () => {
     const { lecturer } = fx
     const course = fx.courseB

@@ -1,7 +1,8 @@
 import { eq } from 'drizzle-orm'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Db } from '@/server/db'
 import { file, resource, resourcePlacement } from '@/server/db/schema'
+import { sendPush } from '@/server/push/send'
 import { createTestDb } from '@/test/db'
 import {
   createFileItem,
@@ -18,13 +19,52 @@ import { getCourseNotes, getItemForEdit, getNote } from './read'
 import { doc, insertResourceFile, setupNotes } from './test-support'
 import { createTopic } from './topics'
 
+vi.mock('@/server/push/send', () => {
+  const sendPush = vi.fn(async (items: unknown[]) => ({ sent: 0, skipped: items.length, failed: 0, removed: 0 }))
+  return {
+    sendPush,
+    queuePush: vi.fn(async (_context: string, build: () => Promise<unknown[]>) => {
+      await sendPush(await build())
+    }),
+  }
+})
+
+const push = vi.mocked(sendPush)
+
 let db: Db
 let fx: Awaited<ReturnType<typeof setupNotes>>
 
 beforeEach(async () => {
   db = await createTestDb()
   fx = await setupNotes(db)
+  push.mockClear()
 }, 120_000)
+
+describe('push for new notes', () => {
+  it('adding to a hidden topic pushes nothing; a visible topic pushes once', async () => {
+    const hidden = (await createTopic(fx.lecturer, fx.courseA, { title: 'Draft', hidden: true })).id
+    await createNote(fx.lecturer, { courseId: fx.courseA, topicId: hidden, title: 'Secret', body: doc('x') })
+    expect(push).not.toHaveBeenCalled()
+    await createNote(fx.lecturer, { courseId: fx.courseA, topicId: fx.topicA, title: 'Open', body: doc('x') })
+    expect(push).toHaveBeenCalledTimes(1)
+    expect((push.mock.calls[0][0] as { payload: { body: string } }[])[0].payload.body).toContain('Open')
+  })
+
+  it('moving an item out of a hidden topic pushes', async () => {
+    const hidden = (await createTopic(fx.lecturer, fx.courseA, { title: 'Draft', hidden: true })).id
+    const { id } = await createNote(fx.lecturer, { courseId: fx.courseA, topicId: hidden, title: 'Ready', body: doc('x') })
+    expect(push).not.toHaveBeenCalled()
+    await moveItem(fx.lecturer, { resourceId: id, courseId: fx.courseA, topicId: fx.topicA })
+    expect(push).toHaveBeenCalledTimes(1)
+  })
+
+  it('sharing into a visible topic of another course pushes', async () => {
+    const { id } = await createNote(fx.lecturer, { courseId: fx.courseA, topicId: fx.topicA, title: 'Shared', body: doc('x') })
+    push.mockClear()
+    await shareItem(fx.lecturer, { resourceId: id, targetCourseId: fx.courseB, targetTopicId: fx.topicB })
+    expect(push).toHaveBeenCalledTimes(1)
+  })
+})
 
 const itemTitles = async (courseId: string, topicId: string) =>
   (await getCourseNotes(fx.lecturer, courseId)).topics.find((t) => t.id === topicId)!.items.map((i) => i.title)

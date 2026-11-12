@@ -5,10 +5,24 @@ import { class_, classLecturer, classStudent, school } from '@/server/db/schema'
 import { setEmailDbForTests } from '@/server/email/db'
 import { setResendClientFactoryForTests, setRetryWaitForTests, type NotifyClient } from '@/server/email/notify'
 import { setAfterResponseForTests } from '@/server/lib/after-response'
+import { sendPush, type PushItem } from '@/server/push/send'
 import { createSchool } from '@/server/schools/service'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
 import { createClass, joinClassAsLecturer, joinClassAsStudent, removeStudentFromClass } from './service'
+
+vi.mock('@/server/push/send', () => {
+  const sendPush = vi.fn(async (items: unknown[]) => ({ sent: 0, skipped: items.length, failed: 0, removed: 0 }))
+  return {
+    sendPush,
+    queuePush: vi.fn(async (_context: string, build: () => Promise<unknown[]>) => {
+      await sendPush(await build())
+    }),
+  }
+})
+
+const push = vi.mocked(sendPush)
+const pushedItems = (): PushItem[] => push.mock.calls.flatMap((c) => c[0] as PushItem[])
 
 type Sent = { to: string; subject: string; react: ReactElement<Record<string, unknown>> }
 
@@ -23,6 +37,7 @@ describe('class join confirmation emails', () => {
   beforeEach(() => {
     tasks = []
     sent = []
+    push.mockClear()
     setAfterResponseForTests((task) => {
       tasks.push(task)
     })
@@ -140,6 +155,29 @@ describe('class join confirmation emails', () => {
     const toFirst = sent.find((m) => m.to === first.user.email)!
     expect(toFirst.subject).toBe('Dr Second joined CS L3')
     expect(toFirst.react.props).toMatchObject({ locale: 'en', recipientName: 'Dr First' })
+  })
+
+  it('a lecturer joining pushes to colleagues but not to themself', async () => {
+    const { owner, cls } = await setup()
+    const first = ctxFor(db, await makeUser(db, { role: 'lecturer', name: 'Dr First', locale: 'en' }))
+    await joinClassAsLecturer(first, cls.lecturerCode!)
+    await flush()
+    push.mockClear()
+
+    const second = ctxFor(db, await makeUser(db, { role: 'lecturer', name: 'Dr Second', locale: 'fr' }))
+    const { classId } = await joinClassAsLecturer(second, cls.lecturerCode!)
+    await flush()
+    const pushed = pushedItems()
+    expect(pushed.map((i) => i.userId).sort()).toEqual([owner.user.id, first.user.id].sort())
+    expect(pushed.map((i) => i.userId)).not.toContain(second.user.id)
+    for (const i of pushed) {
+      expect(i.payload).toMatchObject({
+        kind: 'colleagueJoinedClass',
+        url: `/classes/${classId}`,
+        tag: `colleague-${classId}-${second.user.id}`,
+      })
+      expect(i.payload.body).toContain('Dr Second')
+    }
   })
 
   it('the class creator is told even when no longer a lecturer row of the class', async () => {

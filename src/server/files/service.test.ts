@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { mkdtemp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { setNowForTests } from '@/server/core/clock'
 import type { Ctx } from '@/server/core/context'
 import type { Db } from '@/server/db'
@@ -38,6 +38,11 @@ import {
   requestUpload,
 } from './service'
 import type { UploadTarget } from './storage'
+
+vi.mock('@/server/push/send', () => ({
+  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
+  queuePush: vi.fn(async () => {}),
+}))
 
 const HOUR = 60 * 60_000
 const DAY = 24 * HOUR

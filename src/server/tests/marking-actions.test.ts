@@ -29,6 +29,11 @@ vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 
 import { confirmMarkAction, releaseResultsAction } from '@/app/(app)/courses/test-marking-actions'
 
+vi.mock('@/server/push/send', () => ({
+  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
+  queuePush: vi.fn(async () => {}),
+}))
+
 describe('test marking actions', () => {
   let db: Db
 

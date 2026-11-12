@@ -25,6 +25,11 @@ import { closeWindow, createSession, getCheckInLink, openWindow } from './sessio
 import { checkIn, checkInWithLink, getCheckInLinkTarget, listOpenCheckIns } from './check-in'
 import { CHECK_IN_LINK_PARAM, signCheckInLink } from './link'
 
+vi.mock('@/server/push/send', () => ({
+  sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
+  queuePush: vi.fn(async () => {}),
+}))
+
 const MIN = 60_000
 const CAMPUS = { latitude: 4.15, longitude: 9.29 } // default radius: 500 m
 const METRES_PER_DEGREE_LAT = 111_195
