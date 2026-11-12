@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bebas_Neue, Inter, JetBrains_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
+import { ServiceWorker } from "@/components/service-worker";
 import "./globals.css";
 
 const inter = Inter({
@@ -31,8 +32,15 @@ export async function generateMetadata(): Promise<Metadata> {
     description: t("tagline"),
     openGraph: { type: "website", siteName: t("appName") },
     twitter: { card: "summary_large_image" },
+    // Added to the Home Screen on iPhone/iPad: opens as an app, under the plain name.
+    appleWebApp: { capable: true, title: "Clasync", statusBarStyle: "default" },
   };
 }
+
+// White browser bar and status bar, like the app (light mode by default).
+export const viewport: Viewport = {
+  themeColor: "#ffffff",
+};
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const [locale, allMessages] = await Promise.all([getLocale(), getMessages()]);
@@ -46,6 +54,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="flex min-h-full flex-col bg-background text-foreground">
         <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
+        <ServiceWorker />
       </body>
     </html>
   );

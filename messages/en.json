@@ -729,6 +729,11 @@
     "backHome": "Back to the home page",
     "backToDashboard": "Back to the dashboard"
   },
+  "offline": {
+    "title": "You're offline",
+    "body": "Clasync needs a connection to load this page. Check your data or Wi-Fi, then try again.",
+    "retry": "Try again"
+  },
   "dashboard": {
     "title": "Dashboard",
     "greeting": "Hello, {name}",

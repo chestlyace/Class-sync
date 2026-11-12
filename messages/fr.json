@@ -729,6 +729,11 @@
     "backHome": "Retour à l'accueil",
     "backToDashboard": "Retour au tableau de bord"
   },
+  "offline": {
+    "title": "Vous êtes hors ligne",
+    "body": "Clasync a besoin d'une connexion pour charger cette page. Vérifiez vos données mobiles ou le Wi-Fi, puis réessayez.",
+    "retry": "Réessayer"
+  },
   "dashboard": {
     "title": "Tableau de bord",
     "greeting": "Bonjour, {name}",
