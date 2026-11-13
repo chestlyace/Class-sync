@@ -12,7 +12,7 @@ const NO_FRAMING = [
 
 // Production answers on one host only: BETTER_AUTH_URL's. Every other host (www, the *.vercel.app
 // aliases) gets a permanent redirect there, so sessions, OAuth issuer and email links all agree.
-// Cron calls are left alone: Vercel Cron does not follow redirects.
+// Cron calls and queue deliveries are left alone: neither Vercel Cron nor Vercel Queues follows redirects.
 const CANONICAL_HOST =
   process.env.VERCEL_ENV === "production" && process.env.BETTER_AUTH_URL
     ? new URL(process.env.BETTER_AUTH_URL).host
@@ -23,7 +23,7 @@ const nextConfig: NextConfig = {
     if (!CANONICAL_HOST || CANONICAL_HOST.endsWith(".vercel.app")) return [];
     return [
       {
-        source: "/:path((?!api/cron/).*)",
+        source: "/:path((?!api/(?:cron|queues)/).*)",
         missing: [{ type: "host", value: CANONICAL_HOST }],
         destination: `https://${CANONICAL_HOST}/:path`,
         permanent: true,
