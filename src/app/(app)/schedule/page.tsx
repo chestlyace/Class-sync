@@ -194,7 +194,7 @@ function groupByDay(rows: WeekRow[]): [string, WeekRow[]][] {
   return [...days]
 }
 
-async function ClassRow({
+function ClassRow({
   row,
   locale,
   at,
@@ -205,7 +205,6 @@ async function ClassRow({
   at: Date
   span: (from: Date, to: Date) => string
 }) {
-  const t = await getTranslations('schedule')
   const { occurrence: occ } = row
   const time = span(occ.startsAt, occ.endsAt)
   const future = occ.startsAt.getTime() > at.getTime()
