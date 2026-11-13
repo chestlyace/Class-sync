@@ -1,4 +1,5 @@
 import { and, eq, gte, lt, lte } from 'drizzle-orm'
+import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import type { Db } from '@/server/db'
 import { classExtra, classNotice, classSlot } from '@/server/db/schema'
@@ -86,13 +87,16 @@ export async function enqueueToday(db: Db, at: Date): Promise<{ sittings: number
 }
 
 /**
- * The queue consumer. Sends a notice only if its sitting still exists unmarked at the expected time (and, for a
- * missed-check, nobody took attendance), and only once: the classNotice row is claimed first. Throws on a database
+ * The queue consumer. Sends a notice only if its sitting still exists unmarked at the expected time (a reminder only
+ * before the sitting starts; a missed-check, only when nobody took attendance), and only once: the classNotice row is
+ * claimed first. Throws on a database
  * error so the queue retries; once claimed, push problems are logged, never thrown.
  */
 export async function handleNotice(db: Db, message: NoticeMessage): Promise<'sent' | 'skipped'> {
   const sitting = await loadSittingByKey(db, message.sittingKey)
   if (!sitting || sitting.status !== null) return 'skipped'
+  // A reminder delivered late is useless once the class has started.
+  if (message.kind === 'reminder' && now().getTime() >= sitting.startsAt.getTime()) return 'skipped'
 
   const expected = Date.parse(message.expectedAt)
   const actual = message.kind === 'reminder' ? sitting.startsAt : sitting.endsAt

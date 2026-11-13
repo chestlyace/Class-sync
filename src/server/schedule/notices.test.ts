@@ -3,7 +3,14 @@ import { eq } from 'drizzle-orm'
 import { setNowForTests } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import type { Db } from '@/server/db'
-import { attendanceSession, classSlot, courseRosterAdjustment, pushSubscription } from '@/server/db/schema'
+import {
+  attendanceSession,
+  classDateStatus,
+  classNotice,
+  classSlot,
+  courseRosterAdjustment,
+  pushSubscription,
+} from '@/server/db/schema'
 import { setEmailDbForTests } from '@/server/email/db'
 import { setAfterResponseForTests } from '@/server/lib/after-response'
 import { instantAt } from '@/server/lib/local-time'
@@ -137,6 +144,7 @@ describe('class notices', () => {
   })
 
   it('sends once under redelivery', async () => {
+    setNowForTests(() => local(7, 45))
     await device(fx.lecturer.user.id, 'lecturer')
     await device(fx.alice.user.id, 'alice-phone')
     await device(fx.alice.user.id, 'alice-laptop')
@@ -153,6 +161,38 @@ describe('class notices', () => {
     )
     const lecturerPush = JSON.parse(pushes.find((p) => p.endpoint.endsWith('/lecturer'))!.body)
     expect(lecturerPush.kind).toBe('classSoonLecturer')
+  })
+
+  it('a late reminder after the class started is skipped', async () => {
+    await device(fx.lecturer.user.id, 'lecturer')
+    await device(fx.alice.user.id, 'alice')
+    const message: NoticeMessage = {
+      sittingKey: `slot:${slotId}:${MONDAY}`,
+      kind: 'reminder',
+      expectedAt: local(8).toISOString(),
+    }
+    setNowForTests(() => local(8, 5))
+    expect(await handleNotice(db, message)).toBe('skipped')
+    await flush()
+    expect(pushes).toEqual([])
+    // Not claimed either.
+    expect(await db.select().from(classNotice)).toEqual([])
+  })
+
+  it("a cancelled sitting's reminder is skipped", async () => {
+    setNowForTests(() => local(6))
+    await enqueueCourseDay(db, fx.bio.id, MONDAY, local(6))
+    const reminder = queued.find((q) => q.message.kind === 'reminder')!.message
+    await device(fx.lecturer.user.id, 'lecturer')
+    await device(fx.alice.user.id, 'alice')
+    await db
+      .insert(classDateStatus)
+      .values({ slotId, date: MONDAY, status: 'cancelled', setBy: fx.lecturer.user.id })
+
+    setNowForTests(() => local(7, 45))
+    expect(await handleNotice(db, reminder)).toBe('skipped')
+    await flush()
+    expect(pushes).toEqual([])
   })
 
   it('reads the roster at send time', async () => {
