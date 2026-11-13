@@ -117,7 +117,8 @@ async function requireOwnedSlot(ctx: Ctx, slotId: string) {
   return { slot, owned: await requireCourseOwner(ctx, slot.courseId) }
 }
 
-async function requireCampusLocation(ctx: Ctx, schoolId: string, input: SlotInput) {
+/** A class that needs students on campus needs a school with a campus location. */
+export async function requireCampusLocation(ctx: Ctx, schoolId: string, input: { requireOnCampus: boolean }) {
   if (!input.requireOnCampus) return
   const sch = await getSchool(ctx, schoolId)
   if (sch.latitude === null || sch.longitude === null) {
