@@ -13,12 +13,17 @@ import {
   attendanceSession,
   attendanceWindow,
   class_,
+  classDateStatus,
+  classNotice,
+  classExtra,
+  classSlot,
   classStudent,
   course,
   courseCaSettings,
   courseRosterAdjustment,
   courseTest,
   file,
+  notificationPreference,
   opsEvent,
   participationEvent,
   pushCooldown,
@@ -964,5 +969,102 @@ describe('admin schema', () => {
       .from(user)
       .where(sql`${user.id} = ${u.id}`)
     expect(row).toEqual({ lastSignInAt: null, lastSeenAt: null, suspendedAt: null, suspendedReason: null })
+  })
+})
+
+describe('schedule', () => {
+  async function seedSlot(db: Awaited<ReturnType<typeof createTestDb>>) {
+    const { owner, cls } = await seedClass(db)
+    const [c] = await db
+      .insert(course)
+      .values({ classId: cls.id, lecturerId: owner.id, title: 'Maths', semester: 1 })
+      .returning()
+    const slot = {
+      courseId: c.id,
+      weekday: 2,
+      startMinute: 480,
+      endMinute: 600,
+      startsOn: '2026-11-01',
+      endsOn: '2027-02-28',
+      createdBy: owner.id,
+    }
+    return { owner, course: c, slot }
+  }
+
+  it('rejects a slot that ends before it starts', async () => {
+    const db = await createTestDb()
+    const { slot } = await seedSlot(db)
+    expect(await sqlState(db.insert(classSlot).values({ ...slot, startMinute: 600, endMinute: 480 }))).toBe('23514')
+    expect(await sqlState(db.insert(classSlot).values({ ...slot, endMinute: 1441 }))).toBe('23514')
+    expect(await sqlState(db.insert(classSlot).values({ ...slot, endsOn: '2026-10-31' }))).toBe('23514')
+    await db.insert(classSlot).values(slot)
+    const [row] = await db.select().from(classSlot)
+    expect(row).toMatchObject({ room: null, requireOnCampus: false, startsOn: '2026-11-01' })
+  })
+
+  it('rejects a weekday outside 1-7', async () => {
+    const db = await createTestDb()
+    const { slot } = await seedSlot(db)
+    expect(await sqlState(db.insert(classSlot).values({ ...slot, weekday: 0 }))).toBe('23514')
+    expect(await sqlState(db.insert(classSlot).values({ ...slot, weekday: 8 }))).toBe('23514')
+  })
+
+  it('allows one status per slot and date', async () => {
+    const db = await createTestDb()
+    const { owner, slot } = await seedSlot(db)
+    const [s] = await db.insert(classSlot).values(slot).returning()
+    const row = { slotId: s.id, date: '2026-11-10', status: 'cancelled' as const, setBy: owner.id }
+    await db.insert(classDateStatus).values(row)
+    expect(await sqlState(db.insert(classDateStatus).values({ ...row, status: 'taught' }))).toBe('23505')
+    expect(await sqlState(db.insert(classDateStatus).values({ ...row, date: '2026-11-17', status: 'bad' as never }))).toBe(
+      '23514',
+    )
+  })
+
+  it('rejects an extra with replacesSlotId but no replacesDate', async () => {
+    const db = await createTestDb()
+    const { owner, course: c, slot } = await seedSlot(db)
+    const [s] = await db.insert(classSlot).values(slot).returning()
+    const extra = {
+      courseId: c.id,
+      startsAt: new Date('2026-11-12T08:00:00Z'),
+      endsAt: new Date('2026-11-12T10:00:00Z'),
+      createdBy: owner.id,
+    }
+    expect(await sqlState(db.insert(classExtra).values({ ...extra, replacesSlotId: s.id }))).toBe('23514')
+    expect(await sqlState(db.insert(classExtra).values({ ...extra, replacesDate: '2026-11-10' }))).toBe('23514')
+    expect(await sqlState(db.insert(classExtra).values({ ...extra, status: 'bad' as never }))).toBe('23514')
+    expect(await sqlState(db.insert(classExtra).values({ ...extra, endsAt: extra.startsAt }))).toBe('23514')
+    await db.insert(classExtra).values({ ...extra, replacesSlotId: s.id, replacesDate: '2026-11-10' })
+    await db.insert(classExtra).values(extra)
+  })
+
+  it('deleting a course removes its slots, statuses and extras', async () => {
+    const db = await createTestDb()
+    const { owner, course: c, slot } = await seedSlot(db)
+    const [s] = await db.insert(classSlot).values(slot).returning()
+    await db.insert(classDateStatus).values({ slotId: s.id, date: '2026-11-10', status: 'missed', setBy: owner.id })
+    await db.insert(classExtra).values({
+      courseId: c.id,
+      startsAt: new Date('2026-11-12T08:00:00Z'),
+      endsAt: new Date('2026-11-12T10:00:00Z'),
+      createdBy: owner.id,
+    })
+    await db.delete(course).where(sql`${course.id} = ${c.id}`)
+    expect(await db.select().from(classSlot)).toHaveLength(0)
+    expect(await db.select().from(classDateStatus)).toHaveLength(0)
+    expect(await db.select().from(classExtra)).toHaveLength(0)
+  })
+
+  it('classReminders defaults on and notices are unique per occurrence and kind', async () => {
+    const db = await createTestDb()
+    const u = await makeUser(db)
+    await db.insert(notificationPreference).values({ userId: u.id })
+    const [pref] = await db.select().from(notificationPreference)
+    expect(pref.classReminders).toBe(true)
+    const notice = { occurrenceKey: 'slot:1:2026-11-10', kind: 'reminder' }
+    await db.insert(classNotice).values(notice)
+    expect(await sqlState(db.insert(classNotice).values(notice))).toBe('23505')
+    await db.insert(classNotice).values({ ...notice, kind: 'missed' })
   })
 })
