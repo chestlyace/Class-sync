@@ -210,7 +210,8 @@ async function ClassRow({
   const time = span(occ.startsAt, occ.endsAt)
   const future = occ.startsAt.getTime() > at.getTime()
   const cancelled = row.badge === 'cancelled'
-  const details = [row.className, row.schoolName, occ.room ? t('room', { room: occ.room }) : null].filter(Boolean)
+  // The room as the lecturer typed it (e.g. "B4"), with no label.
+  const details = [row.className, row.schoolName, occ.room].filter(Boolean)
 
   return (
     <li className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">

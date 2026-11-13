@@ -138,6 +138,19 @@ describe('pushPayload', () => {
       expect(body('timetableChanged', 'fr')).toBe('L\u2019emploi du temps a chang\u00e9.')
     })
 
+    it('shows a room literally named "none"', () => {
+      expect(body('classSoon', 'en', { room: 'none' })).toBe('Class at 08:00 \u00b7 none.')
+      expect(body('classSoonLecturer', 'fr', { room: 'none' })).toBe(
+        'Cours \u00e0 08:00 \u00b7 none. Touchez pour ouvrir l\u2019appel.',
+      )
+      expect(body('classMakeUp', 'en', { startsAt: base.newDay, room: 'none' })).toBe(
+        'Make-up class on Thu 12 Nov at 14:30 \u00b7 none.',
+      )
+      expect(body('classMakeUp', 'fr', { startsAt: base.newDay, room: 'none' })).toBe(
+        'Cours de rattrapage le jeu. 12 nov. \u00e0 14:30 \u00b7 none.',
+      )
+    })
+
     it('keeps the course title as the title and the room on one line', () => {
       const p = pushPayload('classSoon', 'en', { ...base, room: 'B2\n  Annex' })
       expect(p.title).toBe('Networking')

@@ -97,6 +97,7 @@ export function pushPayload(kind: PushKind, locale: Locale, vars: PushVars): Pus
     throw new Error(`pushPayload: url must be an in-app path, got "${vars.url}"`)
   }
   const t = createTranslator({ locale, messages: allMessages[locale], namespace: 'push' })
+  const room = singleLine(vars.room ?? undefined)
   const body = t(kind, {
     time: formatTime(vars.closesAt, locale),
     date: formatDate(vars.dueAt, locale),
@@ -109,7 +110,8 @@ export function pushPayload(kind: PushKind, locale: Locale, vars: PushVars): Pus
     start: formatTime(vars.startsAt, locale),
     day: formatDay(vars.day, locale),
     newDay: formatDay(vars.newDay, locale),
-    room: singleLine(vars.room ?? undefined) || 'none',
+    room,
+    hasRoom: room ? 'yes' : 'no',
   })
   const title =
     kind === 'test'

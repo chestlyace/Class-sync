@@ -11,7 +11,6 @@ import { formatDay, formatTime } from '../schedule/schedule-format'
 export async function ThisWeek({ rows, locale, today }: { rows: WeekRow[]; locale: Locale; today: string }) {
   if (rows.length === 0) return null
   const t = await getTranslations('dashboard')
-  const tSchedule = await getTranslations('schedule')
   return (
     <section aria-labelledby="this-week" className="flex flex-col gap-4">
       <SectionHeading id="this-week">{t('thisWeek')}</SectionHeading>
@@ -37,9 +36,7 @@ export async function ThisWeek({ rows, locale, today }: { rows: WeekRow[]; local
                   <span className="font-medium">{row.courseTitle}</span>
                   {row.badge && <RowBadge badge={row.badge} replacesDate={row.replacesDate} locale={locale} />}
                 </div>
-                {occ.room && (
-                  <span className="text-sm text-muted-foreground">{tSchedule('room', { room: occ.room })}</span>
-                )}
+                {occ.room && <span className="text-sm text-muted-foreground">{occ.room}</span>}
               </div>
             </li>
           )
