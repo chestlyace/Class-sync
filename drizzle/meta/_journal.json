@@ -120,6 +120,13 @@
       "when": 1794552461535,
       "tag": "0016_class_schedule",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794556482148,
+      "tag": "0017_ops_event_cron_schedule",
+      "breakpoints": true
     }
   ]
 }

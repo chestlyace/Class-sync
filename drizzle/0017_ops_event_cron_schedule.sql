@@ -1,0 +1,2 @@
+ALTER TABLE "ops_event" DROP CONSTRAINT "ops_event_kind_check";--> statement-breakpoint
+ALTER TABLE "ops_event" ADD CONSTRAINT "ops_event_kind_check" CHECK ("ops_event"."kind" in ('cron_reminders', 'cron_schedule', 'email_sent', 'email_failed', 'mcp_request', 'push_sent', 'push_failed'));
