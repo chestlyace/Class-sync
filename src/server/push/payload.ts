@@ -17,6 +17,13 @@ export type PushKind =
   | 'gradesReleased'
   | 'testResultsReleased'
   | 'colleagueJoinedClass'
+  | 'classSoonLecturer'
+  | 'classSoon'
+  | 'classCancelled'
+  | 'classMoved'
+  | 'classMakeUp'
+  | 'classMissedQuestion'
+  | 'timetableChanged'
   | 'test'
 
 export type PushPayload = { title: string; body: string; url: string; tag: string; kind: PushKind }
@@ -37,6 +44,13 @@ export type PushVars = {
   colleagueName?: string
   closesAt?: Date
   dueAt?: Date
+  /** A class's start (its time of day is shown as `start`). */
+  startsAt?: Date
+  /** The affected class's day. */
+  day?: Date
+  /** The day a class moved to, or a make-up is on. */
+  newDay?: Date
+  room?: string | null
 }
 
 const VAR_MAX = 150
@@ -65,6 +79,17 @@ function formatDate(date: Date | undefined, locale: Locale): string {
   }).format(date)
 }
 
+/** Weekday, day and month, e.g. "Mon 10 Nov" / "lun. 10 nov.". */
+function formatDay(date: Date | undefined, locale: Locale): string {
+  if (!date) return ''
+  return new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : locale, {
+    timeZone: config.timeZone,
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  }).format(date)
+}
+
 /** Localized, mark-free text for one push notification. `url` must be an in-app path. */
 export function pushPayload(kind: PushKind, locale: Locale, vars: PushVars): PushPayload {
   if (!vars.url.startsWith('/') || vars.url.startsWith('//')) {
@@ -80,6 +105,10 @@ export function pushPayload(kind: PushKind, locale: Locale, vars: PushVars): Pus
     topic: singleLine(vars.topicTitle),
     class: singleLine(vars.className),
     colleague: singleLine(vars.colleagueName),
+    start: formatTime(vars.startsAt, locale),
+    day: formatDay(vars.day, locale),
+    newDay: formatDay(vars.newDay, locale),
+    room: singleLine(vars.room ?? undefined) || 'none',
   })
   const title =
     kind === 'test'

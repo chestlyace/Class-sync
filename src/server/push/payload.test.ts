@@ -76,4 +76,68 @@ describe('pushPayload', () => {
     })
     expect(p.body).toBe('New assignment: Lab 3, due 15 Nov.')
   })
+  describe('class kinds', () => {
+    const base = {
+      url: '/dashboard',
+      tag: 'class-x-y',
+      courseTitle: 'Networking',
+      startsAt: new Date('2026-11-10T07:00:00Z'),
+      day: new Date('2026-11-10T07:00:00Z'),
+      newDay: new Date('2026-11-12T13:30:00Z'),
+    }
+    const body = (kind: Parameters<typeof pushPayload>[0], locale: 'en' | 'fr', vars = {}) =>
+      pushPayload(kind, locale, { ...base, ...vars }).body
+
+    it('classSoonLecturer, with and without a room', () => {
+      expect(body('classSoonLecturer', 'en', { room: 'B2' })).toBe('Class at 08:00 \u00b7 B2. Tap to open check-in.')
+      expect(body('classSoonLecturer', 'en', { room: null })).toBe('Class at 08:00. Tap to open check-in.')
+      expect(body('classSoonLecturer', 'fr', { room: 'B2' })).toBe('Cours \u00e0 08:00 \u00b7 B2. Touchez pour ouvrir l\u2019appel.')
+      expect(body('classSoonLecturer', 'fr')).toBe('Cours \u00e0 08:00. Touchez pour ouvrir l\u2019appel.')
+    })
+
+    it('classSoon, with and without a room (blank counts as none)', () => {
+      expect(body('classSoon', 'en', { room: 'B2' })).toBe('Class at 08:00 \u00b7 B2.')
+      expect(body('classSoon', 'en', { room: '  ' })).toBe('Class at 08:00.')
+      expect(body('classSoon', 'fr', { room: 'B2' })).toBe('Cours \u00e0 08:00 \u00b7 B2.')
+      expect(body('classSoon', 'fr', { room: null })).toBe('Cours \u00e0 08:00.')
+    })
+
+    it('classCancelled', () => {
+      expect(body('classCancelled', 'en')).toBe('The class on Tue 10 Nov at 08:00 is cancelled.')
+      expect(body('classCancelled', 'fr')).toBe('Le cours du mar. 10 nov. \u00e0 08:00 est annul\u00e9.')
+    })
+
+    it('classMoved shows the old day and the new day and start', () => {
+      expect(body('classMoved', 'en', { startsAt: base.newDay })).toBe(
+        'The class on Tue 10 Nov moved to Thu 12 Nov at 14:30.',
+      )
+      expect(body('classMoved', 'fr', { startsAt: base.newDay })).toBe(
+        'Le cours du mar. 10 nov. est d\u00e9plac\u00e9 au jeu. 12 nov. \u00e0 14:30.',
+      )
+    })
+
+    it('classMakeUp, with and without a room', () => {
+      const v = { startsAt: base.newDay }
+      expect(body('classMakeUp', 'en', { ...v, room: 'A1' })).toBe('Make-up class on Thu 12 Nov at 14:30 \u00b7 A1.')
+      expect(body('classMakeUp', 'en', v)).toBe('Make-up class on Thu 12 Nov at 14:30.')
+      expect(body('classMakeUp', 'fr', { ...v, room: 'A1' })).toBe(
+        'Cours de rattrapage le jeu. 12 nov. \u00e0 14:30 \u00b7 A1.',
+      )
+      expect(body('classMakeUp', 'fr', v)).toBe('Cours de rattrapage le jeu. 12 nov. \u00e0 14:30.')
+    })
+
+    it('classMissedQuestion and timetableChanged', () => {
+      expect(body('classMissedQuestion', 'en')).toBe('No attendance was taken on Tue 10 Nov. Was the class missed?')
+      // Verbatim copy: the abbreviated month's own dot meets the sentence dot (reported as a concern).
+      expect(body('classMissedQuestion', 'fr')).toBe('Aucun appel le mar. 10 nov.. Le cours a-t-il \u00e9t\u00e9 manqu\u00e9 ?')
+      expect(body('timetableChanged', 'en')).toBe('The class timetable changed.')
+      expect(body('timetableChanged', 'fr')).toBe('L\u2019emploi du temps a chang\u00e9.')
+    })
+
+    it('keeps the course title as the title and the room on one line', () => {
+      const p = pushPayload('classSoon', 'en', { ...base, room: 'B2\n  Annex' })
+      expect(p.title).toBe('Networking')
+      expect(p.body).toBe('Class at 08:00 \u00b7 B2 Annex.')
+    })
+  })
 })

@@ -2875,6 +2875,13 @@
     "gradesReleased": "Your grade for {assignment} is out.",
     "testResultsReleased": "Your results for {test} are out.",
     "colleagueJoinedClass": "{colleague} joined {class}.",
+    "classSoonLecturer": "Class at {start}{room, select, none {} other { · {room}}}. Tap to open check-in.",
+    "classSoon": "Class at {start}{room, select, none {} other { · {room}}}.",
+    "classCancelled": "The class on {day} at {start} is cancelled.",
+    "classMoved": "The class on {day} moved to {newDay} at {start}.",
+    "classMakeUp": "Make-up class on {newDay} at {start}{room, select, none {} other { · {room}}}.",
+    "classMissedQuestion": "No attendance was taken on {day}. Was the class missed?",
+    "timetableChanged": "The class timetable changed.",
     "test": "Notifications are working on this device."
   }
 }
