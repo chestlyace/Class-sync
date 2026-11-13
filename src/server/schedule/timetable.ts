@@ -266,7 +266,7 @@ export async function updateSlot(
       .where(and(eq(classDateStatus.slotId, old.id), gte(classDateStatus.date, todayDate)))
     return created
   })
-  const overlaps = await findOverlaps(ctx, data, [row.id, old.id])
+  const overlaps = await findOverlaps(ctx, { ...data, startsOn: newStart }, [row.id, old.id])
   await afterWrite(ctx, row.courseId, true)
   return { slot: toView(row), overlaps }
 }

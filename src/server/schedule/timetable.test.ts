@@ -151,6 +151,22 @@ describe('timetable service', () => {
     expect(statuses.map((s) => [s.slotId, s.date])).toEqual([[old.id, '2026-11-09']])
   })
 
+  it('a split reports overlaps against the new term only', async () => {
+    const old = await seedSlot(fx.bio.id)
+    const other = await createSchool(fx.lecturer, { name: 'Lycee Bilingue', town: 'Douala' })
+    const otherClass = await createClass(fx.lecturer, { schoolId: other.id, name: 'Form 5', academicYear: '2026/27' })
+    const physics = await createCourse(fx.lecturer, { classId: otherClass.id, title: 'Physics', semester: 1 })
+    const chemistry = await createCourse(fx.lecturer, { classId: otherClass.id, title: 'Chemistry', semester: 1 })
+    // Ended before today: overlaps the input term (from September) but never meets the new slot.
+    await seedSlot(physics.id, { endsOn: '2026-10-31' })
+    // Still running today.
+    await seedSlot(chemistry.id)
+
+    const { overlaps } = await updateSlot(fx.lecturer, old.id, input({ room: 'C4' }))
+
+    expect(overlaps.map((o) => o.courseTitle)).toEqual(['Chemistry'])
+  })
+
   it('edits a slot that has not started yet in place', async () => {
     const future = await seedSlot(fx.bio.id, { startsOn: '2026-11-23' })
 
