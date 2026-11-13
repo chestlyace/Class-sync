@@ -20,6 +20,7 @@ export type PushKind =
   | 'classSoonLecturer'
   | 'classSoon'
   | 'classCancelled'
+  | 'classReinstated'
   | 'classMoved'
   | 'classMakeUp'
   | 'classMissedQuestion'

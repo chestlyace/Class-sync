@@ -183,6 +183,21 @@ export async function pushClassCancelled(db: Db, occ: Occurrence): Promise<void>
   )
 }
 
+/**
+ * A cancelled class is back on. It reuses the cancellation's tag, so it replaces that notification on the device.
+ */
+export async function pushClassReinstated(db: Db, occ: Occurrence): Promise<void> {
+  await queuePush('class-reinstated', () =>
+    toRoster(db, occ.courseId, 'classReinstated', (courseTitle) => ({
+      courseTitle,
+      day: occ.startsAt,
+      startsAt: occ.startsAt,
+      url: '/dashboard',
+      tag: classTag(occ.key, 'classCancelled'),
+    })),
+  )
+}
+
 /** A class moved from one time to another. */
 export async function pushClassMoved(db: Db, from: Occurrence, to: Occurrence): Promise<void> {
   await queuePush('class-moved', () =>

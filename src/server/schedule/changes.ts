@@ -7,7 +7,7 @@ import { AppError } from '@/server/core/errors'
 import { classDateStatus, classExtra, classSlot } from '@/server/db/schema'
 import { requireCourseOwner } from '@/server/courses/service'
 import { addDays, instantAt, localDateOf } from '@/server/lib/local-time'
-import { pushClassCancelled, pushClassMakeUp, pushClassMoved } from '@/server/push/course-events'
+import { pushClassCancelled, pushClassMakeUp, pushClassMoved, pushClassReinstated } from '@/server/push/course-events'
 import { enqueueCourseDay } from './notices'
 import { parseOccurrenceKey, type Occurrence } from './occurrences'
 import { loadOccurrences, loadSittingByKey } from './queries'
@@ -202,7 +202,7 @@ export async function cancelClass(ctx: Ctx, occurrenceKey: string, makeUp?: Make
   })
 }
 
-/** Brings a cancelled future class back. Nobody is notified. */
+/** Brings a cancelled future class back and tells the roster it is back on. */
 export async function undoCancel(ctx: Ctx, occurrenceKey: string): Promise<void> {
   const { occ } = await requireOwnedOccurrence(ctx, occurrenceKey)
   if (!isFuture(occ))
@@ -220,7 +220,8 @@ export async function undoCancel(ctx: Ctx, occurrenceKey: string): Promise<void>
     await ctx.db.update(classExtra).set({ status: null }).where(eq(classExtra.id, occ.source.extraId))
   }
 
-  await afterCommit('restoring the class', () => requeueDays(ctx, occ.courseId, [occ.date]))
+  await afterCommit('queuing the restored class', () => requeueDays(ctx, occ.courseId, [occ.date]))
+  await afterCommit('telling students the class is back on', () => pushClassReinstated(ctx.db, occ))
 }
 
 /** Adds a one-off class, optionally standing in for a dated occurrence of the same course. */

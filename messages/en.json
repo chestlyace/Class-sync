@@ -2883,6 +2883,7 @@
     "classSoonLecturer": "Class at {start}{room, select, none {} other { · {room}}}. Tap to open check-in.",
     "classSoon": "Class at {start}{room, select, none {} other { · {room}}}.",
     "classCancelled": "The class on {day} at {start} is cancelled.",
+    "classReinstated": "The class on {day} at {start} is back on.",
     "classMoved": "The class on {day} moved to {newDay} at {start}.",
     "classMakeUp": "Make-up class on {newDay} at {start}{room, select, none {} other { · {room}}}.",
     "classMissedQuestion": "No attendance was taken on {day}. Was the class missed?",

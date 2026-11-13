@@ -9,6 +9,7 @@ import {
   pushClassMakeUp,
   pushClassMissedQuestion,
   pushClassMoved,
+  pushClassReinstated,
   pushClassSoon,
   pushNotesAdded,
   pushTestStarted,
@@ -169,6 +170,19 @@ describe('class schedule push events', () => {
     await pushClassMakeUp(db, to)
     expect(items(2)[0].payload).toMatchObject({ kind: 'classMakeUp', tag: 'class-extra:e1-classMakeUp' })
     expect(items(2)[0].payload.body).toBe('Make-up class on Thu 12 Nov at 14:30 \u00b7 B2.')
+  })
+
+  it('reinstated goes to roster students under the cancellation tag', async () => {
+    await pushClassReinstated(db, occ(fx.courseA))
+    expect(items().map((i) => i.userId).sort()).toEqual(
+      [fx.alice, fx.bob, fx.carol, fx.dave].map((s) => s.user.id).sort(),
+    )
+    expect(items()[0].payload).toMatchObject({
+      kind: 'classReinstated',
+      url: '/dashboard',
+      tag: 'class-slot:s1:2026-11-10-classCancelled',
+    })
+    expect(items()[0].payload.body).toBe('The class on Tue 10 Nov at 08:00 is back on.')
   })
 
   it('pushClassMissedQuestion goes to the lecturer only, linking to /schedule', async () => {

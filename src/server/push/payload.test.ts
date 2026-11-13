@@ -107,6 +107,11 @@ describe('pushPayload', () => {
       expect(body('classCancelled', 'fr')).toBe('Le cours du mar. 10 nov. \u00e0 08:00 est annul\u00e9.')
     })
 
+    it('classReinstated', () => {
+      expect(body('classReinstated', 'en')).toBe('The class on Tue 10 Nov at 08:00 is back on.')
+      expect(body('classReinstated', 'fr')).toBe('Le cours du mar. 10 nov. \u00e0 08:00 est r\u00e9tabli.')
+    })
+
     it('classMoved shows the old day and the new day and start', () => {
       expect(body('classMoved', 'en', { startsAt: base.newDay })).toBe(
         'The class on Tue 10 Nov moved to Thu 12 Nov at 14:30.',

@@ -24,7 +24,7 @@ const local = (hh: number, mm = 0, date = MONDAY) => instantAt(date, hh * 60 + m
 let db: Db
 let fx: Awaited<ReturnType<typeof setupCourse>>
 let queued: NoticeMessage[]
-let pushes: { endpoint: string; kind: string }[]
+let pushes: { endpoint: string; kind: string; tag: string }[]
 let tasks: Promise<void>[]
 
 const flush = async () => {
@@ -80,7 +80,8 @@ beforeEach(async () => {
   pushes = []
   setPushClientForTests({
     async send(sub, body) {
-      pushes.push({ endpoint: sub.endpoint, kind: JSON.parse(body).kind })
+      const { kind, tag } = JSON.parse(body)
+      pushes.push({ endpoint: sub.endpoint, kind, tag })
     },
   })
   tasks = []
@@ -242,7 +243,25 @@ describe('date changes', () => {
       [`slot:${slot.id}:${MONDAY}`, 'missed-check'],
       [`slot:${slot.id}:${MONDAY}`, 'reminder'],
     ])
-    expect(pushes).toEqual([])
+  })
+
+  it('undoCancel tells students the class is back on', async () => {
+    const slot = await seedSlot()
+    const key = `slot:${slot.id}:${MONDAY}`
+    await cancelClass(fx.lecturer, key)
+    await flush()
+    const cancelTag = pushes[0]!.tag
+    expect(cancelTag).toBe(`class-${key}-classCancelled`)
+    pushes = []
+
+    await undoCancel(fx.lecturer, key)
+    await flush()
+
+    // One notification per student, replacing the cancellation on the device.
+    expect(pushes.map((p) => [p.endpoint, p.kind, p.tag]).sort()).toEqual([
+      ['https://push.example/alice', 'classReinstated', cancelTag],
+      ['https://push.example/bob', 'classReinstated', cancelTag],
+    ])
   })
 
   it('undoCancel clears the status of a cancelled extra and rejects a class that is not cancelled', async () => {
