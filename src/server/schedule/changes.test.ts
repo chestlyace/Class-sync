@@ -342,6 +342,38 @@ describe('date changes', () => {
     expect(await db.select().from(classExtra)).toEqual([])
   })
 
+  describe('a second cancel of the same class is rejected without a second make-up', () => {
+    // Two submits that both read the class before either saves: only one may win.
+    const twice = (key: string) =>
+      Promise.allSettled([cancelClass(fx.lecturer, key, makeUp()), cancelClass(fx.lecturer, key, makeUp())])
+
+    it('for a slot', async () => {
+      const slot = await seedSlot()
+
+      const results = await twice(`slot:${slot.id}:${MONDAY}`)
+
+      expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
+      const rejected = results.filter((r) => r.status === 'rejected')
+      expect(rejected).toHaveLength(1)
+      expect(rejected[0]!.reason).toMatchObject({ code: 'VALIDATION', details: { reason: 'already_set' } })
+      expect(await db.select().from(classDateStatus)).toHaveLength(1)
+      expect(await db.select().from(classExtra)).toHaveLength(1)
+    })
+
+    it('for an extra', async () => {
+      const first = await addMakeUp(fx.lecturer, fx.bio.id, makeUp())
+
+      const results = await twice(first.key)
+
+      expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
+      const rejected = results.filter((r) => r.status === 'rejected')
+      expect(rejected).toHaveLength(1)
+      expect(rejected[0]!.reason).toMatchObject({ code: 'VALIDATION', details: { reason: 'already_set' } })
+      // The first make-up and one replacement, never two.
+      expect(await db.select().from(classExtra)).toHaveLength(2)
+    })
+  })
+
   it('a make-up replaces a date of the same course only', async () => {
     const cls = await createClass(fx.lecturer, {
       schoolId: fx.cls.schoolId,

@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
@@ -6,6 +6,7 @@ import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
 import { classDateStatus, classExtra, classSlot } from '@/server/db/schema'
 import { requireCourseOwner } from '@/server/courses/service'
+import { isUniqueViolation } from '@/server/lib/db-errors'
 import { addDays, instantAt, localDateOf } from '@/server/lib/local-time'
 import { pushClassCancelled, pushClassMakeUp, pushClassMoved, pushClassReinstated } from '@/server/push/course-events'
 import { enqueueCourseDay } from './notices'
@@ -161,9 +162,9 @@ export async function cancelClass(ctx: Ctx, occurrenceKey: string, makeUp?: Make
   const { occ, owned } = await requireOwnedOccurrence(ctx, occurrenceKey)
   if (!isFuture(occ))
     throw new AppError('VALIDATION', 'Only a class that has not started can be cancelled', { reason: 'not_future' })
-  if (occ.status !== null) {
-    throw new AppError('VALIDATION', 'This class is already cancelled or answered', { reason: 'already_set' })
-  }
+  const alreadySet = () =>
+    new AppError('VALIDATION', 'This class is already cancelled or answered', { reason: 'already_set' })
+  if (occ.status !== null) throw alreadySet()
   const data = makeUp ? parseMakeUp(makeUp) : null
   if (data && instantAt(data.date, data.endMinute, config.timeZone).getTime() <= now().getTime()) {
     throw new AppError('VALIDATION', 'A class can only move to a time that has not ended', { fields: ['date'] })
@@ -172,16 +173,27 @@ export async function cancelClass(ctx: Ctx, occurrenceKey: string, makeUp?: Make
 
   const slotId = slotIdOf(occ)
   const extraId = occ.source.kind === 'extra' ? occ.source.extraId : null
+  // A double submit can pass the check above twice: the guarded writes below let only the first one through,
+  // and the loser's transaction rolls back before it adds a make-up.
   const created = await ctx.db.transaction(async (tx) => {
     if (slotId) {
-      await tx.insert(classDateStatus).values({
-        slotId,
-        date: occ.date,
-        status: 'cancelled',
-        setBy: ctx.user.id,
-      })
+      try {
+        await tx.insert(classDateStatus).values({
+          slotId,
+          date: occ.date,
+          status: 'cancelled',
+          setBy: ctx.user.id,
+        })
+      } catch (error) {
+        throw isUniqueViolation(error) ? alreadySet() : error
+      }
     } else if (extraId) {
-      await tx.update(classExtra).set({ status: 'cancelled' }).where(eq(classExtra.id, extraId))
+      const updated = await tx
+        .update(classExtra)
+        .set({ status: 'cancelled' })
+        .where(and(eq(classExtra.id, extraId), isNull(classExtra.status)))
+        .returning({ id: classExtra.id })
+      if (updated.length === 0) throw alreadySet()
     }
     if (!data) return null
     const [row] = await tx
