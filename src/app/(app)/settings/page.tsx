@@ -22,6 +22,7 @@ import {
   type AccessTokenSummary,
   type ConnectedApp,
 } from '@/server/mcp/connections'
+import { getClassReminders } from '@/server/push/preferences'
 import { listMyDevices } from '@/server/push/subscriptions'
 import { getSchool, type School } from '@/server/schools/service'
 import { loadPage } from '../load-page'
@@ -101,7 +102,11 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
 
   const data = await loadPage(async (ctx) => {
     const [classes, signIn, devices] = await Promise.all([listMyClasses(ctx), listSignInMethods(ctx), listMyDevices(ctx)])
-    if (!isLecturer) return { classes, signIn, devices, schools: [] as SchoolGroup[], tokens: [], apps: [] }
+    if (!isLecturer) {
+      // Only students have the class reminder switch.
+      const classReminders = await getClassReminders(ctx)
+      return { classes, signIn, devices, classReminders, schools: [] as SchoolGroup[], tokens: [], apps: [] }
+    }
     const schoolIds = [...new Set(classes.map((c) => c.schoolId))]
     const [schools, tokens, apps] = await Promise.all([
       Promise.all(schoolIds.map((id) => getSchool(ctx, id))),
@@ -112,13 +117,14 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
       classes,
       signIn,
       devices,
+      classReminders: null,
       schools: schools.map((school) => ({ school, classes: classes.filter((c) => c.schoolId === school.id) })),
       tokens,
       apps,
     }
   })
   if (!data.ok) return <ErrorState code={data.code} />
-  const { classes, signIn, devices, schools, tokens, apps } = data.data
+  const { classes, signIn, devices, classReminders, schools, tokens, apps } = data.data
   const day = dayFormatter(locale)
 
   return (
@@ -169,7 +175,10 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
           <p className="text-sm text-muted-foreground">{t('notifications.description')}</p>
         </div>
         <Panel>
-          <NotificationsSettings devices={devices.map((d) => ({ id: d.id, label: d.label, added: day(d.createdAt) }))} />
+          <NotificationsSettings
+            devices={devices.map((d) => ({ id: d.id, label: d.label, added: day(d.createdAt) }))}
+            classReminders={classReminders}
+          />
         </Panel>
       </section>
 
