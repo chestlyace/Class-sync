@@ -3,7 +3,7 @@
 import { Bell, BellOff, Download, Send, Share, SquarePlus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import {
   isMyDeviceAction,
   removeDeviceAction,
@@ -209,8 +209,12 @@ function ClassRemindersSwitch({ initial }: { initial: boolean }) {
   const [pending, setPending] = useState(false)
   // An error result, or 'unexpected' for a network failure or an unexpected server error.
   const [error, setError] = useState<ActionResult<null> | 'unexpected' | null>(null)
+  const titleId = useId()
+  const hintId = useId()
 
   async function change(next: boolean) {
+    // While saving the switch stays focusable (aria-disabled, not disabled) and ignores clicks.
+    if (pending) return
     const previous = checked
     setChecked(next)
     setPending(true)
@@ -235,10 +239,11 @@ function ClassRemindersSwitch({ initial }: { initial: boolean }) {
         type="button"
         role="switch"
         aria-checked={checked}
-        aria-describedby="class-reminders-hint"
-        disabled={pending}
+        aria-labelledby={titleId}
+        aria-describedby={hintId}
+        aria-disabled={pending}
         onClick={() => change(!checked)}
-        className="flex min-h-11 items-start gap-3 rounded-xl text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-70"
+        className="flex min-h-11 items-start gap-3 rounded-xl text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:opacity-70"
       >
         <span
           aria-hidden="true"
@@ -255,8 +260,10 @@ function ClassRemindersSwitch({ initial }: { initial: boolean }) {
           />
         </span>
         <span className="flex flex-col gap-0.5">
-          <span className="font-semibold">{t('title')}</span>
-          <span id="class-reminders-hint" className="text-sm text-muted-foreground">
+          <span id={titleId} className="font-semibold">
+            {t('title')}
+          </span>
+          <span id={hintId} className="text-sm text-muted-foreground">
             {t('hint')}
           </span>
         </span>
