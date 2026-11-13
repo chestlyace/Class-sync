@@ -3,7 +3,6 @@ import { getLocale, getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
 import { PageHeader, Panel } from '@/components/page-header'
-import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { DEFAULT_LOCALE, isLocale, type Locale } from '@/i18n/locale'
 import { cn } from '@/lib/utils'
@@ -16,6 +15,7 @@ import { lecturerWeek, needsAnswer, type WeekRow } from '@/server/schedule/views
 import type { Sitting } from '@/server/schedule/occurrences'
 import { loadPage } from '../load-page'
 import { MakeUpButton, type CourseOption } from './make-up-form'
+import { RowBadge } from './row-badge'
 import { NeedsAnswerList, RowActions, type NeedsAnswerItem } from './schedule-controls'
 import { parseWeekParam } from './schedule-form'
 import { formatDay, formatTime, formatWeekRange, weekBounds } from './schedule-format'
@@ -238,24 +238,5 @@ async function ClassRow({
         }}
       />
     </li>
-  )
-}
-
-async function RowBadge({
-  badge,
-  replacesDate,
-  locale,
-}: {
-  badge: NonNullable<WeekRow['badge']>
-  replacesDate: string | null
-  locale: Locale
-}) {
-  const t = await getTranslations('schedule.badge')
-  if (badge === 'cancelled') return <Badge variant="destructive">{t('cancelled')}</Badge>
-  if (badge === 'missed') return <Badge variant="secondary">{t('missed')}</Badge>
-  return (
-    <Badge variant="outline">
-      {replacesDate ? t('makeUpFor', { date: formatDay(replacesDate, locale, 'short') }) : t('makeUp')}
-    </Badge>
   )
 }

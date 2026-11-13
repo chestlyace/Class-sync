@@ -739,6 +739,7 @@
     "greeting": "Bonjour, {name}",
     "lecturerEyebrow": "Enseignant",
     "studentEyebrow": "Étudiant",
+    "thisWeek": "Cette semaine",
     "newSchool": "Nouvel établissement",
     "newClass": "Nouvelle classe",
     "newCourse": "Nouveau cours",
@@ -865,6 +866,10 @@
       "added": "Ajouté le {date}",
       "remove": "Retirer",
       "removeLabel": "Retirer {device}",
+      "classReminders": {
+        "title": "Rappels de cours",
+        "hint": "Un rappel 15 minutes avant chaque cours. Les annulations et changements arrivent toujours."
+      },
       "install": {
         "title": "Installer l'application",
         "button": "Installer l'application",

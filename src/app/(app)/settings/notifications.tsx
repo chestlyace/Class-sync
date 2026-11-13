@@ -8,11 +8,13 @@ import {
   isMyDeviceAction,
   removeDeviceAction,
   sendTestPushAction,
+  setClassRemindersAction,
   subscribePushAction,
   unsubscribePushAction,
 } from '@/app/actions/push'
 import { ErrorCodeMessage } from '@/components/action-error'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import type { ActionResult } from '@/lib/action-result'
 import {
   onInstallPromptChange,
@@ -29,9 +31,16 @@ export type DeviceRow = { id: string; label: string; added: string }
 
 /**
  * Settings → Notifications and app: this browser's switch, a test notification, the account's
- * devices and installing the app. The browser state is read after mount (nothing on the server).
+ * devices and installing the app (and, for students, the class reminder switch). The browser state is read after mount (nothing on the server).
  */
-export function NotificationsSettings({ devices }: { devices: DeviceRow[] }) {
+export function NotificationsSettings({
+  devices,
+  classReminders,
+}: {
+  devices: DeviceRow[]
+  /** The student's class reminder setting; null for lecturers, who don't get the switch. */
+  classReminders: boolean | null
+}) {
   const t = useTranslations('settings.notifications')
   const router = useRouter()
   const [device, setDevice] = useState<DeviceState | null>(null)
@@ -143,6 +152,8 @@ export function NotificationsSettings({ devices }: { devices: DeviceRow[] }) {
         {devices.length > 0 && <TestNotification />}
       </div>
 
+      {classReminders !== null && <ClassRemindersSwitch initial={classReminders} />}
+
       <div className="flex flex-col gap-3 py-6" role="region" aria-labelledby="notifications-devices">
         <h3 id="notifications-devices" className="font-semibold">
           {t('devicesTitle')}
@@ -186,6 +197,75 @@ export function NotificationsSettings({ devices }: { devices: DeviceRow[] }) {
           <p className="text-sm text-muted-foreground">{t('install.hint')}</p>
         )}
       </div>
+    </div>
+  )
+}
+
+/** Students: the 15-minute class reminder. Saves on change; the switch flips at once and flips back on an error. */
+function ClassRemindersSwitch({ initial }: { initial: boolean }) {
+  const t = useTranslations('settings.notifications.classReminders')
+  const tCommon = useTranslations('common')
+  const [checked, setChecked] = useState(initial)
+  const [pending, setPending] = useState(false)
+  // An error result, or 'unexpected' for a network failure or an unexpected server error.
+  const [error, setError] = useState<ActionResult<null> | 'unexpected' | null>(null)
+
+  async function change(next: boolean) {
+    const previous = checked
+    setChecked(next)
+    setPending(true)
+    setError(null)
+    try {
+      const result = await setClassRemindersAction(next)
+      if (!result.ok) {
+        setChecked(previous)
+        setError(result)
+      }
+    } catch {
+      setChecked(previous)
+      setError('unexpected')
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2 py-6">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-describedby="class-reminders-hint"
+        disabled={pending}
+        onClick={() => change(!checked)}
+        className="flex min-h-11 items-start gap-3 rounded-xl text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-70"
+      >
+        <span
+          aria-hidden="true"
+          className={cn(
+            'mt-0.5 inline-flex h-6 w-10 shrink-0 items-center rounded-full p-0.5 transition-colors',
+            checked ? 'bg-primary' : 'bg-input',
+          )}
+        >
+          <span
+            className={cn(
+              'size-5 rounded-full bg-background shadow-sm transition-transform motion-reduce:transition-none',
+              checked ? 'translate-x-4' : 'translate-x-0',
+            )}
+          />
+        </span>
+        <span className="flex flex-col gap-0.5">
+          <span className="font-semibold">{t('title')}</span>
+          <span id="class-reminders-hint" className="text-sm text-muted-foreground">
+            {t('hint')}
+          </span>
+        </span>
+      </button>
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error === 'unexpected' ? tCommon('genericError') : error.ok ? null : <ErrorCodeMessage code={error.code} />}
+        </p>
+      )}
     </div>
   )
 }
