@@ -1,5 +1,5 @@
 {
-  "id": "aeb4107b-5104-43ca-9b7a-8bb1646fe071",
+  "id": "e0ba47c7-33a4-4b9d-b5a4-9bfb6b5c7b8b",
   "prevId": "67810092-6597-4908-ad9f-52eef13bb869",
   "version": "7",
   "dialect": "postgresql",
@@ -6225,7 +6225,7 @@
         },
         "class_extra_replaces_check": {
           "name": "class_extra_replaces_check",
-          "value": "(\"class_extra\".\"replaces_slot_id\" is null) = (\"class_extra\".\"replaces_date\" is null)"
+          "value": "\"class_extra\".\"replaces_slot_id\" is null or \"class_extra\".\"replaces_date\" is not null"
         },
         "class_extra_status_check": {
           "name": "class_extra_status_check",

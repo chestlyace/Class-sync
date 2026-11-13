@@ -95,10 +95,8 @@ export const classExtra = pgTable(
   (t) => [
     index('class_extra_course_id_starts_at_idx').on(t.courseId, t.startsAt),
     check('class_extra_range_check', sql`${t.endsAt} > ${t.startsAt}`),
-    check(
-      'class_extra_replaces_check',
-      sql`(${t.replacesSlotId} is null) = (${t.replacesDate} is null)`,
-    ),
+    // A slot implies a date. A date alone stays as history once the slot is deleted (FK sets the slot to null).
+    check('class_extra_replaces_check', sql`${t.replacesSlotId} is null or ${t.replacesDate} is not null`),
     check('class_extra_status_check', sql`${t.status} is null or ${t.status} in ('cancelled', 'missed', 'taught')`),
   ],
 )

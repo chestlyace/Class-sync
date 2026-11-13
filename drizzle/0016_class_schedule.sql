@@ -21,7 +21,7 @@ CREATE TABLE "class_extra" (
 	"created_by" text NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "class_extra_range_check" CHECK ("class_extra"."ends_at" > "class_extra"."starts_at"),
-	CONSTRAINT "class_extra_replaces_check" CHECK (("class_extra"."replaces_slot_id" is null) = ("class_extra"."replaces_date" is null)),
+	CONSTRAINT "class_extra_replaces_check" CHECK ("class_extra"."replaces_slot_id" is null or "class_extra"."replaces_date" is not null),
 	CONSTRAINT "class_extra_status_check" CHECK ("class_extra"."status" is null or "class_extra"."status" in ('cancelled', 'missed', 'taught'))
 );
 --> statement-breakpoint

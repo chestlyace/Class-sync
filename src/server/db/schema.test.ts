@@ -1032,11 +1032,11 @@ describe('schedule', () => {
       createdBy: owner.id,
     }
     expect(await sqlState(db.insert(classExtra).values({ ...extra, replacesSlotId: s.id }))).toBe('23514')
-    expect(await sqlState(db.insert(classExtra).values({ ...extra, replacesDate: '2026-11-10' }))).toBe('23514')
     expect(await sqlState(db.insert(classExtra).values({ ...extra, status: 'bad' as never }))).toBe('23514')
     expect(await sqlState(db.insert(classExtra).values({ ...extra, endsAt: extra.startsAt }))).toBe('23514')
     await db.insert(classExtra).values({ ...extra, replacesSlotId: s.id, replacesDate: '2026-11-10' })
     await db.insert(classExtra).values(extra)
+    await db.insert(classExtra).values({ ...extra, replacesDate: '2026-11-10' })
   })
 
   it('deleting a course removes its slots, statuses and extras', async () => {
@@ -1048,12 +1048,31 @@ describe('schedule', () => {
       courseId: c.id,
       startsAt: new Date('2026-11-12T08:00:00Z'),
       endsAt: new Date('2026-11-12T10:00:00Z'),
+      replacesSlotId: s.id,
+      replacesDate: '2026-11-10',
       createdBy: owner.id,
     })
     await db.delete(course).where(sql`${course.id} = ${c.id}`)
     expect(await db.select().from(classSlot)).toHaveLength(0)
     expect(await db.select().from(classDateStatus)).toHaveLength(0)
     expect(await db.select().from(classExtra)).toHaveLength(0)
+  })
+
+  it('deleting a slot keeps a make-up that replaced it', async () => {
+    const db = await createTestDb()
+    const { owner, course: c, slot } = await seedSlot(db)
+    const [s] = await db.insert(classSlot).values(slot).returning()
+    await db.insert(classExtra).values({
+      courseId: c.id,
+      startsAt: new Date('2026-11-12T08:00:00Z'),
+      endsAt: new Date('2026-11-12T10:00:00Z'),
+      replacesSlotId: s.id,
+      replacesDate: '2026-11-10',
+      createdBy: owner.id,
+    })
+    await db.delete(classSlot).where(sql`${classSlot.id} = ${s.id}`)
+    const [row] = await db.select().from(classExtra)
+    expect(row).toMatchObject({ replacesSlotId: null, replacesDate: '2026-11-10' })
   })
 
   it('classReminders defaults on and notices are unique per occurrence and kind', async () => {
