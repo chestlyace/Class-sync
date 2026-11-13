@@ -107,7 +107,8 @@ describe('weeks', () => {
       [`slot:${bioSlot.id}:2026-11-23`, 'cancelled'],
       [`slot:${chemSlot.id}:2026-11-23`, null],
     ])
-    expect(next[0].canOpenCheckIn).toBe(false)
+    expect(next[0]).toMatchObject({ sittingKey: null, canOpenCheckIn: false })
+    expect(next[1].sittingKey).toBe(`slot:${chemSlot.id}:2026-11-23`)
 
     await db.insert(classDateStatus).values({
       slotId: chemSlot.id,
@@ -133,6 +134,36 @@ describe('weeks', () => {
     expect(await at(local(7, 30))).toEqual([true, false])
     expect(await at(local(10, 0))).toEqual([true, false])
     expect(await at(local(10, 1))).toEqual([false, false])
+  })
+
+  it('rows of a merged sitting carry the first class key and open check-in during the whole sitting', async () => {
+    const slot = await seedSlot(fx.bio.id)
+    const [second] = await db
+      .insert(classExtra)
+      .values({
+        courseId: fx.bio.id,
+        startsAt: local(10, 15),
+        endsAt: local(12, 0),
+        room: 'B3',
+        createdBy: fx.lecturer.user.id,
+      })
+      .returning()
+    const key = `slot:${slot.id}:${MONDAY}`
+
+    setNowForTests(() => local(11, 0))
+    const rows = await lecturerWeek(fx.lecturer, MONDAY)
+
+    expect(rows.map((r) => [r.occurrence.key, r.sittingKey, r.canOpenCheckIn])).toEqual([
+      [key, key, true],
+      [`extra:${second.id}`, key, true],
+    ])
+    // Through the second row's key the lecturer can start check-in during the second class.
+    await expect(startClassAttendance(fx.lecturer, rows[1].sittingKey!)).resolves.toMatchObject({
+      courseId: fx.bio.id,
+    })
+
+    setNowForTests(() => local(12, 1))
+    expect((await lecturerWeek(fx.lecturer, MONDAY)).map((r) => r.canOpenCheckIn)).toEqual([false, false])
   })
 
   it('student week shows only rostered courses', async () => {
@@ -250,6 +281,45 @@ describe('one-tap check-in', () => {
       course: { id: fx.bio.id, title: 'Cell biology' },
       sitting: { key, courseId: fx.bio.id },
     })
+  })
+
+  it('two simultaneous taps return one session and leave no empty one', async () => {
+    const slot = await seedSlot(fx.bio.id)
+    const key = `slot:${slot.id}:${MONDAY}`
+    setNowForTests(() => local(8, 5))
+
+    const [a, b] = await Promise.all([startClassAttendance(fx.lecturer, key), startClassAttendance(fx.lecturer, key)])
+
+    expect(b.sessionId).toBe(a.sessionId)
+    const sessions = await db.select().from(attendanceSession)
+    expect(sessions.map((x) => x.id)).toEqual([a.sessionId])
+    expect(await db.select().from(attendanceWindow)).toHaveLength(1)
+  })
+
+  it('a failed openWindow leaves no session behind', async () => {
+    const slot = await seedSlot(fx.bio.id)
+    const key = `slot:${slot.id}:${MONDAY}`
+    // A window of the same course opened at 07:29 is still open at 07:35 but outside the sitting's range.
+    const [earlier] = await db
+      .insert(attendanceSession)
+      .values({ courseId: fx.bio.id, requireOnCampus: false, createdBy: fx.lecturer.user.id, createdAt: local(7, 29) })
+      .returning()
+    await db.insert(attendanceWindow).values({
+      sessionId: earlier.id,
+      kind: 'start',
+      secret: 's',
+      openedAt: local(7, 29),
+      openedBy: fx.lecturer.user.id,
+    })
+    setNowForTests(() => local(7, 35))
+
+    await expect(startClassAttendance(fx.lecturer, key)).rejects.toMatchObject({
+      code: 'CONFLICT',
+      details: { reason: 'another_open' },
+    })
+
+    expect((await db.select().from(attendanceSession)).map((x) => x.id)).toEqual([earlier.id])
+    expect(await db.select().from(attendanceWindow)).toHaveLength(1)
   })
 
   it('opens from 30 minutes before the start and refuses outside class time', async () => {

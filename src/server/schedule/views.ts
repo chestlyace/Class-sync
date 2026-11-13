@@ -21,6 +21,8 @@ export type WeekRow = {
   courseTitle: string
   className: string
   schoolName: string
+  /** Key of the sitting this class belongs to (the first class's key when classes are merged); null when cancelled. */
+  sittingKey: string | null
   badge: 'cancelled' | 'makeUp' | 'missed' | null
   replacesDate: string | null
   canOpenCheckIn: boolean
@@ -43,24 +45,30 @@ async function weekOf(ctx: Ctx, courses: CourseSummary[], weekStart: string, lec
     addDays(weekStart, 6),
   )
   const byId = new Map(courses.map((c) => [c.id, c]))
+  const sittingOf = new Map<string, Sitting>()
+  for (const sitting of buildSittings(occurrences)) {
+    for (const o of sitting.occurrences) sittingOf.set(o.key, sitting)
+  }
   const at = now().getTime()
   return occurrences
     .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime() || a.key.localeCompare(b.key))
     .map((occurrence) => {
       const course = byId.get(occurrence.courseId)!
+      const sitting = sittingOf.get(occurrence.key) ?? null
       return {
         occurrence,
         courseTitle: course.title,
         className: course.className,
         schoolName: course.schoolName,
+        sittingKey: sitting?.key ?? null,
         badge: badgeOf(occurrence),
         replacesDate: occurrence.source.kind === 'extra' ? (occurrence.source.replaces?.date ?? null) : null,
         canOpenCheckIn:
           lecturer &&
-          occurrence.status !== 'cancelled' &&
+          sitting !== null &&
           occurrence.status !== 'missed' &&
-          at >= occurrence.startsAt.getTime() - ATTENDANCE_LEAD_MS &&
-          at <= occurrence.endsAt.getTime(),
+          at >= sitting.startsAt.getTime() - ATTENDANCE_LEAD_MS &&
+          at <= sitting.endsAt.getTime(),
       }
     })
 }
@@ -205,6 +213,18 @@ export async function startClassAttendance(
   const session = await createSession(ctx, sitting.courseId, {
     requireOnCampus: sitting.occurrences[0].requireOnCampus,
   })
-  await openWindow(ctx, session.id, 'start')
+  try {
+    await openWindow(ctx, session.id, 'start')
+  } catch (error) {
+    // The session has no window, so nothing refers to it: never leave an empty one behind.
+    await ctx.db.delete(attendanceSession).where(eq(attendanceSession.id, session.id))
+    // Lost a race with another tap that opened check-in first: that session is the answer.
+    const reason = error instanceof AppError && error.code === 'CONFLICT' ? error.details?.reason : undefined
+    if (reason === 'another_open' || reason === 'already_opened') {
+      const winner = await sittingSessionId(ctx, sitting)
+      if (winner) return { courseId: sitting.courseId, sessionId: winner }
+    }
+    throw error
+  }
   return { courseId: sitting.courseId, sessionId: session.id }
 }
