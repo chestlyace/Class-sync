@@ -6,6 +6,7 @@ import { getCtx } from '@/server/auth/session'
 import { AppError } from '@/server/core/errors'
 import { hitRateLimit } from '@/server/lib/rate-limit'
 import { pushPayload } from '@/server/push/payload'
+import { setClassReminders } from '@/server/push/preferences'
 import { sendPush } from '@/server/push/send'
 import { isMyDevice, removeDevice, subscribe, unsubscribe } from '@/server/push/subscriptions'
 
@@ -40,6 +41,16 @@ export async function isMyDeviceAction(endpoint: string): Promise<ActionResult<b
 export async function removeDeviceAction(id: string): Promise<ActionResult<null>> {
   return toActionResult(async () => {
     await removeDevice(await getCtx(), id)
+    revalidatePath('/settings')
+    return null
+  })
+}
+
+/** Turns the 15-minute class reminder on or off for the signed-in student. */
+export async function setClassRemindersAction(on: boolean): Promise<ActionResult<null>> {
+  return toActionResult(async () => {
+    if (typeof on !== 'boolean') throw new AppError('VALIDATION', 'on must be a boolean')
+    await setClassReminders(await getCtx(), on)
     revalidatePath('/settings')
     return null
   })
