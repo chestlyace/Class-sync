@@ -16,6 +16,9 @@ const tz = config.timeZone
 const MONDAY = '2026-11-16'
 const local = (hh: number, mm = 0, date = MONDAY) => instantAt(date, hh * 60 + mm, tz)
 
+/** When the test timetables were entered: before any class in this file. */
+const TIMETABLE_ENTERED = new Date('2026-08-01T00:00:00Z')
+
 let db: Db
 let fx: Awaited<ReturnType<typeof setupCourse>>
 
@@ -31,6 +34,8 @@ async function seedSlot(courseId: string, over: Partial<typeof classSlot.$inferI
       startsOn: '2026-09-01',
       endsOn: '2026-12-31',
       createdBy: fx.lecturer.user.id,
+      // Entered before the term, so needsAnswer never skips its classes (it ignores pre-timetable classes).
+      createdAt: TIMETABLE_ENTERED,
       ...over,
     })
     .returning()
@@ -221,6 +226,7 @@ describe('needsAnswer', () => {
         startsAt: local(11, 0, '2026-11-23'),
         endsAt: local(13, 0, '2026-11-23'),
         createdBy: fx.lecturer.user.id,
+        createdAt: TIMETABLE_ENTERED,
       })
       .returning()
     const [earlier] = await db
@@ -230,6 +236,7 @@ describe('needsAnswer', () => {
         startsAt: local(14, 0, '2026-11-18'),
         endsAt: local(15, 0, '2026-11-18'),
         createdBy: fx.lecturer.user.id,
+        createdAt: TIMETABLE_ENTERED,
       })
       .returning()
     const [earliest] = await db
@@ -239,6 +246,7 @@ describe('needsAnswer', () => {
         startsAt: local(9, 0, '2026-11-17'),
         endsAt: local(10, 0, '2026-11-17'),
         createdBy: fx.lecturer.user.id,
+        createdAt: TIMETABLE_ENTERED,
       })
       .returning()
 
@@ -246,6 +254,28 @@ describe('needsAnswer', () => {
 
     expect(listed.map((n) => n.sitting.key)).toEqual([`extra:${earlier.id}`, `extra:${earliest.id}`])
     expect(listed.map((n) => n.sitting.key)).not.toContain(`extra:${ongoing.id}`)
+  })
+  it('needsAnswer ignores classes from before the timetable was entered', async () => {
+    // Entered today (Monday 06:00) mid-term, with a start date 10 days back: the Mondays before are not asked about.
+    const slot = await seedSlot(fx.bio.id, { startsOn: '2026-11-06', createdAt: local(6) })
+    const extraBefore = await db
+      .insert(classExtra)
+      .values({
+        courseId: fx.bio.id,
+        startsAt: local(9, 0, '2026-11-12'),
+        endsAt: local(10, 0, '2026-11-12'),
+        createdBy: fx.lecturer.user.id,
+        createdAt: local(6),
+      })
+      .returning()
+    expect(await needsAnswer(fx.lecturer)).toEqual([])
+
+    // Today's 08:00-10:00 class ended after the timetable was entered and had no attendance: still asked.
+    setNowForTests(() => local(12))
+    const listed = (await needsAnswer(fx.lecturer)).map((n) => n.sitting.key)
+    expect(listed).toEqual([`slot:${slot.id}:${MONDAY}`])
+    expect(listed).not.toContain(`slot:${slot.id}:2026-11-09`)
+    expect(listed).not.toContain(`extra:${extraBefore[0].id}`)
   })
 })
 

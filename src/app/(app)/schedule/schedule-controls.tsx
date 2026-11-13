@@ -13,6 +13,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog'
 import type { ActionResult } from '@/lib/action-result'
 import { submitWith } from '@/lib/form-submit'
@@ -141,16 +142,17 @@ function CantMakeItButton({
   const [open, setOpen] = useState(false)
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        aria-label={`${t('row.cantMakeIt')} · ${courseTitle}, ${when}`}
-        onClick={() => setOpen(true)}
-      >
-        <CalendarX2 aria-hidden="true" data-icon="inline-start" />
-        {t('row.cantMakeIt')}
-      </Button>
+      <DialogTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-label={`${t('row.cantMakeIt')} · ${courseTitle}, ${when}`}
+        >
+          <CalendarX2 aria-hidden="true" data-icon="inline-start" />
+          {t('row.cantMakeIt')}
+        </Button>
+      </DialogTrigger>
       <DialogContent closeLabel={tCommon('close')} className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t('cancel.title')}</DialogTitle>
@@ -229,11 +231,25 @@ function NeedsAnswerRow({ item, onMissed }: { item: NeedsAnswerItem; onMissed: (
       <span className="min-w-0">{item.label}</span>
       <div className="flex flex-col items-start gap-1.5 sm:items-end">
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => answer('taught')}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={pending}
+            aria-label={`${t('taught')} · ${item.label}`}
+            onClick={() => answer('taught')}
+          >
             <Check aria-hidden="true" data-icon="inline-start" />
             {t('taught')}
           </Button>
-          <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => answer('missed')}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={pending}
+            aria-label={`${t('missed')} · ${item.label}`}
+            onClick={() => answer('missed')}
+          >
             <CalendarX2 aria-hidden="true" data-icon="inline-start" />
             {t('missed')}
           </Button>

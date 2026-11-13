@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, lte } from 'drizzle-orm'
 import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import type { Ctx } from '@/server/core/context'
@@ -83,7 +83,39 @@ export async function studentWeek(ctx: Ctx, weekStart: string): Promise<WeekRow[
   return weekOf(ctx, await listStudentCourses(ctx), weekStart, false)
 }
 
-/** Sittings of the last 14 days that ended without an answer (taught or missed) and without any attendance. */
+/** When the slot or extra behind each sitting's first class was entered, in ms, by that class's key. */
+async function enteredAt(ctx: Ctx, sittings: Sitting[]): Promise<Map<string, number>> {
+  const firsts = sittings.map((s) => s.occurrences[0])
+  const slotIds = [...new Set(firsts.flatMap((o) => (o.source.kind === 'slot' ? [o.source.slotId] : [])))]
+  const extraIds = firsts.flatMap((o) => (o.source.kind === 'extra' ? [o.source.extraId] : []))
+  const [slots, extras] = await Promise.all([
+    slotIds.length === 0
+      ? []
+      : ctx.db
+          .select({ id: classSlot.id, createdAt: classSlot.createdAt })
+          .from(classSlot)
+          .where(inArray(classSlot.id, slotIds)),
+    extraIds.length === 0
+      ? []
+      : ctx.db
+          .select({ id: classExtra.id, createdAt: classExtra.createdAt })
+          .from(classExtra)
+          .where(inArray(classExtra.id, extraIds)),
+  ])
+  const bySource = new Map([...slots, ...extras].map((r) => [r.id, r.createdAt.getTime()]))
+  const out = new Map<string, number>()
+  for (const o of firsts) {
+    const id = o.source.kind === 'slot' ? o.source.slotId : o.source.extraId
+    const at = bySource.get(id)
+    if (at !== undefined) out.set(o.key, at)
+  }
+  return out
+}
+
+/**
+ * Sittings of the last 14 days that ended without an answer (taught or missed) and without any attendance. A sitting
+ * that ended before its first class's slot (or extra) was entered is skipped: it predates the timetable.
+ */
 export async function needsAnswer(ctx: Ctx): Promise<{ sitting: Sitting; courseTitle: string }[]> {
   const courses = await listLecturerCourses(ctx)
   if (courses.length === 0) return []
@@ -95,9 +127,12 @@ export async function needsAnswer(ctx: Ctx): Promise<{ sitting: Sitting; courseT
     localDateOf(new Date(since), config.timeZone),
     localDateOf(at, config.timeZone),
   )
-  const ended = buildSittings(occurrences).filter(
+  const finished = buildSittings(occurrences).filter(
     (s) => s.status === null && s.endsAt.getTime() >= since && s.endsAt.getTime() <= at.getTime(),
   )
+  const entered = await enteredAt(ctx, finished)
+  // A class that was over before its timetable entry existed was never planned in Clasync: don't ask about it.
+  const ended = finished.filter((s) => s.endsAt.getTime() >= (entered.get(s.occurrences[0].key) ?? 0))
   const answered = await sittingsWithAttendance(ctx.db, ended)
   const titles = new Map(courses.map((c) => [c.id, c.title]))
   return ended

@@ -2892,7 +2892,7 @@
     "thisWeek": "Cette semaine · {range}",
     "lastWeek": "Semaine dernière · {range}",
     "nextWeek": "Semaine prochaine · {range}",
-    "otherWeek": "Semaine du {range}",
+    "otherWeek": "Semaine du {from} au {to}",
     "previousWeekLabel": "Semaine précédente",
     "followingWeekLabel": "Semaine suivante",
     "backToThisWeek": "Cette semaine",
@@ -2900,7 +2900,7 @@
     "room": "Salle {room}",
     "empty": {
       "title": "Pas encore d’emploi du temps",
-      "body": "Ajoutez les cours hebdomadaires de chaque matière à son emploi du temps, et votre semaine s’affichera ici.",
+      "body": "Ajoutez à l’emploi du temps de chaque cours ses créneaux hebdomadaires, et votre semaine s’affichera ici.",
       "noCourses": "Vous n’avez pas encore de cours. Créez d’abord une classe et ajoutez-y un cours.",
       "courseLink": "Emploi du temps de {course} · {className}"
     },

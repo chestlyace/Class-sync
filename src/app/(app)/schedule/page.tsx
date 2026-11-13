@@ -18,7 +18,7 @@ import { loadPage } from '../load-page'
 import { MakeUpButton, type CourseOption } from './make-up-form'
 import { NeedsAnswerList, RowActions, type NeedsAnswerItem } from './schedule-controls'
 import { parseWeekParam } from './schedule-form'
-import { formatDay, formatTime, formatWeekRange } from './schedule-format'
+import { formatDay, formatTime, formatWeekRange, weekBounds } from './schedule-format'
 
 type ScheduleView = {
   courses: CourseSummary[]
@@ -63,7 +63,7 @@ export default async function SchedulePage({ searchParams }: PageProps<'/schedul
         ? t('nextWeek', { range })
         : weekStart === addDays(currentWeek, -7)
           ? t('lastWeek', { range })
-          : t('otherWeek', { range })
+          : t('otherWeek', weekBounds(weekStart, addDays(weekStart, 6), locale))
   const weekHref = (start: string) => `/schedule?week=${start}`
   const span = (from: Date, to: Date) => `${formatTime(from, config.timeZone)}–${formatTime(to, config.timeZone)}`
 

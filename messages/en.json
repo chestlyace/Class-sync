@@ -2892,7 +2892,7 @@
     "thisWeek": "This week · {range}",
     "lastWeek": "Last week · {range}",
     "nextWeek": "Next week · {range}",
-    "otherWeek": "Week of {range}",
+    "otherWeek": "Week of {from} to {to}",
     "previousWeekLabel": "Previous week",
     "followingWeekLabel": "Next week",
     "backToThisWeek": "This week",

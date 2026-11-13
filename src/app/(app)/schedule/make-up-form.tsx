@@ -13,6 +13,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -174,6 +175,7 @@ export function MakeUpDialog({
   replaces,
   replacesLabel,
   defaults,
+  trigger,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -183,11 +185,14 @@ export function MakeUpDialog({
   /** "Replaces Networks of Mon 3 Nov." */
   replacesLabel?: string
   defaults: MakeUpDefaults
+  /** The button that opens the dialog; focus returns to it on close. */
+  trigger?: React.ReactNode
 }) {
   const t = useTranslations('schedule.makeUp')
   const tCommon = useTranslations('common')
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent closeLabel={tCommon('close')} className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t('title')}</DialogTitle>
@@ -214,17 +219,17 @@ export function MakeUpButton({ courses, today }: { courses: CourseOption[]; toda
   const t = useTranslations('schedule.makeUp')
   const [open, setOpen] = useState(false)
   return (
-    <>
-      <Button type="button" onClick={() => setOpen(true)}>
-        <CalendarPlus aria-hidden="true" data-icon="inline-start" />
-        {t('button')}
-      </Button>
-      <MakeUpDialog
-        open={open}
-        onOpenChange={setOpen}
-        courses={courses}
-        defaults={{ date: today, start: '', end: '', room: '' }}
-      />
-    </>
+    <MakeUpDialog
+      open={open}
+      onOpenChange={setOpen}
+      courses={courses}
+      defaults={{ date: today, start: '', end: '', room: '' }}
+      trigger={
+        <Button type="button">
+          <CalendarPlus aria-hidden="true" data-icon="inline-start" />
+          {t('button')}
+        </Button>
+      }
+    />
   )
 }

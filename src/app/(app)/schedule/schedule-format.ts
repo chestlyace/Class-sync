@@ -53,3 +53,16 @@ export function formatWeekRange(weekStart: string, weekEnd: string, locale: Loca
     utc(weekEnd),
   )
 }
+
+/**
+ * The first and last day of a week, for "from … to …" wording: "9" and "15 Nov" in one month,
+ * "30 Nov" and "6 Dec" across two.
+ */
+export function weekBounds(weekStart: string, weekEnd: string, locale: Locale): { from: string; to: string } {
+  const dayMonth = new Intl.DateTimeFormat(tag(locale), { day: 'numeric', month: 'short', timeZone: 'UTC' })
+  const sameMonth = weekStart.slice(0, 7) === weekEnd.slice(0, 7)
+  return {
+    from: sameMonth ? String(Number(weekStart.slice(8))) : dayMonth.format(utc(weekStart)),
+    to: dayMonth.format(utc(weekEnd)),
+  }
+}
