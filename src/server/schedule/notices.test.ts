@@ -101,6 +101,16 @@ describe('class notices', () => {
     expect(missed.deliverAt.getTime()).toBe(local(10, 10).getTime())
   })
 
+  it('enqueueToday reports a failed load', async () => {
+    const broken = Object.assign(Object.create(db), {
+      selectDistinct: () => {
+        throw new Error('db down')
+      },
+    }) as Db
+    await expect(enqueueToday(broken, local(6))).rejects.toThrow('db down')
+    expect(queued).toEqual([])
+  })
+
   it('enqueues only the missed-check once the reminder time passed', async () => {
     const at = local(7, 50)
     setNowForTests(() => at)

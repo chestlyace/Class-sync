@@ -73,18 +73,16 @@ async function coursesWithClassesOn(db: Db, date: string): Promise<string[]> {
   return [...new Set([...slots, ...extras].map((r) => r.courseId))]
 }
 
-/** The daily run: queues the notices of every sitting today. Never throws: failures are logged. */
+/**
+ * The daily run: queues the notices of every sitting today. Throws when today's classes can't be loaded, so the cron
+ * records a failed run; a sitting whose notices can't be queued is logged and the rest still go out.
+ */
 export async function enqueueToday(db: Db, at: Date): Promise<{ sittings: number }> {
-  try {
-    const today = localDateOf(at, config.timeZone)
-    const courseIds = await coursesWithClassesOn(db, today)
-    const sittings = buildSittings(await loadOccurrences(db, courseIds, today, today))
-    await enqueueSittings(sittings, at)
-    return { sittings: sittings.length }
-  } catch (error) {
-    console.error("[schedule] could not queue today's class notices", error)
-    return { sittings: 0 }
-  }
+  const today = localDateOf(at, config.timeZone)
+  const courseIds = await coursesWithClassesOn(db, today)
+  const sittings = buildSittings(await loadOccurrences(db, courseIds, today, today))
+  await enqueueSittings(sittings, at)
+  return { sittings: sittings.length }
 }
 
 /**
