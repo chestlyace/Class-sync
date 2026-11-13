@@ -128,8 +128,7 @@ describe('pushPayload', () => {
 
     it('classMissedQuestion and timetableChanged', () => {
       expect(body('classMissedQuestion', 'en')).toBe('No attendance was taken on Tue 10 Nov. Was the class missed?')
-      // Verbatim copy: the abbreviated month's own dot meets the sentence dot (reported as a concern).
-      expect(body('classMissedQuestion', 'fr')).toBe('Aucun appel le mar. 10 nov.. Le cours a-t-il \u00e9t\u00e9 manqu\u00e9 ?')
+      expect(body('classMissedQuestion', 'fr')).toBe('Aucun appel le mar. 10 nov. : le cours a-t-il \u00e9t\u00e9 manqu\u00e9 ?')
       expect(body('timetableChanged', 'en')).toBe('The class timetable changed.')
       expect(body('timetableChanged', 'fr')).toBe('L\u2019emploi du temps a chang\u00e9.')
     })

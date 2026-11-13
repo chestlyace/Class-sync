@@ -2880,7 +2880,7 @@
     "classCancelled": "Le cours du {day} à {start} est annulé.",
     "classMoved": "Le cours du {day} est déplacé au {newDay} à {start}.",
     "classMakeUp": "Cours de rattrapage le {newDay} à {start}{room, select, none {} other { · {room}}}.",
-    "classMissedQuestion": "Aucun appel le {day}. Le cours a-t-il été manqué ?",
+    "classMissedQuestion": "Aucun appel le {day} : le cours a-t-il été manqué ?",
     "timetableChanged": "L’emploi du temps a changé.",
     "test": "Les notifications fonctionnent sur cet appareil."
   }
