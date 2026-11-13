@@ -226,6 +226,23 @@ describe('date changes', () => {
     ])
   })
 
+  it('a push that fails to send still leaves today\'s class queued', async () => {
+    setAfterResponseForTests(() => {
+      throw new Error('push is down')
+    })
+    const slot = await seedSlot()
+
+    const occ = await addMakeUp(fx.lecturer, fx.bio.id, makeUp({ date: MONDAY, startMinute: 14 * 60, endMinute: 15 * 60 }))
+    await cancelClass(fx.lecturer, `slot:${slot.id}:${MONDAY}`, makeUp({ date: MONDAY, startMinute: 16 * 60, endMinute: 17 * 60 }))
+
+    expect(pushes).toEqual([])
+    const reminders = queued.filter((q) => q.kind === 'reminder').map((q) => q.sittingKey)
+    expect(reminders).toContain(occ.key)
+    // The cancelled class's replacement, later today.
+    const [moved] = await db.select().from(classExtra).where(eq(classExtra.replacesSlotId, slot.id))
+    expect(reminders).toContain(`extra:${moved!.id}`)
+  })
+
   it('undoCancel restores the class and re-enqueues today', async () => {
     const slot = await seedSlot()
     await db.insert(classDateStatus).values({

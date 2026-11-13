@@ -203,14 +203,17 @@ export async function cancelClass(ctx: Ctx, occurrenceKey: string, makeUp?: Make
     return row
   })
 
-  await afterCommit('the cancellation', async () => {
+  // Queuing and pushing are kept apart, so a failing push never leaves today's classes unqueued.
+  await afterCommit('queuing the changed classes', () =>
+    requeueDays(ctx, occ.courseId, data ? [occ.date, data.date] : [occ.date]),
+  )
+  await afterCommit('telling students about the cancellation', async () => {
     if (data && created) {
       const to = await loadExtraOccurrence(ctx, occ.courseId, data.date, created.id)
       await pushClassMoved(ctx.db, occ, to)
     } else {
       await pushClassCancelled(ctx.db, occ)
     }
-    await requeueDays(ctx, occ.courseId, data ? [occ.date, data.date] : [occ.date])
   })
 }
 
@@ -268,10 +271,8 @@ export async function addMakeUp(
 
   // A class that already ended is only recorded: nobody needs telling.
   if (occ.endsAt.getTime() > now().getTime()) {
-    await afterCommit('the make-up class', async () => {
-      await pushClassMakeUp(ctx.db, occ)
-      await requeueDays(ctx, courseId, [occ.date])
-    })
+    await afterCommit('queuing the make-up class', () => requeueDays(ctx, courseId, [occ.date]))
+    await afterCommit('telling students about the make-up class', () => pushClassMakeUp(ctx.db, occ))
   }
   return occ
 }
