@@ -184,6 +184,26 @@
       "copyLecturerLink": "Copier le lien enseignant",
       "copyStudentLinkTitle": "Copier le lien que les étudiants ouvrent pour rejoindre cette classe",
       "copyLecturerLinkTitle": "Copier le lien que vos collègues ouvrent pour enseigner dans cette classe"
+    },
+    "settings": {
+      "link": "Paramètres",
+      "eyebrow": "Paramètres de la classe",
+      "description": "Les changements apparaissent tout de suite pour toute la classe : collègues et étudiants.",
+      "classTitle": "Informations de la classe",
+      "schoolTitle": "Établissement",
+      "schoolShared": "{count, plural, one {} other {Utilisé par # classes, dont certaines d'autres enseignants. Un changement s'applique à toutes.}}",
+      "schoolConflict": "Un autre établissement porte déjà ce nom dans cette ville.",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "deleteTitle": "Supprimer la classe",
+      "deleteBody": "Vous êtes le seul enseignant de cette classe. Elle disparaît pour tous les étudiants, avec tous ses cours et leurs données. Cette action est définitive.",
+      "leaveTitle": "Quitter la classe",
+      "leaveBody": "D'autres enseignants ont cette classe : elle reste, avec ses étudiants et leurs cours. Vous la quittez, et vos propres cours ici sont supprimés avec leurs données. Cette action est définitive.",
+      "delete": "Supprimer la classe",
+      "deleting": "Suppression…",
+      "leave": "Quitter la classe",
+      "leaving": "Départ…",
+      "changed": "Un autre enseignant a rejoint ou quitté cette classe depuis l'ouverture de cette page. Rechargez-la pour voir ce qui se passera maintenant."
     }
   },
   "courses": {
@@ -234,6 +254,18 @@
       "includeNeedsClass": "Dès que des étudiants auront rejoint cette classe, vous pourrez ajouter ici des étudiants des autres classes de l'établissement.",
       "includeNoMatches": "Aucun étudiant de l'établissement ne correspond à « {query} ».",
       "includeResults": "Étudiants correspondants"
+    },
+    "settings": {
+      "link": "Paramètres",
+      "eyebrow": "Paramètres du cours",
+      "description": "Corrigez l'intitulé, le code ou le semestre. Les changements apparaissent tout de suite pour vous et vos étudiants.",
+      "editTitle": "Informations du cours",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "deleteTitle": "Supprimer le cours",
+      "deleteBody": "Le cours disparaît pour vous et pour tous les étudiants, avec ses présences, devoirs, tests, notes et notes de cours. Cette action est définitive.",
+      "delete": "Supprimer le cours",
+      "deleting": "Suppression…"
     }
   },
   "errors": {
@@ -3012,5 +3044,22 @@
       "notCancelled": "Ce cours n’est pas annulé.",
       "notEnded": "Ce cours n’est pas encore terminé."
     }
+  },
+  "removal": {
+    "heading": "Ce qui sera supprimé",
+    "nothingYet": "Aucun travail d'étudiant ni aucune donnée pour l'instant.",
+    "studentsCourse": "{count, plural, one {# étudiant n'y aura plus accès} other {# étudiants n'y auront plus accès}}",
+    "studentsClass": "{count, plural, one {# étudiant retiré de la classe} other {# étudiants retirés de la classe}}",
+    "courses": "{count, plural, one {# cours} other {# cours}}",
+    "attendanceSessions": "{count, plural, one {# séance de présence} other {# séances de présence}}",
+    "assignments": "{count, plural, one {# devoir} other {# devoirs}}",
+    "submissions": "{count, plural, one {# copie et sa note} other {# copies et leurs notes}}",
+    "tests": "{count, plural, one {# test} other {# tests}}",
+    "testAttempts": "{count, plural, one {# participation à un test et ses notes} other {# participations aux tests et leurs notes}}",
+    "participation": "{count, plural, one {# point de participation} other {# points de participation}}",
+    "practiceQuestions": "{count, plural, one {# question d'entraînement} other {# questions d'entraînement}}",
+    "timetableSlots": "{count, plural, one {# créneau de l'emploi du temps} other {# créneaux de l'emploi du temps}}",
+    "notes": "{count, plural, one {# note de cours ou fichier} other {# notes de cours et fichiers}}",
+    "confirmLabel": "Tapez « {name} » pour confirmer"
   }
 }

@@ -1,4 +1,4 @@
-import { ArrowRight, Plus, RefreshCw, UserMinus } from 'lucide-react'
+import { ArrowRight, Plus, RefreshCw, Settings, UserMinus } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ConfirmAction } from '@/components/confirm-action'
@@ -53,6 +53,17 @@ export default async function ClassPage({ params }: PageProps<'/classes/[classId
           <span className="font-mono text-sm tracking-[0.06em] uppercase">
             {t('dashboard.classMeta', { year: cls.academicYear, count: cls.studentCount })}
           </span>
+        }
+        actions={
+          view.data.role === 'lecturer' ? (
+            <Link
+              href={`/classes/${encodeURIComponent(cls.id)}/settings`}
+              className={buttonVariants({ variant: 'outline' })}
+            >
+              <Settings aria-hidden="true" data-icon="inline-start" />
+              {t('classes.settings.link')}
+            </Link>
+          ) : undefined
         }
       />
       {view.data.role === 'lecturer' ? (

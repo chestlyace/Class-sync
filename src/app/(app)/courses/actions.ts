@@ -10,8 +10,10 @@ import {
   createCourse,
   searchSchoolStudentsForCourse,
   setRosterAdjustment,
+  updateCourse,
   type IncludeCandidate,
 } from '@/server/courses/service'
+import { deleteCourse } from '@/server/courses/delete'
 
 const MAX_STUDENT_QUERY_LENGTH = 100
 
@@ -45,6 +47,34 @@ export async function createCourseAction(
       semester,
     })
     redirect(`/courses/${encodeURIComponent(course.id)}`)
+  })
+}
+
+export async function updateCourseAction(
+  _prev: ActionResult<never> | null,
+  data: FormData,
+): Promise<ActionResult<never>> {
+  return toActionResult(async () => {
+    const courseId = formString(data, 'courseId')
+    await updateCourse(await getCtx(), courseId, {
+      title: formString(data, 'title'),
+      code: formString(data, 'code'),
+      semester: parseSemester(formString(data, 'semester')),
+    })
+    // The title shows in lists, the schedule and the nav for the lecturer and every student.
+    revalidatePath('/', 'layout')
+    redirect(`/courses/${encodeURIComponent(courseId)}`)
+  })
+}
+
+export async function deleteCourseAction(
+  _prev: ActionResult<never> | null,
+  data: FormData,
+): Promise<ActionResult<never>> {
+  return toActionResult(async () => {
+    await deleteCourse(await getCtx(), formString(data, 'courseId'), formString(data, 'confirm'))
+    revalidatePath('/', 'layout')
+    redirect('/dashboard')
   })
 }
 
