@@ -23,6 +23,7 @@ import {
   requireCourseOwner,
   searchSchoolStudentsForCourse,
   setRosterAdjustment,
+  updateCourse,
 } from './service'
 
 vi.mock('@/server/push/send', () => ({
@@ -513,6 +514,37 @@ describe('courses service', () => {
       }
       await expect(searchSchoolStudentsForCourse(lecturer, 'no-such-course', 'zoe')).rejects.toMatchObject({
         code: 'FORBIDDEN',
+      })
+    })
+  })
+
+  describe('updateCourse', () => {
+    it('the owner changes title, code and semester, and everyone reads the new values', async () => {
+      const { lecturer, algo } = await setup()
+      const updated = await updateCourse(lecturer, algo.id, { title: '  Advanced Algorithms ', code: 'cs401', semester: 2 })
+      expect(updated).toMatchObject({ id: algo.id, title: 'Advanced Algorithms', code: 'CS401', semester: 2 })
+      expect(await getCourse(lecturer, algo.id)).toMatchObject({ title: 'Advanced Algorithms', code: 'CS401', semester: 2 })
+    })
+
+    it('a blank code clears it', async () => {
+      const { lecturer, algo } = await setup()
+      const updated = await updateCourse(lecturer, algo.id, { title: 'Algorithms', code: '  ', semester: 1 })
+      expect(updated.code).toBeNull()
+    })
+
+    it('a colleague sharing the class, an outsider and a student are FORBIDDEN', async () => {
+      const { colleague, algo } = await setup()
+      const input = { title: 'Hijacked', semester: 1 as const }
+      await expect(updateCourse(colleague, algo.id, input)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+      await expect(updateCourse(await lecturerCtx(), algo.id, input)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+      await expect(updateCourse(await studentCtx(), algo.id, input)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    })
+
+    it('rejects a too-short title with VALIDATION on the title field', async () => {
+      const { lecturer, algo } = await setup()
+      await expect(updateCourse(lecturer, algo.id, { title: 'x', semester: 1 })).rejects.toMatchObject({
+        code: 'VALIDATION',
+        details: { fields: ['title'] },
       })
     })
   })

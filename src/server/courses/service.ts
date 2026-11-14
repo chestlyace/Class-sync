@@ -44,13 +44,19 @@ const createCourseSchema = z.object({
   semester: z.union([z.literal(1), z.literal(2), z.literal(3)]),
 })
 
-function parseCreateInput(input: unknown) {
-  const result = createCourseSchema.safeParse(input)
+const updateCourseSchema = createCourseSchema.omit({ classId: true })
+
+function parseInput<T extends z.ZodType>(schema: T, input: unknown): z.infer<T> {
+  const result = schema.safeParse(input)
   if (!result.success) {
     const fields = [...new Set(result.error.issues.map((i) => i.path.join('.')))]
     throw new AppError('VALIDATION', 'Invalid input', { fields })
   }
   return result.data
+}
+
+function parseCreateInput(input: unknown) {
+  return parseInput(createCourseSchema, input)
 }
 
 const summarySelection = {
@@ -120,6 +126,23 @@ export async function createCourse(
     .returning({ id: course.id })
   const row = await loadSummary(ctx.db, created.id)
   if (!row) throw new Error('Course vanished after creation')
+  return toSummary(row)
+}
+
+/** Owner only: title, code and semester. The class stays (its roster and records belong to it). */
+export async function updateCourse(
+  ctx: Ctx,
+  courseId: string,
+  input: { title: string; code?: string; semester: 1 | 2 | 3 },
+): Promise<CourseSummary> {
+  await requireCourseOwner(ctx, courseId)
+  const data = parseInput(updateCourseSchema, input)
+  await ctx.db
+    .update(course)
+    .set({ title: data.title, code: data.code, semester: data.semester })
+    .where(eq(course.id, courseId))
+  const row = await loadSummary(ctx.db, courseId)
+  if (!row) throw new AppError('FORBIDDEN', 'Only the lecturer of this course can do this')
   return toSummary(row)
 }
 
