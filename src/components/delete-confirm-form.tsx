@@ -25,6 +25,7 @@ export function DeleteConfirmForm({
   label,
   buttonLabel,
   pendingLabel,
+  conflictMessage,
 }: {
   action: (prev: ActionResult<never> | null, data: FormData) => Promise<ActionResult<never>>
   hidden: Record<string, string>
@@ -32,6 +33,8 @@ export function DeleteConfirmForm({
   label: string
   buttonLabel: string
   pendingLabel: string
+  /** Shown instead of the generic text when the server answers CONFLICT. */
+  conflictMessage?: string
 }) {
   const [state, dispatch, pending] = useActionState(action, null)
   const [typed, setTyped] = useState('')
@@ -55,7 +58,7 @@ export function DeleteConfirmForm({
           aria-invalid={isInvalidField(state, 'confirm') || undefined}
         />
       </Field>
-      <ActionError state={state} />
+      <ActionError state={state} overrides={conflictMessage ? { CONFLICT: conflictMessage } : undefined} />
       <Button type="submit" variant="destructive" disabled={!ready || pending} className="self-start">
         <Trash2 aria-hidden="true" data-icon="inline-start" />
         {pending ? pendingLabel : buttonLabel}

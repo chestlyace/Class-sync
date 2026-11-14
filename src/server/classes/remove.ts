@@ -54,15 +54,24 @@ export async function getClassRemoval(ctx: Ctx, classId: string): Promise<ClassR
 /**
  * Deletes the class or leaves it, decided here rather than by the caller: the class row is locked
  * first, so two colleagues leaving at once cannot both leave and strand its students.
- * `confirm` is the class name as typed.
+ * `confirm` is the class name as typed; `expected` guards against a page that has gone stale.
  */
-export async function removeClass(ctx: Ctx, classId: string, confirm: string): Promise<{ mode: 'delete' | 'leave' }> {
+export async function removeClass(
+  ctx: Ctx,
+  classId: string,
+  confirm: string,
+  /** The mode the lecturer was shown: if colleagues joined or left since, nothing happens. */
+  expected: ClassRemoval['mode'],
+): Promise<{ mode: ClassRemoval['mode'] }> {
   requireRole(ctx, 'lecturer')
   const outcome = await ctx.db.transaction(async (tx) => {
     const [locked] = await tx.select({ name: class_.name }).from(class_).where(eq(class_.id, classId)).for('update')
     if (!locked || !(await isClassLecturer(tx, classId, ctx.user.id))) forbidden()
     requireConfirmation(locked.name, confirm)
     const { mode, courseIds } = await plan(tx, classId, ctx.user.id)
+    if (mode !== expected) {
+      throw new AppError('CONFLICT', 'The lecturers of this class changed: review the page again', { mode })
+    }
     const fileIds = await deleteCoursesInTx(tx, courseIds)
     if (mode === 'delete') {
       await tx.delete(class_).where(eq(class_.id, classId))

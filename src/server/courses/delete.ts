@@ -1,4 +1,4 @@
-import { and, count, countDistinct, eq, inArray, notExists, sql } from 'drizzle-orm'
+import { and, count, countDistinct, eq, inArray, notExists, notInArray, sql } from 'drizzle-orm'
 import { AppError } from '@/server/core/errors'
 import type { Ctx } from '@/server/core/context'
 import type { Db } from '@/server/db'
@@ -6,16 +6,20 @@ import {
   assignment,
   assignmentAttachment,
   attendanceSession,
+  classSlot,
   course,
   courseTest,
+  file,
+  participationEvent,
   resource,
   resourcePlacement,
   revisionGroup,
+  revisionQuestion,
   submission,
   submissionFile,
   testAttempt,
 } from '@/server/db/schema'
-import { deleteStoredFile } from '@/server/files/service'
+import { getStorage } from '@/server/files/storage'
 import { courseRosterQuery } from './roster'
 import { requireCourseOwner } from './service'
 
@@ -29,6 +33,11 @@ export type DeletionImpact = {
   submissions: number
   tests: number
   testAttempts: number
+  /** Participation points (part of the CA). */
+  participation: number
+  practiceQuestions: number
+  timetableSlots: number
+  /** Notes and files that go with it; one also placed in a course that stays is not counted. */
   notes: number
 }
 
@@ -38,35 +47,61 @@ async function countOf(query: Promise<{ n: number }[]>): Promise<number> {
 }
 
 export async function deletionImpact(db: Db, courseIds: string[], students: number | null): Promise<DeletionImpact> {
-  if (courseIds.length === 0) {
-    return { courses: 0, students, attendanceSessions: 0, assignments: 0, submissions: 0, tests: 0, testAttempts: 0, notes: 0 }
+  const none = { attendanceSessions: 0, assignments: 0, submissions: 0, tests: 0, testAttempts: 0, participation: 0, practiceQuestions: 0, timetableSlots: 0, notes: 0 }
+  if (courseIds.length === 0) return { courses: 0, students, ...none }
+  const keptElsewhere = db
+    .select({ one: sql`1` })
+    .from(resourcePlacement)
+    .where(and(eq(resourcePlacement.resourceId, resource.id), notInArray(resourcePlacement.courseId, courseIds)))
+  const [attendanceSessions, assignments, submissions, tests, testAttempts, participation, practiceQuestions, timetableSlots, notes] =
+    await Promise.all([
+      countOf(db.select({ n: count() }).from(attendanceSession).where(inArray(attendanceSession.courseId, courseIds))),
+      countOf(db.select({ n: count() }).from(assignment).where(inArray(assignment.courseId, courseIds))),
+      countOf(
+        db
+          .select({ n: count() })
+          .from(submission)
+          .innerJoin(assignment, eq(assignment.id, submission.assignmentId))
+          .where(inArray(assignment.courseId, courseIds)),
+      ),
+      countOf(db.select({ n: count() }).from(courseTest).where(inArray(courseTest.courseId, courseIds))),
+      countOf(
+        db
+          .select({ n: count() })
+          .from(testAttempt)
+          .innerJoin(courseTest, eq(courseTest.id, testAttempt.testId))
+          .where(inArray(courseTest.courseId, courseIds)),
+      ),
+      countOf(db.select({ n: count() }).from(participationEvent).where(inArray(participationEvent.courseId, courseIds))),
+      countOf(
+        db
+          .select({ n: count() })
+          .from(revisionQuestion)
+          .innerJoin(revisionGroup, eq(revisionGroup.id, revisionQuestion.groupId))
+          .where(inArray(revisionGroup.courseId, courseIds)),
+      ),
+      countOf(db.select({ n: count() }).from(classSlot).where(inArray(classSlot.courseId, courseIds))),
+      countOf(
+        db
+          .select({ n: countDistinct(resource.id) })
+          .from(resource)
+          .innerJoin(resourcePlacement, eq(resourcePlacement.resourceId, resource.id))
+          .where(and(inArray(resourcePlacement.courseId, courseIds), notExists(keptElsewhere))),
+      ),
+    ])
+  return {
+    courses: courseIds.length,
+    students,
+    attendanceSessions,
+    assignments,
+    submissions,
+    tests,
+    testAttempts,
+    participation,
+    practiceQuestions,
+    timetableSlots,
+    notes,
   }
-  const [attendanceSessions, assignments, submissions, tests, testAttempts, notes] = await Promise.all([
-    countOf(db.select({ n: count() }).from(attendanceSession).where(inArray(attendanceSession.courseId, courseIds))),
-    countOf(db.select({ n: count() }).from(assignment).where(inArray(assignment.courseId, courseIds))),
-    countOf(
-      db
-        .select({ n: count() })
-        .from(submission)
-        .innerJoin(assignment, eq(assignment.id, submission.assignmentId))
-        .where(inArray(assignment.courseId, courseIds)),
-    ),
-    countOf(db.select({ n: count() }).from(courseTest).where(inArray(courseTest.courseId, courseIds))),
-    countOf(
-      db
-        .select({ n: count() })
-        .from(testAttempt)
-        .innerJoin(courseTest, eq(courseTest.id, testAttempt.testId))
-        .where(inArray(courseTest.courseId, courseIds)),
-    ),
-    countOf(
-      db
-        .select({ n: countDistinct(resourcePlacement.resourceId) })
-        .from(resourcePlacement)
-        .where(inArray(resourcePlacement.courseId, courseIds)),
-    ),
-  ])
-  return { courses: courseIds.length, students, attendanceSessions, assignments, submissions, tests, testAttempts, notes }
 }
 
 /**
@@ -119,15 +154,48 @@ export async function deleteCoursesInTx(tx: Db, courseIds: string[]): Promise<st
   return [...new Set(fileIds)]
 }
 
-/** Removes each stored file that nothing references any more (an attachment, an answer or a note). */
+const REMOVE_BATCH = 20
+
+/**
+ * Removes the stored files that nothing references any more (an attachment, an answer or a note),
+ * after the delete committed. One query finds them, objects go in parallel batches, rows in one
+ * statement. It never throws: the delete already happened, so a cleanup failure is only logged.
+ */
 export async function removeOrphanedFiles(db: Db, fileIds: string[]): Promise<void> {
-  for (const fileId of fileIds) {
-    const [used] = await Promise.all([
-      db.select({ one: sql`1` }).from(assignmentAttachment).where(eq(assignmentAttachment.fileId, fileId)).limit(1),
-      db.select({ one: sql`1` }).from(submissionFile).where(eq(submissionFile.fileId, fileId)).limit(1),
-      db.select({ one: sql`1` }).from(resource).where(eq(resource.fileId, fileId)).limit(1),
-    ]).then((results) => results.filter((rows) => rows.length > 0))
-    if (!used) await deleteStoredFile(db, fileId)
+  if (fileIds.length === 0) return
+  try {
+    const unused = await db
+      .select({ id: file.id, storageKey: file.storageKey })
+      .from(file)
+      .where(
+        and(
+          inArray(file.id, fileIds),
+          notExists(db.select({ one: sql`1` }).from(assignmentAttachment).where(eq(assignmentAttachment.fileId, file.id))),
+          notExists(db.select({ one: sql`1` }).from(submissionFile).where(eq(submissionFile.fileId, file.id))),
+          notExists(db.select({ one: sql`1` }).from(resource).where(eq(resource.fileId, file.id))),
+        ),
+      )
+    if (unused.length === 0) return
+    const storage = getStorage()
+    for (let i = 0; i < unused.length; i += REMOVE_BATCH) {
+      await Promise.all(
+        unused.slice(i, i + REMOVE_BATCH).map(async (f) => {
+          try {
+            await storage.remove(f.storageKey)
+          } catch (err) {
+            console.error('[courses] could not remove a stored object', f.storageKey, err)
+          }
+        }),
+      )
+    }
+    await db.delete(file).where(
+      inArray(
+        file.id,
+        unused.map((f) => f.id),
+      ),
+    )
+  } catch (err) {
+    console.error('[courses] could not clean up stored files after a delete', err)
   }
 }
 

@@ -16,9 +16,11 @@ import {
   courseTest,
   courseTopic,
   file,
+  participationEvent,
   resource,
   resourcePlacement,
   revisionGroup,
+  revisionQuestion,
   school,
   submission,
   submissionFile,
@@ -120,7 +122,9 @@ describe('deleteCourse', () => {
       { resourceId: note.id, courseId, topicId, position: 0 },
       { resourceId: fileRes.id, courseId, topicId, position: 1 },
     ])
-    await db.insert(revisionGroup).values({ courseId, topicId, position: 0 })
+    const [group] = await db.insert(revisionGroup).values({ courseId, topicId, position: 0 }).returning()
+    await db.insert(revisionQuestion).values({ groupId: group.id, position: 0, kind: 'short', prompt: 'Why?' })
+    await db.insert(participationEvent).values({ courseId, studentId: student.user.id, delta: 1, createdBy: lecturer.user.id })
 
     const [test] = await db
       .insert(courseTest)
@@ -206,9 +210,14 @@ describe('deleteCourse', () => {
     expect(removed).toEqual([])
   })
 
-  it('counts what will be lost', async () => {
-    const { lecturer, student, algo } = await setup()
+  it('counts what will be lost, leaving out notes that another course keeps', async () => {
+    const { lecturer, student, algo, dbs } = await setup()
     await populate(lecturer, student, algo.id)
+    const [shared] = await db.insert(resource).values({ ownerId: lecturer.user.id, kind: 'note', title: 'Shared' }).returning()
+    await db.insert(resourcePlacement).values([
+      { resourceId: shared.id, courseId: algo.id, topicId: await addTopic(algo.id), position: 0 },
+      { resourceId: shared.id, courseId: dbs.id, topicId: await addTopic(dbs.id), position: 0 },
+    ])
     expect(await getCourseDeletionImpact(lecturer, algo.id)).toEqual({
       courses: 1,
       students: 1,
@@ -217,8 +226,28 @@ describe('deleteCourse', () => {
       submissions: 1,
       tests: 1,
       testAttempts: 1,
+      participation: 1,
+      practiceQuestions: 1,
+      timetableSlots: 1,
       notes: 2,
     })
+  })
+
+  it('keeps a stored file that an assignment in another course still uses', async () => {
+    const { lecturer, algo, dbs } = await setup()
+    const brief = await addFile(lecturer, 'assignment')
+    for (const courseId of [algo.id, dbs.id]) {
+      const [work] = await db
+        .insert(assignment)
+        .values({ courseId, title: 'Essay', dueAt: new Date(), maxMark: 20, submissionMode: 'files', createdBy: lecturer.user.id })
+        .returning()
+      await db.insert(assignmentAttachment).values({ assignmentId: work.id, fileId: brief.id, position: 0 })
+    }
+
+    await deleteCourse(lecturer, algo.id, 'Algorithms')
+
+    expect(await db.select().from(file).where(eq(file.id, brief.id))).toHaveLength(1)
+    expect(removed).toEqual([])
   })
 
   it('a wrong confirmation is VALIDATION on the confirm field and deletes nothing', async () => {

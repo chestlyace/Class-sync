@@ -94,7 +94,11 @@ export async function removeClassAction(
   data: FormData,
 ): Promise<ActionResult<never>> {
   return toActionResult(async () => {
-    await removeClass(await getCtx(), formString(data, 'classId'), formString(data, 'confirm'))
+    const expected = formString(data, 'expectedMode')
+    if (expected !== 'delete' && expected !== 'leave') {
+      throw new AppError('VALIDATION', 'Invalid mode', { fields: ['expectedMode'] })
+    }
+    await removeClass(await getCtx(), formString(data, 'classId'), formString(data, 'confirm'), expected)
     revalidatePath('/', 'layout')
     redirect('/dashboard')
   })

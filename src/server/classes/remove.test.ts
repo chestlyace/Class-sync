@@ -61,7 +61,7 @@ describe('removing a class', () => {
       impact: expect.objectContaining({ courses: 1, students: 1, assignments: 1 }),
     })
 
-    expect(await removeClass(me, cls.id, 'cs l3')).toEqual({ mode: 'delete' })
+    expect(await removeClass(me, cls.id, 'cs l3', 'delete')).toEqual({ mode: 'delete' })
 
     expect(await db.select().from(class_).where(eq(class_.id, cls.id))).toEqual([])
     expect(await db.select().from(course).where(eq(course.id, mine.id))).toEqual([])
@@ -77,7 +77,7 @@ describe('removing a class', () => {
       impact: expect.objectContaining({ courses: 1, students: null, assignments: 1 }),
     })
 
-    expect(await removeClass(me, cls.id, 'CS L3')).toEqual({ mode: 'leave' })
+    expect(await removeClass(me, cls.id, 'CS L3', 'leave')).toEqual({ mode: 'leave' })
 
     expect(await db.select().from(course).where(eq(course.id, mine.id))).toEqual([])
     expect(await listMyClasses(me)).toEqual([])
@@ -89,15 +89,23 @@ describe('removing a class', () => {
 
   it('once the colleague is the last lecturer, removing the class deletes it', async () => {
     const { me, colleague, cls } = await setup({ withColleague: true })
-    await removeClass(me, cls.id, 'CS L3')
+    await removeClass(me, cls.id, 'CS L3', 'leave')
     expect((await getClassRemoval(colleague, cls.id)).mode).toBe('delete')
-    expect(await removeClass(colleague, cls.id, 'CS L3')).toEqual({ mode: 'delete' })
+    expect(await removeClass(colleague, cls.id, 'CS L3', 'delete')).toEqual({ mode: 'delete' })
     expect(await db.select().from(class_).where(eq(class_.id, cls.id))).toEqual([])
+  })
+
+  it('a page that still says "leave" after the colleague left is CONFLICT and deletes nothing', async () => {
+    const { me, colleague, student, cls } = await setup({ withColleague: true })
+    await removeClass(colleague, cls.id, 'CS L3', 'leave')
+    await expect(removeClass(me, cls.id, 'CS L3', 'leave')).rejects.toMatchObject({ code: 'CONFLICT' })
+    expect(await db.select().from(class_).where(eq(class_.id, cls.id))).toHaveLength(1)
+    expect((await listMyClasses(student)).map((c) => c.id)).toEqual([cls.id])
   })
 
   it('a wrong confirmation is VALIDATION on the confirm field and changes nothing', async () => {
     const { me, cls, mine } = await setup({ withColleague: false })
-    await expect(removeClass(me, cls.id, 'CS L')).rejects.toMatchObject({ code: 'VALIDATION', details: { fields: ['confirm'] } })
+    await expect(removeClass(me, cls.id, 'CS L', 'delete')).rejects.toMatchObject({ code: 'VALIDATION', details: { fields: ['confirm'] } })
     expect(await db.select().from(course).where(eq(course.id, mine.id))).toHaveLength(1)
     expect(await db.select().from(class_).where(eq(class_.id, cls.id))).toHaveLength(1)
   })
@@ -105,7 +113,7 @@ describe('removing a class', () => {
   it('a student and an outsider lecturer are FORBIDDEN', async () => {
     const { student, cls } = await setup({ withColleague: false })
     for (const ctx of [student, await lecturerCtx()]) {
-      await expect(removeClass(ctx, cls.id, 'CS L3')).rejects.toMatchObject({ code: 'FORBIDDEN' })
+      await expect(removeClass(ctx, cls.id, 'CS L3', 'delete')).rejects.toMatchObject({ code: 'FORBIDDEN' })
       await expect(getClassRemoval(ctx, cls.id)).rejects.toMatchObject({ code: 'FORBIDDEN' })
     }
     expect(await db.select().from(class_).where(eq(class_.id, cls.id))).toHaveLength(1)

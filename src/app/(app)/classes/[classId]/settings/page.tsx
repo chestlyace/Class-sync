@@ -59,11 +59,12 @@ export default async function ClassSettingsPage({ params }: PageProps<'/classes/
         <RemovalImpact impact={removal.impact} students="studentsClass" showCourses />
         <DeleteConfirmForm
           action={removeClassAction}
-          hidden={{ classId: settings.id }}
+          hidden={{ classId: settings.id, expectedMode: removal.mode }}
           confirmText={settings.name}
           label={t('removal.confirmLabel', { name: settings.name })}
           buttonLabel={t(leaving ? 'classes.settings.leave' : 'classes.settings.delete')}
           pendingLabel={t(leaving ? 'classes.settings.leaving' : 'classes.settings.deleting')}
+          conflictMessage={t('classes.settings.changed')}
         />
       </Panel>
     </div>

@@ -202,7 +202,8 @@
       "delete": "Supprimer la classe",
       "deleting": "Suppression…",
       "leave": "Quitter la classe",
-      "leaving": "Départ…"
+      "leaving": "Départ…",
+      "changed": "Un autre enseignant a rejoint ou quitté cette classe depuis l'ouverture de cette page. Rechargez-la pour voir ce qui se passera maintenant."
     }
   },
   "courses": {
@@ -3046,7 +3047,7 @@
   },
   "removal": {
     "heading": "Ce qui sera supprimé",
-    "nothingYet": "Rien n'a encore été enregistré.",
+    "nothingYet": "Aucun travail d'étudiant ni aucune donnée pour l'instant.",
     "studentsCourse": "{count, plural, one {# étudiant n'y aura plus accès} other {# étudiants n'y auront plus accès}}",
     "studentsClass": "{count, plural, one {# étudiant retiré de la classe} other {# étudiants retirés de la classe}}",
     "courses": "{count, plural, one {# cours} other {# cours}}",
@@ -3055,6 +3056,9 @@
     "submissions": "{count, plural, one {# copie et sa note} other {# copies et leurs notes}}",
     "tests": "{count, plural, one {# test} other {# tests}}",
     "testAttempts": "{count, plural, one {# participation à un test et ses notes} other {# participations aux tests et leurs notes}}",
+    "participation": "{count, plural, one {# point de participation} other {# points de participation}}",
+    "practiceQuestions": "{count, plural, one {# question d'entraînement} other {# questions d'entraînement}}",
+    "timetableSlots": "{count, plural, one {# créneau de l'emploi du temps} other {# créneaux de l'emploi du temps}}",
     "notes": "{count, plural, one {# note de cours ou fichier} other {# notes de cours et fichiers}}",
     "confirmLabel": "Tapez « {name} » pour confirmer"
   }

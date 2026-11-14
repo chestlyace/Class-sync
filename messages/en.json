@@ -202,7 +202,8 @@
       "delete": "Delete class",
       "deleting": "Deleting…",
       "leave": "Leave class",
-      "leaving": "Leaving…"
+      "leaving": "Leaving…",
+      "changed": "Another lecturer joined or left this class since you opened this page. Reload it to see what will happen now."
     }
   },
   "courses": {
@@ -3046,7 +3047,7 @@
   },
   "removal": {
     "heading": "What will be deleted",
-    "nothingYet": "Nothing has been recorded yet.",
+    "nothingYet": "No student work or records yet.",
     "studentsCourse": "{count, plural, one {# student loses access to it} other {# students lose access to it}}",
     "studentsClass": "{count, plural, one {# student removed from the class} other {# students removed from the class}}",
     "courses": "{count, plural, one {# course} other {# courses}}",
@@ -3055,6 +3056,9 @@
     "submissions": "{count, plural, one {# submission and its mark} other {# submissions and their marks}}",
     "tests": "{count, plural, one {# test} other {# tests}}",
     "testAttempts": "{count, plural, one {# test attempt and its marks} other {# test attempts and their marks}}",
+    "participation": "{count, plural, one {# participation point} other {# participation points}}",
+    "practiceQuestions": "{count, plural, one {# practice question} other {# practice questions}}",
+    "timetableSlots": "{count, plural, one {# timetable slot} other {# timetable slots}}",
     "notes": "{count, plural, one {# note or file} other {# notes and files}}",
     "confirmLabel": "Type “{name}” to confirm"
   }

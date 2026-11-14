@@ -1,7 +1,17 @@
 import { getTranslations } from 'next-intl/server'
 import type { DeletionImpact } from '@/server/courses/delete'
 
-const RECORD_KEYS = ['attendanceSessions', 'assignments', 'submissions', 'tests', 'testAttempts', 'notes'] as const
+const RECORD_KEYS = [
+  'attendanceSessions',
+  'assignments',
+  'submissions',
+  'tests',
+  'testAttempts',
+  'participation',
+  'practiceQuestions',
+  'timetableSlots',
+  'notes',
+] as const
 
 /** The counted warning shown before a course or class is removed; zero counts are left out. */
 export async function RemovalImpact({
