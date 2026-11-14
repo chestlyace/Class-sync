@@ -4,7 +4,7 @@ import type { Db } from '@/server/db'
 import { class_, classLecturer, school } from '@/server/db/schema'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
-import { createSchool, getSchool, searchSchools, setSchoolLocation } from './service'
+import { createSchool, getSchool, searchSchools, setSchoolLocation, updateSchool } from './service'
 
 describe('schools service', () => {
   let db: Db
@@ -293,6 +293,52 @@ describe('schools service', () => {
       await expect(
         setSchoolLocation(ctx, school.id, { latitude: 0, longitude: 0, radiusM: 10 }),
       ).rejects.toMatchObject({ code: 'VALIDATION' })
+    })
+  })
+
+  describe('updateSchool', () => {
+    async function schoolWithClass() {
+      const creator = await lecturerCtx()
+      const sch = await createSchool(creator, { name: 'Univrsity of Buea', town: 'Buea' })
+      const teacher = await lecturerCtx()
+      const [cls] = await db
+        .insert(class_)
+        .values({ schoolId: sch.id, name: 'CS L3', academicYear: '2026/27', studentCode: 'S' + sch.id.slice(0, 7), lecturerCode: 'L' + sch.id.slice(0, 7), createdBy: teacher.user.id })
+        .returning()
+      await db.insert(classLecturer).values({ classId: cls.id, userId: teacher.user.id })
+      return { creator, teacher, sch }
+    }
+
+    it('a lecturer with a class at the school fixes its name and town, and search finds the new name', async () => {
+      const { teacher, sch } = await schoolWithClass()
+      const updated = await updateSchool(teacher, sch.id, { name: ' University of Buea ', town: 'Buea' })
+      expect(updated).toMatchObject({ id: sch.id, name: 'University of Buea', town: 'Buea' })
+      expect((await searchSchools(teacher, 'university')).map((s) => s.id)).toEqual([sch.id])
+    })
+
+    it('the creator may edit it too; another lecturer and a student may not', async () => {
+      const { creator, sch } = await schoolWithClass()
+      await expect(updateSchool(creator, sch.id, { name: 'UB', town: 'Buea' })).resolves.toMatchObject({ name: 'UB' })
+      await expect(updateSchool(await lecturerCtx(), sch.id, { name: 'X', town: 'Buea' })).rejects.toMatchObject({ code: 'FORBIDDEN' })
+      const student = ctxFor(db, await makeUser(db, { role: 'student' }))
+      await expect(updateSchool(student, sch.id, { name: 'X1', town: 'Buea' })).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    })
+
+    it('renaming onto another school with the same name and town is CONFLICT carrying its id', async () => {
+      const { teacher, sch } = await schoolWithClass()
+      const other = await createSchool(teacher, { name: 'Université de Douala', town: 'Douala' })
+      await expect(updateSchool(teacher, sch.id, { name: 'universite de douala', town: 'DOUALA' })).rejects.toMatchObject({
+        code: 'CONFLICT',
+        details: { existingSchoolId: other.id },
+      })
+    })
+
+    it('a one-letter name is VALIDATION', async () => {
+      const { teacher, sch } = await schoolWithClass()
+      await expect(updateSchool(teacher, sch.id, { name: 'U', town: 'Buea' })).rejects.toMatchObject({
+        code: 'VALIDATION',
+        details: { fields: ['name'] },
+      })
     })
   })
 })
