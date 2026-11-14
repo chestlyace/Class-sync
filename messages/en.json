@@ -184,6 +184,25 @@
       "copyLecturerLink": "Copy lecturer link",
       "copyStudentLinkTitle": "Copy the link students open to join this class",
       "copyLecturerLinkTitle": "Copy the link colleagues open to teach in this class"
+    },
+    "settings": {
+      "link": "Settings",
+      "eyebrow": "Class settings",
+      "description": "Changes show straight away for everyone in the class: colleagues and students.",
+      "classTitle": "Class details",
+      "schoolTitle": "School",
+      "schoolShared": "{count, plural, one {} other {Shared by # classes, some of them other lecturers'. A change shows for all of them.}}",
+      "schoolConflict": "Another school already has this name in this town.",
+      "save": "Save changes",
+      "saving": "Saving…",
+      "deleteTitle": "Delete class",
+      "deleteBody": "You are the only lecturer of this class. It disappears for every student, with all its courses and their records. This can't be undone.",
+      "leaveTitle": "Leave class",
+      "leaveBody": "Other lecturers teach this class, so it stays, with its students and their courses. You leave it, and your own courses here are deleted with their records. This can't be undone.",
+      "delete": "Delete class",
+      "deleting": "Deleting…",
+      "leave": "Leave class",
+      "leaving": "Leaving…"
     }
   },
   "courses": {

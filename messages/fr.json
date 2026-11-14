@@ -184,6 +184,25 @@
       "copyLecturerLink": "Copier le lien enseignant",
       "copyStudentLinkTitle": "Copier le lien que les étudiants ouvrent pour rejoindre cette classe",
       "copyLecturerLinkTitle": "Copier le lien que vos collègues ouvrent pour enseigner dans cette classe"
+    },
+    "settings": {
+      "link": "Paramètres",
+      "eyebrow": "Paramètres de la classe",
+      "description": "Les changements apparaissent tout de suite pour toute la classe : collègues et étudiants.",
+      "classTitle": "Informations de la classe",
+      "schoolTitle": "Établissement",
+      "schoolShared": "{count, plural, one {} other {Utilisé par # classes, dont certaines d'autres enseignants. Un changement s'applique à toutes.}}",
+      "schoolConflict": "Un autre établissement porte déjà ce nom dans cette ville.",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "deleteTitle": "Supprimer la classe",
+      "deleteBody": "Vous êtes le seul enseignant de cette classe. Elle disparaît pour tous les étudiants, avec tous ses cours et leurs données. Cette action est définitive.",
+      "leaveTitle": "Quitter la classe",
+      "leaveBody": "D'autres enseignants ont cette classe : elle reste, avec ses étudiants et leurs cours. Vous la quittez, et vos propres cours ici sont supprimés avec leurs données. Cette action est définitive.",
+      "delete": "Supprimer la classe",
+      "deleting": "Suppression…",
+      "leave": "Quitter la classe",
+      "leaving": "Départ…"
     }
   },
   "courses": {
