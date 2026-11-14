@@ -234,6 +234,18 @@
       "includeNeedsClass": "Once students have joined this class, you can add students from the school's other classes here.",
       "includeNoMatches": "No student at this school matches “{query}”.",
       "includeResults": "Matching students"
+    },
+    "settings": {
+      "link": "Settings",
+      "eyebrow": "Course settings",
+      "description": "Fix the title, code or semester. Changes show for you and your students straight away.",
+      "editTitle": "Course details",
+      "save": "Save changes",
+      "saving": "Saving…",
+      "deleteTitle": "Delete course",
+      "deleteBody": "The course disappears for you and every student, with its attendance, assignments, tests, marks and notes. This can't be undone.",
+      "delete": "Delete course",
+      "deleting": "Deleting…"
     }
   },
   "errors": {
@@ -3012,5 +3024,19 @@
       "notCancelled": "This class is not cancelled.",
       "notEnded": "This class has not ended yet."
     }
+  },
+  "removal": {
+    "heading": "What will be deleted",
+    "nothingYet": "Nothing has been recorded yet.",
+    "studentsCourse": "{count, plural, one {# student loses access to it} other {# students lose access to it}}",
+    "studentsClass": "{count, plural, one {# student removed from the class} other {# students removed from the class}}",
+    "courses": "{count, plural, one {# course} other {# courses}}",
+    "attendanceSessions": "{count, plural, one {# attendance session} other {# attendance sessions}}",
+    "assignments": "{count, plural, one {# assignment} other {# assignments}}",
+    "submissions": "{count, plural, one {# submission and its mark} other {# submissions and their marks}}",
+    "tests": "{count, plural, one {# test} other {# tests}}",
+    "testAttempts": "{count, plural, one {# test attempt and its marks} other {# test attempts and their marks}}",
+    "notes": "{count, plural, one {# note or file} other {# notes and files}}",
+    "confirmLabel": "Type “{name}” to confirm"
   }
 }
