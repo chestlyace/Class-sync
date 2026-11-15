@@ -6,13 +6,23 @@ import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { formatDecimal } from '@/lib/number-format'
 import type { MyTestResult } from '@/server/tests/results'
+import type { ReviewAccess } from '@/server/tests/review'
+import { ReviewLinks } from './review-links'
 
 /**
  * A released test with short answers (the release email links here): the total, multiple choice
  * as one total, then each short answer's mark and the lecturer's comment. Never the options or
  * which one was correct. A real answer still to be confirmed reads "Being marked", never 0.
  */
-export async function ReleasedResult({ result }: { result: MyTestResult }) {
+export async function ReleasedResult({
+  result,
+  code,
+  review,
+}: {
+  result: MyTestResult
+  code: string
+  review: ReviewAccess | null
+}) {
   const [t, locale] = await Promise.all([getTranslations('tests.released'), getLocale()])
   const tStudent = await getTranslations('tests.student')
   const num = (value: number) => formatDecimal(value, locale)
@@ -31,13 +41,16 @@ export async function ReleasedResult({ result }: { result: MyTestResult }) {
         <p className="text-sm text-muted-foreground">{t('onlyYou')}</p>
       </Panel>
 
+      <ReviewLinks code={code} access={review} />
+
       {result.mcq && (
         <section aria-labelledby="released-mcq" className="flex flex-col gap-4">
           <SectionHeading id="released-mcq">{t('kind.mcq')}</SectionHeading>
           <div className="flex items-start justify-between gap-3 rounded-3xl border bg-card p-4 sm:p-5">
             <div className="flex min-w-0 flex-col gap-1">
               <Eyebrow>{t('mcqCount', { count: result.mcq.count })}</Eyebrow>
-              <p className="text-sm text-muted-foreground">{t('mcqNote')}</p>
+              {/* Once review is open the answers are no longer private, so the note would mislead. */}
+              {review !== 'open' && <p className="text-sm text-muted-foreground">{t('mcqNote')}</p>}
             </div>
             <span className="shrink-0 font-mono text-base font-semibold whitespace-nowrap">
               {t('mark', { mark: num(result.mcq.score), outOf: num(result.mcq.outOf) })}

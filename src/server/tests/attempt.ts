@@ -16,6 +16,7 @@ import { judgeExit, type LeavingRule } from './leaving'
 import { orderFor, scoreAttempt, type ScoringAnswer, type ScoringQuestion } from './paper'
 import { acceptsAnswers, answersFinalAt, canSeeResult, endsAt, testPhase, testState, type TestPhase, type TestState } from './phase'
 import { MAX_QUESTIONS, SHORT_ANSWER_MAX, DEVICE_STALE_MS, questionMark, type QuestionKind } from './rules'
+import { reviewAccessForTests, type ReviewAccess } from './review'
 
 // ---------------------------------------------------------------------------------------------
 // Types
@@ -89,6 +90,8 @@ export type MyTestItem = {
   state: TestState
   myStatus: 'not_joined' | 'working' | 'ended_left' | 'handed_in'
   result: QuickResult | null
+  /** Whether I may review the paper and practise it now (or why not). */
+  review: ReviewAccess
 }
 
 type TestRow = typeof courseTest.$inferSelect
@@ -850,6 +853,11 @@ export async function listMyTests(ctx: Ctx, courseId: string): Promise<MyTestIte
   }
 
   const at = now()
+  const reviews = await reviewAccessForTests(
+    ctx.db,
+    tests.map((t) => ({ test: t, hasShort: (questionsByTest.get(t.id) ?? []).some((q) => q.kind === 'short') })),
+    at,
+  )
   return tests.map((t) => {
     const questions = questionsByTest.get(t.id) ?? []
     const hasShort = questions.some((q) => q.kind === 'short')
@@ -870,6 +878,7 @@ export async function listMyTests(ctx: Ctx, courseId: string): Promise<MyTestIte
       state: testState({ ...t, hasShort }, at),
       myStatus,
       result: visible ? quickResult(questions, answersByAttempt.get(attempt.id) ?? new Map()) : null,
+      review: reviews.get(t.id)!,
     }
   })
 }

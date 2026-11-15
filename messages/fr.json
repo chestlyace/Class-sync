@@ -2014,6 +2014,26 @@
       "seeMarks": "Voir vos notes",
       "mcqCount": "{count, plural, one {# question} other {# questions}}",
       "mcqNote": "Affiché en un seul total, pour que les réponses restent privées."
+    },
+    "review": {
+      "metaTitle": "Voir le corrigé",
+      "eyebrow": "Corrigé",
+      "reviewAnswers": "Voir le corrigé",
+      "practise": "S'entraîner sur ce test",
+      "practiseNote": "L'entraînement ne change jamais votre résultat.",
+      "backToTest": "Retour au test",
+      "waitingResults": "Vous pourrez revoir les questions et le corrigé une fois les résultats publiés.",
+      "waitingClasses": "Vous pourrez revoir les questions et le corrigé quand toutes les classes auront passé ce test.",
+      "total": "Votre résultat",
+      "notJoined": "Vous n'avez pas passé ce test : aucune réponse n'est affichée.",
+      "yourAnswer": "Votre réponse",
+      "correctAnswer": "Bonne réponse",
+      "noAnswer": "Aucune réponse",
+      "lookingFor": "Ce que l'enseignant attendait",
+      "myTestsLink": "Corrigé",
+      "switchLabel": "Permettre aux étudiants de revoir ce test",
+      "switchHelp": "Une fois les résultats publiés et le test passé par toutes les classes, les étudiants voient les questions, leurs réponses et le corrigé, et peuvent s'entraîner dessus. Désactivez si vous comptez réutiliser ces questions.",
+      "questions": "Questions"
     }
   },
   "notes": {

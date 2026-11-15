@@ -32,6 +32,7 @@ import { getDeviceId, randomUuid } from './device-id'
 import { EndedScreen } from './ended-screen'
 import { BeginScreen, LoadingScreen, NoticeScreen } from './notice-screen'
 import { QuestionScreen, type HandInProblem } from './question-screen'
+import type { ReviewAccess } from '@/server/tests/review'
 import { ResultScreen } from './result-screen'
 import {
   allAnswers,
@@ -123,7 +124,7 @@ function needsPaper(view: AttemptViewDto): boolean {
  * Every request has a deadline (postJson): a failed or stalled request is never leaving, it only
  * changes the "saved on this device" line.
  */
-export function TestRunner({ userId, code }: { userId: string; code: string }) {
+export function TestRunner({ userId, code, review }: { userId: string; code: string; review: ReviewAccess | null }) {
   const [view, setView] = useState<AttemptViewDto | null>(null)
   const [fatal, setFatal] = useState<Fatal | null>(null)
   const [local, setLocal] = useState<LocalAttempt>(emptyAttempt)
@@ -694,8 +695,8 @@ export function TestRunner({ userId, code }: { userId: string; code: string }) {
       )
     }
     case 'result':
-      return <ResultScreen info={view.info} result={view.result} />
+      return <ResultScreen info={view.info} result={view.result} code={code} review={review} />
     case 'closed':
-      return <NoticeScreen kind="closed" />
+      return <NoticeScreen kind="closed" code={code} review={review} />
   }
 }

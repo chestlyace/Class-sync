@@ -29,6 +29,7 @@ import {
   deleteTest,
   getTestForEdit,
   listCourseTests,
+  setStudentsCanReview,
   updateTest,
 } from './authoring'
 import { loadQuestions, requireOwnedTest } from './queries'
@@ -538,5 +539,39 @@ describe('test authoring services', () => {
     await start(started.id)
     await expectAppError(deleteTest(lecturer, started.id), 'CONFLICT', { reason: 'started' })
     expect(await countRows()).toEqual({ tests: 1, questions: 3, options: 5 })
+  })
+
+  it('new tests can be reviewed by students by default', async () => {
+    const { lecturer, algo } = await setup()
+    const test = await createTest(lecturer, algo.id, validInput())
+    expect(test.studentsCanReview).toBe(true)
+    expect((await getTestForEdit(lecturer, test.id)).summary.studentsCanReview).toBe(true)
+  })
+
+  it('setStudentsCanReview turns review off and on, after Start too', async () => {
+    const { lecturer, algo } = await setup()
+    const test = await createTest(lecturer, algo.id, validInput())
+    await start(test.id)
+    await setStudentsCanReview(lecturer, test.id, false)
+    expect((await getTestForEdit(lecturer, test.id)).summary.studentsCanReview).toBe(false)
+    await setStudentsCanReview(lecturer, test.id, true)
+    expect((await getTestForEdit(lecturer, test.id)).summary.studentsCanReview).toBe(true)
+    await expectAppError(setStudentsCanReview(lecturer, test.id, 'no' as unknown as boolean), 'VALIDATION')
+  })
+
+  it('setStudentsCanReview is FORBIDDEN for another lecturer and for a student', async () => {
+    const { lecturer, colleague, alice, algo } = await setup()
+    const test = await createTest(lecturer, algo.id, validInput())
+    await expectAppError(setStudentsCanReview(colleague, test.id, false), 'FORBIDDEN')
+    await expectAppError(setStudentsCanReview(alice, test.id, false), 'FORBIDDEN')
+    expect((await getTestForEdit(lecturer, test.id)).summary.studentsCanReview).toBe(true)
+  })
+
+  it('copyTest carries studentsCanReview', async () => {
+    const { lecturer, algo, networks } = await setup()
+    const test = await createTest(lecturer, algo.id, validInput())
+    await setStudentsCanReview(lecturer, test.id, false)
+    const copy = await copyTest(lecturer, test.id, networks.id)
+    expect(copy.studentsCanReview).toBe(false)
   })
 })

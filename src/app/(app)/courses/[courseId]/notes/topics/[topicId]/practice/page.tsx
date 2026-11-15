@@ -56,7 +56,11 @@ export default async function PracticePage({ params }: PageProps<'/courses/[cour
 
   if (data.role === 'student') {
     return (
-      <PracticeRunner courseId={courseId} topicTitle={data.topic.title} questions={data.questions} outcomes={data.outcomes} />
+      <PracticeRunner
+        source={{ kind: 'topic', courseId, title: data.topic.title }}
+        questions={data.questions}
+        outcomes={data.outcomes}
+      />
     )
   }
   return (

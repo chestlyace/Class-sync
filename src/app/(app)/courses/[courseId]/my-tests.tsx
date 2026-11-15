@@ -1,9 +1,10 @@
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, ListChecks } from 'lucide-react'
 import { getLocale, getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ErrorCodeMessage } from '@/components/action-error'
 import { SectionHeading } from '@/components/page-header'
 import { Badge } from '@/components/ui/badge'
+import { buttonVariants } from '@/components/ui/button'
 import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
 import { formatDecimal } from '@/lib/number-format'
 import { listMyTests, type MyTestItem } from '@/server/tests/attempt'
@@ -18,7 +19,11 @@ const BADGE: Record<MyTestItem['state'], 'default' | 'secondary' | 'outline'> = 
 
 /** The signed-in student's tests on a course: state, where they stand, the link, and the quick result when visible. */
 export async function MyTests({ courseId }: { courseId: string }) {
-  const [t, rawLocale] = await Promise.all([getTranslations('tests.student.myTests'), getLocale()])
+  const [t, tReview, rawLocale] = await Promise.all([
+    getTranslations('tests.student.myTests'),
+    getTranslations('tests.review'),
+    getLocale(),
+  ])
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
   const result = await loadPage((ctx) => listMyTests(ctx, courseId))
 
@@ -34,10 +39,10 @@ export async function MyTests({ courseId }: { courseId: string }) {
       ) : (
         <ul className="flex flex-col divide-y rounded-3xl border">
           {result.data.map((test) => (
-            <li key={test.testId}>
+            <li key={test.testId} className="flex items-center">
               <Link
                 href={`/t/${encodeURIComponent(test.code)}`}
-                className="flex items-center gap-3 px-4 py-3 outline-none hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50 sm:px-5"
+                className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 outline-none hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50 sm:px-5"
               >
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="truncate font-medium">{test.title}</span>
@@ -57,6 +62,16 @@ export async function MyTests({ courseId }: { courseId: string }) {
                 )}
                 <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
               </Link>
+              {test.review === 'open' && (
+                // Beside the row's link, not inside it: one link per target.
+                <Link
+                  href={`/t/${encodeURIComponent(test.code)}/review`}
+                  className={buttonVariants({ variant: 'outline', size: 'sm', className: 'mr-3 shrink-0 sm:mr-4' })}
+                >
+                  <ListChecks aria-hidden="true" data-icon="inline-start" />
+                  {tReview('myTestsLink')}
+                </Link>
+              )}
             </li>
           ))}
         </ul>

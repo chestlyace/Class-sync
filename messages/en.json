@@ -2014,6 +2014,26 @@
       "seeMarks": "See your marks",
       "mcqCount": "{count, plural, one {# question} other {# questions}}",
       "mcqNote": "Shown as one total, so the answers stay private."
+    },
+    "review": {
+      "metaTitle": "Review answers",
+      "eyebrow": "Review",
+      "reviewAnswers": "Review answers",
+      "practise": "Practise this test",
+      "practiseNote": "Practice never changes your result.",
+      "backToTest": "Back to the test",
+      "waitingResults": "You can review the questions and correct answers once results are out.",
+      "waitingClasses": "You can review the questions and correct answers once every class has taken this test.",
+      "total": "Your result",
+      "notJoined": "You didn't take this test, so no answers are shown.",
+      "yourAnswer": "Your answer",
+      "correctAnswer": "Correct answer",
+      "noAnswer": "No answer",
+      "lookingFor": "What the lecturer was looking for",
+      "myTestsLink": "Review",
+      "switchLabel": "Let students review this test",
+      "switchHelp": "Once results are out and every class has taken it, students see the questions, their answers and the correct answers, and can practise it again. Turn this off if you'll reuse these questions.",
+      "questions": "Questions"
     }
   },
   "notes": {
