@@ -2347,6 +2347,7 @@
       "label": "Admin sections",
       "overview": "Overview",
       "people": "People",
+      "schools": "Schools",
       "usage": "Usage",
       "ai": "AI & MCP",
       "health": "Health",
@@ -2483,6 +2484,71 @@
         "none": "No action applies to this account right now."
       }
     },
+    "schools": {
+      "title": "Schools",
+      "description": "Every school on Clasync, sorted by town so duplicates sit together.",
+      "search": "Search schools",
+      "searchPlaceholder": "Name or town",
+      "apply": "Search",
+      "clear": "Clear",
+      "empty": "No schools yet.",
+      "noMatch": "No school matches this search.",
+      "counts": "{classes, plural, one {# class} other {# classes}} · {lecturers, plural, one {# lecturer} other {# lecturers}} · {students, plural, one {# student} other {# students}}",
+      "noLocation": "No campus location",
+      "school": {
+        "back": "All schools",
+        "eyebrow": "School",
+        "factsTitle": "Details",
+        "town": "Town",
+        "created": "Created",
+        "createdBy": "Created by",
+        "location": "Campus location",
+        "locationSet": "Set · {radius} m",
+        "locationNone": "Not set",
+        "classesTitle": "Classes",
+        "classesEmpty": "No classes at this school.",
+        "classLine": "{students, plural, one {# student} other {# students}} · {courses, plural, one {# course} other {# courses}}",
+        "noLecturer": "No lecturer",
+        "sameTownTitle": "Other schools in {town}",
+        "sameTownHint": "Duplicates usually share a town. Merge one into the other to bring their classes together.",
+        "sameTownEmpty": "No other school in {town}.",
+        "classCount": "{count, plural, one {# class} other {# classes}}",
+        "actionsTitle": "Change this school",
+        "deleteTitle": "Delete this school",
+        "deleteBody": "Deletes the school and every class at it, with their courses and student records. Students and lecturers keep their accounts. This can't be undone.",
+        "deleteClasses": "{count, plural, =0 {There are no classes at this school.} one {# class will be deleted.} other {# classes will be deleted.}}",
+        "delete": "Delete school",
+        "deleting": "Deleting…"
+      },
+      "edit": {
+        "trigger": "Edit name and town",
+        "title": "Edit school",
+        "body": "The new name shows for every lecturer and student at this school.",
+        "name": "Name",
+        "town": "Town",
+        "save": "Save",
+        "conflict": "Another school already has this name in this town.",
+        "openIt": "Open it"
+      },
+      "merge": {
+        "trigger": "Merge",
+        "triggerLabel": "Merge with {name}",
+        "searchTrigger": "Merge with another school",
+        "searchTitle": "Merge with another school",
+        "searchBody": "Find the duplicate by name or town.",
+        "searchLabel": "School name or town",
+        "searching": "Searching…",
+        "noResults": "No other school matches.",
+        "title": "Merge two schools",
+        "body": "Choose the school to keep. The other school's classes move to it with their courses and students, and the other school is removed.",
+        "keepLegend": "School to keep",
+        "summary": "{count, plural, =0 {No class moves} one {# class moves} other {# classes move}} to {kept}. {removed} is removed.",
+        "locationKept": "Campus location: {kept}'s.",
+        "locationAdopted": "Campus location: {removed}'s, since {kept} has none.",
+        "locationNone": "Neither school has a campus location.",
+        "confirm": "Merge schools"
+      }
+    },
     "actions": {
       "reason": "Reason",
       "reasonHint": "Optional. Kept in the audit log.",
@@ -2612,7 +2678,15 @@
         "suspend": "Suspended",
         "unsuspend": "Unsuspended",
         "revoke_sessions": "Signed out everywhere",
-        "resend_verification": "Resent the verification email"
+        "resend_verification": "Resent the verification email",
+        "school_update": "Edited a school",
+        "school_delete": "Deleted a school",
+        "school_merge": "Merged schools"
+      },
+      "school": {
+        "update": "{before}, {beforeTown} → {after}, {town}",
+        "delete": "{name}, {town} · {classes, plural, one {# class} other {# classes}}",
+        "merge": "{from} → {into}"
       }
     }
   },

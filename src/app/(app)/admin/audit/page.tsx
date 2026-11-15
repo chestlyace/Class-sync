@@ -1,4 +1,5 @@
 import { getTranslations } from 'next-intl/server'
+import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
 import { PageHeader, Panel } from '@/components/page-header'
 import { listAudit } from '@/server/admin/queries'
@@ -6,9 +7,20 @@ import { Pagination } from '../admin-ui'
 import { getFormatters } from '../format'
 import { loadAdminPage } from '../load-admin'
 import { adminMetadata } from '../metadata'
+import { schoolAuditText } from './school-text'
 
 export async function generateMetadata() {
   return adminMetadata('audit')
+}
+
+/** Links to the school while it still exists; a deleted school is plain text. */
+function SchoolTarget({ schoolId, exists, text }: { schoolId: string; exists: boolean; text: string }) {
+  if (!exists) return <>{text}</>
+  return (
+    <Link href={`/admin/schools/${encodeURIComponent(schoolId)}`} className="underline-offset-4 hover:underline">
+      {text}
+    </Link>
+  )
 }
 
 function pageParam(value: string | string[] | undefined): number {
@@ -44,7 +56,17 @@ export default async function AdminAuditPage({ searchParams }: PageProps<'/admin
                   <span className="break-words">
                     <span className="font-semibold">{t(`audit.actions.${row.action}`)}</span>
                     {' · '}
-                    {row.targetName} <span className="break-all text-muted-foreground">({row.targetEmail})</span>
+                    {row.target.kind === 'user' ? (
+                      <>
+                        {row.target.name} <span className="break-all text-muted-foreground">({row.target.email})</span>
+                      </>
+                    ) : (
+                      <SchoolTarget
+                        schoolId={row.target.schoolId}
+                        exists={row.target.exists}
+                        text={schoolAuditText(row.target.details, t)}
+                      />
+                    )}
                   </span>
                   <span className="text-sm break-words text-[#48484a]">{row.reason ?? t('audit.noReason')}</span>
                 </li>

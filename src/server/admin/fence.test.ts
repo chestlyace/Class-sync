@@ -52,6 +52,9 @@ const ADMIN_ALLOWED_TABLES = new Set([
   'OPS_EVENT_KINDS',
 ])
 
+/** Schema types (no data) admin code may import: the audit row's school details, names and counts only. */
+const ADMIN_ALLOWED_TYPES = new Set(['AdminActionDetails', 'SchoolRef'])
+
 /** (c) Columns admin code never touches, as `.member` accesses on any table. */
 const FORBIDDEN_MEMBERS = [
   'suggestedMark',
@@ -160,7 +163,9 @@ function fenceViolations(file: string, src: string): string[] {
         .replace(/^type\s+/, '')
         .split(/\s+as\s+/)[0]
         .trim()
-      if (name && !ADMIN_ALLOWED_TABLES.has(name)) out.push(`${rel}: imports ${name} from ${spec}`)
+      if (name && !ADMIN_ALLOWED_TABLES.has(name) && !ADMIN_ALLOWED_TYPES.has(name)) {
+        out.push(`${rel}: imports ${name} from ${spec}`)
+      }
     }
   }
 

@@ -31,6 +31,7 @@ import {
   testAnswer,
   testAttempt,
   user,
+  type AdminActionDetails,
 } from '@/server/db/schema'
 import { containsPattern } from '@/server/lib/like'
 
@@ -102,7 +103,7 @@ function fill(at: Date, ...sources: DayCounts[]): DailyPoint[] {
   return seriesDays(at).map((day) => ({ day, value: sources.reduce((n, s) => n + (s.get(day) ?? 0), 0) }))
 }
 
-async function countWhere(db: Db, table: PgTable, where?: SQL): Promise<number> {
+export async function countWhere(db: Db, table: PgTable, where?: SQL): Promise<number> {
   const [row] = await db.select({ n: count() }).from(table).where(where)
   return row.n
 }
@@ -192,7 +193,7 @@ function toPersonRow(r: PersonColumns): PersonRow {
   return { ...r, role: r.role as Role, isAdmin: isAdmin(r) }
 }
 
-function pageNumber(page: number): number {
+export function pageNumber(page: number): number {
   return Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1
 }
 
@@ -544,12 +545,16 @@ export async function getHealth(ctx: Ctx, at: Date, env: Env = process.env): Pro
 // ---------------------------------------------------------------------------------------------
 // Audit
 
+export type AuditTarget =
+  | { kind: 'user'; name: string; email: string }
+  /** `exists`: false once the school was deleted or merged away; `details` still names it. */
+  | { kind: 'school'; schoolId: string; exists: boolean; details: AdminActionDetails }
+
 export type AuditRow = {
   at: Date
   adminName: string
   action: (typeof adminAction.$inferSelect)['action']
-  targetName: string
-  targetEmail: string
+  target: AuditTarget
   reason: string | null
 }
 
@@ -566,15 +571,31 @@ export async function listAudit(ctx: Ctx, page: number): Promise<Page<AuditRow>>
         action: adminAction.action,
         targetName: target.name,
         targetEmail: target.email,
+        targetSchoolId: adminAction.targetSchoolId,
+        schoolStillThere: school.id,
+        details: adminAction.details,
         reason: adminAction.reason,
       })
       .from(adminAction)
       .innerJoin(admin, eq(admin.id, adminAction.adminId))
-      .innerJoin(target, eq(target.id, adminAction.targetUserId))
+      .leftJoin(target, eq(target.id, adminAction.targetUserId))
+      .leftJoin(school, eq(school.id, adminAction.targetSchoolId))
       .orderBy(desc(adminAction.at), desc(adminAction.id))
       .limit(ADMIN_PAGE_SIZE)
       .offset((p - 1) * ADMIN_PAGE_SIZE),
     countWhere(ctx.db, adminAction),
   ])
-  return { rows, total, page: p, pageSize: ADMIN_PAGE_SIZE }
+  return {
+    rows: rows.map((r): AuditRow => {
+      // The check constraint guarantees exactly one target per row.
+      const auditTarget: AuditTarget =
+        r.targetSchoolId !== null && r.details !== null
+          ? { kind: 'school', schoolId: r.targetSchoolId, exists: r.schoolStillThere !== null, details: r.details }
+          : { kind: 'user', name: r.targetName ?? '', email: r.targetEmail ?? '' }
+      return { at: r.at, adminName: r.adminName, action: r.action, target: auditTarget, reason: r.reason }
+    }),
+    total,
+    page: p,
+    pageSize: ADMIN_PAGE_SIZE,
+  }
 }

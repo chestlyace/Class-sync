@@ -3,7 +3,15 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { toActionResult, type ActionResult } from '@/lib/action-result'
+import { formString } from '@/lib/form-data'
 import { resendVerification, revokeSessions, suspendUser, unsuspendUser } from '@/server/admin/actions'
+import {
+  adminDeleteSchool,
+  adminUpdateSchool,
+  mergeSchools,
+  searchSchoolsForMerge,
+  type SchoolSummary,
+} from '@/server/admin/schools'
 import { getCtx } from '@/server/auth/session'
 import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
@@ -71,4 +79,56 @@ export async function revokeSessionsAction(targetId: string, reason?: string): P
 /** Sends a fresh verification email to an unverified account. */
 export async function resendVerificationAction(targetId: string, reason?: string): Promise<ActionResult<null>> {
   return run((ctx, id, why) => resendVerification(ctx, id, why), targetId, reason)
+}
+
+// ---------------------------------------------------------------------------------------------
+// Schools. Form actions (for useActionState); the admin check comes before the input is read.
+
+/** A required id from the form; missing is VALIDATION on that field. */
+function formId(data: FormData, key: string): string {
+  const value = formString(data, key)
+  if (value === '') throw new AppError('VALIDATION', 'Invalid request', { fields: [key] })
+  return value
+}
+
+/** Renames a school; the list and the school's page are refreshed. */
+export async function updateSchoolAdminAction(_prev: ActionResult<null> | null, data: FormData): Promise<ActionResult<null>> {
+  return toActionResult(async () => {
+    const ctx = await adminCtx()
+    const schoolId = formId(data, 'schoolId')
+    await adminUpdateSchool(ctx, schoolId, { name: formString(data, 'name'), town: formString(data, 'town') }, formString(data, 'reason'))
+    revalidatePath('/admin/schools')
+    revalidatePath(`/admin/schools/${schoolId}`)
+    return null
+  })
+}
+
+/** Deletes a school with its classes (the name typed as confirmation), then back to the list. */
+export async function deleteSchoolAdminAction(_prev: ActionResult<never> | null, data: FormData): Promise<ActionResult<never>> {
+  return toActionResult(async () => {
+    const ctx = await adminCtx()
+    await adminDeleteSchool(ctx, formId(data, 'schoolId'), formString(data, 'confirm'), formString(data, 'reason'))
+    revalidatePath('/admin/schools')
+    redirect('/admin/schools')
+  })
+}
+
+/** Moves the classes of `fromId` to `intoId` and removes `fromId`, then opens the kept school. */
+export async function mergeSchoolsAdminAction(_prev: ActionResult<never> | null, data: FormData): Promise<ActionResult<never>> {
+  return toActionResult(async () => {
+    const ctx = await adminCtx()
+    const intoId = formId(data, 'intoId')
+    await mergeSchools(ctx, formId(data, 'fromId'), intoId, formString(data, 'reason'))
+    revalidatePath('/admin/schools')
+    redirect(`/admin/schools/${encodeURIComponent(intoId)}`)
+  })
+}
+
+/** Schools to merge with, by name or town, leaving out `excludeId`. */
+export async function searchSchoolsForMergeAction(query: string, excludeId: string): Promise<ActionResult<SchoolSummary[]>> {
+  return toActionResult(async () => {
+    const ctx = await adminCtx()
+    if (typeof query !== 'string' || typeof excludeId !== 'string') throw new AppError('VALIDATION', 'Invalid request')
+    return searchSchoolsForMerge(ctx, query.slice(0, 200), excludeId)
+  })
 }

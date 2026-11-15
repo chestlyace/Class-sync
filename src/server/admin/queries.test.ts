@@ -416,8 +416,20 @@ describe('admin read models', () => {
     expect(a.total).toBe(2)
     expect(a.pageSize).toBe(50)
     expect(a.rows).toEqual([
-      { at: expect.any(Date), adminName: 'Dr Admin', action: 'resend_verification', targetName: 'Student Two', targetEmail: s2.email, reason: null },
-      { at: expect.any(Date), adminName: 'Dr Admin', action: 'suspend', targetName: 'Student Three', targetEmail: s3.email, reason: 'spam' },
+      {
+        at: expect.any(Date),
+        adminName: 'Dr Admin',
+        action: 'resend_verification',
+        target: { kind: 'user', name: 'Student Two', email: s2.email },
+        reason: null,
+      },
+      {
+        at: expect.any(Date),
+        adminName: 'Dr Admin',
+        action: 'suspend',
+        target: { kind: 'user', name: 'Student Three', email: s3.email },
+        reason: 'spam',
+      },
     ])
   })
 
@@ -433,6 +445,68 @@ describe('admin read models', () => {
     expect(credits).not.toHaveBeenCalled()
     await expect(getHealth(ctx, at, {})).rejects.toMatchObject({ code: 'NOT_FOUND' })
     await expect(listAudit(ctx, 1)).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+})
+
+describe('listAudit with school rows', () => {
+  let db: Db
+  let admin: SessionUser
+
+  beforeAll(async () => {
+    db = await createTestDb()
+    admin = await makeUser(db, { name: 'Dr Admin', email: `admin-${crypto.randomUUID().slice(0, 8)}@example.com` })
+    vi.stubEnv('ADMIN_EMAILS', admin.email)
+  })
+  afterAll(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('lists a school audit row after the school is gone, and links one that still exists', async () => {
+    const [kept] = await db
+      .insert(school)
+      .values({ name: 'IUT', town: 'Douala', nameKey: 'iut', townKey: 'douala', createdBy: admin.id })
+      .returning()
+    const deleted = {
+      kind: 'school_delete' as const,
+      school: { id: 'gone', name: 'IUT Douala', town: 'Douala' },
+      classes: 2,
+      courses: 3,
+      students: 40,
+    }
+    const merged = {
+      kind: 'school_merge' as const,
+      from: { id: 'gone-too', name: 'I.U.T.', town: 'Douala' },
+      into: { id: kept.id, name: 'IUT', town: 'Douala' },
+      classesMoved: 1,
+    }
+    await db.insert(adminAction).values([
+      { adminId: admin.id, action: 'school_delete', targetSchoolId: 'gone', details: deleted, at: new Date(Date.now() - 1000) },
+      { adminId: admin.id, action: 'school_merge', targetSchoolId: kept.id, details: merged, reason: 'duplicate' },
+    ])
+    const a = await listAudit(ctxFor(db, admin), 1)
+    expect(a.rows).toEqual([
+      {
+        at: expect.any(Date),
+        adminName: 'Dr Admin',
+        action: 'school_merge',
+        target: { kind: 'school', schoolId: kept.id, exists: true, details: merged },
+        reason: 'duplicate',
+      },
+      {
+        at: expect.any(Date),
+        adminName: 'Dr Admin',
+        action: 'school_delete',
+        target: { kind: 'school', schoolId: 'gone', exists: false, details: deleted },
+        reason: null,
+      },
+    ])
+  })
+
+  it('refuses a row with no target or with both targets', async () => {
+    await expect(db.insert(adminAction).values({ adminId: admin.id, action: 'school_delete' })).rejects.toThrow()
+    await expect(
+      db.insert(adminAction).values({ adminId: admin.id, action: 'suspend', targetUserId: admin.id, targetSchoolId: 'x' }),
+    ).rejects.toThrow()
   })
 })
 
