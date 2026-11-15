@@ -1,11 +1,12 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import { now } from '@/server/core/clock'
 import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
 import { requireRole } from '@/server/core/guards'
 import { isOnCourseRoster } from '@/server/courses/roster'
 import type { Db } from '@/server/db'
-import { course, testAnswer, testAttempt } from '@/server/db/schema'
+import { course, testAnswer, testAttempt, testPracticeOutcome } from '@/server/db/schema'
+import type { PracticeQuestionView } from '@/server/revision/authoring'
 import { familyHolds } from '@/server/revision/hold'
 import { scoreAttempt, type ScoringAnswer } from './paper'
 import { testState } from './phase'
@@ -167,4 +168,88 @@ export async function getTestReview(ctx: Ctx, testId: string): Promise<TestRevie
       }
     }),
   }
+}
+
+/** The most outcomes `recordTestPracticeOutcomes` takes in one call (the device queue's batch size). */
+export const MAX_TEST_OUTCOMES_PER_CALL = 200
+
+export type TestPracticePaper = {
+  testId: string
+  code: string
+  title: string
+  questions: PracticeQuestionView[]
+  /** The student's latest right/wrong per question from earlier practice. */
+  outcomes: Record<string, boolean>
+}
+
+/**
+ * A released test as a practice paper for the calling student: every question with the right
+ * option and the guide, plus their latest practice outcomes. Same access as the review. Practice
+ * never counts: nothing here reads or writes the real attempt.
+ */
+export async function getTestPracticePaper(ctx: Ctx, testId: string): Promise<TestPracticePaper> {
+  const { test, questions, access } = await loadForStudent(ctx, testId)
+  requireOpen(access)
+  const outcomes: Record<string, boolean> = {}
+  if (questions.length > 0) {
+    const rows = await ctx.db
+      .select({ questionId: testPracticeOutcome.questionId, correct: testPracticeOutcome.correct })
+      .from(testPracticeOutcome)
+      .where(
+        and(
+          eq(testPracticeOutcome.studentId, ctx.user.id),
+          inArray(
+            testPracticeOutcome.questionId,
+            questions.map((q) => q.id),
+          ),
+        ),
+      )
+    for (const r of rows) outcomes[r.questionId] = r.correct
+  }
+  return {
+    testId: test.id,
+    code: test.code,
+    title: test.title,
+    questions: questions.map((q) => ({
+      id: q.id,
+      kind: q.kind,
+      prompt: q.prompt,
+      guide: q.kind === 'short' ? q.guide : null,
+      explanation: null,
+      options: q.kind === 'mcq' ? q.options.map((o) => ({ id: o.id, text: o.text, isCorrect: o.isCorrect })) : [],
+    })),
+    outcomes,
+  }
+}
+
+/**
+ * Saves the calling student's latest practice right/wrong per question of a test. Private to them
+ * and never counted. When review is not open now (switched off, not released, held), or a question
+ * is not in this test, those outcomes are skipped without failing, so the device queue empties.
+ * The last entry per question wins.
+ */
+export async function recordTestPracticeOutcomes(ctx: Ctx, testId: string, outcomes: unknown): Promise<{ saved: number }> {
+  const { questions, access } = await loadForStudent(ctx, testId)
+  const invalid = () => new AppError('VALIDATION', 'Invalid outcomes', { fields: ['outcomes'] })
+  if (!Array.isArray(outcomes) || outcomes.length > MAX_TEST_OUTCOMES_PER_CALL) throw invalid()
+  const latest = new Map<string, boolean>()
+  for (const o of outcomes as unknown[]) {
+    if (typeof o !== 'object' || o === null) throw invalid()
+    const { questionId, correct } = o as { questionId?: unknown; correct?: unknown }
+    if (typeof questionId !== 'string' || typeof correct !== 'boolean') throw invalid()
+    latest.set(questionId, correct)
+  }
+  if (access !== 'open') return { saved: 0 }
+  const inTest = questions.map((q) => q.id).filter((id) => latest.has(id))
+  if (inTest.length === 0) return { saved: 0 }
+
+  const at = now()
+  await ctx.db
+    .insert(testPracticeOutcome)
+    .values(inTest.map((questionId) => ({ studentId: ctx.user.id, questionId, correct: latest.get(questionId)!, answeredAt: at })))
+    .onConflictDoUpdate({
+      target: [testPracticeOutcome.studentId, testPracticeOutcome.questionId],
+      set: { correct: sql`excluded.correct`, answeredAt: sql`excluded.answered_at` },
+    })
+  return { saved: inTest.length }
 }

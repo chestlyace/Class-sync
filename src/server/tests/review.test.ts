@@ -1,11 +1,11 @@
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { Db } from '@/server/db'
-import { courseTest } from '@/server/db/schema'
+import { courseTest, testAnswer, testPracticeOutcome } from '@/server/db/schema'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
 import { at, clearMarkingData, insertStartedTest, joinTest, putAnswer, setClock, setupCourse } from '@/test/marking-fixture'
-import { getReviewAccess, getTestReview } from './review'
+import { getReviewAccess, getTestPracticePaper, getTestReview, recordTestPracticeOutcomes } from './review'
 
 vi.mock('@/server/push/send', () => ({
   sendPush: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0, removed: 0 })),
@@ -152,5 +152,66 @@ describe('reviewing a released test', () => {
       code: 'CONFLICT',
       details: { reason: 'waiting_results' },
     })
+  })
+
+  it('gives a practice paper with every question, the right option and the guide', async () => {
+    const s = await released()
+    const paper = await getTestPracticePaper(s.bob, s.test.id)
+    expect(paper).toMatchObject({ testId: s.test.id, code: s.test.code, title: 'CA 1', outcomes: {} })
+    expect(paper.questions.map((q) => q.id)).toEqual([s.q1.id, s.q2!.id, s.q3!.id])
+    expect(paper.questions[0]).toEqual({
+      id: s.q1.id,
+      kind: 'mcq',
+      prompt: 'Which organelle makes ATP?',
+      guide: null,
+      explanation: null,
+      options: [
+        { id: s.o1.id, text: 'Mitochondrion', isCorrect: true },
+        { id: s.o2.id, text: 'Ribosome', isCorrect: false },
+      ],
+    })
+    expect(paper.questions[1]).toMatchObject({ kind: 'short', guide: 'Water moves across a membrane: 2 for water, 2 for membrane.', options: [] })
+  })
+
+  it('saves practice outcomes privately, latest wins, and never touches the real answers', async () => {
+    const s = await released()
+    const before = await db.select().from(testAnswer)
+    expect(
+      await recordTestPracticeOutcomes(s.bob, s.test.id, [
+        { questionId: s.q1.id, correct: false },
+        { questionId: s.q2!.id, correct: true },
+        { questionId: s.q1.id, correct: true },
+      ]),
+    ).toEqual({ saved: 2 })
+    expect((await getTestPracticePaper(s.bob, s.test.id)).outcomes).toEqual({ [s.q1.id]: true, [s.q2!.id]: true })
+    expect((await getTestPracticePaper(s.alice, s.test.id)).outcomes).toEqual({})
+    expect(await db.select().from(testAnswer)).toEqual(before)
+    expect((await getTestReview(s.bob, s.test.id)).score).toBe(0)
+  })
+
+  it("skips outcomes for another test's questions", async () => {
+    const s = await released()
+    const other = await insertStartedTest(db, s.lecturer, s.bio.id, { mcqOnly: true })
+    expect(await recordTestPracticeOutcomes(s.bob, s.test.id, [{ questionId: other.q1.id, correct: true }])).toEqual({ saved: 0 })
+    expect(await db.select().from(testPracticeOutcome)).toEqual([])
+  })
+
+  it('skips outcomes when review is not open, and refuses the paper', async () => {
+    const s = await released()
+    await db.update(courseTest).set({ studentsCanReview: false }).where(eq(courseTest.id, s.test.id))
+    expect(await recordTestPracticeOutcomes(s.bob, s.test.id, [{ questionId: s.q1.id, correct: true }])).toEqual({ saved: 0 })
+    expect(await db.select().from(testPracticeOutcome)).toEqual([])
+    await expect(getTestPracticePaper(s.bob, s.test.id)).rejects.toMatchObject({ code: 'CONFLICT', details: { reason: 'off' } })
+  })
+
+  it('refuses a malformed batch, and anyone off the roster', async () => {
+    const s = await released()
+    await expect(recordTestPracticeOutcomes(s.bob, s.test.id, 'nope')).rejects.toMatchObject({ code: 'VALIDATION' })
+    await expect(recordTestPracticeOutcomes(s.bob, s.test.id, [{ questionId: s.q1.id, correct: 'yes' }])).rejects.toMatchObject({
+      code: 'VALIDATION',
+    })
+    const tooMany = Array.from({ length: 201 }, () => ({ questionId: s.q1.id, correct: true }))
+    await expect(recordTestPracticeOutcomes(s.bob, s.test.id, tooMany)).rejects.toMatchObject({ code: 'VALIDATION' })
+    await expect(recordTestPracticeOutcomes(s.lecturer, s.test.id, [])).rejects.toMatchObject({ code: 'FORBIDDEN' })
   })
 })
