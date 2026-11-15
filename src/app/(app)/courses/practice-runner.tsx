@@ -108,8 +108,11 @@ export function PracticeRunner({
     return (
       <Shell topicTitle={topicTitle} back={back}>
         <div className="flex flex-col gap-5 rounded-3xl border p-5 sm:p-7">
-          <h2 className="text-xl font-semibold tracking-tight">{t('introTitle')}</h2>
+          <h2 className="text-xl font-semibold tracking-tight">
+            {source.kind === 'test' ? tReview('practise') : t('introTitle')}
+          </h2>
           <p className="text-muted-foreground">{t('intro', { count: questions.length })}</p>
+          {source.kind === 'test' && <p className="text-sm text-muted-foreground">{tReview('practiseNote')}</p>}
           <div className="flex flex-col gap-2.5">
             <Button size="lg" onClick={() => startWith(all)}>
               {t('startAll', { count: questions.length })}

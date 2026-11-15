@@ -117,7 +117,8 @@ async function McqReview({ question }: { question: ReviewQuestion }) {
                 !o.isCorrect && !wrongPick && 'text-muted-foreground',
               )}
             >
-              <span className="min-w-0 flex-1 break-words">{o.text}</span>
+              {/* A floor on the text's width, so two badges wrap below it instead of squeezing it. */}
+              <span className="min-w-40 flex-1 break-words">{o.text}</span>
               <span className="flex flex-wrap gap-1.5">
                 {o.picked && (
                   <Badge variant={o.isCorrect ? 'secondary' : 'destructive'}>

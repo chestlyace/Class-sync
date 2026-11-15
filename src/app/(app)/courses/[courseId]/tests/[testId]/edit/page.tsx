@@ -47,7 +47,7 @@ export default async function EditTestPage({
     <>
       <PageHeader
         eyebrow={t('eyebrow')}
-        title={t('editTitle')}
+        title={locked ? (await getTranslations('tests.review'))('questions') : t('editTitle')}
         description={summary.title}
         actions={
           <Link href={testHref} className={buttonVariants({ variant: 'outline' })}>
