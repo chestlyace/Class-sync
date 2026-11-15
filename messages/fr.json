@@ -2347,6 +2347,7 @@
       "label": "Sections de l'administration",
       "overview": "Vue d'ensemble",
       "people": "Comptes",
+      "schools": "Écoles",
       "usage": "Utilisation",
       "ai": "IA et MCP",
       "health": "État",
@@ -2483,6 +2484,71 @@
         "none": "Aucune action ne s'applique à ce compte pour le moment."
       }
     },
+    "schools": {
+      "title": "Écoles",
+      "description": "Toutes les écoles de Clasync, triées par ville pour que les doublons se suivent.",
+      "search": "Rechercher une école",
+      "searchPlaceholder": "Nom ou ville",
+      "apply": "Rechercher",
+      "clear": "Effacer",
+      "empty": "Aucune école pour l'instant.",
+      "noMatch": "Aucune école ne correspond à cette recherche.",
+      "counts": "{classes, plural, one {# classe} other {# classes}} · {lecturers, plural, one {# enseignant} other {# enseignants}} · {students, plural, one {# étudiant} other {# étudiants}}",
+      "noLocation": "Pas d'emplacement du campus",
+      "school": {
+        "back": "Toutes les écoles",
+        "eyebrow": "École",
+        "factsTitle": "Détails",
+        "town": "Ville",
+        "created": "Créée le",
+        "createdBy": "Créée par",
+        "location": "Emplacement du campus",
+        "locationSet": "Défini · {radius} m",
+        "locationNone": "Non défini",
+        "classesTitle": "Classes",
+        "classesEmpty": "Aucune classe dans cette école.",
+        "classLine": "{students, plural, one {# étudiant} other {# étudiants}} · {courses, plural, one {# cours} other {# cours}}",
+        "noLecturer": "Aucun enseignant",
+        "sameTownTitle": "Autres écoles à {town}",
+        "sameTownHint": "Les doublons sont presque toujours dans la même ville. Fusionnez l'une dans l'autre pour réunir leurs classes.",
+        "sameTownEmpty": "Aucune autre école à {town}.",
+        "classCount": "{count, plural, one {# classe} other {# classes}}",
+        "actionsTitle": "Modifier cette école",
+        "deleteTitle": "Supprimer cette école",
+        "deleteBody": "Supprime l'école et toutes ses classes, avec leurs cours et les données des étudiants. Les étudiants et les enseignants gardent leur compte. Action irréversible.",
+        "deleteClasses": "{count, plural, =0 {Cette école n'a aucune classe.} one {# classe sera supprimée.} other {# classes seront supprimées.}}",
+        "delete": "Supprimer l'école",
+        "deleting": "Suppression…"
+      },
+      "edit": {
+        "trigger": "Modifier le nom et la ville",
+        "title": "Modifier l'école",
+        "body": "Le nouveau nom s'affiche pour tous les enseignants et étudiants de cette école.",
+        "name": "Nom",
+        "town": "Ville",
+        "save": "Enregistrer",
+        "conflict": "Une autre école porte déjà ce nom dans cette ville.",
+        "openIt": "L'ouvrir"
+      },
+      "merge": {
+        "trigger": "Fusionner",
+        "triggerLabel": "Fusionner avec {name}",
+        "searchTrigger": "Fusionner avec une autre école",
+        "searchTitle": "Fusionner avec une autre école",
+        "searchBody": "Cherchez le doublon par nom ou par ville.",
+        "searchLabel": "Nom de l'école ou ville",
+        "searching": "Recherche…",
+        "noResults": "Aucune autre école ne correspond.",
+        "title": "Fusionner deux écoles",
+        "body": "Choisissez l'école à garder. Les classes de l'autre école y passent avec leurs cours et leurs étudiants, puis l'autre école est supprimée.",
+        "keepLegend": "École à garder",
+        "summary": "{count, plural, =0 {Aucune classe ne passe} one {# classe passe} other {# classes passent}} à {kept}. {removed} est supprimée.",
+        "locationKept": "Emplacement du campus : celui de {kept}.",
+        "locationAdopted": "Emplacement du campus : celui de {removed}, car {kept} n'en a pas.",
+        "locationNone": "Aucune des deux écoles n'a d'emplacement du campus.",
+        "confirm": "Fusionner les écoles"
+      }
+    },
     "actions": {
       "reason": "Motif",
       "reasonHint": "Facultatif. Conservé dans le journal.",
@@ -2612,7 +2678,15 @@
         "suspend": "Suspension",
         "unsuspend": "Suspension levée",
         "revoke_sessions": "Déconnexion partout",
-        "resend_verification": "E-mail de vérification renvoyé"
+        "resend_verification": "E-mail de vérification renvoyé",
+        "school_update": "École modifiée",
+        "school_delete": "École supprimée",
+        "school_merge": "Écoles fusionnées"
+      },
+      "school": {
+        "update": "{before}, {beforeTown} → {after}, {town}",
+        "delete": "{name}, {town} · {classes, plural, one {# classe} other {# classes}}",
+        "merge": "{from} → {into}"
       }
     }
   },

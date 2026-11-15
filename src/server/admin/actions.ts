@@ -11,7 +11,7 @@ const MAX_REASON_LENGTH = 500
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0]
 type AdminActionKind = (typeof adminAction.$inferInsert)['action']
 
-function cleanReason(reason?: string): string | null {
+export function cleanReason(reason?: string): string | null {
   const trimmed = (reason ?? '').trim().slice(0, MAX_REASON_LENGTH).trim()
   return trimmed === '' ? null : trimmed
 }
