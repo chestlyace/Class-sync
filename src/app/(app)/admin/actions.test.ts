@@ -15,7 +15,24 @@ vi.mock('@/server/auth/session', () => ({
 const revalidatePath = vi.fn()
 vi.mock('next/cache', () => ({ revalidatePath: (path: string) => revalidatePath(path) }))
 
-import { resendVerificationAction, revokeSessionsAction, suspendAction, unsuspendAction } from './actions'
+import { getSchoolDetail, listSchools } from '@/server/admin/schools'
+import { createSchool } from '@/server/schools/service'
+import {
+  deleteSchoolAdminAction,
+  mergeSchoolsAdminAction,
+  resendVerificationAction,
+  revokeSessionsAction,
+  searchSchoolsForMergeAction,
+  suspendAction,
+  unsuspendAction,
+  updateSchoolAdminAction,
+} from './actions'
+
+function form(fields: Record<string, string>): FormData {
+  const data = new FormData()
+  for (const [k, v] of Object.entries(fields)) data.set(k, v)
+  return data
+}
 
 // UI code doesn't import the database layer (eslint), so the checks below read through the admin
 // read models, as an admin.
@@ -108,5 +125,85 @@ describe('admin Server Actions', () => {
     expect(await unsuspendAction(crypto.randomUUID(), '')).toEqual({ ok: false, code: 'NOT_FOUND' })
     expect(await suspendAction(42 as unknown as string, '')).toMatchObject({ ok: false, code: 'VALIDATION' })
     expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  describe('schools', () => {
+    async function twoSchools() {
+      const lecturer = ctxFor(db, await makeUser(db, { role: 'lecturer' }))
+      const tag = crypto.randomUUID().slice(0, 6)
+      const kept = await createSchool(lecturer, { name: `IUT ${tag}`, town: 'Douala' })
+      const dup = await createSchool(lecturer, { name: `I.U.T. ${tag}`, town: 'Douala' })
+      return { kept, dup, tag }
+    }
+
+    it('refuses a non-admin with NOT_FOUND from every school action, before reading the input', async () => {
+      const { kept, dup } = await twoSchools()
+      current = ctxFor(db, await makeUser(db))
+      const update = form({ schoolId: kept.id, name: 'Renamed School', town: 'Douala' })
+      expect(await updateSchoolAdminAction(null, update)).toEqual({ ok: false, code: 'NOT_FOUND' })
+      expect(await deleteSchoolAdminAction(null, form({ schoolId: kept.id, confirm: kept.name }))).toEqual({ ok: false, code: 'NOT_FOUND' })
+      expect(await mergeSchoolsAdminAction(null, form({ fromId: dup.id, intoId: kept.id }))).toEqual({ ok: false, code: 'NOT_FOUND' })
+      expect(await updateSchoolAdminAction(null, form({}))).toEqual({ ok: false, code: 'NOT_FOUND' })
+      expect(await searchSchoolsForMergeAction('iut', kept.id)).toEqual({ ok: false, code: 'NOT_FOUND' })
+      expect(revalidatePath).not.toHaveBeenCalled()
+    })
+
+    it('renames a school and refreshes the list and its page', async () => {
+      const admin = await makeAdmin()
+      const { kept } = await twoSchools()
+      current = admin
+      const result = await updateSchoolAdminAction(null, form({ schoolId: kept.id, name: 'IUT de Douala', town: 'Douala', reason: 'typo' }))
+      expect(result).toEqual({ ok: true, data: null })
+      expect((await getSchoolDetail(admin, kept.id)).name).toBe('IUT de Douala')
+      expect(revalidatePath).toHaveBeenCalledWith('/admin/schools')
+      expect(revalidatePath).toHaveBeenCalledWith(`/admin/schools/${kept.id}`)
+    })
+
+    it('passes a name clash through with the other school, and a missing id as VALIDATION', async () => {
+      const admin = await makeAdmin()
+      const { kept, dup } = await twoSchools()
+      current = admin
+      expect(await updateSchoolAdminAction(null, form({ schoolId: dup.id, name: kept.name, town: 'douala' }))).toEqual({
+        ok: false,
+        code: 'CONFLICT',
+        details: { existingSchoolId: kept.id },
+      })
+      expect(await updateSchoolAdminAction(null, form({ name: 'Some School', town: 'Douala' }))).toMatchObject({
+        ok: false,
+        code: 'VALIDATION',
+      })
+    })
+
+    it('finds schools to merge with', async () => {
+      const admin = await makeAdmin()
+      const { kept, dup, tag } = await twoSchools()
+      current = admin
+      const result = await searchSchoolsForMergeAction(tag, kept.id)
+      expect(result).toMatchObject({ ok: true, data: [{ id: dup.id }] })
+    })
+
+    it('merges and goes to the kept school', async () => {
+      const admin = await makeAdmin()
+      const { kept, dup } = await twoSchools()
+      current = admin
+      await expect(mergeSchoolsAdminAction(null, form({ fromId: dup.id, intoId: kept.id }))).rejects.toMatchObject({
+        digest: expect.stringMatching(new RegExp(`^NEXT_REDIRECT;\\w+;/admin/schools/${kept.id};`)),
+      })
+      await expect(getSchoolDetail(admin, dup.id)).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    })
+
+    it('deletes and goes back to the list; a wrong name is VALIDATION', async () => {
+      const admin = await makeAdmin()
+      const { kept } = await twoSchools()
+      current = admin
+      expect(await deleteSchoolAdminAction(null, form({ schoolId: kept.id, confirm: 'nope' }))).toMatchObject({
+        ok: false,
+        code: 'VALIDATION',
+      })
+      await expect(deleteSchoolAdminAction(null, form({ schoolId: kept.id, confirm: kept.name }))).rejects.toMatchObject({
+        digest: expect.stringMatching(/^NEXT_REDIRECT;\w+;\/admin\/schools;/),
+      })
+      expect((await listSchools(admin, { search: kept.name, page: 1 })).rows).toEqual([])
+    })
   })
 })
