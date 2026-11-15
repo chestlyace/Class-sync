@@ -1,5 +1,13 @@
 {
   "regions": ["cdg1"],
   "buildCommand": "bash scripts/vercel-build.sh",
-  "crons": [{ "path": "/api/cron/reminders", "schedule": "0 6 * * *" }]
+  "crons": [
+    { "path": "/api/cron/reminders", "schedule": "0 6 * * *" },
+    { "path": "/api/cron/schedule", "schedule": "0 3 * * *" }
+  ],
+  "functions": {
+    "src/app/api/queues/class-notices/route.ts": {
+      "experimentalTriggers": [{ "type": "queue/v2beta", "topic": "class-notices" }]
+    }
+  }
 }

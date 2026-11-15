@@ -13,11 +13,14 @@ import { listOpenCheckIns } from '@/server/attendance/check-in'
 import { getAttendanceGrid } from '@/server/attendance/reports'
 import { getSessionUser } from '@/server/auth/session'
 import { listMyClasses, type ClassSummary } from '@/server/classes/service'
+import { now as clockNow } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import type { Locale } from '@/server/core/context'
 import { isVerificationPending } from '@/server/core/guards'
 import { listLecturerCourses, listStudentCourses, type CourseSummary } from '@/server/courses/service'
 import { getOnboardingStatus } from '@/server/onboarding/service'
+import { localDateOf, weekStartOf } from '@/server/lib/local-time'
+import { studentWeek } from '@/server/schedule/views'
 import { toOpenCheckInView } from '../check-in/view'
 import { formatSessionDate } from '../courses/attendance-format'
 import { loadPage } from '../load-page'
@@ -29,6 +32,7 @@ import { NotificationsCard } from './notifications-card'
 import { OpenCheckIns } from './open-check-ins'
 import { SetupChecklist } from './setup-checklist'
 import { SETUP_DISMISSED_COOKIE } from './setup-cookie'
+import { ThisWeek } from './this-week'
 
 export async function generateMetadata() {
   const t = await getTranslations('dashboard')
@@ -48,6 +52,7 @@ export default async function DashboardPage() {
   const pending = isVerificationPending(user)
   const isLecturer = user.role === 'lecturer'
   const now = new Date()
+  const today = localDateOf(clockNow(), config.timeZone)
 
   const header = (
     <PageHeader
@@ -70,12 +75,14 @@ export default async function DashboardPage() {
   const setupDismissed = (await cookies()).get(SETUP_DISMISSED_COOKIE)?.value === '1'
 
   const data = await loadPage(async (ctx) => {
-    const [classes, courses, openCheckIns, dueSoon, setup] = await Promise.all([
+    const [classes, courses, openCheckIns, dueSoon, week, setup] = await Promise.all([
       listMyClasses(ctx),
       isLecturer ? listLecturerCourses(ctx) : listStudentCourses(ctx),
       // A failing check-in list must not take the whole dashboard down: show it without.
       isLecturer ? [] : orEmptyOnError('open check-ins', () => listOpenCheckIns(ctx)),
       isLecturer ? [] : orEmptyOnError('assignments due soon', () => listMyAssignments(ctx, { dueWithinDays: 7 })),
+      // Best effort too: a failing timetable query leaves the section out.
+      isLecturer ? [] : orEmptyOnError('this week', () => studentWeek(ctx, weekStartOf(today))),
       // The first-run checklist is a nicety too: skipped once hidden, left out if it fails.
       setupDismissed ? [] : orEmptyOnError('setup checklist', async () => [await getOnboardingStatus(ctx)]),
     ])
@@ -85,7 +92,7 @@ export default async function DashboardPage() {
           Promise.all(courses.map(async (c) => ({ courseId: c.id, ...(await getAttendanceGrid(ctx, c.id)) }))),
         )
       : []
-    return { classes, courses, openCheckIns: openCheckIns.map(toOpenCheckInView), grids, dueSoon, setup: setup[0] }
+    return { classes, courses, openCheckIns: openCheckIns.map(toOpenCheckInView), grids, dueSoon, week, setup: setup[0] }
   })
   if (!data.ok) return <ErrorState code={data.code} />
   const { classes, courses, grids } = data.data
@@ -123,6 +130,7 @@ export default async function DashboardPage() {
       <NotificationsCard role={user.role} />
       {setup}
       {!isLecturer && <OpenCheckIns initial={data.data.openCheckIns} />}
+      {!isLecturer && <ThisWeek rows={data.data.week} locale={locale} today={today} />}
       {!isLecturer && <DueSoon items={data.data.dueSoon} locale={locale} now={now} />}
       {likely && likelyCourse && (
         <LikelyNow

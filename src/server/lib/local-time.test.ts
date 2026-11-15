@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { parseLocalDateTime, toLocalDateTimeInput } from './local-time'
+import {
+  addDays,
+  instantAt,
+  isoWeekday,
+  localDateOf,
+  parseLocalDateTime,
+  toLocalDateTimeInput,
+  weekStartOf,
+} from './local-time'
 
 describe('parseLocalDateTime', () => {
   it('converts a wall time in a DST-free zone', () => {
@@ -42,5 +50,36 @@ describe('toLocalDateTimeInput', () => {
   it('round-trips', () => {
     const d = parseLocalDateTime('2026-10-25T02:30', 'Africa/Douala')!
     expect(toLocalDateTimeInput(d, 'Africa/Douala')).toBe('2026-10-25T02:30')
+  })
+})
+
+describe('date helpers', () => {
+  const tz = 'Africa/Douala'
+  it('localDateOf reads the local date of an instant', () => {
+    expect(localDateOf(new Date('2026-11-16T23:30:00Z'), tz)).toBe('2026-11-17')
+    expect(localDateOf(new Date('2026-11-16T22:30:00Z'), tz)).toBe('2026-11-16')
+  })
+  it('instantAt converts minutes from local midnight', () => {
+    expect(instantAt('2026-11-16', 480, tz).toISOString()).toBe('2026-11-16T07:00:00.000Z')
+    expect(instantAt('2026-11-16', 0, tz).toISOString()).toBe('2026-11-15T23:00:00.000Z')
+  })
+  it('instantAt treats minute 1440 as the next midnight', () => {
+    expect(instantAt('2026-11-16', 1440, tz).getTime()).toBe(instantAt('2026-11-17', 0, tz).getTime())
+    expect(instantAt('2026-12-31', 1440, tz).getTime()).toBe(instantAt('2027-01-01', 0, tz).getTime())
+  })
+  it('addDays crosses month and year ends, forwards and back', () => {
+    expect(addDays('2026-11-30', 1)).toBe('2026-12-01')
+    expect(addDays('2026-12-31', 1)).toBe('2027-01-01')
+    expect(addDays('2026-03-01', -1)).toBe('2026-02-28')
+    expect(addDays('2026-11-16', 7)).toBe('2026-11-23')
+  })
+  it('isoWeekday is 1 for Monday and 7 for Sunday', () => {
+    expect(isoWeekday('2026-11-16')).toBe(1)
+    expect(isoWeekday('2026-11-22')).toBe(7)
+  })
+  it('weekStartOf returns that week\'s Monday', () => {
+    expect(weekStartOf('2026-11-19')).toBe('2026-11-16')
+    expect(weekStartOf('2026-11-16')).toBe('2026-11-16')
+    expect(weekStartOf('2026-11-22')).toBe('2026-11-16')
   })
 })

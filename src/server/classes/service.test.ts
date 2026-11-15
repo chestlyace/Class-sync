@@ -16,8 +16,11 @@ import {
   listMyClasses,
   previewJoinCode,
   regenerateJoinCode,
+  getClassSettings,
   removeStudentFromClass,
+  updateClass,
 } from './service'
+import { createCourse } from '@/server/courses/service'
 
 vi.mock('@/server/push/send', () => {
   const sendPush = vi.fn(async (items: unknown[]) => ({ sent: 0, skipped: items.length, failed: 0, removed: 0 }))
@@ -503,6 +506,59 @@ describe('classes service', () => {
       await removeStudentFromClass(lecturer, cls.id, b.user.id)
       await expect(addMyMatricule(b, cls.id, 'UB5')).rejects.toMatchObject({ code: 'NOT_FOUND' })
       await expect(addMyMatricule(lecturer, cls.id, 'UB5')).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    })
+  })
+
+  describe('editing a class', () => {
+    async function sharedClass() {
+      const owner = ctxFor(db, await makeUser(db, { role: 'lecturer' }))
+      const sch = await createSchool(owner, { name: 'University of Buea', town: 'Buea' })
+      const cls = await createClass(owner, { schoolId: sch.id, name: 'CS L3', academicYear: '2026/27' })
+      const colleague = ctxFor(db, await makeUser(db, { role: 'lecturer' }))
+      await joinClassAsLecturer(colleague, cls.lecturerCode!)
+      return { owner, colleague, sch, cls }
+    }
+
+    it('any lecturer of the class renames it and changes the year, for everyone', async () => {
+      const { owner, colleague, cls } = await sharedClass()
+      await updateClass(colleague, cls.id, { name: '  CS Level 3 ', academicYear: '2027/28' })
+      const mine = (await listMyClasses(owner)).find((c) => c.id === cls.id)
+      expect(mine).toMatchObject({ name: 'CS Level 3', academicYear: '2027/28' })
+    })
+
+    it('an outsider lecturer and a student are FORBIDDEN', async () => {
+      const { cls } = await sharedClass()
+      const input = { name: 'Hijacked', academicYear: '2026/27' }
+      const outsider = ctxFor(db, await makeUser(db, { role: 'lecturer' }))
+      const student = ctxFor(db, await makeUser(db, { role: 'student' }))
+      await expect(updateClass(outsider, cls.id, input)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+      await expect(updateClass(student, cls.id, input)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    })
+
+    it('a malformed academic year is VALIDATION on that field', async () => {
+      const { owner, cls } = await sharedClass()
+      await expect(updateClass(owner, cls.id, { name: 'CS L3', academicYear: '2026/28' })).rejects.toMatchObject({
+        code: 'VALIDATION',
+        details: { fields: ['academicYear'] },
+      })
+    })
+
+    it('getClassSettings reports the school, its classes, the other lecturers and my courses', async () => {
+      const { owner, colleague, sch, cls } = await sharedClass()
+      await createClass(owner, { schoolId: sch.id, name: 'CS L2', academicYear: '2026/27' })
+      const mine = await createCourse(owner, { classId: cls.id, title: 'Algorithms', semester: 1 })
+      await createCourse(colleague, { classId: cls.id, title: 'Networks', semester: 1 })
+      expect(await getClassSettings(owner, cls.id)).toEqual({
+        id: cls.id,
+        name: 'CS L3',
+        academicYear: '2026/27',
+        school: expect.objectContaining({ id: sch.id, name: 'University of Buea', town: 'Buea' }),
+        schoolClassCount: 2,
+        otherLecturerCount: 1,
+        myCourseIds: [mine.id],
+      })
+      const student = ctxFor(db, await makeUser(db, { role: 'student' }))
+      await expect(getClassSettings(student, cls.id)).rejects.toMatchObject({ code: 'FORBIDDEN' })
     })
   })
 })

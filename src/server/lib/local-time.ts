@@ -74,3 +74,49 @@ export function toLocalDateTimeInput(date: Date, timeZone: string): string {
   const pad = (n: number, len = 2) => String(n).padStart(len, '0')
   return `${pad(w.year, 4)}-${pad(w.month)}-${pad(w.day)}T${pad(w.hour)}:${pad(w.minute)}`
 }
+
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+function utcMsOf(date: string): number {
+  const [y, m, d] = date.split('-').map(Number)
+  return Date.UTC(y, m - 1, d)
+}
+
+function dateOfUtcMs(ms: number): string {
+  const d = new Date(ms)
+  return `${String(d.getUTCFullYear()).padStart(4, '0')}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`
+}
+
+/** The local calendar date ("YYYY-MM-DD") of an instant in `timeZone`. */
+export function localDateOf(at: Date, timeZone: string): string {
+  const w = wallParts(at.getTime(), timeZone)
+  return `${String(w.year).padStart(4, '0')}-${pad2(w.month)}-${pad2(w.day)}`
+}
+
+/**
+ * The instant at `minute` minutes after local midnight of `date` ("YYYY-MM-DD") in `timeZone`.
+ * `minute` runs 0-1440; 1440 is the next local midnight (the wall parser rejects hour 24, so it is
+ * resolved as minute 0 of the following day).
+ */
+export function instantAt(date: string, minute: number, timeZone: string): Date {
+  if (minute >= 1440) return instantAt(addDays(date, 1), minute - 1440, timeZone)
+  const at = parseLocalDateTime(`${date}T${pad2(Math.floor(minute / 60))}:${pad2(minute % 60)}`, timeZone)
+  if (!at) throw new RangeError(`Invalid local time: ${date} +${minute}min in ${timeZone}`)
+  return at
+}
+
+/** Adds (or subtracts) whole calendar days to a "YYYY-MM-DD" date. */
+export function addDays(date: string, days: number): string {
+  return dateOfUtcMs(utcMsOf(date) + days * 86_400_000)
+}
+
+/** ISO weekday of a "YYYY-MM-DD" date: 1 = Monday ... 7 = Sunday. */
+export function isoWeekday(date: string): number {
+  const d = new Date(utcMsOf(date)).getUTCDay()
+  return d === 0 ? 7 : d
+}
+
+/** The Monday ("YYYY-MM-DD") of the ISO week containing `date`. */
+export function weekStartOf(date: string): string {
+  return addDays(date, 1 - isoWeekday(date))
+}

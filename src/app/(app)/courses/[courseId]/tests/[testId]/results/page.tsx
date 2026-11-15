@@ -1,4 +1,4 @@
-import { ArrowLeft, CircleCheck, Clock, PenLine, Unlock } from 'lucide-react'
+import { ArrowLeft, CircleCheck, Clock, FileText, PenLine, Unlock } from 'lucide-react'
 import { getLocale, getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
@@ -84,6 +84,7 @@ export default async function TestResultsPage({ params }: PageProps<'/courses/[c
   }
 
   const { test, rows, pending, finalAt, releasedAt, at } = view.data
+  const tReview = await getTranslations('tests.review')
   const num = (value: number) => formatDecimal(value, locale)
   const average = rows.length === 0 ? null : rows.reduce((sum, r) => sum + r.score, 0) / rows.length
   const final = finalAt !== null && at.getTime() >= finalAt.getTime()
@@ -105,7 +106,15 @@ export default async function TestResultsPage({ params }: PageProps<'/courses/[c
             <span>{test.hasShort ? t('results.pendingNote', { count: pending }) : t('results.mcqOnly')}</span>
           </span>
         }
-        actions={back}
+        actions={
+          <>
+            {back}
+            <Link href={`${testHref}/edit`} className={buttonVariants({ variant: 'outline' })}>
+              <FileText aria-hidden="true" data-icon="inline-start" />
+              {tReview('questions')}
+            </Link>
+          </>
+        }
       />
 
       {test.hasShort && (

@@ -133,6 +133,54 @@ export async function createSchool(
   }
 }
 
+/**
+ * A school is shared by every lecturer with a class there: its creator or any of them may edit it.
+ * An unknown school is NOT_FOUND (school ids are public through search anyway).
+ */
+async function requireSchoolEditor(ctx: Ctx, schoolId: string): Promise<void> {
+  requireRole(ctx, 'lecturer')
+  const [current] = await ctx.db.select({ createdBy: school.createdBy }).from(school).where(eq(school.id, schoolId))
+  if (!current) throw new AppError('NOT_FOUND', 'School not found')
+  if (current.createdBy === ctx.user.id) return
+  const [link] = await ctx.db
+    .select({ classId: classLecturer.classId })
+    .from(classLecturer)
+    .innerJoin(class_, eq(class_.id, classLecturer.classId))
+    .where(and(eq(classLecturer.userId, ctx.user.id), eq(class_.schoolId, schoolId)))
+    .limit(1)
+  if (!link) {
+    throw new AppError('FORBIDDEN', 'Only the creator or a lecturer of a class at this school can change it')
+  }
+}
+
+const updateSchoolSchema = z.object({ name: nameField, town: nameField })
+
+/** Name and town, for everyone using the school. A clash with another school is CONFLICT. */
+export async function updateSchool(ctx: Ctx, schoolId: string, input: { name: string; town: string }): Promise<School> {
+  await requireSchoolEditor(ctx, schoolId)
+  const data = parseInput(updateSchoolSchema, input)
+  const nameKey = normalizeKey(data.name)
+  const townKey = normalizeKey(data.town)
+  try {
+    const [row] = await ctx.db
+      .update(school)
+      .set({ name: data.name, town: data.town, nameKey, townKey })
+      .where(eq(school.id, schoolId))
+      .returning()
+    return toSchool(row)
+  } catch (err) {
+    if (!isUniqueViolation(err, UNIQUE_CONSTRAINT)) throw err
+    const [existing] = await ctx.db
+      .select({ id: school.id })
+      .from(school)
+      .where(and(eq(school.nameKey, nameKey), eq(school.townKey, townKey)))
+    if (!existing) throw err
+    throw new AppError('CONFLICT', 'A school with this name already exists in this town', {
+      existingSchoolId: existing.id,
+    })
+  }
+}
+
 export async function setSchoolLocation(
   ctx: Ctx,
   schoolId: string,
@@ -141,23 +189,7 @@ export async function setSchoolLocation(
   requireRole(ctx, 'lecturer')
   const data = parseInput(locationSchema, input)
 
-  const [current] = await ctx.db.select().from(school).where(eq(school.id, schoolId))
-  if (!current) throw new AppError('NOT_FOUND', 'School not found')
-
-  if (current.createdBy !== ctx.user.id) {
-    const [link] = await ctx.db
-      .select({ classId: classLecturer.classId })
-      .from(classLecturer)
-      .innerJoin(class_, eq(class_.id, classLecturer.classId))
-      .where(and(eq(classLecturer.userId, ctx.user.id), eq(class_.schoolId, schoolId)))
-      .limit(1)
-    if (!link) {
-      throw new AppError(
-        'FORBIDDEN',
-        'Only the creator or a lecturer of a class at this school can set its location',
-      )
-    }
-  }
+  await requireSchoolEditor(ctx, schoolId)
 
   const [row] = await ctx.db
     .update(school)

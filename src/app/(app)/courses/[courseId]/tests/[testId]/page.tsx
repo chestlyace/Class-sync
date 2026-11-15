@@ -1,4 +1,4 @@
-import { ArrowLeft, PenLine } from 'lucide-react'
+import { ArrowLeft, FileText, PenLine } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
@@ -13,10 +13,11 @@ import { getLiveTest } from '@/server/tests/run'
 import { absoluteLink, testLinkPath } from '@/app/share-links'
 import { loadPage } from '../../../../load-page'
 import type { LiveTestView } from '../../../test-actions'
+import { ReviewSwitch } from '../../../review-switch'
 import { TestLive } from '../../../test-live'
 import { TestStatePill } from '../../../test-state'
 
-type LiveView = { course: CourseSummary; live: LiveTestView; state: TestState; hasShort: boolean }
+type LiveView = { course: CourseSummary; live: LiveTestView; state: TestState; hasShort: boolean; studentsCanReview: boolean }
 
 export async function generateMetadata() {
   const t = await getTranslations('tests.lecturer')
@@ -34,11 +35,12 @@ export default async function TestLivePage({ params }: PageProps<'/courses/[cour
       live: { ...live, endsAt: live.endsAt?.toISOString() ?? null, serverNow: live.serverNow.toISOString() },
       state: summary.state,
       hasShort: summary.hasShort,
+      studentsCanReview: summary.studentsCanReview,
     }
   })
   if (!view.ok) return <ErrorState code={view.code} />
-  const { course, live, state, hasShort } = view.data
-  const tm = await getTranslations('tests.marking')
+  const { course, live, state, hasShort, studentsCanReview } = view.data
+  const [tm, tReview] = await Promise.all([getTranslations('tests.marking'), getTranslations('tests.review')])
   const testHref = `/courses/${encodeURIComponent(course.id)}/tests/${encodeURIComponent(live.testId)}`
 
   return (
@@ -58,6 +60,12 @@ export default async function TestLivePage({ params }: PageProps<'/courses/[cour
               <ArrowLeft aria-hidden="true" data-icon="inline-start" />
               {t('allTests')}
             </Link>
+            {state !== 'not_started' && (
+              <Link href={`${testHref}/edit`} className={buttonVariants({ variant: 'outline' })}>
+                <FileText aria-hidden="true" data-icon="inline-start" />
+                {tReview('questions')}
+              </Link>
+            )}
             {hasShort && (state === 'ended' || state === 'released') && (
               <Link href={`${testHref}/mark`} className={buttonVariants({ variant: 'outline' })}>
                 <PenLine aria-hidden="true" data-icon="inline-start" />
@@ -67,6 +75,7 @@ export default async function TestLivePage({ params }: PageProps<'/courses/[cour
           </>
         }
       />
+      <ReviewSwitch testId={live.testId} initial={studentsCanReview} />
       {/* A new phase (Start, End, deadline) remounts the live view with fresh state. */}
       <TestLive key={live.phase} initial={live} courseId={course.id} link={await absoluteLink(testLinkPath(live.code))} timeZone={config.timeZone} />
     </>

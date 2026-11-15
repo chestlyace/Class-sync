@@ -1,3 +1,4 @@
+import { getPathMatch } from 'next/dist/shared/lib/router/utils/path-match'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 async function loadRedirects() {
@@ -21,5 +22,18 @@ describe('next.config redirects', () => {
     const rules = await loadRedirects()
     expect(rules).toHaveLength(1)
     expect(rules[0]!.destination.startsWith('https://clasync.online/')).toBe(true)
+  })
+
+  it('leaves cron calls and queue deliveries alone, and redirects everything else', async () => {
+    vi.stubEnv('VERCEL_ENV', 'production')
+    vi.stubEnv('BETTER_AUTH_URL', 'https://clasync.online')
+    const [rule] = await loadRedirects()
+    // The same matcher Next.js uses for a redirect's `source`.
+    const matches = getPathMatch(rule!.source)
+    expect(matches('/api/queues/class-notices')).toBe(false)
+    expect(matches('/api/cron/daily')).toBe(false)
+    expect(matches('/dashboard')).not.toBe(false)
+    expect(matches('/api/mcp')).not.toBe(false)
+    expect(matches('/')).not.toBe(false)
   })
 })

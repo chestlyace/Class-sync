@@ -22,6 +22,7 @@ import {
 } from '@/server/db/schema'
 import { createSchool } from '@/server/schools/service'
 import { createTestDb } from '@/test/db'
+import { setStudentsCanReview } from './authoring'
 import { ctxFor, makeUser } from '@/test/factories'
 import {
   handIn,
@@ -962,12 +963,24 @@ describe('taking a test (student services)', () => {
 
     const list = await listMyTests(alice, algo.id)
     expect(list.map((i) => i.title)).toEqual(['Quiz 3', 'Quiz 2', 'Quiz 1'])
-    expect(list[0]).toEqual({ testId: notStarted.id, code: notStarted.code, title: 'Quiz 3', state: 'not_started', myStatus: 'not_joined', result: null })
-    expect(list[1]).toMatchObject({ testId: running.id, state: 'running', myStatus: 'working', result: null })
-    expect(list[2]).toMatchObject({ testId: done.id, state: 'released', myStatus: 'not_joined', result: null })
+    expect(list[0]).toEqual({
+      testId: notStarted.id,
+      code: notStarted.code,
+      title: 'Quiz 3',
+      state: 'not_started',
+      myStatus: 'not_joined',
+      result: null,
+      review: 'waiting_results',
+    })
+    expect(list[1]).toMatchObject({ testId: running.id, state: 'running', myStatus: 'working', result: null, review: 'waiting_results' })
+    expect(list[2]).toMatchObject({ testId: done.id, state: 'released', myStatus: 'not_joined', result: null, review: 'open' })
 
     const bobList = await listMyTests(bob, algo.id)
     expect(bobList[2]).toMatchObject({ myStatus: 'handed_in', result: { score: 5, outOf: 5, mcqCorrect: 2, mcqCount: 2 } })
+
+    // The lecturer switches review off: it is off at once.
+    await setStudentsCanReview(lecturer, done.id, false)
+    expect((await listMyTests(bob, algo.id))[2].review).toBe('off')
 
     await expect(listMyTests(outsider, algo.id)).rejects.toMatchObject({ code: 'FORBIDDEN' })
     await expect(listMyTests(colleague, algo.id)).rejects.toMatchObject({ code: 'FORBIDDEN' })

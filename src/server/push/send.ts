@@ -63,7 +63,8 @@ async function createRealClient(publicKey: string, privateKey: string): Promise<
 
 function deliveryOptions(kind: PushKind): DeliveryOptions {
   const timeout = SEND_TIMEOUT_MS
-  if (kind === 'checkInOpened' || kind === 'checkOutOpened') return { TTL: 900, urgency: 'high', timeout }
+  if (kind === 'checkInOpened' || kind === 'checkOutOpened' || kind === 'classSoon' || kind === 'classSoonLecturer')
+    return { TTL: 900, urgency: 'high', timeout }
   if (kind === 'testStarted') return { TTL: 3600, urgency: 'high', timeout }
   return { TTL: DAY_S, urgency: 'normal', timeout }
 }

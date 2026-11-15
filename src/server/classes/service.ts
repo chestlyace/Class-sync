@@ -5,7 +5,7 @@ import { AppError } from '@/server/core/errors'
 import type { Ctx } from '@/server/core/context'
 import { requireRole } from '@/server/core/guards'
 import type { Db } from '@/server/db'
-import { class_, classLecturer, classStudent, school, user } from '@/server/db/schema'
+import { class_, classLecturer, classStudent, course, school, user } from '@/server/db/schema'
 import { appLinkBuilder, queueNotifications, type Notification } from '@/server/email/notify'
 import { ClassJoinedEmail } from '@/server/email/templates/class-joined'
 import { ColleagueJoinedClassEmail, LecturerJoinedClassEmail } from '@/server/email/templates/lecturer-joined-class'
@@ -13,7 +13,7 @@ import { emailSubject } from '@/server/email/templates/verify-email'
 import { isUniqueViolation } from '@/server/lib/db-errors'
 import { pushPayload } from '@/server/push/payload'
 import { queuePush, type PushItem } from '@/server/push/send'
-import { getSchool } from '@/server/schools/service'
+import { getSchool, type School } from '@/server/schools/service'
 import {
   generateJoinCode,
   isWellFormedJoinCode,
@@ -141,6 +141,58 @@ export async function createClass(
     }
   }
   throw new Error('Could not generate unique join codes')
+}
+
+/** Any lecturer of the class: name and academic year. The school is fixed (matricules belong to it). */
+export async function updateClass(
+  ctx: Ctx,
+  classId: string,
+  input: { name: string; academicYear: string },
+): Promise<void> {
+  await requireClassLecturer(ctx, classId)
+  const data = parseCreateInput(input)
+  await ctx.db.update(class_).set({ name: data.name, academicYear: data.academicYear }).where(eq(class_.id, classId))
+}
+
+export type ClassSettings = {
+  id: string
+  name: string
+  academicYear: string
+  school: School
+  /** Classes at this school, all lecturers': a school edit shows for all of them. */
+  schoolClassCount: number
+  /** Lecturers of this class besides me: when there are any, removing the class means leaving it. */
+  otherLecturerCount: number
+  myCourseIds: string[]
+}
+
+/** What the class settings page shows. Lecturers of the class only. */
+export async function getClassSettings(ctx: Ctx, classId: string): Promise<ClassSettings> {
+  await requireClassLecturer(ctx, classId)
+  const [row] = await ctx.db.select().from(class_).where(eq(class_.id, classId))
+  if (!row) throw new AppError('FORBIDDEN', 'Only a lecturer of this class can do this')
+  const [sch, [classes], [others], mine] = await Promise.all([
+    getSchool(ctx, row.schoolId),
+    ctx.db.select({ n: count() }).from(class_).where(eq(class_.schoolId, row.schoolId)),
+    ctx.db
+      .select({ n: count() })
+      .from(classLecturer)
+      .where(and(eq(classLecturer.classId, classId), ne(classLecturer.userId, ctx.user.id))),
+    ctx.db
+      .select({ id: course.id })
+      .from(course)
+      .where(and(eq(course.classId, classId), eq(course.lecturerId, ctx.user.id)))
+      .orderBy(asc(course.title), asc(course.id)),
+  ])
+  return {
+    id: row.id,
+    name: row.name,
+    academicYear: row.academicYear,
+    school: sch,
+    schoolClassCount: Number(classes.n),
+    otherLecturerCount: Number(others.n),
+    myCourseIds: mine.map((c) => c.id),
+  }
 }
 
 /** Looks a class up by one of its codes; junk and unknown codes are both NOT_FOUND. */

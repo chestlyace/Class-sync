@@ -184,6 +184,26 @@
       "copyLecturerLink": "Copier le lien enseignant",
       "copyStudentLinkTitle": "Copier le lien que les étudiants ouvrent pour rejoindre cette classe",
       "copyLecturerLinkTitle": "Copier le lien que vos collègues ouvrent pour enseigner dans cette classe"
+    },
+    "settings": {
+      "link": "Paramètres",
+      "eyebrow": "Paramètres de la classe",
+      "description": "Les changements apparaissent tout de suite pour toute la classe : collègues et étudiants.",
+      "classTitle": "Informations de la classe",
+      "schoolTitle": "Établissement",
+      "schoolShared": "{count, plural, one {} other {Utilisé par # classes, dont certaines d'autres enseignants. Un changement s'applique à toutes.}}",
+      "schoolConflict": "Un autre établissement porte déjà ce nom dans cette ville.",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "deleteTitle": "Supprimer la classe",
+      "deleteBody": "Vous êtes le seul enseignant de cette classe. Elle disparaît pour tous les étudiants, avec tous ses cours et leurs données. Cette action est définitive.",
+      "leaveTitle": "Quitter la classe",
+      "leaveBody": "D'autres enseignants ont cette classe : elle reste, avec ses étudiants et leurs cours. Vous la quittez, et vos propres cours ici sont supprimés avec leurs données. Cette action est définitive.",
+      "delete": "Supprimer la classe",
+      "deleting": "Suppression…",
+      "leave": "Quitter la classe",
+      "leaving": "Départ…",
+      "changed": "Un autre enseignant a rejoint ou quitté cette classe depuis l'ouverture de cette page. Rechargez-la pour voir ce qui se passera maintenant."
     }
   },
   "courses": {
@@ -234,6 +254,18 @@
       "includeNeedsClass": "Dès que des étudiants auront rejoint cette classe, vous pourrez ajouter ici des étudiants des autres classes de l'établissement.",
       "includeNoMatches": "Aucun étudiant de l'établissement ne correspond à « {query} ».",
       "includeResults": "Étudiants correspondants"
+    },
+    "settings": {
+      "link": "Paramètres",
+      "eyebrow": "Paramètres du cours",
+      "description": "Corrigez l'intitulé, le code ou le semestre. Les changements apparaissent tout de suite pour vous et vos étudiants.",
+      "editTitle": "Informations du cours",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "deleteTitle": "Supprimer le cours",
+      "deleteBody": "Le cours disparaît pour vous et pour tous les étudiants, avec ses présences, devoirs, tests, notes et notes de cours. Cette action est définitive.",
+      "delete": "Supprimer le cours",
+      "deleting": "Suppression…"
     }
   },
   "errors": {
@@ -739,6 +771,7 @@
     "greeting": "Bonjour, {name}",
     "lecturerEyebrow": "Enseignant",
     "studentEyebrow": "Étudiant",
+    "thisWeek": "Cette semaine",
     "newSchool": "Nouvel établissement",
     "newClass": "Nouvelle classe",
     "newCourse": "Nouveau cours",
@@ -865,6 +898,10 @@
       "added": "Ajouté le {date}",
       "remove": "Retirer",
       "removeLabel": "Retirer {device}",
+      "classReminders": {
+        "title": "Rappels de cours",
+        "hint": "Un rappel 15 minutes avant chaque cours. Les annulations et changements arrivent toujours."
+      },
       "install": {
         "title": "Installer l'application",
         "button": "Installer l'application",
@@ -1977,6 +2014,26 @@
       "seeMarks": "Voir vos notes",
       "mcqCount": "{count, plural, one {# question} other {# questions}}",
       "mcqNote": "Affiché en un seul total, pour que les réponses restent privées."
+    },
+    "review": {
+      "metaTitle": "Voir le corrigé",
+      "eyebrow": "Corrigé",
+      "reviewAnswers": "Voir le corrigé",
+      "practise": "S'entraîner sur ce test",
+      "practiseNote": "L'entraînement ne change jamais votre résultat.",
+      "backToTest": "Retour au test",
+      "waitingResults": "Vous pourrez revoir les questions et le corrigé une fois les résultats publiés.",
+      "waitingClasses": "Vous pourrez revoir les questions et le corrigé quand toutes les classes auront passé ce test.",
+      "total": "Votre résultat",
+      "notJoined": "Vous n'avez pas passé ce test : aucune réponse n'est affichée.",
+      "yourAnswer": "Votre réponse",
+      "correctAnswer": "Bonne réponse",
+      "noAnswer": "Aucune réponse",
+      "lookingFor": "Ce que l'enseignant attendait",
+      "myTestsLink": "Corrigé",
+      "switchLabel": "Permettre aux étudiants de revoir ce test",
+      "switchHelp": "Une fois les résultats publiés et le test passé par toutes les classes, les étudiants voient les questions, leurs réponses et le corrigé, et peuvent s'entraîner dessus. Désactivez si vous comptez réutiliser ces questions.",
+      "questions": "Questions"
     }
   },
   "notes": {
@@ -2875,6 +2932,154 @@
     "gradesReleased": "Votre note pour {assignment} est disponible.",
     "testResultsReleased": "Vos résultats pour {test} sont disponibles.",
     "colleagueJoinedClass": "{colleague} a rejoint {class}.",
+    "classSoonLecturer": "Cours à {start}{hasRoom, select, yes { · {room}} other {}}. Touchez pour ouvrir l’appel.",
+    "classSoon": "Cours à {start}{hasRoom, select, yes { · {room}} other {}}.",
+    "classCancelled": "Le cours du {day} à {start} est annulé.",
+    "classReinstated": "Le cours du {day} à {start} est rétabli.",
+    "classMoved": "Le cours du {day} est déplacé au {newDay} à {start}.",
+    "classMakeUp": "Cours de rattrapage le {newDay} à {start}{hasRoom, select, yes { · {room}} other {}}.",
+    "classMissedQuestion": "Aucun appel le {day} : le cours a-t-il été manqué ?",
+    "timetableChanged": "L’emploi du temps a changé.",
     "test": "Les notifications fonctionnent sur cet appareil."
+  },
+  "schedule": {
+    "nav": "Planning",
+    "eyebrow": "Votre semaine",
+    "title": "Planning",
+    "description": "Vos cours dans tous vos établissements.",
+    "thisWeek": "Cette semaine · {range}",
+    "lastWeek": "Semaine dernière · {range}",
+    "nextWeek": "Semaine prochaine · {range}",
+    "otherWeek": "Semaine du {from} au {to}",
+    "previousWeekLabel": "Semaine précédente",
+    "followingWeekLabel": "Semaine suivante",
+    "backToThisWeek": "Cette semaine",
+    "noClasses": "Aucun cours cette semaine.",
+    "empty": {
+      "title": "Pas encore d’emploi du temps",
+      "body": "Ajoutez à l’emploi du temps de chaque cours ses créneaux hebdomadaires, et votre semaine s’affichera ici.",
+      "noCourses": "Vous n’avez pas encore de cours. Créez d’abord une classe et ajoutez-y un cours.",
+      "courseLink": "Emploi du temps de {course} · {className}"
+    },
+    "badge": {
+      "cancelled": "Annulé",
+      "missed": "Manqué",
+      "makeUp": "Rattrapage",
+      "makeUpFor": "Rattrapage du {date}"
+    },
+    "row": {
+      "cantMakeIt": "Je ne peux pas",
+      "openCheckIn": "Ouvrir l’appel",
+      "opening": "Ouverture…",
+      "undoCancel": "Rétablir",
+      "undoing": "Rétablissement…"
+    },
+    "cancel": {
+      "title": "Annuler ce cours ?",
+      "body": "{course} · {when}. Les étudiants du cours sont prévenus de l’annulation.",
+      "addMakeUp": "Ajouter un rattrapage maintenant",
+      "addMakeUpHint": "Les étudiants reçoivent un seul avis indiquant que le cours est déplacé, au lieu de deux.",
+      "keep": "Garder le cours",
+      "confirm": "Annuler le cours",
+      "cancelling": "Annulation…"
+    },
+    "makeUp": {
+      "button": "Cours de rattrapage",
+      "title": "Ajouter un cours de rattrapage",
+      "description": "Un cours ponctuel. Les étudiants du cours sont prévenus s’il n’a pas encore eu lieu.",
+      "replaces": "Remplace {course} du {date}.",
+      "course": "Cours",
+      "date": "Date",
+      "start": "Début",
+      "end": "Fin",
+      "room": "Salle",
+      "roomPlaceholder": "ex. B4",
+      "requireCampus": "Exiger la présence sur le campus",
+      "requireCampusHint": "L’appel demande la position de l’étudiant, comme une séance qui l’exige.",
+      "save": "Ajouter le cours",
+      "saving": "Ajout…",
+      "noCourses": "Vous n’avez pas encore de cours."
+    },
+    "needsAnswer": {
+      "title": "En attente de votre réponse",
+      "hint": "Cours des 14 derniers jours sans appel. Le cours a-t-il eu lieu ?",
+      "row": "{date} · {time} · {course} · aucun appel",
+      "taught": "Le cours a eu lieu",
+      "missed": "Manqué · reprogrammer",
+      "saving": "Enregistrement…"
+    },
+    "timetable": {
+      "courseLink": "Emploi du temps",
+      "eyebrow": "Emploi du temps",
+      "title": "Emploi du temps",
+      "slotsTitle": "Cours hebdomadaires",
+      "noSlots": "Pas encore de cours hebdomadaire. Ajoutez le premier ci-dessous.",
+      "addTitle": "Ajouter un cours hebdomadaire",
+      "hint": "Un créneau peut couvrir un long cours, par ex. 08:00–12:00.",
+      "weekday": "Jour",
+      "start": "Début",
+      "end": "Fin",
+      "room": "Salle",
+      "roomPlaceholder": "ex. B4",
+      "startsOn": "Du",
+      "endsOn": "Au",
+      "termHint": "Les dates du semestre. Aucun cours n’est prévu avant ou après.",
+      "requireCampus": "Exiger la présence sur le campus",
+      "requireCampusHint": "L’appel demande la position de l’étudiant et la compare au campus de l’école.",
+      "noCampusHint": "Ajoutez la position du campus de l’école pour utiliser cette option.",
+      "add": "Ajouter le cours",
+      "adding": "Ajout…",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "edit": "Modifier",
+      "editLabel": "Modifier {day} {time}",
+      "remove": "Retirer",
+      "removeLabel": "Retirer {day} {time}",
+      "removeTitle": "Retirer ce cours hebdomadaire ?",
+      "removeBody": "Les cours déjà donnés restent enregistrés. Les prochains disparaissent du planning de tous et les étudiants sont prévenus.",
+      "removeConfirm": "Retirer",
+      "term": "du {from} au {to}",
+      "onCampus": "Sur le campus",
+      "saved": "Enregistré.",
+      "overlapTitle": "Enregistré. Il chevauche {count, plural, one {un autre de vos cours} other {# autres de vos cours}}, vérifiez les horaires :",
+      "overlapRow": "{course} · {className} · {school} · {day} {time}",
+      "dismiss": "Masquer",
+      "toSchedule": "Planning"
+    },
+    "classPage": {
+      "eyebrow": "Cours",
+      "when": "{day} · {time}",
+      "room": "Salle {room}",
+      "noRoom": "Pas de salle indiquée",
+      "goToAttendance": "Voir les présences",
+      "checkInHint": "L’appel peut être ouvert de 30 minutes avant le cours jusqu’à sa fin.",
+      "missed": "Vous avez indiqué que ce cours a été manqué.",
+      "toSchedule": "Planning"
+    },
+    "errors": {
+      "outsideClassTime": "L’appel peut être ouvert de 30 minutes avant le cours jusqu’à sa fin.",
+      "noCampusLocation": "L’école n’a pas encore de position de campus : vous ne pouvez pas exiger la présence sur place.",
+      "notFuture": "Ce cours a déjà commencé : il ne peut plus être modifié.",
+      "alreadySet": "Ce cours est déjà annulé ou a déjà reçu une réponse.",
+      "notCancelled": "Ce cours n’est pas annulé.",
+      "notEnded": "Ce cours n’est pas encore terminé."
+    }
+  },
+  "removal": {
+    "heading": "Ce qui sera supprimé",
+    "nothingYet": "Aucun travail d'étudiant ni aucune donnée pour l'instant.",
+    "studentsCourse": "{count, plural, one {# étudiant n'y aura plus accès} other {# étudiants n'y auront plus accès}}",
+    "studentsClass": "{count, plural, one {# étudiant retiré de la classe} other {# étudiants retirés de la classe}}",
+    "courses": "{count, plural, one {# cours} other {# cours}}",
+    "attendanceSessions": "{count, plural, one {# séance de présence} other {# séances de présence}}",
+    "assignments": "{count, plural, one {# devoir} other {# devoirs}}",
+    "submissions": "{count, plural, one {# copie et sa note} other {# copies et leurs notes}}",
+    "tests": "{count, plural, one {# test} other {# tests}}",
+    "testAttempts": "{count, plural, one {# participation à un test et ses notes} other {# participations aux tests et leurs notes}}",
+    "participation": "{count, plural, one {# point de participation} other {# points de participation}}",
+    "practiceQuestions": "{count, plural, one {# question d'entraînement} other {# questions d'entraînement}}",
+    "timetableSlots": "{count, plural, one {# créneau de l'emploi du temps} other {# créneaux de l'emploi du temps}}",
+    "notes": "{count, plural, one {# note de cours ou fichier} other {# notes de cours et fichiers}}",
+    "confirmLabel": "Tapez « {name} » pour confirmer"
   }
 }

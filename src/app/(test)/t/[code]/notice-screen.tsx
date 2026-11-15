@@ -5,6 +5,8 @@ import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { PageHeader, Panel } from '@/components/page-header'
 import { Button, buttonVariants } from '@/components/ui/button'
+import type { ReviewAccess } from '@/server/tests/review'
+import { ReviewLinks } from './review-links'
 
 /** Laptop with full screen support, once the test runs: one tap enters full screen (the timer already runs). */
 export function BeginScreen({ title, onBegin }: { title: string; onBegin: () => void }) {
@@ -26,7 +28,18 @@ type Kind = 'open_elsewhere' | 'open_failed' | 'not_your_course' | 'closed'
 const ICONS = { open_elsewhere: MonitorSmartphone, open_failed: WifiOff, not_your_course: Lock, closed: CalendarX }
 
 /** A calm full-page message: already open on another device, could not open, not yours, or over. */
-export function NoticeScreen({ kind, onRetry }: { kind: Kind; onRetry?: () => void }) {
+export function NoticeScreen({
+  kind,
+  onRetry,
+  code,
+  review,
+}: {
+  kind: Kind
+  onRetry?: () => void
+  /** The closed notice only: a student who never took the test may still review and practise it. */
+  code?: string
+  review?: ReviewAccess | null
+}) {
   const t = useTranslations('tests.student')
   const Icon = ICONS[kind]
   const text = {
@@ -42,6 +55,7 @@ export function NoticeScreen({ kind, onRetry }: { kind: Kind; onRetry?: () => vo
         <h1 className="text-xl font-semibold tracking-tight">{text.title}</h1>
         <p className="text-muted-foreground">{text.body}</p>
       </div>
+      {kind === 'closed' && code && <ReviewLinks code={code} access={review ?? null} />}
       {onRetry ? (
         <Button type="button" size="lg" onClick={onRetry}>
           {kind === 'open_elsewhere' ? t('openElsewhere.retry') : t('openFailed.retry')}

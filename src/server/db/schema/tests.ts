@@ -52,6 +52,8 @@ export const courseTest = pgTable(
     deadlineAt: timestamp('deadline_at', { withTimezone: true }),
     endedAt: timestamp('ended_at', { withTimezone: true }),
     resultsReleasedAt: timestamp('results_released_at', { withTimezone: true }),
+    // Students may review the paper (their answers, the correct ones) and practise it once released.
+    studentsCanReview: boolean('students_can_review').notNull().default(true),
     // The root of the copied_from chain: every copy shares it. A test inserted without one is its own family.
     familyId: text('family_id')
       .notNull()
@@ -220,4 +222,20 @@ export const testLog = pgTable(
     check('test_log_kind_check', sql`${t.kind} in ('ended_left', 'reopened', 'handed_in')`),
     index('test_log_attempt_id_idx').on(t.attemptId),
   ],
+)
+
+/** A student's latest practice answer to a released test's question: only whether it was right. Never counts. */
+export const testPracticeOutcome = pgTable(
+  'test_practice_outcome',
+  {
+    studentId: text('student_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    questionId: text('question_id')
+      .notNull()
+      .references(() => testQuestion.id, { onDelete: 'cascade' }),
+    correct: boolean('correct').notNull(),
+    answeredAt: timestamp('answered_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.studentId, t.questionId] }), index('test_practice_outcome_question_id_idx').on(t.questionId)],
 )

@@ -1,5 +1,5 @@
-import { timingSafeEqual } from 'node:crypto'
 import { runDueReminders } from '@/server/assignments/reminders'
+import { isCronAuthorized } from '@/server/lib/cron-auth'
 import { pruneRateLimits } from '@/server/lib/rate-limit'
 import { pruneUnusedOauthClients } from '@/server/mcp/prune'
 import { pruneOpsEvents, recordOpsEventDefault } from '@/server/ops/events'
@@ -7,17 +7,10 @@ import { pruneOpsEvents, recordOpsEventDefault } from '@/server/ops/events'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-function authorized(header: string | null, secret: string): boolean {
-  const expected = Buffer.from(`Bearer ${secret}`)
-  const given = Buffer.from(header ?? '')
-  // timingSafeEqual throws on different lengths; a length mismatch is already a rejection.
-  return given.length === expected.length && timingSafeEqual(given, expected)
-}
-
 async function handle(request: Request): Promise<Response> {
   const secret = process.env.CRON_SECRET
   if (!secret) return Response.json({ error: 'CRON_SECRET is not configured' }, { status: 503 })
-  if (!authorized(request.headers.get('authorization'), secret)) {
+  if (!isCronAuthorized(request.headers.get('authorization'), secret)) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
   // Daily housekeeping rides on this cron. Its failure is logged and never blocks the reminders.

@@ -1,15 +1,13 @@
-import { Lock } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { ErrorState } from '@/components/error-state'
-import { Panel } from '@/components/page-header'
-import { buttonVariants } from '@/components/ui/button'
 import { getSessionUser } from '@/server/auth/session'
 import { resolveTestLink } from '@/server/tests/attempt'
 import { getMyTestResult } from '@/server/tests/results'
+import { getReviewAccess } from '@/server/tests/review'
 import { loadPage } from '@/app/(app)/load-page'
 import { ReleasedResult } from './released-result'
+import { NotYourCourse } from './student-test'
 import { TestRunner } from './test-runner'
 
 export async function generateMetadata() {
@@ -34,25 +32,14 @@ export default async function TestPage({ params }: PageProps<'/t/[code]'>) {
   if (link.data.role === 'owner') {
     redirect(`/courses/${encodeURIComponent(link.data.courseId)}/tests/${encodeURIComponent(link.data.testId)}`)
   }
-  const released = await loadPage((ctx) => getMyTestResult(ctx, link.data.testId))
-  if (released.ok) return <ReleasedResult result={released.data} />
+  const { testId } = link.data
+  const [released, access] = await Promise.all([
+    loadPage((ctx) => getMyTestResult(ctx, testId)),
+    loadPage((ctx) => getReviewAccess(ctx, testId)),
+  ])
+  const review = access.ok ? access.data : null
+  if (released.ok) return <ReleasedResult result={released.data} code={code} review={review} />
   // CONFLICT: not released yet, or MCQ-only (the runner's quick result).
   if (released.code !== 'CONFLICT') return <ErrorState code={released.code} />
-  return <TestRunner userId={user.id} code={code} />
-}
-
-async function NotYourCourse() {
-  const t = await getTranslations('tests.student')
-  return (
-    <Panel role="alert" className="flex flex-col items-start gap-4">
-      <Lock aria-hidden="true" className="size-6 text-muted-foreground" />
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold tracking-tight">{t('notYourCourse.title')}</h1>
-        <p className="text-muted-foreground">{t('notYourCourse.body')}</p>
-      </div>
-      <Link href="/dashboard" className={buttonVariants({ variant: 'outline' })}>
-        {t('backToDashboard')}
-      </Link>
-    </Panel>
-  )
+  return <TestRunner userId={user.id} code={code} review={review} />
 }

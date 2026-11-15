@@ -29,6 +29,8 @@ export type TestSummary = {
    * whatever its state; the live view counts the same way.
    */
   joined: number
+  /** Students may review the paper and practise it once released (the lecturer's switch). */
+  studentsCanReview: boolean
 }
 
 /** The whole test as the editor loads it, correct flags and marking guides included (owner only). */
@@ -108,6 +110,7 @@ async function insertNewTest(
   settings: TestSettings,
   questions: QuestionInput[],
   copiedFromId: string | null,
+  studentsCanReview = true,
 ): Promise<TestRow> {
   for (let attempt = 0; attempt < MAX_CODE_ATTEMPTS; attempt++) {
     const code = generateJoinCode()
@@ -129,6 +132,7 @@ async function insertNewTest(
             code,
             ...settingsOf(settings),
             copiedFromId,
+            studentsCanReview,
             createdBy: ctx.user.id,
             createdAt: at,
             updatedAt: at,
@@ -197,6 +201,7 @@ async function summarize(db: Db, tests: TestRow[]): Promise<TestSummary[]> {
       startedAt: t.startedAt,
       endsAt: endsAt(t),
       joined: joined.get(t.id) ?? 0,
+      studentsCanReview: t.studentsCanReview,
     }
   })
 }
@@ -284,8 +289,18 @@ export async function copyTest(ctx: Ctx, testId: string, targetCourseId: string)
   const questions = await loadStoredQuestions(ctx.db, test.id)
   // Checked like a new test, so a copy never carries a test the rules now refuse.
   const data = parseTestInput({ ...settingsOf(test), questions: questions.map(toQuestionInput) })
-  const created = await insertNewTest(ctx, targetCourseId, settingsOf(data), data.questions, test.id)
+  const created = await insertNewTest(ctx, targetCourseId, settingsOf(data), data.questions, test.id, test.studentsCanReview)
   return summarizeTest(ctx.db, created)
+}
+
+/**
+ * Whether students may review this test (questions, their answers, the correct ones) and practise
+ * it once it is released everywhere. Owner only; changeable in any state, effective at once.
+ */
+export async function setStudentsCanReview(ctx: Ctx, testId: string, on: boolean): Promise<void> {
+  await requireOwnedTest(ctx, testId)
+  if (typeof on !== 'boolean') throw new AppError('VALIDATION', 'Invalid input', { fields: ['on'] })
+  await ctx.db.update(courseTest).set({ studentsCanReview: on, updatedAt: now() }).where(eq(courseTest.id, testId))
 }
 
 /** Deletes a test that has not started (conditional, so it cannot race Start); already gone is FORBIDDEN. */
