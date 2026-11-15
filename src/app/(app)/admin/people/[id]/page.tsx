@@ -115,7 +115,7 @@ export default async function AdminPersonPage({ params }: PageProps<'/admin/peop
                 <li key={s.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
                   <Monitor aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                   <div className="flex min-w-0 flex-col gap-0.5">
-                    <span className="text-sm break-words">{s.userAgent || t('person.sessions.unknownDevice')}</span>
+                    <span className="text-sm wrap-anywhere">{s.userAgent || t('person.sessions.unknownDevice')}</span>
                     <span className="text-[13px] text-muted-foreground">
                       {t('person.sessions.lastActive', { date: f.dateTime(s.updatedAt) })}
                       {' · '}
@@ -148,7 +148,7 @@ export default async function AdminPersonPage({ params }: PageProps<'/admin/peop
                   <li key={`${c.kind}-${i}`} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
                     <Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                     <div className="flex min-w-0 flex-col gap-0.5">
-                      <span className="text-sm font-medium break-words">{c.name || t('person.connections.unnamed')}</span>
+                      <span className="text-sm font-medium wrap-anywhere">{c.name || t('person.connections.unnamed')}</span>
                       <span className="text-[13px] text-muted-foreground">
                         {c.kind === 'oauth' ? t('person.connections.oauth') : t('person.connections.token')}
                         {' · '}

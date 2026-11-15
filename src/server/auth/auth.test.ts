@@ -77,6 +77,31 @@ describe('auth: user updates', () => {
     expect(row.name).toBe('Stu Dent')
   })
 
+  it('refuses a sign-up whose name carries a link, with its own error code', async () => {
+    const res = await post(
+      '/sign-up/email',
+      { name: 'BUY NOW https://example.com/LURE', email: 'lure@example.com', password: 'correct-horse-9', role: 'student' },
+      false,
+    )
+    expect(res.status).toBe(400)
+    expect(((await res.json()) as { code?: string }).code).toBe('INVALID_NAME')
+    expect(await db.select().from(user).where(eq(user.email, 'lure@example.com'))).toEqual([])
+  })
+
+  it('stores a cleaned name at sign-up and refuses a bad rename', async () => {
+    const res = await post(
+      '/sign-up/email',
+      { name: '  Ngo  Marie ', email: 'ngo@example.com', password: 'correct-horse-9', role: 'student' },
+      false,
+    )
+    expect(res.status).toBe(200)
+    const [row] = await db.select().from(user).where(eq(user.email, 'ngo@example.com'))
+    expect(row.name).toBe('Ngo Marie')
+    const rename = await post('/update-user', { name: '<b>HTMLBOLD</b>' })
+    expect(rename.status).toBe(400)
+    expect((await dbUser()).name).not.toBe('<b>HTMLBOLD</b>')
+  })
+
   it('still rejects an admin role at sign-up', async () => {
     const res = await post(
       '/sign-up/email',

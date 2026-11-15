@@ -101,7 +101,7 @@ describe('sendEmail health events and suspension', () => {
   it('sends a plain-text part next to the HTML, with the link written out', async () => {
     send.mockResolvedValue({ data: { id: 'x' }, error: null })
     const url = 'https://clasync.online/api/auth/verify-email?token=abc'
-    await sendEmail({ ...message, react: VerifyEmail({ name: 'Ada', url, locale: 'fr' }) })
+    await sendEmail({ ...message, react: VerifyEmail({ url, locale: 'fr' }) })
     const { text } = send.mock.calls[0]![0] as { text: string }
     expect(text).toContain(url)
     expect(text).toContain(fr.email.verify.cta)

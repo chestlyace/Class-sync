@@ -62,7 +62,7 @@ export function NameForm({ initialName }: { initialName: string }) {
     <form onSubmit={onSubmit} noValidate className="flex w-full flex-col gap-3">
       <Field>
         <FieldLabel htmlFor="settings-name">{t('name')}</FieldLabel>
-        <Input id="settings-name" name="name" defaultValue={initialName} autoComplete="name" maxLength={120} autoFocus />
+        <Input id="settings-name" name="name" defaultValue={initialName} autoComplete="name" maxLength={80} autoFocus />
         <FieldError>{error}</FieldError>
       </Field>
       <div className="flex gap-2">

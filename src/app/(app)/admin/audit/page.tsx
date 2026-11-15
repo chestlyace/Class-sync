@@ -53,7 +53,7 @@ export default async function AdminAuditPage({ searchParams }: PageProps<'/admin
                     {' · '}
                     {t('audit.by', { name: row.adminName })}
                   </span>
-                  <span className="break-words">
+                  <span className="wrap-anywhere">
                     <span className="font-semibold">{t(`audit.actions.${row.action}`)}</span>
                     {' · '}
                     {row.target.kind === 'user' ? (
@@ -68,7 +68,7 @@ export default async function AdminAuditPage({ searchParams }: PageProps<'/admin
                       />
                     )}
                   </span>
-                  <span className="text-sm break-words text-[#48484a]">{row.reason ?? t('audit.noReason')}</span>
+                  <span className="text-sm wrap-anywhere text-[#48484a]">{row.reason ?? t('audit.noReason')}</span>
                 </li>
               ))}
             </ol>

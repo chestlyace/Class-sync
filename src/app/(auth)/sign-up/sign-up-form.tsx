@@ -176,7 +176,7 @@ export function SignUpForm({
         )}
         <Field>
           <FieldLabel htmlFor="name">{t('name')}</FieldLabel>
-          <Input id="name" name="name" autoComplete="name" required />
+          <Input id="name" name="name" autoComplete="name" maxLength={80} required />
         </Field>
         <Field>
           <FieldLabel htmlFor="email">{t('email')}</FieldLabel>

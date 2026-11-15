@@ -88,7 +88,7 @@ export default async function AdminSchoolsPage({ searchParams }: PageProps<'/adm
                   >
                     <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                       <span className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold break-words">{s.name}</span>
+                        <span className="font-semibold wrap-anywhere">{s.name}</span>
                         {!s.hasLocation && <Badge variant="outline">{t('schools.noLocation')}</Badge>}
                       </span>
                       <span className="text-sm text-muted-foreground">

@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 export function Stat({ label, value, className }: { label: string; value: React.ReactNode; className?: string }) {
   return (
     <div className={cn('flex min-w-0 flex-col gap-1 rounded-2xl border bg-card px-4 py-3.5', className)}>
-      <span className="font-display text-4xl leading-none break-words">{value}</span>
+      <span className="font-display text-4xl leading-none wrap-anywhere">{value}</span>
       <span className="text-[13px] text-muted-foreground">{label}</span>
     </div>
   )
@@ -29,7 +29,7 @@ export function FactList({ facts }: { facts: Fact[] }) {
       {facts.map(({ label, value }) => (
         <div key={label} className="flex flex-col gap-0.5 py-2.5 first:pt-0 last:pb-0 sm:flex-row sm:gap-4">
           <dt className="shrink-0 text-sm text-muted-foreground sm:w-44">{label}</dt>
-          <dd className="min-w-0 break-words">{value}</dd>
+          <dd className="min-w-0 wrap-anywhere">{value}</dd>
         </div>
       ))}
     </dl>
