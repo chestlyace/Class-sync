@@ -79,7 +79,7 @@ export default async function AdminHealthPage() {
                       </>
                     )}
                   </span>
-                  <span className="text-sm break-words">{failure.error || t('health.email.noError')}</span>
+                  <span className="text-sm wrap-anywhere">{failure.error || t('health.email.noError')}</span>
                 </li>
               ))}
             </ul>

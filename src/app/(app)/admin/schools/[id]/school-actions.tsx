@@ -150,7 +150,7 @@ export function MergeSchools({
               className="mt-1 accent-primary"
             />
             <span className="flex min-w-0 flex-col gap-0.5">
-              <span className="font-semibold break-words">{side.name}</span>
+              <span className="font-semibold wrap-anywhere">{side.name}</span>
               <span className="text-[13px] text-muted-foreground">
                 {side.town} · {tSchool('classCount', { count: side.classes })}
               </span>
@@ -247,7 +247,7 @@ export function MergeSearch({ current }: { current: MergeSide }) {
                       }}
                       className="flex w-full flex-col gap-0.5 rounded-2xl border px-4 py-3 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50"
                     >
-                      <span className="font-semibold break-words">{s.name}</span>
+                      <span className="font-semibold wrap-anywhere">{s.name}</span>
                       <span className="text-[13px] text-muted-foreground">
                         {s.town} · {tSchool('classCount', { count: s.classes })}
                       </span>

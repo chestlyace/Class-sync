@@ -32,6 +32,12 @@ describe('authErrorKey', () => {
     expect(lookup('auth.errors.accountSuspendedContact', fr)).toBe('Contactez {email}.')
   })
 
+  it('maps INVALID_NAME to a message saying what a name may contain, in both languages', () => {
+    expect(authErrorKey('INVALID_NAME')).toBe('auth.errors.invalidName')
+    expect(typeof lookup('auth.errors.invalidName')).toBe('string')
+    expect(typeof lookup('auth.errors.invalidName', fr)).toBe('string')
+  })
+
   it('falls back to the generic error', () => {
     expect(authErrorKey('SOMETHING_NEW')).toBe('common.genericError')
     expect(authErrorKey(undefined)).toBe('common.genericError')

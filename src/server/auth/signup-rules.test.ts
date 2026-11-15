@@ -1,5 +1,40 @@
 import { describe, expect, it } from 'vitest'
-import { assertValidSignup, assertValidUserUpdate } from './signup-rules'
+import { assertValidSignup, assertValidUserUpdate, cleanName } from './signup-rules'
+
+const nameError = expect.objectContaining({ code: 'VALIDATION', details: { fields: ['name'] } })
+
+describe('cleanName', () => {
+  it('trims and collapses spaces', () => {
+    expect(cleanName('  Wirndzerem   Bradley\tFanka ')).toBe('Wirndzerem Bradley Fanka')
+  })
+
+  it('keeps ordinary names with accents, apostrophes, hyphens and dots', () => {
+    for (const name of ["Ngo'o Marie-Claire", 'Dr. Élodie N. Mbarga', 'Malibak Leslie', 'X']) {
+      expect(cleanName(name)).toBe(name)
+    }
+  })
+
+  it('refuses tags, links and email addresses', () => {
+    for (const name of [
+      "RSD</p><h1>HEADLINE</h1><p><a href='https://example.com/LURE'>CLICK_ME</a>",
+      '<b>HTMLBOLD</b>',
+      'BUY NOW https://example.com/LURE',
+      'visit www.example.com today',
+      'mail me at someone@example.com',
+      'back\\slash',
+    ]) {
+      expect(() => cleanName(name)).toThrow(nameError)
+    }
+  })
+
+  it('refuses empty, over-long and control-character names', () => {
+    expect(() => cleanName('   ')).toThrow(nameError)
+    expect(() => cleanName('A'.repeat(81))).toThrow(nameError)
+    expect(cleanName('A'.repeat(80))).toBe('A'.repeat(80))
+    expect(() => cleanName('Ada\u0007Lovelace')).toThrow(nameError)
+    expect(() => cleanName(42)).toThrow(nameError)
+  })
+})
 
 describe('assertValidSignup', () => {
   it('rejects roles other than lecturer and student', () => {
@@ -29,6 +64,17 @@ describe('assertValidSignup', () => {
       role: 'lecturer',
       locale: 'fr',
     })
+  })
+})
+
+describe('validUserUpdate (name)', () => {
+  it('cleans a new name and refuses a bad one', () => {
+    expect(assertValidUserUpdate({ name: '  Ada   Lovelace ' })).toEqual({ name: 'Ada Lovelace' })
+    expect(() => assertValidUserUpdate({ name: 'BUY NOW https://example.com/LURE' })).toThrow(nameError)
+  })
+
+  it('leaves an update without a name as it is', () => {
+    expect(assertValidUserUpdate({ locale: 'fr' })).toEqual({ locale: 'fr' })
   })
 })
 

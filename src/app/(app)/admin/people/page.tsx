@@ -147,7 +147,7 @@ export default async function AdminPeoplePage({ searchParams }: PageProps<'/admi
                   >
                     <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                       <span className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold break-words">{person.name}</span>
+                        <span className="font-semibold wrap-anywhere">{person.name}</span>
                         {person.isAdmin && <Badge variant="outline">{t('badges.admin')}</Badge>}
                         {!person.emailVerified && <Badge variant="outline">{t('badges.unverified')}</Badge>}
                         {person.suspendedAt && <Badge variant="outline">{t('badges.suspended')}</Badge>}
