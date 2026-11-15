@@ -2684,7 +2684,7 @@
         "school_merge": "Merged schools"
       },
       "school": {
-        "update": "{before} → {after}, {town}",
+        "update": "{before}, {beforeTown} → {after}, {town}",
         "delete": "{name}, {town} · {classes, plural, one {# class} other {# classes}}",
         "merge": "{from} → {into}"
       }

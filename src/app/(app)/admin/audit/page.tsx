@@ -2,29 +2,15 @@ import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
 import { PageHeader, Panel } from '@/components/page-header'
-import { listAudit, type AuditTarget } from '@/server/admin/queries'
+import { listAudit } from '@/server/admin/queries'
 import { Pagination } from '../admin-ui'
 import { getFormatters } from '../format'
 import { loadAdminPage } from '../load-admin'
 import { adminMetadata } from '../metadata'
+import { schoolAuditText } from './school-text'
 
 export async function generateMetadata() {
   return adminMetadata('audit')
-}
-
-type AdminT = Awaited<ReturnType<typeof getTranslations<'admin'>>>
-type AdminActionDetails = Extract<AuditTarget, { kind: 'school' }>['details']
-
-/** What a school action changed, from the names kept in the row (the school may be gone). */
-function schoolText(details: AdminActionDetails, t: AdminT): string {
-  switch (details.kind) {
-    case 'school_update':
-      return t('audit.school.update', { before: details.before.name, after: details.after.name, town: details.after.town })
-    case 'school_delete':
-      return t('audit.school.delete', { name: details.school.name, town: details.school.town, classes: details.classes })
-    case 'school_merge':
-      return t('audit.school.merge', { from: details.from.name, into: details.into.name })
-  }
 }
 
 /** Links to the school while it still exists; a deleted school is plain text. */
@@ -78,7 +64,7 @@ export default async function AdminAuditPage({ searchParams }: PageProps<'/admin
                       <SchoolTarget
                         schoolId={row.target.schoolId}
                         exists={row.target.exists}
-                        text={schoolText(row.target.details, t)}
+                        text={schoolAuditText(row.target.details, t)}
                       />
                     )}
                   </span>
