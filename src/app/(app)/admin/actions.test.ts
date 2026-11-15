@@ -39,7 +39,7 @@ describe('admin Server Actions', () => {
   /** Reads the person and their audit entries as `admin` (the read models are admin-only). */
   async function inspect(admin: Ctx, id: string) {
     const person = await getPerson(admin, id)
-    const audit = (await listAudit(admin, 1)).rows.filter((r) => r.targetEmail === person.email)
+    const audit = (await listAudit(admin, 1)).rows.filter((r) => r.target.kind === 'user' && r.target.email === person.email)
     return { person, audit }
   }
 

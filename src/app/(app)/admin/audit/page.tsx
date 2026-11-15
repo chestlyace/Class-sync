@@ -44,7 +44,11 @@ export default async function AdminAuditPage({ searchParams }: PageProps<'/admin
                   <span className="break-words">
                     <span className="font-semibold">{t(`audit.actions.${row.action}`)}</span>
                     {' · '}
-                    {row.targetName} <span className="break-all text-muted-foreground">({row.targetEmail})</span>
+                    {row.target.kind === 'user' && (
+                      <>
+                        {row.target.name} <span className="break-all text-muted-foreground">({row.target.email})</span>
+                      </>
+                    )}
                   </span>
                   <span className="text-sm break-words text-[#48484a]">{row.reason ?? t('audit.noReason')}</span>
                 </li>
