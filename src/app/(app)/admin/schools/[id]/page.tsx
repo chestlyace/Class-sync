@@ -84,8 +84,8 @@ export default async function AdminSchoolPage({ params }: PageProps<'/admin/scho
               {detail.classList.map((c) => (
                 <li key={c.id} className="flex flex-col gap-1 py-3.5 first:pt-0 last:pb-0 sm:flex-row sm:items-start sm:gap-4">
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span className="font-semibold break-words">{c.name}</span>
-                    <span className="text-sm break-words text-muted-foreground">
+                    <span className="font-semibold wrap-anywhere">{c.name}</span>
+                    <span className="text-sm wrap-anywhere text-muted-foreground">
                       {c.lecturers.length === 0
                         ? t('admin.schools.school.noLecturer')
                         : c.lecturers.map((l, i) => (
@@ -127,7 +127,7 @@ export default async function AdminSchoolPage({ params }: PageProps<'/admin/scho
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <Link
                       href={`/admin/schools/${encodeURIComponent(other.id)}`}
-                      className="font-semibold break-words underline-offset-4 hover:underline"
+                      className="font-semibold wrap-anywhere underline-offset-4 hover:underline"
                     >
                       {other.name}
                     </Link>
