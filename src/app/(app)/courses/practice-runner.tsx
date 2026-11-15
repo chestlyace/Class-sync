@@ -8,6 +8,7 @@ import { Eyebrow } from '@/components/page-header'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { PracticeQuestionView } from '@/server/revision/authoring'
+import { recordTestPracticeOutcomesAction } from '../../(test)/t/[code]/review-actions'
 import { recordPracticeOutcomesAction } from './practice-actions'
 import { PracticePill } from './practice-pill'
 import { drain, enqueue, type Outcome } from './practice-queue'
@@ -15,9 +16,22 @@ import { answer, missed, score, shuffleOptions, startRound, type Round } from '.
 
 type Started = { round: Round; optionOrder: Record<string, string[]> }
 
+/** Where the questions come from: a topic's practice questions, or a released test practised again. */
+export type PracticeSource =
+  | { kind: 'topic'; courseId: string; title: string }
+  | { kind: 'test'; testId: string; code: string; title: string }
+
+/** The device queue's key: the course for a topic (unchanged, so queued answers survive), the test for a test. */
+function queueIdOf(source: PracticeSource): string {
+  return source.kind === 'topic' ? source.courseId : `test:${source.testId}`
+}
+
 /** Sends queued answers. Only a lost session, an unverified email or no network keeps them: anything else is final. */
-async function send(courseId: string, batch: Outcome[]): Promise<boolean> {
-  const result = await recordPracticeOutcomesAction(courseId, batch)
+async function send(source: PracticeSource, batch: Outcome[]): Promise<boolean> {
+  const result =
+    source.kind === 'topic'
+      ? await recordPracticeOutcomesAction(source.courseId, batch)
+      : await recordTestPracticeOutcomesAction(source.testId, batch)
   return result.ok || (result.code !== 'UNAUTHENTICATED' && result.code !== 'EMAIL_UNVERIFIED')
 }
 
@@ -37,31 +51,36 @@ function begin(questions: Map<string, PracticeQuestionView>, ids: string[]): Sta
  * offline. Results are private to the student.
  */
 export function PracticeRunner({
-  courseId,
-  topicTitle,
+  source,
   questions,
   outcomes,
 }: {
-  courseId: string
-  topicTitle: string
+  source: PracticeSource
   questions: PracticeQuestionView[]
   outcomes: Record<string, boolean>
 }) {
   const t = useTranslations('revision.student')
+  const tReview = useTranslations('tests.review')
+  const topicTitle = source.title
+  const queueId = queueIdOf(source)
+  const back =
+    source.kind === 'topic'
+      ? { href: `/courses/${encodeURIComponent(source.courseId)}/notes`, label: t('readNotes') }
+      : { href: `/t/${encodeURIComponent(source.code)}`, label: tReview('backToTest') }
   const byId = useMemo(() => new Map(questions.map((q) => [q.id, q])), [questions])
   const [started, setStarted] = useState<Started | null>(null)
   // The multiple choice question just answered stays on screen, with its feedback, until "Next".
   const [picked, setPicked] = useState<{ questionId: string; optionId: string } | null>(null)
-  const notesHref = `/courses/${encodeURIComponent(courseId)}/notes`
   const missedBefore = questions.filter((q) => outcomes[q.id] === false).map((q) => q.id)
 
   useEffect(() => {
-    void drain(courseId, (batch) => send(courseId, batch))
-  }, [courseId])
+    // A drain already running for this queue makes a second call a no-op.
+    void drain(queueId, (batch) => send(source, batch))
+  }, [queueId, source])
 
   const record = (questionId: string, correct: boolean) => {
-    enqueue(courseId, { questionId, correct })
-    void drain(courseId, (batch) => send(courseId, batch))
+    enqueue(queueId, { questionId, correct })
+    void drain(queueId, (batch) => send(source, batch))
   }
 
   const startWith = (ids: string[]) => {
@@ -71,12 +90,12 @@ export function PracticeRunner({
 
   if (questions.length === 0) {
     return (
-      <Shell topicTitle={topicTitle} notesHref={notesHref}>
+      <Shell topicTitle={topicTitle} back={back}>
         <div className="flex flex-col items-start gap-4 rounded-3xl border p-5 sm:p-7">
           <h2 className="text-xl font-semibold tracking-tight">{t('emptyTitle')}</h2>
           <p className="text-muted-foreground">{t('emptyBody')}</p>
-          <Link href={notesHref} className={buttonVariants({ variant: 'outline', size: 'lg' })}>
-            {t('readNotes')}
+          <Link href={back.href} className={buttonVariants({ variant: 'outline', size: 'lg' })}>
+            {back.label}
           </Link>
         </div>
       </Shell>
@@ -87,7 +106,7 @@ export function PracticeRunner({
 
   if (!started) {
     return (
-      <Shell topicTitle={topicTitle} notesHref={notesHref}>
+      <Shell topicTitle={topicTitle} back={back}>
         <div className="flex flex-col gap-5 rounded-3xl border p-5 sm:p-7">
           <h2 className="text-xl font-semibold tracking-tight">{t('introTitle')}</h2>
           <p className="text-muted-foreground">{t('intro', { count: questions.length })}</p>
@@ -115,13 +134,13 @@ export function PracticeRunner({
     const wrong = missed(round)
     const { right } = score(round)
     return (
-      <Shell topicTitle={topicTitle} notesHref={notesHref}>
+      <Shell topicTitle={topicTitle} back={back}>
         <PhonePracticeDone
           right={right}
           total={total}
           missedQuestions={wrong.map((id) => byId.get(id)).filter((q): q is PracticeQuestionView => !!q)}
           allCount={questions.length}
-          notesHref={notesHref}
+          back={back}
           onPractiseMissed={() => startWith(wrong)}
           onStartAgain={() => startWith(all)}
         />
@@ -141,7 +160,7 @@ export function PracticeRunner({
   )
 
   return (
-    <Shell topicTitle={topicTitle} notesHref={notesHref}>
+    <Shell topicTitle={topicTitle} back={back}>
       {header}
       {current.kind === 'mcq' ? (
         <PhonePracticeMcq
@@ -172,15 +191,17 @@ export function PracticeRunner({
   )
 }
 
-/** Page frame: the "PRACTICE · TOPIC" label and the close button back to the notes. */
-function Shell({ topicTitle, notesHref, children }: { topicTitle: string; notesHref: string; children: React.ReactNode }) {
+type Back = { href: string; label: string }
+
+/** Page frame: the "PRACTICE · TOPIC" label and the close button back to the notes (or the test). */
+function Shell({ topicTitle, back, children }: { topicTitle: string; back: Back; children: React.ReactNode }) {
   const t = useTranslations('revision.student')
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-5">
       <div className="flex items-center justify-between gap-3">
         <Eyebrow className="min-w-0 break-words">{t('eyebrow', { topic: topicTitle })}</Eyebrow>
         <Link
-          href={notesHref}
+          href={back.href}
           aria-label={t('close')}
           title={t('close')}
           className={buttonVariants({ variant: 'ghost', size: 'icon-lg' })}
@@ -348,7 +369,7 @@ function PhonePracticeDone({
   total,
   missedQuestions,
   allCount,
-  notesHref,
+  back,
   onPractiseMissed,
   onStartAgain,
 }: {
@@ -356,7 +377,7 @@ function PhonePracticeDone({
   total: number
   missedQuestions: PracticeQuestionView[]
   allCount: number
-  notesHref: string
+  back: Back
   onPractiseMissed: () => void
   onStartAgain: () => void
 }) {
@@ -390,8 +411,8 @@ function PhonePracticeDone({
         <Button size="lg" variant={missedQuestions.length > 0 ? 'outline' : 'default'} onClick={onStartAgain}>
           {t('startAgain', { count: allCount })}
         </Button>
-        <Link href={notesHref} className={buttonVariants({ variant: 'ghost', size: 'lg' })}>
-          {t('readNotes')}
+        <Link href={back.href} className={buttonVariants({ variant: 'ghost', size: 'lg' })}>
+          {back.label}
         </Link>
       </div>
     </div>
