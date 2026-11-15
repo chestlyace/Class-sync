@@ -103,7 +103,7 @@ function fill(at: Date, ...sources: DayCounts[]): DailyPoint[] {
   return seriesDays(at).map((day) => ({ day, value: sources.reduce((n, s) => n + (s.get(day) ?? 0), 0) }))
 }
 
-async function countWhere(db: Db, table: PgTable, where?: SQL): Promise<number> {
+export async function countWhere(db: Db, table: PgTable, where?: SQL): Promise<number> {
   const [row] = await db.select({ n: count() }).from(table).where(where)
   return row.n
 }
@@ -193,7 +193,7 @@ function toPersonRow(r: PersonColumns): PersonRow {
   return { ...r, role: r.role as Role, isAdmin: isAdmin(r) }
 }
 
-function pageNumber(page: number): number {
+export function pageNumber(page: number): number {
   return Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1
 }
 

@@ -1,4 +1,4 @@
-import { and, asc, eq, like } from 'drizzle-orm'
+import { and, asc, eq, like, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { AppError } from '@/server/core/errors'
 import type { Ctx } from '@/server/core/context'
@@ -57,6 +57,9 @@ function parseInput<T extends z.ZodType>(schema: T, input: unknown): z.infer<T> 
   }
   return result.data
 }
+
+/** True when the school has a check-in location, for read models that only need to know that. */
+export const schoolHasLocation = sql<boolean>`(${school.latitude} is not null)`
 
 function toSchool(row: typeof school.$inferSelect): School {
   return {
