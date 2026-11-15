@@ -66,7 +66,8 @@
       "tooManyAttempts": "Trop de tentatives. Patientez un instant puis réessayez.",
       "accountSuspended": "Ce compte est suspendu.",
       "accountSuspendedContact": "Contactez {email}.",
-      "signInAgain": "Par sécurité, déconnectez-vous puis reconnectez-vous, et réessayez."
+      "signInAgain": "Par sécurité, déconnectez-vous puis reconnectez-vous, et réessayez.",
+      "invalidName": "Indiquez seulement votre nom : 80 caractères au plus, sans lien, adresse e-mail ni caractères < > / \\."
     },
     "google": {
       "continue": "Continuer avec Google",
@@ -280,7 +281,7 @@
     "verify": {
       "subject": "Confirmez votre adresse e-mail Clasync",
       "preview": "Confirmez votre adresse e-mail pour activer votre compte Clasync",
-      "greeting": "Bonjour {name},",
+      "greeting": "Bonjour,",
       "body": "Merci de rejoindre Clasync. Veuillez confirmer votre adresse e-mail pour activer votre compte.",
       "cta": "Confirmer mon e-mail",
       "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :",

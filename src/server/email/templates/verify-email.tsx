@@ -74,7 +74,7 @@ export function emailSubject(
   })
 }
 
-export function VerifyEmail({ name, url, locale }: { name: string; url: string; locale: Locale }) {
+export function VerifyEmail({ url, locale }: { url: string; locale: Locale }) {
   const e = emailTranslator(locale)
   const t = (key: 'preview' | 'greeting' | 'body' | 'cta' | 'fallback' | 'ignore', values?: Record<string, string>) =>
     e(`verify.${key}`, values)
@@ -95,7 +95,7 @@ export function VerifyEmail({ name, url, locale }: { name: string; url: string; 
           <Heading as="h1" style={{ fontSize: '22px', margin: '0 0 16px' }}>
             Clasync
           </Heading>
-          <Text style={{ fontSize: '16px', lineHeight: '24px' }}>{t('greeting', { name })}</Text>
+          <Text style={{ fontSize: '16px', lineHeight: '24px' }}>{t('greeting')}</Text>
           <Text style={{ fontSize: '16px', lineHeight: '24px' }}>{t('body')}</Text>
           <Section style={{ margin: '24px 0' }}>
             <Button

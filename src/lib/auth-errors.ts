@@ -11,6 +11,7 @@ const AUTH_ERROR_KEYS: Record<string, string> = {
   // Disconnecting Google needs a recent sign-in.
   SESSION_NOT_FRESH: 'auth.errors.signInAgain',
   SESSION_EXPIRED: 'auth.errors.signInAgain',
+  INVALID_NAME: 'auth.errors.invalidName',
   VALIDATION: 'errors.VALIDATION',
   VALIDATION_ERROR: 'errors.VALIDATION',
 }

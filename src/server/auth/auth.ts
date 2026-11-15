@@ -17,7 +17,7 @@ import * as schema from '@/server/db/schema'
 import { sendEmail } from '@/server/email/send'
 import { emailSubject, VerifyEmail } from '@/server/email/templates/verify-email'
 import { googleCredentials, signupFieldsFromOAuthState } from './google'
-import { assertValidSignup, assertValidUserUpdate } from './signup-rules'
+import { assertValidSignup, assertValidUserUpdate, cleanName } from './signup-rules'
 
 type CreateAuthOptions = {
   baseURL?: string
@@ -75,9 +75,11 @@ export function mcpResourceUrl(origin: string): string {
 }
 
 function toApiError(err: unknown): unknown {
-  return err instanceof AppError
-    ? new APIError('BAD_REQUEST', { message: err.message, code: err.code })
-    : err
+  if (!(err instanceof AppError)) return err
+  // A refused name gets its own code, so the form can say what is wrong with it.
+  const fields = (err.details as { fields?: unknown } | undefined)?.fields
+  const code = Array.isArray(fields) && fields.includes('name') ? 'INVALID_NAME' : err.code
+  return new APIError('BAD_REQUEST', { message: err.message, code })
 }
 
 export function createAuth(database: Db, options: CreateAuthOptions = {}) {
@@ -159,7 +161,7 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
           to: user.email,
           subject: emailSubject('verify', locale),
           kind: 'verify',
-          react: VerifyEmail({ name: user.name, url, locale }),
+          react: VerifyEmail({ url, locale }),
         })
       },
     },
@@ -187,7 +189,7 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
                 role: (user as Record<string, unknown>).role,
                 locale: (user as Record<string, unknown>).locale,
               })
-              return { data: { ...user, role, locale } }
+              return { data: { ...user, name: cleanName(user.name), role, locale } }
             } catch (err) {
               throw toApiError(err)
             }
@@ -198,7 +200,7 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
           // to /update-user. Roles are chosen at sign-up only; locale must stay valid.
           before: async (data) => {
             try {
-              assertValidUserUpdate(data as Record<string, unknown>)
+              return { data: assertValidUserUpdate(data as Record<string, unknown>) }
             } catch (err) {
               throw toApiError(err)
             }

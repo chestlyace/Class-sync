@@ -6,14 +6,20 @@ import { emailSubject, VerifyEmail } from './templates/verify-email'
 
 describe('VerifyEmail', () => {
   it('renders French copy and the url', async () => {
-    const html = await render(<VerifyEmail name="Ada" url="https://x/v" locale="fr" />)
+    const html = await render(<VerifyEmail url="https://x/v" locale="fr" />)
     expect(html).toContain(fr.email.verify.cta)
     expect(html).toContain('https://x/v')
-    expect(html).toContain('Ada')
+  })
+
+  it('never repeats the name typed at sign-up (it is not verified yet)', async () => {
+    const html = await render(<VerifyEmail url="https://x/v" locale="en" />)
+    expect(html).toContain(en.email.verify.greeting)
+    expect(en.email.verify.greeting).not.toContain('{name}')
+    expect(fr.email.verify.greeting).not.toContain('{name}')
   })
 
   it('renders English copy', async () => {
-    const html = await render(<VerifyEmail name="Ada" url="https://x/v" locale="en" />)
+    const html = await render(<VerifyEmail url="https://x/v" locale="en" />)
     expect(html).toContain(en.email.verify.cta)
     expect(html).not.toContain(fr.email.verify.cta)
   })
