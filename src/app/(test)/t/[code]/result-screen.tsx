@@ -8,6 +8,8 @@ import { PageHeader, Panel } from '@/components/page-header'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { formatDecimal } from '@/lib/number-format'
 import type { QuickResult, TestInfo } from '@/server/tests/attempt'
+import type { ReviewAccess } from '@/server/tests/review'
+import { ReviewLinks } from './review-links'
 import { resultState } from './runner-logic'
 
 /**
@@ -15,7 +17,17 @@ import { resultState } from './runner-logic'
  * before the total is final: "in a moment" (the runner keeps polling); with short answers: waits for
  * the lecturer's release.
  */
-export function ResultScreen({ info, result }: { info: TestInfo; result: QuickResult | null }) {
+export function ResultScreen({
+  info,
+  result,
+  code,
+  review,
+}: {
+  info: TestInfo
+  result: QuickResult | null
+  code: string
+  review: ReviewAccess | null
+}) {
   const t = useTranslations('tests.student')
   const tr = useTranslations('tests.released')
   const locale = useLocale()
@@ -55,6 +67,7 @@ export function ResultScreen({ info, result }: { info: TestInfo; result: QuickRe
           <p className="font-medium">{state === 'pending' ? t('result.pending') : t('result.awaitingRelease')}</p>
         </Panel>
       )}
+      {state === 'score' && <ReviewLinks code={code} access={review} />}
       <Link href="/dashboard" className={buttonVariants({ variant: 'outline', size: 'lg', className: 'self-start' })}>
         {t('backToDashboard')}
       </Link>
