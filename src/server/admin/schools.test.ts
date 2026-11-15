@@ -2,13 +2,33 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Ctx } from '@/server/core/context'
 import type { Db } from '@/server/db'
-import { adminAction, class_, classLecturer, classStudent, course, file, resource, school } from '@/server/db/schema'
+import {
+  adminAction,
+  class_,
+  classLecturer,
+  classStudent,
+  course,
+  courseTopic,
+  file,
+  resource,
+  resourcePlacement,
+  school,
+  user,
+} from '@/server/db/schema'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
 import { createClass, joinClassAsLecturer, joinClassAsStudent } from '@/server/classes/service'
 import { createCourse } from '@/server/courses/service'
-import { createSchool } from '@/server/schools/service'
-import { getSchoolDeletion, getSchoolDetail, listSchools, searchSchoolsForMerge } from './schools'
+import { createSchool, setSchoolLocation } from '@/server/schools/service'
+import {
+  adminDeleteSchool,
+  adminUpdateSchool,
+  getSchoolDeletion,
+  getSchoolDetail,
+  listSchools,
+  mergeSchools,
+  searchSchoolsForMerge,
+} from './schools'
 
 vi.mock('@/server/files/storage', () => ({ getStorage: () => ({ remove: async () => {} }) }))
 vi.mock('@/server/push/send', () => ({
@@ -141,6 +161,153 @@ describe('admin schools', () => {
       expect(del.impact).toMatchObject({ courses: 2, students: 3 })
       const empty = await getSchoolDeletion(admin, fx.enset.id)
       expect(empty).toMatchObject({ classes: 0, impact: { courses: 0, students: 0 } })
+    })
+  })
+
+  describe('writes', () => {
+    const audits = () => db.select().from(adminAction)
+    const schoolRow = async (id: string) => (await db.select().from(school).where(eq(school.id, id)))[0]
+    const ref = (s: { id: string; name: string; town: string }) => ({ id: s.id, name: s.name, town: s.town })
+
+    /** A class at ENSET with one student and one course, so a merge has something to move. */
+    async function ensetClass() {
+      const cls = await createClass(lecB, { schoolId: fx.enset.id, name: 'BTS 1', academicYear: '2026/27' })
+      await joinClassAsStudent(fx.students[0], cls.studentCode!, 'E1')
+      const k = await createCourse(lecB, { classId: cls.id, title: 'Networks', semester: 1 })
+      return { cls, k }
+    }
+
+    it('gives a non-admin NOT_FOUND from every write and changes nothing', async () => {
+      await expect(adminUpdateSchool(lecA, fx.iut.id, { name: 'X School', town: 'Y' })).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      await expect(adminDeleteSchool(lecA, fx.iut.id, 'IUT')).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      await expect(mergeSchools(lecA, fx.enset.id, fx.iut.id)).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      expect(await db.select({ id: school.id }).from(school)).toHaveLength(3)
+      expect((await schoolRow(fx.iut.id)).name).toBe('IUT')
+      expect(await audits()).toEqual([])
+    })
+
+    it('updates name and town and audits before and after with the reason', async () => {
+      await adminUpdateSchool(admin, fx.iut.id, { name: ' IUT Douala ', town: 'Douala' }, '  duplicate name  ')
+      expect(await schoolRow(fx.iut.id)).toMatchObject({ name: 'IUT Douala', town: 'Douala', nameKey: 'iut douala', townKey: 'douala' })
+      expect(await audits()).toEqual([
+        expect.objectContaining({
+          adminId: admin.user.id,
+          action: 'school_update',
+          targetUserId: null,
+          targetSchoolId: fx.iut.id,
+          reason: 'duplicate name',
+          details: {
+            kind: 'school_update',
+            before: { name: 'IUT', town: 'Douala' },
+            after: { name: 'IUT Douala', town: 'Douala' },
+          },
+        }),
+      ])
+    })
+
+    it('refuses a name and town another school has, pointing at it', async () => {
+      await expect(adminUpdateSchool(admin, fx.enset.id, { name: 'iut', town: 'DOUALA' })).rejects.toMatchObject({
+        code: 'CONFLICT',
+        details: { existingSchoolId: fx.iut.id },
+      })
+      await expect(adminUpdateSchool(admin, fx.enset.id, { name: 'I', town: 'Douala' })).rejects.toMatchObject({ code: 'VALIDATION' })
+      await expect(adminUpdateSchool(admin, 'nope', { name: 'Some School', town: 'Douala' })).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      expect((await schoolRow(fx.enset.id)).name).toBe('ENSET')
+      expect(await audits()).toEqual([])
+    })
+
+    it('deletes a school with its classes, courses and memberships, keeping every account', async () => {
+      await adminDeleteSchool(admin, fx.iut.id, ' iut ', 'test school')
+      expect(await schoolRow(fx.iut.id)).toBeUndefined()
+      expect(await db.select().from(class_).where(eq(class_.schoolId, fx.iut.id))).toEqual([])
+      expect(await db.select().from(classLecturer)).toEqual([])
+      expect(await db.select().from(classStudent)).toEqual([])
+      expect(await db.select().from(course)).toEqual([])
+      const ids = [lecA.user.id, lecB.user.id, ...fx.students.map((s) => s.user.id)]
+      expect((await db.select({ id: user.id }).from(user)).map((u) => u.id)).toEqual(expect.arrayContaining(ids))
+      expect(await audits()).toEqual([
+        expect.objectContaining({
+          action: 'school_delete',
+          targetSchoolId: fx.iut.id,
+          reason: 'test school',
+          details: { kind: 'school_delete', school: ref(fx.iut), classes: 2, courses: 2, students: 3 },
+        }),
+      ])
+    })
+
+    it('deletes nothing when the typed name is wrong', async () => {
+      await expect(adminDeleteSchool(admin, fx.iut.id, 'ENSET')).rejects.toMatchObject({ code: 'VALIDATION' })
+      expect(await schoolRow(fx.iut.id)).toBeDefined()
+      expect(await db.select().from(class_)).toHaveLength(2)
+      expect(await audits()).toEqual([])
+    })
+
+    it('deletes a school with no classes', async () => {
+      await adminDeleteSchool(admin, fx.lycee.id, 'Lycée Bilingue')
+      expect(await schoolRow(fx.lycee.id)).toBeUndefined()
+      expect((await audits())[0].details).toEqual({
+        kind: 'school_delete',
+        school: ref(fx.lycee),
+        classes: 0,
+        courses: 0,
+        students: 0,
+      })
+    })
+
+    it('keeps a note that is also placed in a course at another school', async () => {
+      const { k } = await ensetClass()
+      const [t1, t2] = await db
+        .insert(courseTopic)
+        .values([
+          { courseId: fx.k1.id, title: 'Week 1', position: 0 },
+          { courseId: k.id, title: 'Week 1', position: 0 },
+        ])
+        .returning()
+      const [note] = await db.insert(resource).values({ ownerId: lecA.user.id, kind: 'note', title: 'Shared' }).returning()
+      await db.insert(resourcePlacement).values([
+        { resourceId: note.id, courseId: fx.k1.id, topicId: t1.id, position: 0 },
+        { resourceId: note.id, courseId: k.id, topicId: t2.id, position: 0 },
+      ])
+      await adminDeleteSchool(admin, fx.iut.id, 'IUT')
+      expect(await db.select({ id: resource.id }).from(resource)).toEqual([{ id: note.id }])
+      expect(await db.select({ courseId: resourcePlacement.courseId }).from(resourcePlacement)).toEqual([{ courseId: k.id }])
+    })
+
+    it('merges: the classes move with their courses and students, the emptied school goes', async () => {
+      const { cls, k } = await ensetClass()
+      const before = await db.select().from(classStudent).where(eq(classStudent.classId, cls.id))
+      await mergeSchools(admin, fx.enset.id, fx.iut.id, 'same school')
+      expect(await schoolRow(fx.enset.id)).toBeUndefined()
+      expect((await db.select().from(class_).where(eq(class_.id, cls.id)))[0].schoolId).toBe(fx.iut.id)
+      expect(await db.select({ id: course.id }).from(course).where(eq(course.classId, cls.id))).toEqual([{ id: k.id }])
+      expect(await db.select().from(classStudent).where(eq(classStudent.classId, cls.id))).toEqual(before)
+      expect((await getSchoolDetail(admin, fx.iut.id)).classes).toBe(3)
+      expect(await audits()).toEqual([
+        expect.objectContaining({
+          action: 'school_merge',
+          targetSchoolId: fx.iut.id,
+          reason: 'same school',
+          details: { kind: 'school_merge', from: ref(fx.enset), into: ref(fx.iut), classesMoved: 1 },
+        }),
+      ])
+    })
+
+    it('takes the removed school’s location only when the kept one has none', async () => {
+      await setSchoolLocation(lecB, fx.enset.id, { latitude: 4.05, longitude: 9.7, radiusM: 300 })
+      await mergeSchools(admin, fx.enset.id, fx.iut.id)
+      expect(await schoolRow(fx.iut.id)).toMatchObject({ latitude: 4.05, longitude: 9.7, radiusM: 300 })
+
+      await setSchoolLocation(lecA, fx.lycee.id, { latitude: 4.15, longitude: 9.24, radiusM: 800 })
+      await mergeSchools(admin, fx.iut.id, fx.lycee.id)
+      expect(await schoolRow(fx.lycee.id)).toMatchObject({ latitude: 4.15, longitude: 9.24, radiusM: 800 })
+    })
+
+    it('refuses to merge a school into itself or into one that is gone, changing nothing', async () => {
+      await expect(mergeSchools(admin, fx.iut.id, fx.iut.id)).rejects.toMatchObject({ code: 'VALIDATION' })
+      await expect(mergeSchools(admin, fx.iut.id, 'gone')).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      await expect(mergeSchools(admin, 'gone', fx.iut.id)).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      expect(await db.select().from(class_).where(eq(class_.schoolId, fx.iut.id))).toHaveLength(2)
+      expect(await audits()).toEqual([])
     })
   })
 })

@@ -2,12 +2,29 @@ import { and, asc, eq, inArray, like, ne, or, sql, type SQL } from 'drizzle-orm'
 import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
 import { requireAdmin } from '@/server/core/guards'
-import { deletionImpact, type DeletionImpact } from '@/server/courses/delete'
+import {
+  deleteCoursesInTx,
+  deletionImpact,
+  removeOrphanedFiles,
+  requireConfirmation,
+  type DeletionImpact,
+} from '@/server/courses/delete'
 import type { Db } from '@/server/db'
-import { class_, classLecturer, classStudent, course, school, user } from '@/server/db/schema'
+import {
+  adminAction,
+  class_,
+  classLecturer,
+  classStudent,
+  course,
+  school,
+  user,
+  type AdminActionDetails,
+  type SchoolRef,
+} from '@/server/db/schema'
 import { containsPattern } from '@/server/lib/like'
 import { normalizeKey } from '@/server/lib/normalize'
-import { schoolHasLocation } from '@/server/schools/service'
+import { adoptLocationIfMissing, parseSchoolNames, renameSchoolRow, schoolHasLocation } from '@/server/schools/service'
+import { cleanReason } from './actions'
 import { ADMIN_PAGE_SIZE, countWhere, pageNumber, type Page } from './queries'
 
 // The admin view of schools: every school with its classes, so duplicates made by lecturers who
@@ -169,6 +186,92 @@ export async function schoolContents(db: Db, schoolId: string): Promise<{ classI
       .where(and(inArray(classStudent.classId, classIds), eq(classStudent.status, 'active'))),
   ])
   return { classIds, courseIds: courses.map((c) => c.id), students: students.n }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Writes: each in one transaction, with its audit row.
+
+type SchoolAction = (typeof adminAction.$inferInsert)['action']
+
+/** Reads and locks the school row for the rest of the transaction, so concurrent writes queue. */
+async function lockSchool(tx: Db, id: string): Promise<SchoolRef> {
+  const [row] = await tx
+    .select({ id: school.id, name: school.name, town: school.town })
+    .from(school)
+    .where(eq(school.id, id))
+    .for('update')
+  if (!row) throw new AppError('NOT_FOUND', 'School not found')
+  return row
+}
+
+async function audit(tx: Db, ctx: Ctx, action: SchoolAction, schoolId: string, details: AdminActionDetails, reason: string | null) {
+  await tx.insert(adminAction).values({ adminId: ctx.user.id, action, targetSchoolId: schoolId, details, reason })
+}
+
+/** Renames a school for everyone using it. A clash with another school is CONFLICT with its id. */
+export async function adminUpdateSchool(
+  ctx: Ctx,
+  id: string,
+  input: { name: string; town: string },
+  reason?: string,
+): Promise<void> {
+  requireAdmin(ctx)
+  const names = parseSchoolNames(input)
+  const why = cleanReason(reason)
+  await ctx.db.transaction(async (tx) => {
+    const before = await lockSchool(tx, id)
+    await renameSchoolRow(tx, id, names)
+    const after = { name: names.name, town: names.town }
+    await audit(tx, ctx, 'school_update', id, { kind: 'school_update', before: { name: before.name, town: before.town }, after }, why)
+  })
+}
+
+/**
+ * Deletes the school with every class at it: their courses and everything under them, and the
+ * memberships. Accounts stay. `confirm` is the school's name as typed.
+ */
+export async function adminDeleteSchool(ctx: Ctx, id: string, confirm: string, reason?: string): Promise<void> {
+  requireAdmin(ctx)
+  const why = cleanReason(reason)
+  const fileIds = await ctx.db.transaction(async (tx) => {
+    const target = await lockSchool(tx, id)
+    requireConfirmation(target.name, confirm)
+    const { classIds, courseIds, students } = await schoolContents(tx, id)
+    const files = await deleteCoursesInTx(tx, courseIds)
+    if (classIds.length > 0) await tx.delete(class_).where(inArray(class_.id, classIds))
+    await tx.delete(school).where(eq(school.id, id))
+    const details: AdminActionDetails = {
+      kind: 'school_delete',
+      school: target,
+      classes: classIds.length,
+      courses: courseIds.length,
+      students,
+    }
+    await audit(tx, ctx, 'school_delete', id, details, why)
+    return files
+  })
+  await removeOrphanedFiles(ctx.db, fileIds)
+}
+
+/**
+ * Moves every class of `fromId` to `intoId`, then removes the emptied school. The kept school
+ * keeps its name, town and location; it takes the removed one's location only if it has none.
+ */
+export async function mergeSchools(ctx: Ctx, fromId: string, intoId: string, reason?: string): Promise<void> {
+  requireAdmin(ctx)
+  if (fromId === intoId) throw new AppError('VALIDATION', 'A school cannot be merged into itself', { fields: ['intoId'] })
+  const why = cleanReason(reason)
+  await ctx.db.transaction(async (tx) => {
+    // Both rows, in id order, so two merges of the same pair cannot deadlock.
+    const locked = new Map<string, SchoolRef>()
+    for (const id of [fromId, intoId].sort()) locked.set(id, await lockSchool(tx, id))
+    const from = locked.get(fromId)!
+    const into = locked.get(intoId)!
+    const moved = await tx.update(class_).set({ schoolId: intoId }).where(eq(class_.schoolId, fromId)).returning({ id: class_.id })
+    await adoptLocationIfMissing(tx, fromId, intoId)
+    await tx.delete(school).where(eq(school.id, fromId))
+    await audit(tx, ctx, 'school_merge', intoId, { kind: 'school_merge', from, into, classesMoved: moved.length }, why)
+  })
 }
 
 /** What deleting the school would take with it, for the warning before the delete. */

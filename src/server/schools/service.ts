@@ -1,9 +1,10 @@
-import { and, asc, eq, like, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, like, ne, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { AppError } from '@/server/core/errors'
 import type { Ctx } from '@/server/core/context'
 import { requireRole, requireVerified } from '@/server/core/guards'
 import { class_, classLecturer, school } from '@/server/db/schema'
+import type { Db } from '@/server/db'
 import { isUniqueViolation } from '@/server/lib/db-errors'
 import { containsPattern } from '@/server/lib/like'
 import { normalizeKey } from '@/server/lib/normalize'
@@ -158,30 +159,72 @@ async function requireSchoolEditor(ctx: Ctx, schoolId: string): Promise<void> {
 
 const updateSchoolSchema = z.object({ name: nameField, town: nameField })
 
+/** A validated name and town with their normalised keys, as a school row stores them. */
+export type SchoolNames = { name: string; town: string; nameKey: string; townKey: string }
+
+/** Validates a new name and town (VALIDATION) and derives the duplicate-detection keys. */
+export function parseSchoolNames(input: unknown): SchoolNames {
+  const data = parseInput(updateSchoolSchema, input)
+  return { name: data.name, town: data.town, nameKey: normalizeKey(data.name), townKey: normalizeKey(data.town) }
+}
+
+function nameClash(existingSchoolId: string): AppError {
+  return new AppError('CONFLICT', 'A school with this name already exists in this town', { existingSchoolId })
+}
+
+/**
+ * Writes a new name and town onto the school. A clash with another school is CONFLICT, carrying
+ * that school's id so the caller can point at it. The clash is looked for first, so this also
+ * works inside a transaction (where a failed statement would abort it); the unique constraint
+ * still catches a race outside one.
+ */
+export async function renameSchoolRow(db: Db, schoolId: string, names: SchoolNames): Promise<School | undefined> {
+  const findClash = async () => {
+    const [existing] = await db
+      .select({ id: school.id })
+      .from(school)
+      .where(and(eq(school.nameKey, names.nameKey), eq(school.townKey, names.townKey), ne(school.id, schoolId)))
+    return existing
+  }
+  const before = await findClash()
+  if (before) throw nameClash(before.id)
+  try {
+    const [row] = await db.update(school).set(names).where(eq(school.id, schoolId)).returning()
+    return row && toSchool(row)
+  } catch (err) {
+    if (!isUniqueViolation(err, UNIQUE_CONSTRAINT)) throw err
+    const existing = await findClash()
+    if (!existing) throw err
+    throw nameClash(existing.id)
+  }
+}
+
 /** Name and town, for everyone using the school. A clash with another school is CONFLICT. */
 export async function updateSchool(ctx: Ctx, schoolId: string, input: { name: string; town: string }): Promise<School> {
   await requireSchoolEditor(ctx, schoolId)
-  const data = parseInput(updateSchoolSchema, input)
-  const nameKey = normalizeKey(data.name)
-  const townKey = normalizeKey(data.town)
-  try {
-    const [row] = await ctx.db
-      .update(school)
-      .set({ name: data.name, town: data.town, nameKey, townKey })
-      .where(eq(school.id, schoolId))
-      .returning()
-    return toSchool(row)
-  } catch (err) {
-    if (!isUniqueViolation(err, UNIQUE_CONSTRAINT)) throw err
-    const [existing] = await ctx.db
-      .select({ id: school.id })
-      .from(school)
-      .where(and(eq(school.nameKey, nameKey), eq(school.townKey, townKey)))
-    if (!existing) throw err
-    throw new AppError('CONFLICT', 'A school with this name already exists in this town', {
-      existingSchoolId: existing.id,
-    })
-  }
+  const row = await renameSchoolRow(ctx.db, schoolId, parseSchoolNames(input))
+  if (!row) throw new AppError('NOT_FOUND', 'School not found')
+  return row
+}
+
+/**
+ * When one school is merged into another: the kept school takes the removed one's check-in
+ * location (and radius) only if it has none of its own. Run inside the merge's transaction.
+ */
+export async function adoptLocationIfMissing(tx: Db, fromId: string, intoId: string): Promise<'kept' | 'adopted' | 'none'> {
+  const rows = await tx
+    .select({ id: school.id, latitude: school.latitude, longitude: school.longitude, radiusM: school.radiusM })
+    .from(school)
+    .where(inArray(school.id, [fromId, intoId]))
+  const from = rows.find((r) => r.id === fromId)
+  const into = rows.find((r) => r.id === intoId)
+  if (into?.latitude != null) return 'kept'
+  if (from?.latitude == null || from.longitude == null) return 'none'
+  await tx
+    .update(school)
+    .set({ latitude: from.latitude, longitude: from.longitude, radiusM: from.radiusM })
+    .where(eq(school.id, intoId))
+  return 'adopted'
 }
 
 export async function setSchoolLocation(
