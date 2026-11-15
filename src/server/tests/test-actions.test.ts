@@ -38,6 +38,7 @@ import {
   getLiveTestAction,
   letBackInAction,
   saveTestAction,
+  setStudentsCanReviewAction,
   startTestAction,
 } from '@/app/(app)/courses/test-actions'
 
@@ -232,5 +233,17 @@ describe('test actions', () => {
     expect(await getLiveTestAction(testId)).toMatchObject({ ok: false, code: 'FORBIDDEN' })
     expect(await startTestAction(testId)).toMatchObject({ ok: false, code: 'FORBIDDEN' })
     expect(await saveTestAction(algo.id, null, editor())).toMatchObject({ ok: false, code: 'FORBIDDEN' })
+  })
+
+  it('setStudentsCanReviewAction switches student review; a colleague gets FORBIDDEN; a bad value is VALIDATION', async () => {
+    const { lecturer, colleague, algo } = await setup()
+    const testId = await saved(algo.id)
+    expect(await setStudentsCanReviewAction(testId, false)).toEqual({ ok: true, data: null })
+    expect((await getTestForEdit(lecturer, testId)).summary.studentsCanReview).toBe(false)
+    expect(await setStudentsCanReviewAction(testId, 'yes' as unknown as boolean)).toMatchObject({ ok: false, code: 'VALIDATION' })
+    expect(await setStudentsCanReviewAction('', true)).toMatchObject({ ok: false, code: 'VALIDATION' })
+    current = colleague
+    expect(await setStudentsCanReviewAction(testId, true)).toMatchObject({ ok: false, code: 'FORBIDDEN' })
+    expect((await getTestForEdit(lecturer, testId)).summary.studentsCanReview).toBe(false)
   })
 })

@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { toActionResult, type ActionResult } from '@/lib/action-result'
 import { getCtx } from '@/server/auth/session'
 import { AppError } from '@/server/core/errors'
-import { copyTest, createTest, deleteTest, updateTest } from '@/server/tests/authoring'
+import { copyTest, createTest, deleteTest, setStudentsCanReview, updateTest } from '@/server/tests/authoring'
 import { requireOwnedTest } from '@/server/tests/queries'
 import {
   endTestForEveryone,
@@ -122,5 +122,16 @@ export async function getAttemptLogAction(attemptId: string): Promise<ActionResu
   return toActionResult(async () => {
     const log = await getAttemptLog(await getCtx(), requireId(attemptId, 'attemptId'))
     return log.map((entry) => ({ ...entry, at: entry.at.toISOString() }))
+  })
+}
+
+/** The lecturer's "Let students review this test" switch; any state, effective at once. */
+export async function setStudentsCanReviewAction(testId: string, on: boolean): Promise<ActionResult<null>> {
+  return toActionResult(async () => {
+    const id = requireId(testId, 'testId')
+    if (typeof on !== 'boolean') invalid('on')
+    await setStudentsCanReview(await getCtx(), id, on)
+    revalidateTests()
+    return null
   })
 }
