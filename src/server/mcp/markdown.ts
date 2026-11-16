@@ -1,9 +1,11 @@
+import { fitRow, splitTableRow, tableBlock, tableStart } from '@/lib/markdown-table'
 import type { Block } from '@/server/assignments/rich-text'
 
 /**
  * Plain text or simple markdown → the rich-text JSON the editor stores (BlockNote blocks). Covers
  * what an assistant writes: `#`–`###` headings, paragraphs (lines joined), `-`/`*`/`+` and `1.`
- * lists (indented items nest), `[ ]`/`[x]` check items, `>` quotes, fenced code, and inline
+ * lists (indented items nest), `[ ]`/`[x]` check items, `>` quotes, fenced code, `| a | b |` tables
+ * (header, `---` separator with optional `:` alignment, rows), and inline
  * **bold**, *italic*, `code`, ~~strike~~ and [links](https://…). Anything else stays as text.
  * The result still goes through `sanitizeRichText` in the services.
  */
@@ -273,6 +275,21 @@ export function markdownToBlocks(source: string): Block[] {
       endParagraph()
       endList()
       blocks.push(block('quote', parseInline(quote[1])))
+      continue
+    }
+    const aligns = i + 1 < lines.length && line.includes('|') ? tableStart(line, lines[i + 1]) : null
+    if (aligns) {
+      endParagraph()
+      endList()
+      const rows: Inline[][][] = [splitTableRow(line).map((cell) => parseInline(cell))]
+      i += 2
+      // Rows run until a blank line or a line with no pipe.
+      while (i < lines.length && lines[i].includes('|') && firstVisible(lines[i]) !== undefined) {
+        const cells = splitTableRow(lines[i++]).map((cell) => parseInline(cell))
+        rows.push(fitRow(cells, aligns.length, () => []))
+      }
+      i -= 1
+      blocks.push(tableBlock(rows, aligns) as Block)
       continue
     }
     const item = first === '-' || first === '*' || first === '+' || (first >= '0' && first <= '9') ? LIST_ITEM.exec(line) : null
