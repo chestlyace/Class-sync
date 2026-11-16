@@ -310,6 +310,8 @@ function AnswerCard({
   const locale = useLocale()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
+  // Which button started the save in flight, so only that one spins.
+  const [via, setVia] = useState<'confirm' | 'save' | null>(null)
   const [result, setResult] = useState<ActionResult<null> | null>(null)
   /** What this card saved last, shown until the refreshed page brings the same values. */
   const [saved, setSaved] = useState<{ mark: number; comment: string | null } | null>(null)
@@ -327,7 +329,8 @@ function AnswerCard({
   const commentValue = draftComment ?? comment ?? ''
   const idBase = `answer-${answer.attemptId}`
 
-  function submit(value: string) {
+  function submit(value: string, from: 'confirm' | 'save') {
+    setVia(from)
     setResult(null)
     startTransition(async () => {
       const r = await confirmMarkAction(answer.attemptId, questionId, value, commentValue)
@@ -391,7 +394,7 @@ function AnswerCard({
           className="flex flex-col gap-4 border-t pt-4"
           onSubmit={(e) => {
             e.preventDefault()
-            submit(pickerValue)
+            submit(pickerValue, 'save')
           }}
           noValidate
         >
@@ -399,9 +402,10 @@ function AnswerCard({
             {answer.suggestion && !confirmed && (
               <Button
                 type="button"
+                pending={pending && via === 'confirm'}
                 disabled={pending}
                 aria-label={t('confirmLabel', { mark: num(answer.suggestion.mark), student: label })}
-                onClick={() => submit(String(answer.suggestion!.mark))}
+                onClick={() => submit(String(answer.suggestion!.mark), 'confirm')}
               >
                 <Check aria-hidden="true" data-icon="inline-start" />
                 {t('confirm', { mark: num(answer.suggestion.mark) })}
@@ -443,9 +447,9 @@ function AnswerCard({
           </Field>
           <MarkingError state={result} max={max} />
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" variant="outline" disabled={pending || pickerValue === ''}>
+            <Button type="submit" variant="outline" pending={pending && via === 'save'} disabled={pending || pickerValue === ''}>
               <Save aria-hidden="true" data-icon="inline-start" />
-              {pending ? t('saving') : t('save')}
+              {pending && via === 'save' ? t('saving') : t('save')}
             </Button>
             {editing && (
               <Button
