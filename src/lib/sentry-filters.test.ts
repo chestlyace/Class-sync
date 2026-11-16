@@ -1,6 +1,25 @@
 import type { Event } from '@sentry/nextjs'
 import { describe, expect, it } from 'vitest'
-import { isNextRequestErrorLog, withoutVisitorIp } from './sentry-filters'
+import { isNextRequestErrorLog, isNodeWarningLog, withoutVisitorIp } from './sentry-filters'
+
+describe('isNodeWarningLog', () => {
+  it("spots Node's own runtime warnings, which it prints at every cold start", () => {
+    expect(
+      isNodeWarningLog([
+        '(node:8) ExperimentalWarning: vm.USE_MAIN_CONTEXT_DEFAULT_LOADER is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)',
+      ]),
+    ).toBe(true)
+    expect(isNodeWarningLog(['(node:4120) [DEP0040] DeprecationWarning: The `punycode` module is deprecated.'])).toBe(true)
+  })
+
+  it('keeps our own logged failures and anything that merely mentions a warning', () => {
+    expect(isNodeWarningLog(['[cron/reminders] run failed', new Error('boom')])).toBe(false)
+    expect(isNodeWarningLog(['(node:8) ExperimentalWarning: x', new Error('boom')])).toBe(false)
+    expect(isNodeWarningLog(['Warning: something we logged'])).toBe(false)
+    expect(isNodeWarningLog([new Error('(node:8) ExperimentalWarning: x')])).toBe(false)
+    expect(isNodeWarningLog([])).toBe(false)
+  })
+})
 
 describe('withoutVisitorIp', () => {
   it('keeps only the user agent from the request headers and drops any user IP', () => {
