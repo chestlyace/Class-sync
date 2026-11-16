@@ -40,7 +40,7 @@ export function OpenCheckInButton({
       <Button
         type="button"
         size={size}
-        disabled={pending}
+        pending={pending}
         onClick={() => startTransition(async () => setState(await startClassAttendanceAction(sittingKey)))}
       >
         <ClipboardCheck aria-hidden="true" data-icon="inline-start" />
@@ -61,7 +61,7 @@ function UndoCancelButton({ occurrenceKey, label }: { occurrenceKey: string; lab
         type="button"
         variant="outline"
         size="sm"
-        disabled={pending}
+        pending={pending}
         aria-label={`${t('undoCancel')} · ${label}`}
         onClick={() => startTransition(async () => setState(await undoCancelAction(occurrenceKey)))}
       >
@@ -117,7 +117,7 @@ function CancelForm({
             {t('keep')}
           </Button>
         </DialogClose>
-        <Button type="submit" size="lg" variant="destructive" disabled={pending}>
+        <Button type="submit" size="lg" variant="destructive" pending={pending}>
           {pending ? t('cancelling') : t('confirm')}
         </Button>
       </DialogFooter>

@@ -61,7 +61,7 @@ export function NewSessionForm({ courseId, hasCampusLocation }: { courseId: stri
         </span>
       </label>
       <AttendanceError state={state} />
-      <Button type="submit" disabled={pending} className="self-start">
+      <Button type="submit" pending={pending} className="self-start">
         <Play aria-hidden="true" data-icon="inline-start" />
         {pending ? t('creating') : t('createSession')}
       </Button>
@@ -96,7 +96,7 @@ export function OpenWindowButton({
       <Button
         type="button"
         variant={kind === 'start' ? 'default' : 'outline'}
-        disabled={pending || disabledReason !== undefined}
+        pending={pending} disabled={disabledReason !== undefined}
         aria-describedby={disabledReason ? reasonId : undefined}
         onClick={open}
       >

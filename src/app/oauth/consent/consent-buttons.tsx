@@ -36,11 +36,11 @@ export function ConsentButtons({ canAllow }: { canAllow: boolean }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
-        <Button type="button" variant="outline" size="lg" disabled={pending !== null} onClick={() => answer(false)}>
+        <Button type="button" variant="outline" size="lg" pending={pending === 'deny'} disabled={pending !== null} onClick={() => answer(false)}>
           {pending === 'deny' ? t('denying') : t('deny')}
         </Button>
         {canAllow && (
-          <Button type="button" size="lg" disabled={pending !== null} onClick={() => answer(true)}>
+          <Button type="button" size="lg" pending={pending === 'allow'} disabled={pending !== null} onClick={() => answer(true)}>
             {pending === 'allow' ? t('allowing') : t('allow')}
           </Button>
         )}

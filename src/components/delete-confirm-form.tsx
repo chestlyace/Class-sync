@@ -63,7 +63,7 @@ export function DeleteConfirmForm({
       </Field>
       {children}
       <ActionError state={state} overrides={conflictMessage ? { CONFLICT: conflictMessage } : undefined} />
-      <Button type="submit" variant="destructive" disabled={!ready || pending} className="self-start">
+      <Button type="submit" variant="destructive" pending={pending} disabled={!ready} className="self-start">
         <Trash2 aria-hidden="true" data-icon="inline-start" />
         {pending ? pendingLabel : buttonLabel}
       </Button>

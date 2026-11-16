@@ -146,7 +146,7 @@ export function NotificationsCard({ role }: { role: Role }) {
         )}
         <div className="flex flex-wrap gap-2">
           {kind === 'enable' && !outcome && (
-            <Button type="button" onClick={turnOn} disabled={pending}>
+            <Button type="button" onClick={turnOn} pending={pending}>
               <Bell aria-hidden="true" data-icon="inline-start" />
               {pending ? t('turningOn') : t('turnOn')}
             </Button>

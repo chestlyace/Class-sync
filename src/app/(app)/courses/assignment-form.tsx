@@ -214,7 +214,7 @@ export function AssignmentForm({
         <AssignmentError state={state} />
       </FieldGroup>
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" size="lg" disabled={pending || uploading}>
+        <Button type="submit" size="lg" pending={pending} disabled={uploading}>
           <Save aria-hidden="true" data-icon="inline-start" />
           {pending ? t('saving') : target.kind === 'create' ? t('saveDraft') : t('save')}
         </Button>
