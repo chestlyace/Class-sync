@@ -65,6 +65,30 @@ describe('markdownToBlocks', () => {
     }
   })
 
+  it('reads a table: header row, alignment, inline styles, padded rows', () => {
+    const blocks = markdownToBlocks(
+      'Marks:\n| Name | Mark |\n| :--- | :--: |\n| **Ada** | 18 |\n| Bo |\n\nAfter.',
+    )
+    expect(blocks.map((b) => b.type)).toEqual(['paragraph', 'table', 'paragraph'])
+    const cell = (content: unknown, props = {}) => ({ type: 'tableCell', props, content })
+    expect(blocks[1].content).toEqual({
+      type: 'tableContent',
+      headerRows: 1,
+      rows: [
+        { cells: [cell([text('Name')]), cell([text('Mark')], { textAlignment: 'center' })] },
+        { cells: [cell([text('Ada', { bold: true })]), cell([text('18')], { textAlignment: 'center' })] },
+        { cells: [cell([text('Bo')]), cell([], { textAlignment: 'center' })] },
+      ],
+    })
+    expect(sanitizeRichText(blocks)).toEqual(blocks)
+  })
+
+  it('leaves pipes that are not a table as text', () => {
+    expect(markdownToBlocks('a | b\nno separator').map((b) => b.type)).toEqual(['paragraph'])
+    expect(markdownToBlocks('| a | b |\n| --- |').map((b) => b.type)).toEqual(['paragraph'])
+    expect(markdownToBlocks('Title\n---').map((b) => b.type)).toEqual(['paragraph'])
+  })
+
   it("keeps a heading's own # and drops closing ones", () => {
     expect(markdownToBlocks('## Title ##').map((b) => b.content)).toEqual([[text('Title')]])
     expect(markdownToBlocks('# C#').map((b) => b.content)).toEqual([[text('C#')]])

@@ -230,6 +230,34 @@ body:has(main[data-taking-test]) {
   font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
   font-size: 0.85rem;
 }
+/* Tables (editor and notes): theme borders, a grey header row, figures that line up. */
+.clasync-rich-text [data-content-type='table'] :is(th, td) {
+  border-color: var(--border);
+  padding: 8px 12px;
+  font-variant-numeric: tabular-nums;
+}
+.clasync-rich-text [data-content-type='table'] th {
+  background-color: var(--muted);
+  font-weight: 600;
+}
+/* Read-only: no table handles, so the table lines up with the text and scrolls inside itself. */
+.clasync-rich-text-view .bn-editor [data-content-type='table'] .tableWrapper {
+  padding: 4px 0 12px;
+  overflow-x: auto;
+}
+/* Columns size to their content and words never split: a wide table scrolls instead. */
+.clasync-rich-text-view .bn-editor [data-content-type='table'] table {
+  table-layout: auto;
+  word-break: normal;
+}
+.clasync-rich-text-view .bn-editor [data-content-type='table'] col {
+  width: auto !important;
+  min-width: 0 !important;
+}
+.clasync-rich-text-view .bn-editor [data-content-type='table'] :is(th, td) {
+  min-width: 6rem !important;
+  max-width: 24rem;
+}
 /* BlockNote sets pre-wrap on all inline content: a code line must stay one line and scroll in its box. */
 .clasync-rich-text-view .bn-block-content[data-content-type='codeBlock'] > pre .bn-inline-content {
   white-space: pre;
