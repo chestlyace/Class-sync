@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 import { sentryEnvironment } from '@/lib/sentry-environment'
-import { isNextRequestErrorLog, withoutVisitorIp } from '@/lib/sentry-filters'
+import { isNextRequestErrorLog, isNodeWarningLog, withoutVisitorIp } from '@/lib/sentry-filters'
 
 /**
  * Server error tracking (Sentry). Off while NEXT_PUBLIC_SENTRY_DSN is unset, so locally and in
@@ -27,7 +27,7 @@ function reportLoggedErrors() {
   const log = console.error
   console.error = (...args: unknown[]) => {
     log(...args)
-    if (isNextRequestErrorLog(args)) return
+    if (isNextRequestErrorLog(args) || isNodeWarningLog(args)) return
     const error = args.find((arg) => arg instanceof Error)
     const context = { level: 'error' as const, tags: { logged: 'console' }, extra: { arguments: args } }
     if (error) Sentry.captureException(error, context)
