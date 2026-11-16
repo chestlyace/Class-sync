@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { safeNextPath } from './next-path'
+import { isAdminPath, safeNextPath } from './next-path'
 
 describe('safeNextPath', () => {
   it('keeps a same-site path', () => {
@@ -26,5 +26,19 @@ describe('safeNextPath', () => {
     expect(safeNextPath('/t/A\nB')).toBeNull()
     expect(safeNextPath(`/${'a'.repeat(2100)}`)).toBeNull()
     expect(safeNextPath(`/${'a'.repeat(1000)}`)).toBe(`/${'a'.repeat(1000)}`)
+  })
+})
+
+describe('isAdminPath', () => {
+  it('matches /admin and everything under it', () => {
+    for (const value of ['/admin', '/admin/', '/admin/people', '/admin?tab=1', '/admin#top']) {
+      expect(isAdminPath(value), value).toBe(true)
+    }
+  })
+
+  it('does not match other paths, lookalikes or a missing header', () => {
+    for (const value of ['/administrator', '/dashboard', '/courses/admin', '/Admin', '', null]) {
+      expect(isAdminPath(value), String(value)).toBe(false)
+    }
   })
 })
