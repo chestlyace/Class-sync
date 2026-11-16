@@ -1,7 +1,9 @@
 import { ArrowLeft, ExternalLink, File, FileText, Search, SquareCheck, X } from 'lucide-react'
 import { getLocale, getTranslations } from 'next-intl/server'
+import Form from 'next/form'
 import Link from 'next/link'
 import { PageHeader } from '@/components/page-header'
+import { SearchSubmit } from '@/components/search-submit'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
@@ -55,7 +57,7 @@ export async function StudentNotes({
         }
       />
 
-      <form action="" method="get" role="search" className="flex items-center gap-2">
+      <Form action={`${courseHref}/notes`} role="search" className="flex items-center gap-2">
         <div className="relative min-w-0 flex-1">
           <Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -68,9 +70,7 @@ export async function StudentNotes({
             className="h-11 w-full rounded-full border border-input bg-background pr-4 pl-10 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm"
           />
         </div>
-        <button type="submit" className={buttonVariants({ variant: 'default', className: 'h-11' })}>
-          {t('searchButton')}
-        </button>
+        <SearchSubmit className="h-11">{t('searchButton')}</SearchSubmit>
         {query && (
           <Link
             href={`${courseHref}/notes`}
@@ -80,7 +80,7 @@ export async function StudentNotes({
             <X aria-hidden="true" />
           </Link>
         )}
-      </form>
+      </Form>
 
       {topics.length === 0 ? (
         <p className="text-muted-foreground">{query ? t('noResults', { q: query }) : t('empty')}</p>

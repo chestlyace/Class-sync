@@ -299,7 +299,7 @@ export function TestEditor({
           </FieldGroup>
 
           <TestError state={state} />
-          <Button type="submit" size="lg" disabled={pending}>
+          <Button type="submit" size="lg" pending={pending}>
             <Save aria-hidden="true" data-icon="inline-start" />
             {pending ? t('saving') : t('save')}
           </Button>
@@ -554,7 +554,7 @@ export function CopyTestForm({
         <FieldDescription id="copy-course-hint">{t('hint')}</FieldDescription>
       </Field>
       <TestError state={state} />
-      <Button type="submit" variant="outline" className="self-start" disabled={pending}>
+      <Button type="submit" variant="outline" className="self-start" pending={pending}>
         <Copy aria-hidden="true" data-icon="inline-start" />
         {pending ? t('copying') : t('submit')}
       </Button>

@@ -395,7 +395,7 @@ function LetBackInButton({ attemptId, name, onDone }: { attemptId: string; name:
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <Button type="button" variant="outline" size="sm" className="h-11 sm:h-8" disabled={pending} onClick={letIn} aria-label={t('letBackInLabel', { name })}>
+      <Button type="button" variant="outline" size="sm" className="h-11 sm:h-8" pending={pending} onClick={letIn} aria-label={t('letBackInLabel', { name })}>
         <DoorOpen aria-hidden="true" data-icon="inline-start" />
         {pending ? t('lettingIn') : t('letBackIn')}
       </Button>

@@ -123,7 +123,7 @@ export function SignInForm({
         </Field>
         <FieldError>{error}</FieldError>
       </FieldGroup>
-      <Button type="submit" size="lg" disabled={pending} className="mt-1 h-13 text-base">
+      <Button type="submit" size="lg" pending={pending} className="mt-1 h-13 text-base">
 
         {pending ? t('submitting') : t('submit')}
       </Button>

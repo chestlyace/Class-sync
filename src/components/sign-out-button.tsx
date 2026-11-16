@@ -44,7 +44,7 @@ export function SignOutButton() {
       variant="ghost"
       size="icon-lg"
       onClick={signOut}
-      disabled={pending}
+      pending={pending}
       aria-label={t('signOut')}
       title={t('signOut')}
     >

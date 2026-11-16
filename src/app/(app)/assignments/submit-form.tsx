@@ -284,7 +284,7 @@ export function SubmitForm({
       </FieldGroup>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" size="lg" disabled={pending || uploading}>
+        <Button type="submit" size="lg" pending={pending} disabled={uploading}>
           <Send aria-hidden="true" data-icon="inline-start" />
           {pending ? t('submitting') : status ? t('replace') : t('submit')}
         </Button>

@@ -38,7 +38,7 @@ export function RosterButton({
       <input type="hidden" name="courseId" value={courseId} />
       <input type="hidden" name="studentId" value={studentId} />
       <input type="hidden" name="kind" value={kind} />
-      <Button type="submit" size="sm" variant={variant} disabled={pending} aria-label={ariaLabel} title={ariaLabel}>
+      <Button type="submit" size="sm" variant={variant} pending={pending} aria-label={ariaLabel} title={ariaLabel}>
         {icon}
         {label}
       </Button>

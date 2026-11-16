@@ -194,7 +194,7 @@ export function GradeForm({
         <AssignmentError state={state} maxMark={maxMark} />
       </FieldGroup>
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" pending={pending}>
           <Save aria-hidden="true" data-icon="inline-start" />
           {pending ? t('saving') : t('save')}
         </Button>

@@ -198,7 +198,7 @@ export function CreateTokenForm({ atLimit, max, nameMax }: { atLimit: boolean; m
           ) : (
             <ActionError state={state} overrides={{ CONFLICT: t('limit', { max }) }} />
           )}
-          <Button type="submit" size="lg" disabled={pending} className="self-start">
+          <Button type="submit" size="lg" pending={pending} className="self-start">
             {pending ? t('creating') : t('create')}
           </Button>
         </form>

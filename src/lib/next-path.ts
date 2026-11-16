@@ -18,3 +18,8 @@ export function safeNextPath(value: unknown): string | null {
   if (/[\u0000-\u001f\u007f]/.test(value)) return null
   return value
 }
+
+/** Whether the requested path (REQUEST_PATH_HEADER) is in the admin area: `/admin` and anything under it. */
+export function isAdminPath(requested: string | null): boolean {
+  return requested !== null && /^\/admin(?:[/?#]|$)/.test(requested)
+}

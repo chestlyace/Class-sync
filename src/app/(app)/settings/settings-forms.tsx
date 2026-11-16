@@ -66,7 +66,7 @@ export function NameForm({ initialName }: { initialName: string }) {
         <FieldError>{error}</FieldError>
       </Field>
       <div className="flex gap-2">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" pending={pending}>
           {t('save')}
         </Button>
         <Button type="button" variant="ghost" onClick={() => setEditing(false)}>
@@ -152,7 +152,7 @@ export function AddMatriculeForm({ classId }: { classId: string }) {
         <ActionError state={state} overrides={{ CONFLICT: t('matriculeTaken') }} />
       </Field>
       <div className="flex gap-2">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" pending={pending}>
           {pending ? t('savingMatricule') : t('saveMatricule')}
         </Button>
         <Button type="button" variant="ghost" onClick={() => setEditing(false)}>
@@ -201,7 +201,7 @@ export function SchoolLocationButton({ schoolId }: { schoolId: string }) {
 
   return (
     <div className="flex flex-col items-start gap-2">
-      <Button type="button" variant="outline" size="sm" onClick={locate} disabled={pending}>
+      <Button type="button" variant="outline" size="sm" onClick={locate} pending={pending}>
         <LocateFixed aria-hidden="true" data-icon="inline-start" />
         {pending ? t('locating') : t('useMyLocation')}
       </Button>
@@ -285,12 +285,12 @@ export function GoogleSignInMethod({
           <span className="text-sm text-muted-foreground">{connected ? t('connected') : t('notConnected')}</span>
         </div>
         {!connected ? (
-          <Button type="button" variant="outline" onClick={connect} disabled={pending}>
+          <Button type="button" variant="outline" onClick={connect} pending={pending}>
             {pending ? t('connecting') : t('connect')}
           </Button>
         ) : (
           hasPassword && (
-            <Button type="button" variant="ghost" onClick={disconnect} disabled={pending}>
+            <Button type="button" variant="ghost" onClick={disconnect} pending={pending}>
               {pending ? t('disconnecting') : t('disconnect')}
             </Button>
           )
@@ -360,7 +360,7 @@ export function ChangePasswordForm() {
           </p>
         )}
       </FieldGroup>
-      <Button type="submit" disabled={pending} className="self-start">
+      <Button type="submit" pending={pending} className="self-start">
         {pending ? t('saving') : t('submit')}
       </Button>
     </form>

@@ -38,7 +38,7 @@ export function EditSchoolForm({
         </div>
         <ActionError state={state} overrides={{ CONFLICT: tSettings('schoolConflict') }} />
       </FieldGroup>
-      <Button type="submit" variant="outline" disabled={pending} className="self-start">
+      <Button type="submit" variant="outline" pending={pending} className="self-start">
         {pending ? tSettings('saving') : tSettings('save')}
       </Button>
     </form>

@@ -178,7 +178,7 @@ function SlotForm({
 
       <ScheduleError state={state} />
       <div className="flex flex-wrap gap-2.5">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" pending={pending}>
           {target.kind === 'create' ? (
             <Plus aria-hidden="true" data-icon="inline-start" />
           ) : (

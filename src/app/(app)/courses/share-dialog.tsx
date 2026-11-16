@@ -142,7 +142,7 @@ function ShareForm({
             {tCommon('cancel')}
           </Button>
         </DialogClose>
-        <Button type="submit" size="lg" disabled={pending || !loaded || list.length === 0}>
+        <Button type="submit" size="lg" pending={pending} disabled={!loaded || list.length === 0}>
           <Share2 aria-hidden="true" data-icon="inline-start" />
           {t('submit')}
         </Button>

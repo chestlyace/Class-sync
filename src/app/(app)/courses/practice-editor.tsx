@@ -404,7 +404,7 @@ function QuestionForm({
 
       <PracticeError state={state} />
       <div className="flex flex-wrap gap-2.5">
-        <Button type="submit" size="lg" disabled={pending}>
+        <Button type="submit" size="lg" pending={pending}>
           {pending ? t('saving') : initial ? t('save') : t('add')}
         </Button>
         <Button type="button" variant="outline" size="lg" onClick={onCancel}>
@@ -483,7 +483,7 @@ function ImportTest({ topicId, importable }: { topicId: string; importable: Impo
           {t('done', { count: state.data.count })}
         </p>
       )}
-      <Button type="submit" variant="outline" size="lg" className="self-start" disabled={pending}>
+      <Button type="submit" variant="outline" size="lg" className="self-start" pending={pending}>
         <Copy aria-hidden="true" data-icon="inline-start" />
         {pending ? t('copying') : t('submit')}
       </Button>
