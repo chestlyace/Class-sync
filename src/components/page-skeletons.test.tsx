@@ -21,7 +21,17 @@ describe('PageSkeleton', () => {
   it.each(VARIANTS)('fades in after a delay on the status element (%s)', (variant) => {
     const status = render(variant).match(STATUS)?.[0]
     expect(status).toContain('animate-skeleton-in')
-    expect(status).toContain('motion-reduce:animate-none')
+    // Reduced motion keeps the delay (no grey flash on fast pages) but drops the fade.
+    expect(status).toContain('motion-reduce:[animation-duration:0s]')
+    expect(status).not.toContain('motion-reduce:animate-none')
+  })
+
+  it.each(VARIANTS)('header bars fill the real PageHeader line boxes (%s)', (variant) => {
+    const html = render(variant)
+    // eyebrow text-xs 16px, title text-5xl/text-6xl at leading 0.95 (45.6px / 57px), description text-base 24px
+    expect(html).toContain('h-4 w-24')
+    expect(html).toContain('h-[45.6px] w-2/3 sm:h-[57px]')
+    expect(html).toContain('h-6 w-1/2')
   })
 
   it('uses the same column rhythm as the signed-in main', () => {

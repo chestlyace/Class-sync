@@ -4,13 +4,16 @@ import { cn } from '@/lib/utils'
 
 export type PageSkeletonVariant = 'panels' | 'cards' | 'list' | 'table'
 
-/** Same shape as `PageHeader` (eyebrow, title, one line), so nothing jumps when the real header arrives. */
+/**
+ * Same shape as `PageHeader` (eyebrow, title, one line), so nothing jumps when the real header arrives.
+ * Each bar fills the real line box: text-xs 16px, text-5xl/text-6xl at leading 0.95 (45.6px / 57px), text-base 24px.
+ */
 function HeaderSkeleton() {
   return (
     <div className="flex flex-col gap-2">
-      <Skeleton className="h-3 w-24" />
-      <Skeleton className="h-12 w-2/3 sm:h-14" />
-      <Skeleton className="h-4 w-1/2" />
+      <Skeleton className="h-4 w-24" />
+      <Skeleton className="h-[45.6px] w-2/3 sm:h-[57px]" />
+      <Skeleton className="h-6 w-1/2" />
     </div>
   )
 }
@@ -19,7 +22,10 @@ function HeaderSkeleton() {
 function SectionHeadingSkeleton() {
   return (
     <div className="flex items-center gap-4">
-      <Skeleton className="h-4 w-32" />
+      {/* The real label is 13px mono at the inherited 1.5 line height (19.5px); keep that box, draw a thinner bar in it. */}
+      <div className="flex h-[19.5px] items-center">
+        <Skeleton className="h-3.5 w-32" />
+      </div>
       <span aria-hidden="true" className="h-px flex-1 bg-input" />
     </div>
   )
@@ -85,12 +91,13 @@ const BODIES: Record<PageSkeletonVariant, () => React.JSX.Element> = {
 
 /**
  * What a signed-in page shows while its data loads. It fades in after a short delay, so a fast page never flashes it.
+ * Reduced motion keeps the delay but drops the fade (zero duration, fill both), so a fast page still never flashes grey.
  * The label is passed in (the `loading.tsx` files hold the translation), which keeps this a plain server-safe component.
  */
 export function PageSkeleton({ label, variant }: { label: string; variant: PageSkeletonVariant }) {
   const Body = BODIES[variant]
   return (
-    <div role="status" className="flex animate-skeleton-in flex-col gap-10 motion-reduce:animate-none">
+    <div role="status" className="flex animate-skeleton-in flex-col gap-10 motion-reduce:[animation-duration:0s]">
       <span className="sr-only">{label}</span>
       <HeaderSkeleton />
       <Body />
