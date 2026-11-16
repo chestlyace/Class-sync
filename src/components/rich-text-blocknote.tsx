@@ -9,6 +9,7 @@ import { useCreateBlockNote } from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/shadcn'
 import { useMemo } from 'react'
 import type { Locale } from '@/i18n/locale'
+import { upgradeTextTables } from '@/lib/markdown-table'
 import { filterRichText } from '@/lib/rich-text-content'
 
 // Ruling B3: no in-editor uploads. The media blocks (which upload or embed files by URL) are left
@@ -36,7 +37,9 @@ const schemaNames = {
  * keys this schema doesn't know (BlockNote throws on them). Undefined gives a blank editor.
  */
 function toInitialContent(value: unknown): RichTextBlock[] | undefined {
-  return filterRichText(value, schemaNames) as RichTextBlock[] | undefined
+  const blocks = filterRichText(value, schemaNames)
+  // Markdown table text stored as paragraphs shows (and, once edited, saves) as a real table.
+  return blocks && (upgradeTextTables(blocks) as RichTextBlock[])
 }
 
 function dictionaryFor(locale: Locale) {
