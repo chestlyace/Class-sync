@@ -130,11 +130,22 @@ export function NotificationsSettings({
               {!blocked && (
                 <div className="shrink-0">
                   {on ? (
-                    <Button type="button" variant="outline" onClick={turnOff} pending={pending === 'off'} disabled={pending !== null}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={turnOff}
+                      pending={pending === 'off'}
+                      disabled={pending !== null}
+                    >
                       {pending === 'off' ? t('turningOff') : t('turnOff')}
                     </Button>
                   ) : (
-                    <Button type="button" onClick={turnOn} pending={pending === 'on'} disabled={pending !== null}>
+                    <Button
+                      type="button"
+                      onClick={turnOn}
+                      pending={pending === 'on'}
+                      disabled={pending !== null}
+                    >
                       {pending === 'on' ? t('turningOn') : t('turnOn')}
                     </Button>
                   )}

@@ -96,7 +96,8 @@ export function OpenWindowButton({
       <Button
         type="button"
         variant={kind === 'start' ? 'default' : 'outline'}
-        pending={pending} disabled={disabledReason !== undefined}
+        pending={pending}
+        disabled={disabledReason !== undefined}
         aria-describedby={disabledReason ? reasonId : undefined}
         onClick={open}
       >
