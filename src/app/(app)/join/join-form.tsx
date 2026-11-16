@@ -76,7 +76,7 @@ export function JoinForm({
         )}
         <ActionError state={state} overrides={{ NOT_FOUND: t('notFound'), CONFLICT: t('matriculeTaken') }} />
       </FieldGroup>
-      <Button type="submit" size="lg" disabled={pending} className="self-start">
+      <Button type="submit" size="lg" pending={pending} className="self-start">
         {pending ? t('submitting') : confirm ? t('confirmSubmit', { className: confirm.className }) : t('submit')}
       </Button>
     </form>

@@ -2,17 +2,19 @@ import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 import { SiteNav } from '@/components/site-nav'
 import { VerifyBanner } from '@/components/verify-banner'
-import { REQUEST_PATH_HEADER, safeNextPath } from '@/lib/next-path'
+import { isAdminPath, REQUEST_PATH_HEADER, safeNextPath } from '@/lib/next-path'
 import { getSessionUser } from '@/server/auth/session'
+import { isAdmin } from '@/server/core/admin'
 import { isVerificationPending } from '@/server/core/guards'
 
 /** Signed-in area: pill nav, phone bottom nav, and the verification banner when needed. */
 export default async function AppLayout({ children }: LayoutProps<'/'>) {
   const user = await getSessionUser()
+  const requested = (await headers()).get(REQUEST_PATH_HEADER)
+  // The admin area doesn't reveal itself, signed in or not. Decided here, above the loading
+  // boundary, so a non-admin gets a real 404 and not a streamed 200.
+  if (isAdminPath(requested) && (!user || !isAdmin(user))) notFound()
   if (!user) {
-    const requested = (await headers()).get(REQUEST_PATH_HEADER)
-    // The admin area doesn't reveal itself, signed in or not.
-    if (requested && /^\/admin(?:[/?#]|$)/.test(requested)) notFound()
     // Back to the page asked for after signing in (e.g. a join or check-in link someone shared).
     const next = safeNextPath(requested)
     redirect(next && next !== '/dashboard' ? `/sign-in?next=${encodeURIComponent(next)}` : '/sign-in')

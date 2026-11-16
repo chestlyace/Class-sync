@@ -38,7 +38,7 @@ export function EditClassForm({ cls }: { cls: { id: string; name: string; academ
         </Field>
         <ActionError state={state} />
       </FieldGroup>
-      <Button type="submit" disabled={pending} className="self-start">
+      <Button type="submit" pending={pending} className="self-start">
         {pending ? tSettings('saving') : tSettings('save')}
       </Button>
     </form>

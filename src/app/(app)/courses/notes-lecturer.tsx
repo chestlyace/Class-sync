@@ -169,7 +169,7 @@ function TopicTitleForm({
             {tCommon('cancel')}
           </Button>
         </DialogClose>
-        <Button type="submit" size="lg" disabled={pending}>
+        <Button type="submit" size="lg" pending={pending}>
           {submitLabel}
         </Button>
       </DialogFooter>
@@ -677,7 +677,7 @@ function MoveItemDialog({
                 {tCommon('cancel')}
               </Button>
             </DialogClose>
-            <Button type="submit" size="lg" disabled={pending || topics.length === 0}>
+            <Button type="submit" size="lg" pending={pending} disabled={topics.length === 0}>
               {t('submit')}
             </Button>
           </DialogFooter>

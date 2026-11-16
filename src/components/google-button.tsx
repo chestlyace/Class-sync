@@ -40,7 +40,7 @@ export function GoogleButton({
   pendingLabel: string
 }) {
   return (
-    <Button type="button" variant="outline" size="lg" onClick={onClick} disabled={pending} className="h-13 w-full text-base">
+    <Button type="button" variant="outline" size="lg" onClick={onClick} pending={pending} className="h-13 w-full text-base">
       <GoogleMark />
       {pending ? pendingLabel : label}
     </Button>

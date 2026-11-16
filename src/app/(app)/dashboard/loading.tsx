@@ -9,7 +9,7 @@ export default async function DashboardLoading() {
   const t = await getTranslations('common')
   const bar = 'block rounded-full bg-muted motion-safe:animate-pulse'
   return (
-    <div role="status" className="flex flex-col gap-10">
+    <div role="status" className="flex animate-skeleton-in flex-col gap-10 motion-reduce:[animation-duration:0s]">
       <span className="sr-only">{t('loading')}</span>
       <div aria-hidden="true" className="flex flex-col gap-3">
         <span className={cn(bar, 'h-3 w-36')} />

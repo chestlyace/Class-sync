@@ -40,7 +40,7 @@ export function OpenCheckInButton({
       <Button
         type="button"
         size={size}
-        disabled={pending}
+        pending={pending}
         onClick={() => startTransition(async () => setState(await startClassAttendanceAction(sittingKey)))}
       >
         <ClipboardCheck aria-hidden="true" data-icon="inline-start" />
@@ -61,7 +61,7 @@ function UndoCancelButton({ occurrenceKey, label }: { occurrenceKey: string; lab
         type="button"
         variant="outline"
         size="sm"
-        disabled={pending}
+        pending={pending}
         aria-label={`${t('undoCancel')} · ${label}`}
         onClick={() => startTransition(async () => setState(await undoCancelAction(occurrenceKey)))}
       >
@@ -117,7 +117,7 @@ function CancelForm({
             {t('keep')}
           </Button>
         </DialogClose>
-        <Button type="submit" size="lg" variant="destructive" disabled={pending}>
+        <Button type="submit" size="lg" variant="destructive" pending={pending}>
           {pending ? t('cancelling') : t('confirm')}
         </Button>
       </DialogFooter>
@@ -217,8 +217,11 @@ function NeedsAnswerRow({ item, onMissed }: { item: NeedsAnswerItem; onMissed: (
   const t = useTranslations('schedule.needsAnswer')
   const [state, setState] = useState<ActionResult<unknown> | null>(null)
   const [pending, startTransition] = useTransition()
+  // Which answer is in flight, so only that button spins.
+  const [which, setWhich] = useState<'taught' | 'missed' | null>(null)
 
   function answer(value: 'taught' | 'missed') {
+    setWhich(value)
     startTransition(async () => {
       const result = await answerSittingAction(item.sittingKey, value)
       setState(result)
@@ -235,6 +238,7 @@ function NeedsAnswerRow({ item, onMissed }: { item: NeedsAnswerItem; onMissed: (
             type="button"
             variant="outline"
             size="sm"
+            pending={pending && which === 'taught'}
             disabled={pending}
             aria-label={`${t('taught')} · ${item.label}`}
             onClick={() => answer('taught')}
@@ -246,6 +250,7 @@ function NeedsAnswerRow({ item, onMissed }: { item: NeedsAnswerItem; onMissed: (
             type="button"
             variant="outline"
             size="sm"
+            pending={pending && which === 'missed'}
             disabled={pending}
             aria-label={`${t('missed')} · ${item.label}`}
             onClick={() => answer('missed')}

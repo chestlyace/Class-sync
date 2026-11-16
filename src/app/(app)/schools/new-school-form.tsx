@@ -135,7 +135,7 @@ export function NewSchoolForm() {
           }
         />
       </FieldGroup>
-      <Button type="submit" size="lg" disabled={pending} className="self-start">
+      <Button type="submit" size="lg" pending={pending} className="self-start">
         {pending ? t('submitting') : t('submit')}
       </Button>
     </form>

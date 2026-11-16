@@ -130,11 +130,22 @@ export function NotificationsSettings({
               {!blocked && (
                 <div className="shrink-0">
                   {on ? (
-                    <Button type="button" variant="outline" onClick={turnOff} disabled={pending !== null}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={turnOff}
+                      pending={pending === 'off'}
+                      disabled={pending !== null}
+                    >
                       {pending === 'off' ? t('turningOff') : t('turnOff')}
                     </Button>
                   ) : (
-                    <Button type="button" onClick={turnOn} disabled={pending !== null}>
+                    <Button
+                      type="button"
+                      onClick={turnOn}
+                      pending={pending === 'on'}
+                      disabled={pending !== null}
+                    >
                       {pending === 'on' ? t('turningOn') : t('turnOn')}
                     </Button>
                   )}
@@ -319,7 +330,7 @@ function TestNotification() {
 
   return (
     <div className="flex flex-col items-start gap-2">
-      <Button type="button" variant="outline" size="sm" onClick={send} disabled={pending}>
+      <Button type="button" variant="outline" size="sm" onClick={send} pending={pending}>
         <Send aria-hidden="true" data-icon="inline-start" />
         {pending ? t('testSending') : t('test')}
       </Button>
@@ -379,7 +390,7 @@ function DeviceItem({ row, onRemoved }: { row: DeviceRow; onRemoved: () => Promi
         variant="ghost"
         size="sm"
         onClick={remove}
-        disabled={pending}
+        pending={pending}
         aria-label={t('removeLabel', { device: label })}
       >
         {t('remove')}

@@ -112,7 +112,7 @@ export function ConfirmAction({
                 {t('cancel')}
               </Button>
             </DialogClose>
-            <Button type="submit" size="lg" variant={destructive ? 'destructive' : 'default'} disabled={pending}>
+            <Button type="submit" size="lg" variant={destructive ? 'destructive' : 'default'} pending={pending}>
               {confirmLabel}
             </Button>
           </DialogFooter>

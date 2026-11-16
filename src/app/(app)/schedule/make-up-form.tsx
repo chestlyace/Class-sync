@@ -158,7 +158,7 @@ function MakeUpForm({
             {tCommon('cancel')}
           </Button>
         </DialogClose>
-        <Button type="submit" size="lg" disabled={pending}>
+        <Button type="submit" size="lg" pending={pending}>
           {pending ? t('saving') : t('save')}
         </Button>
       </DialogFooter>
