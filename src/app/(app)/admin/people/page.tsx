@@ -1,10 +1,12 @@
 import { Search } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
+import Form from 'next/form'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
 import { PageHeader, Panel } from '@/components/page-header'
+import { SearchSubmit } from '@/components/search-submit'
 import { Badge } from '@/components/ui/badge'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { NativeSelect } from '@/components/ui/native-select'
@@ -78,7 +80,7 @@ export default async function AdminPeoplePage({ searchParams }: PageProps<'/admi
       <PageHeader eyebrow={t('title')} title={t('people.title')} description={t('people.description')} />
 
       <Panel>
-        <form action="/admin/people" method="get" role="search" className="flex flex-col gap-4">
+        <Form action="/admin/people" role="search" className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="people-q">{t('people.search')}</Label>
             <Input
@@ -118,17 +120,17 @@ export default async function AdminPeoplePage({ searchParams }: PageProps<'/admi
             </div>
           </div>
           <div className="flex flex-wrap gap-2.5">
-            <Button type="submit" size="lg">
+            <SearchSubmit size="lg">
               <Search aria-hidden="true" data-icon="inline-start" />
               {t('people.apply')}
-            </Button>
+            </SearchSubmit>
             {filtered && (
               <Link href="/admin/people" className={buttonVariants({ variant: 'outline', size: 'lg' })}>
                 {t('people.clear')}
               </Link>
             )}
           </div>
-        </form>
+        </Form>
       </Panel>
 
       {rows.length === 0 ? (
