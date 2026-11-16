@@ -12,6 +12,17 @@ export function isNextRequestErrorLog(args: unknown[]): boolean {
   return typeof first === 'string' && first.replace(ANSI_COLOUR, '') === '⨯' && second instanceof Error
 }
 
+const NODE_WARNING = /^\(node:\d+\) (?:\[[A-Z]+\d+\] )?\w*Warning: /
+
+/**
+ * True for a runtime warning Node prints by itself, such as "(node:8) ExperimentalWarning: …" at
+ * every cold start on Vercel. It goes through console.error but isn't a failure in the app, so the
+ * server leaves it out of Sentry (it filled CLASYNC-5 with thousands of events).
+ */
+export function isNodeWarningLog(args: unknown[]): boolean {
+  return args.length === 1 && typeof args[0] === 'string' && NODE_WARNING.test(args[0])
+}
+
 /**
  * Even with personal data off, Sentry reads a visitor's IP from forwarding headers
  * (x-forwarded-for on Vercel). Keep only the user agent, which says which browser failed.
