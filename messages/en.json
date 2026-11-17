@@ -2601,7 +2601,7 @@
     },
     "usage": {
       "title": "Usage",
-      "description": "Daily counts across the platform for the last 30 days, never broken down by person.",
+      "description": "Daily counts across the platform for the last 30 days, plus this month's WhatsApp messages, never broken down by person.",
       "total": "{count} in 30 days",
       "chart": "{label} per day, last 30 days",
       "whatsapp": {

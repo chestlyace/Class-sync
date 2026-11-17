@@ -22,7 +22,7 @@ export function whatsAppConfig(env: Record<string, string | undefined> = process
   return { region, roleArn, phoneNumberId, displayNumber, topicArn, cap }
 }
 
-/** Outside production, set WHATSAPP_ALLOWLIST (comma-separated E.164 numbers) so only those numbers get messages. Empty or unset allows everyone. */
+/** When WHATSAPP_ALLOWLIST (comma-separated E.164 numbers) is non-empty, in any environment, only those numbers get messages: the rollout list. Empty or unset allows everyone. */
 export function isAllowedWhatsAppNumber(e164: string, env: Record<string, string | undefined> = process.env): boolean {
   const entries = (env.WHATSAPP_ALLOWLIST ?? '')
     .split(',')

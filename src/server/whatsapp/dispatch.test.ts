@@ -16,7 +16,7 @@ import {
 } from '@/server/db/schema'
 import { createTestDb } from '@/test/db'
 import { at, insertStartedTest, joinTest, setupCourse, T0 } from '@/test/marking-fixture'
-import { handleWhatsAppEvent } from './dispatch'
+import { handleWhatsAppEvent, isRetryableSendError } from './dispatch'
 import { enqueueWhatsApp, eventKey, setWhatsAppQueueForTests, type WhatsAppEvent } from './events'
 import { setWhatsAppProviderForTests, type TemplateMessage } from './provider'
 
@@ -320,6 +320,66 @@ describe('handleWhatsAppEvent', () => {
     expect(await handleWhatsAppEvent(db, event, at(6))).toEqual({ sent: 1, skipped: 0 })
   })
 
+  it('a throttled send leaves the student retryable and the event throws after the batch', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    await connect(fx.alice, fx.bob)
+    const throttled = phoneOf(fx.alice.user.id)
+    setWhatsAppProviderForTests({
+      sendTemplate: async (to, msg) => {
+        if (to === throttled) throw Object.assign(new Error('Rate exceeded'), { name: 'ThrottlingException' })
+        sent.push({ to, msg })
+        return { messageId: `wamid.${sent.length}` }
+      },
+      sendText: async () => ({ messageId: 'text' }),
+    })
+    const { test } = await insertStartedTest(db, fx.lecturer, fx.bio.id)
+    const event: WhatsAppEvent = { kind: 'testStarted', testId: test.id }
+    await expect(handleWhatsAppEvent(db, event, at(5))).rejects.toThrow('Rate exceeded')
+    // The other student in the batch was still sent; the throttled one has no row and no cap slot.
+    expect(sent.map((x) => x.to)).toEqual([phoneOf(fx.bob.user.id)])
+    expect((await messages()).map((m) => [m.userId, m.status])).toEqual([[fx.bob.user.id, 'sent']])
+    const [usage] = await db.select().from(whatsappMonthUsage)
+    expect(usage.sent).toBe(1)
+    setWhatsAppProviderForTests({
+      sendTemplate: async (to, msg) => {
+        sent.push({ to, msg })
+        return { messageId: `wamid.${sent.length}` }
+      },
+      sendText: async () => ({ messageId: 'text' }),
+    })
+    expect(await handleWhatsAppEvent(db, event, at(6))).toEqual({ sent: 1, skipped: 0 })
+    expect(sent.map((x) => x.to).sort()).toEqual([phoneOf(fx.alice.user.id), phoneOf(fx.bob.user.id)].sort())
+  })
+
+  it('a validation error marks the student failed and does not throw', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    await connect(fx.alice)
+    setWhatsAppProviderForTests({
+      sendTemplate: async () => {
+        throw Object.assign(new Error('Invalid parameter'), { name: 'ValidationException', $metadata: { httpStatusCode: 400 } })
+      },
+      sendText: async () => ({ messageId: 'text' }),
+    })
+    const { test } = await insertStartedTest(db, fx.lecturer, fx.bio.id)
+    expect(await handleWhatsAppEvent(db, { kind: 'testStarted', testId: test.id }, at(5))).toEqual({ sent: 0, skipped: 1 })
+    expect((await messages())[0]).toMatchObject({ status: 'failed' })
+  })
+
+  it('classifies retryable and permanent send errors', () => {
+    const named = (name: string, extra: object = {}) => Object.assign(new Error(name), { name, ...extra })
+    expect(isRetryableSendError(named('ThrottlingException'))).toBe(true)
+    expect(isRetryableSendError(named('InternalServiceException'))).toBe(true)
+    expect(isRetryableSendError(named('Whatever', { $retryable: { throttling: false } }))).toBe(true)
+    expect(isRetryableSendError(named('Whatever', { $metadata: { httpStatusCode: 503 } }))).toBe(true)
+    expect(isRetryableSendError(named('TimeoutError'))).toBe(true)
+    expect(isRetryableSendError(named('CredentialsProviderError'))).toBe(true)
+    expect(isRetryableSendError(named('AccessDenied'))).toBe(true)
+    expect(isRetryableSendError(Object.assign(new Error('x'), { code: 'ECONNRESET' }))).toBe(true)
+    expect(isRetryableSendError(named('ValidationException', { $metadata: { httpStatusCode: 400 } }))).toBe(false)
+    expect(isRetryableSendError(new Error('rejected'))).toBe(false)
+    expect(isRetryableSendError('boom')).toBe(false)
+  })
+
   it('a message is pending until the provider accepts it', async () => {
     await connect(fx.alice)
     let during: string | undefined
@@ -349,7 +409,7 @@ describe('handleWhatsAppEvent', () => {
     })
     const { test } = await insertStartedTest(db, fx.lecturer, fx.bio.id)
     const event: WhatsAppEvent = { kind: 'testStarted', testId: test.id }
-    const options = { batchSize: 1, budgetMs: 45_000, clock: () => ms }
+    const options = { batchSize: 1, budgetMs: 35_000, clock: () => ms }
     await expect(handleWhatsAppEvent(db, event, at(5), options)).rejects.toThrow('ran out of time')
     expect(sent).toHaveLength(2)
     // The retry sends only to the student who was not reached.

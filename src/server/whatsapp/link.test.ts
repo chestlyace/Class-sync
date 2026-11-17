@@ -194,6 +194,23 @@ describe("WhatsApp linking", () => {
     expect(sent[0].text).toContain("WhatsApp alerts are off");
   });
 
+  it("stop and join tolerate trailing punctuation and an emoji", async () => {
+    const db = await createTestDb();
+    const u = await makeUser(db);
+    await db.insert(whatsappLink).values({ userId: u.id, phone: PHONE });
+    await handleInboundMessage(db, { from: PHONE, text: "Stop.", at });
+    expect(await db.select().from(whatsappLink)).toHaveLength(0);
+    await db.insert(whatsappLink).values({ userId: u.id, phone: PHONE });
+    await handleInboundMessage(db, { from: PHONE, text: "STOP !", at });
+    expect(await db.select().from(whatsappLink)).toHaveLength(0);
+    await db.insert(whatsappLink).values({ userId: u.id, phone: PHONE });
+    await handleInboundMessage(db, { from: PHONE, text: "arrêt 🙏", at });
+    expect(await db.select().from(whatsappLink)).toHaveLength(0);
+    const { code } = await createConnectCode(ctxFor(db, u));
+    await handleInboundMessage(db, { from: PHONE, text: `JOIN ${code}.`, at: new Date() });
+    expect(await db.select().from(whatsappLink)).toHaveLength(1);
+  });
+
   it("other messages do nothing", async () => {
     const db = await createTestDb();
     await handleInboundMessage(db, { from: PHONE, text: "hello", at });

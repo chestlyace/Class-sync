@@ -205,6 +205,46 @@ async function recipientsOf(db: Db, userIds: string[], preference: PreferenceCol
     .map((r) => ({ userId: r.userId, phone: r.phone, locale: locales.get(r.userId) ?? 'en' }))
 }
 
+/**
+ * True for a send failure that a later attempt can fix: throttling, a 5xx, a timeout or network error, or a
+ * credential problem while signing in (OIDC, STS, IAM). Anything else (a validation error, another 4xx) is final.
+ */
+export function isRetryableSendError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false
+  const e = error as {
+    name?: unknown
+    code?: unknown
+    message?: unknown
+    $retryable?: unknown
+    $metadata?: { httpStatusCode?: unknown }
+  }
+  const name = typeof e.name === 'string' ? e.name : ''
+  const code = typeof e.code === 'string' ? e.code : ''
+  if (e.$retryable) return true
+  const status = e.$metadata?.httpStatusCode
+  if (typeof status === 'number' && status >= 500) return true
+  const retryableNames = [
+    'ThrottlingException',
+    'TooManyRequestsException',
+    'InternalServiceException',
+    'ServiceUnavailableException',
+    'TimeoutError',
+    'AbortError',
+    'RequestTimeout',
+    'CredentialsProviderError',
+    'ExpiredToken',
+    'ExpiredTokenException',
+    'AccessDenied',
+    'AccessDeniedException',
+    'InvalidIdentityToken',
+    'IDPCommunicationError',
+  ]
+  if (retryableNames.includes(name) || retryableNames.includes(code)) return true
+  if (/^E(CONNRESET|CONNREFUSED|TIMEDOUT|NOTFOUND|AI_AGAIN|PIPE|HOSTUNREACH)$/.test(code)) return true
+  const message = typeof e.message === 'string' ? e.message : ''
+  return /\b(timed out|timeout|socket hang up|ExpiredToken)\b/i.test(message)
+}
+
 /** Plain, short English email to each admin: the month's cap has been reached. */
 async function mailCapReached(at: Date, cap: number): Promise<void> {
   const month = at.toISOString().slice(0, 7)
@@ -219,8 +259,11 @@ async function mailCapReached(at: Date, cap: number): Promise<void> {
   }
 }
 
-/** Stop starting new batches after this long; the queue then retries and only the students not yet logged are left. */
-const TIME_BUDGET_MS = 45_000
+/**
+ * Stop starting new batches after this long; the queue then retries and only the students not yet logged are left.
+ * A batch can take about 16 s (8 s timeout, two attempts), so 35 s keeps the last batch inside the 60 s limit.
+ */
+const TIME_BUDGET_MS = 35_000
 
 export type DispatchOptions = {
   /** Recipients handled at once. */
@@ -233,9 +276,10 @@ export type DispatchOptions = {
 
 /**
  * Delivers one queued event: works out, as of `at`, who still needs a message and sends each of them the
- * approved template. One message per (student, event), so a redelivered event sends nothing new. A provider
- * failure is logged against that student and never stops the others; a database error, or running out of time,
- * throws so the queue retries (students already logged are skipped, the rest are sent).
+ * approved template. One message per (student, event), so a redelivered event sends nothing new. A permanent
+ * provider failure is logged against that student and never stops the others; a temporary one (throttling, 5xx,
+ * timeout, credentials), a database error, or running out of time throws after the current batch so the queue
+ * retries (students already logged are skipped, the rest are sent).
  */
 export async function handleWhatsAppEvent(
   db: Db,
@@ -293,12 +337,18 @@ export async function handleWhatsAppEvent(
       messageId = (await provider!.sendTemplate(r.phone, template)).messageId
     } catch (error) {
       const message = scrubError(error instanceof Error ? error.message : String(error))
-      console.error('[whatsapp] send failed', { kind: plan!.kind, template: template.name, error: message })
+      const retryable = isRetryableSendError(error)
+      console.error('[whatsapp] send failed', { kind: plan!.kind, template: template.name, retryable, error: message })
       try {
         await releaseClaim(db, at)
       } catch (releaseError) {
         await forgetRow()
         throw releaseError
+      }
+      if (retryable) {
+        // Nothing reached the student: forget the row so the queue's retry sends to them.
+        await forgetRow()
+        throw error
       }
       await setRow({ status: 'failed', error: message })
       totals.skipped += 1

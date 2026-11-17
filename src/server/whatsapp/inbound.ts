@@ -123,6 +123,12 @@ export function isSnsUrl(raw: string | undefined, region: string, pathSuffix?: s
   )
 }
 
+/** SNS signing certificates live at /SimpleNotificationService-<hex>.pem on SNS's own host. */
+export function isSnsCertUrl(raw: string | undefined, region: string): boolean {
+  if (!isSnsUrl(raw, region, '.pem')) return false
+  return /^\/SimpleNotificationService-[0-9a-f]+\.pem$/.test(new URL(raw as string).pathname)
+}
+
 const certCache = new Map<string, string>()
 
 async function fetchCertificate(url: string): Promise<string> {
@@ -140,7 +146,7 @@ export type SnsVerdict = 'valid' | 'invalid' | 'unavailable'
 
 /**
  * Checks the SNS signature (SHA1 for SignatureVersion 1, SHA256 for 2) against the certificate
- * at `SigningCertURL`, which must be on SNS's own host for our region. 'invalid' when the message
+ * at `SigningCertURL`, which must be SNS's own certificate path on its host for our region. 'invalid' when the message
  * does not check out; 'unavailable' when the certificate could not be fetched, so the caller can
  * answer with a retryable status instead of dropping the message.
  */
@@ -149,7 +155,7 @@ export async function verifySnsSignature(
   region: string,
   getCertificate: (url: string) => Promise<string> = fetchCertificate,
 ): Promise<SnsVerdict> {
-  if (!isSnsUrl(msg.SigningCertURL, region, '.pem') || !msg.Signature) return 'invalid'
+  if (!isSnsCertUrl(msg.SigningCertURL, region) || !msg.Signature) return 'invalid'
   const algorithm = msg.SignatureVersion === '1' ? 'RSA-SHA1' : msg.SignatureVersion === '2' ? 'RSA-SHA256' : null
   const toSign = snsStringToSign(msg)
   if (!algorithm || toSign === null) return 'invalid'
@@ -196,11 +202,14 @@ export async function handleSnsPost(db: Db, rawBody: string): Promise<SnsResult>
     return { status: 400, body: 'bad request' }
   }
 
+  // A forged POST for another topic must not cost us an outbound certificate fetch, so this comes first.
+  if (msg.TopicArn !== config.topicArn) return { status: 403, body: 'forbidden' }
+
   const raw = testVerifier ? await testVerifier(msg) : await verifySnsSignature(msg, config.region)
   const verdict: SnsVerdict = raw === true ? 'valid' : raw === false ? 'invalid' : raw
   // SNS does not retry most 4xx answers, so a certificate we could not fetch gets a 503.
   if (verdict === 'unavailable') return { status: 503, body: 'try again' }
-  if (verdict !== 'valid' || msg.TopicArn !== config.topicArn) return { status: 403, body: 'forbidden' }
+  if (verdict !== 'valid') return { status: 403, body: 'forbidden' }
 
   if (msg.Type === 'SubscriptionConfirmation') {
     if (!isSnsUrl(msg.SubscribeURL, config.region)) return { status: 403, body: 'forbidden' }

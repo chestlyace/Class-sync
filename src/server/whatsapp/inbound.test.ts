@@ -74,7 +74,7 @@ function notification(entry: string, over: Partial<SnsMessage> = {}): string {
     Timestamp: '2026-11-17T10:00:00.000Z',
     SignatureVersion: '1',
     Signature: 'x',
-    SigningCertURL: 'https://sns.eu-west-1.amazonaws.com/c.pem',
+    SigningCertURL: 'https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-0a1b2c.pem',
     ...over,
   })
 }
@@ -184,6 +184,14 @@ describe('handleSnsPost', () => {
     expect(handled).toEqual([])
   })
 
+  it('refuses another topic before verifying the signature, so a forged POST fetches no certificate', async () => {
+    const db = await createTestDb()
+    const verifier = vi.fn(async () => true)
+    setSnsVerifierForTests(verifier)
+    expect((await handleSnsPost(db, notification(textEntry, { TopicArn: 'arn:aws:sns:eu-west-1:2:other' }))).status).toBe(403)
+    expect(verifier).not.toHaveBeenCalled()
+  })
+
   it('is 503 (retryable) when the signature could not be checked', async () => {
     const db = await createTestDb()
     setSnsVerifierForTests(async () => 'unavailable')
@@ -288,7 +296,7 @@ describe('verifySnsSignature', () => {
     TopicArn: TOPIC,
     Message: 'hello',
     Timestamp: '2026-11-17T10:00:00.000Z',
-    SigningCertURL: 'https://sns.eu-west-1.amazonaws.com/c.pem',
+    SigningCertURL: 'https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-0a1b2c.pem',
   }
   const sign = (msg: SnsMessage, algorithm: string) =>
     createSign(algorithm).update(snsStringToSign(msg) as string, 'utf8').sign(privateKey, 'base64')
@@ -315,6 +323,12 @@ describe('verifySnsSignature', () => {
     expect(await verifySnsSignature({ ...signed, Signature: undefined }, 'eu-west-1', getCert)).toBe('invalid')
     getCert.mockClear()
     expect(await verifySnsSignature({ ...signed, SigningCertURL: 'https://evil.example/c.pem' }, 'eu-west-1', getCert)).toBe('invalid')
+    expect(getCert).not.toHaveBeenCalled()
+    for (const path of ['/c.pem', '/SimpleNotificationService-xyz.pem', '/other/SimpleNotificationService-0a1b.pem', '/SimpleNotificationService-0a1b.pem.pem/x.pem']) {
+      expect(
+        await verifySnsSignature({ ...signed, SigningCertURL: `https://sns.eu-west-1.amazonaws.com${path}` }, 'eu-west-1', getCert),
+      ).toBe('invalid')
+    }
     expect(getCert).not.toHaveBeenCalled()
   })
 

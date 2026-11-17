@@ -2601,7 +2601,7 @@
     },
     "usage": {
       "title": "Utilisation",
-      "description": "Les nombres quotidiens sur toute la plateforme ces 30 derniers jours, jamais détaillés par personne.",
+      "description": "Les nombres quotidiens sur toute la plateforme ces 30 derniers jours, ainsi que les messages WhatsApp de ce mois, jamais détaillés par personne.",
       "total": "{count} en 30 jours",
       "chart": "{label} par jour, 30 derniers jours",
       "whatsapp": {

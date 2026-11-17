@@ -108,7 +108,12 @@ async function sendReply(to: string, text: string): Promise<void> {
 function parseCommand(
   raw: string,
 ): { kind: "join"; code: string } | { kind: "stop" } | null {
-  const text = raw.trim().normalize("NFD").replace(/\p{M}/gu, "");
+  // People type "Stop." or "STOP !" or add an emoji: drop trailing punctuation, spaces and pictographs first.
+  const text = raw
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[\s.!?,;:\p{Extended_Pictographic}\u200d]+$/gu, "")
+    .trim();
   const join = /^join\s+([a-z0-9]+)$/i.exec(text);
   if (join) return { kind: "join", code: join[1].toUpperCase() };
   if (/^(stop|arret)$/i.test(text)) return { kind: "stop" };
