@@ -912,6 +912,27 @@
         "iosStep2": "Choose Add to Home Screen"
       }
     },
+    "whatsapp": {
+      "title": "WhatsApp",
+      "description": "Get your most important Clasync alerts on WhatsApp.",
+      "connect": "Connect WhatsApp",
+      "connecting": "Connecting…",
+      "waiting": "Tap Send in WhatsApp. This page updates once you're connected.",
+      "openAgain": "Open WhatsApp again",
+      "expired": "That link has expired. Tap Connect WhatsApp to get a new one.",
+      "connected": "Connected: {phone}",
+      "disconnect": "Disconnect",
+      "disconnecting": "Disconnecting…",
+      "stopHint": "Send STOP on WhatsApp to turn everything off.",
+      "alertsTitle": "Alerts on WhatsApp",
+      "prefs": {
+        "checkin": "Check-in opened",
+        "tests": "Test started",
+        "results": "Results released",
+        "assignments": "New assignment",
+        "classSoon": "Class starts soon"
+      }
+    },
     "schools": {
       "title": "Where you teach",
       "add": "Add a school",

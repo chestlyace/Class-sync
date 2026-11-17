@@ -912,6 +912,27 @@
         "iosStep2": "Choisissez Sur l'écran d'accueil"
       }
     },
+    "whatsapp": {
+      "title": "WhatsApp",
+      "description": "Recevez vos alertes Clasync les plus importantes sur WhatsApp.",
+      "connect": "Connecter WhatsApp",
+      "connecting": "Connexion…",
+      "waiting": "Touchez Envoyer dans WhatsApp. Cette page se met à jour dès que vous êtes connecté.",
+      "openAgain": "Rouvrir WhatsApp",
+      "expired": "Ce lien a expiré. Touchez Connecter WhatsApp pour en obtenir un nouveau.",
+      "connected": "Connecté : {phone}",
+      "disconnect": "Déconnecter",
+      "disconnecting": "Déconnexion…",
+      "stopHint": "Envoyez STOP sur WhatsApp pour tout désactiver.",
+      "alertsTitle": "Alertes sur WhatsApp",
+      "prefs": {
+        "checkin": "Pointage ouvert",
+        "tests": "Test commencé",
+        "results": "Résultats publiés",
+        "assignments": "Nouveau devoir",
+        "classSoon": "Le cours commence bientôt"
+      }
+    },
     "schools": {
       "title": "Où vous enseignez",
       "add": "Ajouter un établissement",
