@@ -1,0 +1,312 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { eq } from 'drizzle-orm'
+import { setNowForTests } from '@/server/core/clock'
+import type { Db } from '@/server/db'
+import {
+  assignment,
+  courseTest,
+  attendanceCheckIn,
+  attendanceSession,
+  attendanceWindow,
+  submission,
+  whatsappLink,
+  whatsappMessage,
+  whatsappMonthUsage,
+  whatsappPreference,
+} from '@/server/db/schema'
+import { createTestDb } from '@/test/db'
+import { at, insertStartedTest, joinTest, setupCourse, T0 } from '@/test/marking-fixture'
+import { handleWhatsAppEvent } from './dispatch'
+import { enqueueWhatsApp, eventKey, setWhatsAppQueueForTests, type WhatsAppEvent } from './events'
+import { setWhatsAppProviderForTests, type TemplateMessage } from './provider'
+
+const sendEmail = vi.hoisted(() => vi.fn(async () => {}))
+vi.mock('@/server/email/send', () => ({ sendEmail }))
+
+type Sent = { to: string; msg: TemplateMessage }
+
+let db: Db
+let fx: Awaited<ReturnType<typeof setupCourse>>
+let sent: Sent[]
+let failFor: Set<string>
+const phones = new Map<string, string>()
+
+const phoneOf = (userId: string) => phones.get(userId)!
+
+async function connect(...students: { user: { id: string } }[]) {
+  for (const s of students) {
+    const phone = `+2376000${String(phones.size + 1).padStart(5, '0')}`
+    phones.set(s.user.id, phone)
+    await db.insert(whatsappLink).values({ userId: s.user.id, phone })
+  }
+}
+
+async function openWindow(kind: 'start' | 'end' = 'start', closedAt: Date | null = null) {
+  const [session] = await db
+    .insert(attendanceSession)
+    .values({ courseId: fx.bio.id, createdBy: fx.lecturer.user.id })
+    .returning()
+  const [window] = await db
+    .insert(attendanceWindow)
+    .values({ sessionId: session.id, kind, secret: 's', openedAt: T0, closedAt, openedBy: fx.lecturer.user.id })
+    .returning()
+  return window
+}
+
+const messages = () => db.select().from(whatsappMessage)
+
+beforeEach(async () => {
+  vi.stubEnv('WHATSAPP_AWS_REGION', 'eu-west-1')
+  vi.stubEnv('WHATSAPP_AWS_ROLE_ARN', 'arn:aws:iam::1:role/x')
+  vi.stubEnv('WHATSAPP_PHONE_NUMBER_ID', 'phone-number-id-1')
+  vi.stubEnv('WHATSAPP_DISPLAY_NUMBER', '+1 555 010 0000')
+  vi.stubEnv('WHATSAPP_SNS_TOPIC_ARN', 'arn:aws:sns:eu-west-1:1:t')
+  vi.stubEnv('WHATSAPP_ALLOWLIST', '')
+  vi.stubEnv('WHATSAPP_MONTHLY_CAP', '')
+  vi.stubEnv('ADMIN_EMAILS', 'boss@example.com')
+  sendEmail.mockClear()
+  sent = []
+  failFor = new Set()
+  phones.clear()
+  setWhatsAppProviderForTests({
+    sendTemplate: async (to, msg) => {
+      if (failFor.has(to)) throw new Error(`rejected ${to} (owner@example.com)`)
+      sent.push({ to, msg })
+      return { messageId: `wamid.${sent.length}` }
+    },
+    sendText: async () => ({ messageId: 'text' }),
+  })
+  db = await createTestDb()
+  fx = await setupCourse(db)
+}, 120_000)
+
+afterEach(() => {
+  vi.unstubAllEnvs()
+  setWhatsAppProviderForTests(null)
+  setWhatsAppQueueForTests(null)
+  setNowForTests(null)
+})
+
+describe('handleWhatsAppEvent', () => {
+  it('checkin fallback skips students who checked in during the delay', async () => {
+    await connect(fx.alice, fx.bob)
+    const w = await openWindow()
+    await db.insert(attendanceCheckIn).values({ windowId: w.id, studentId: fx.alice.user.id, checkedInAt: at(2) })
+    const result = await handleWhatsAppEvent(db, { kind: 'checkinOpen', windowId: w.id }, at(5))
+    expect(result).toEqual({ sent: 1, skipped: 0 })
+    expect(sent.map((s) => s.to)).toEqual([phoneOf(fx.bob.user.id)])
+    expect(sent[0].msg).toMatchObject({ name: 'checkin_open', language: 'fr', bodyParams: ['Cell biology', '09:15'], buttonPath: 'check-in' })
+  })
+
+  it('checkin fallback sends nothing when the window was closed early', async () => {
+    await connect(fx.alice)
+    const w = await openWindow('start', at(3))
+    const result = await handleWhatsAppEvent(db, { kind: 'checkinOpen', windowId: w.id }, at(5))
+    expect(result).toEqual({ sent: 0, skipped: 0 })
+    expect(sent).toEqual([])
+    expect(await messages()).toEqual([])
+  })
+
+  it('checkin fallback sends nothing after the window ran out by itself', async () => {
+    await connect(fx.alice)
+    const w = await openWindow()
+    await handleWhatsAppEvent(db, { kind: 'checkinOpen', windowId: w.id }, at(16))
+    expect(sent).toEqual([])
+  })
+
+  it('checkin fallback ignores end windows', async () => {
+    await connect(fx.alice)
+    const w = await openWindow('end')
+    await handleWhatsAppEvent(db, { kind: 'checkinOpen', windowId: w.id }, at(5))
+    expect(sent).toEqual([])
+  })
+
+  it('test fallback skips students with an attempt', async () => {
+    await connect(fx.alice, fx.carol)
+    const { test } = await insertStartedTest(db, fx.lecturer, fx.bio.id)
+    await joinTest(db, test.id, fx.alice)
+    const result = await handleWhatsAppEvent(db, { kind: 'testStarted', testId: test.id }, at(5))
+    expect(result).toEqual({ sent: 1, skipped: 0 })
+    expect(sent.map((s) => s.to)).toEqual([phoneOf(fx.carol.user.id)])
+    expect(sent[0].msg).toMatchObject({ name: 'test_started', bodyParams: ['CA 1', 'Cell biology'], buttonPath: `t/${test.code}` })
+  })
+
+  it('test fallback sends nothing once the test has ended', async () => {
+    await connect(fx.alice)
+    const { test } = await insertStartedTest(db, fx.lecturer, fx.bio.id)
+    await handleWhatsAppEvent(db, { kind: 'testStarted', testId: test.id }, at(31))
+    expect(sent).toEqual([])
+  })
+
+  it('redelivering the same event sends nothing new', async () => {
+    await connect(fx.alice, fx.carol)
+    const { test } = await insertStartedTest(db, fx.lecturer, fx.bio.id)
+    const event: WhatsAppEvent = { kind: 'testStarted', testId: test.id }
+    expect(await handleWhatsAppEvent(db, event, at(5))).toEqual({ sent: 2, skipped: 0 })
+    expect(await handleWhatsAppEvent(db, event, at(6))).toEqual({ sent: 0, skipped: 0 })
+    expect(sent).toHaveLength(2)
+    const rows = await messages()
+    expect(rows).toHaveLength(2)
+    expect(rows.every((r) => r.status === 'sent' && r.providerMessageId && r.eventKey === eventKey(event))).toBe(true)
+    const [usage] = await db.select().from(whatsappMonthUsage)
+    expect(usage.sent).toBe(2)
+  })
+
+  it('students with the preference off, or not connected, get nothing', async () => {
+    await connect(fx.alice, fx.bob)
+    await db.insert(whatsappPreference).values({ userId: fx.alice.user.id, tests: false })
+    // Carol is not connected; Bob only switched off something else.
+    await db.insert(whatsappPreference).values({ userId: fx.bob.user.id, assignments: false })
+    const { test } = await insertStartedTest(db, fx.lecturer, fx.bio.id)
+    await handleWhatsAppEvent(db, { kind: 'testStarted', testId: test.id }, at(5))
+    expect(sent.map((s) => s.to)).toEqual([phoneOf(fx.bob.user.id)])
+  })
+
+  it('numbers outside the allowlist get nothing', async () => {
+    await connect(fx.alice, fx.carol)
+    vi.stubEnv('WHATSAPP_ALLOWLIST', phoneOf(fx.carol.user.id))
+    const { test } = await insertStartedTest(db, fx.lecturer, fx.bio.id)
+    await handleWhatsAppEvent(db, { kind: 'testStarted', testId: test.id }, at(5))
+    expect(sent.map((s) => s.to)).toEqual([phoneOf(fx.carol.user.id)])
+  })
+
+  it('a provider failure for one student still sends to the others and frees the cap slot', async () => {
+    await connect(fx.alice, fx.bob, fx.carol)
+    failFor.add(phoneOf(fx.bob.user.id))
+    const { test } = await insertStartedTest(db, fx.lecturer, fx.bio.id)
+    const result = await handleWhatsAppEvent(db, { kind: 'testStarted', testId: test.id }, at(5))
+    expect(result).toEqual({ sent: 2, skipped: 1 })
+    expect(sent.map((s) => s.to).sort()).toEqual([phoneOf(fx.alice.user.id), phoneOf(fx.carol.user.id)].sort())
+    const [failed] = await db.select().from(whatsappMessage).where(eq(whatsappMessage.userId, fx.bob.user.id))
+    expect(failed.status).toBe('failed')
+    expect(failed.error).toContain('rejected')
+    expect(failed.error).not.toContain('owner@example.com')
+    const [usage] = await db.select().from(whatsappMonthUsage)
+    expect(usage.sent).toBe(2)
+  })
+
+  it('at the cap the message is logged skipped_cap and admins are emailed once', async () => {
+    vi.stubEnv('WHATSAPP_MONTHLY_CAP', '1')
+    await connect(fx.alice, fx.bob, fx.carol)
+    const w = await openWindow()
+    const result = await handleWhatsAppEvent(db, { kind: 'checkinOpen', windowId: w.id }, at(5))
+    expect(result).toEqual({ sent: 1, skipped: 2 })
+    expect((await messages()).filter((r) => r.status === 'skipped_cap')).toHaveLength(2)
+    expect(sendEmail).toHaveBeenCalledTimes(1)
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: 'boss@example.com', subject: 'WhatsApp monthly cap reached', kind: 'whatsappCapReached' }),
+    )
+    // Another event the same month hits the cap again but does not email again.
+    const { test } = await insertStartedTest(db, fx.lecturer, fx.bio.id)
+    await handleWhatsAppEvent(db, { kind: 'testStarted', testId: test.id }, at(6))
+    expect(sendEmail).toHaveBeenCalledTimes(1)
+  })
+
+  it('results for an assignment use the assignment path and the student\'s locale', async () => {
+    await connect(fx.alice, fx.bob)
+    const [a] = await db
+      .insert(assignment)
+      .values({
+        courseId: fx.bio.id,
+        title: 'Devoir 1',
+        dueAt: at(60),
+        maxMark: 20,
+        submissionMode: 'text',
+        status: 'published',
+        publishedAt: T0,
+        gradesReleasedAt: at(2),
+        createdBy: fx.lecturer.user.id,
+      })
+      .returning()
+    for (const s of [fx.alice, fx.bob]) {
+      await db.insert(submission).values({ assignmentId: a.id, studentId: s.user.id, submittedAt: at(1), mark: 12 })
+    }
+    await handleWhatsAppEvent(db, { kind: 'resultsReleased', source: 'assignment', id: a.id }, at(5))
+    const byTo = new Map(sent.map((s) => [s.to, s.msg]))
+    expect(byTo.get(phoneOf(fx.alice.user.id))).toMatchObject({
+      name: 'results_released',
+      language: 'en',
+      bodyParams: ['Devoir 1', 'Cell biology'],
+      buttonPath: `assignments/${a.id}`,
+    })
+    expect(byTo.get(phoneOf(fx.bob.user.id))?.language).toBe('fr')
+  })
+
+  it('results for a test go to students who took it, at the test path', async () => {
+    await connect(fx.alice, fx.carol)
+    const { test } = await insertStartedTest(db, fx.lecturer, fx.bio.id)
+    await joinTest(db, test.id, fx.alice)
+    await db.update(courseTest).set({ resultsReleasedAt: at(40) })
+    await handleWhatsAppEvent(db, { kind: 'resultsReleased', source: 'test', id: test.id }, at(45))
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).toMatchObject({ to: phoneOf(fx.alice.user.id), msg: { buttonPath: `t/${test.code}`, bodyParams: ['CA 1', 'Cell biology'] } })
+  })
+
+  it('a published assignment goes to the roster with its due date', async () => {
+    await connect(fx.alice)
+    const [a] = await db
+      .insert(assignment)
+      .values({
+        courseId: fx.bio.id,
+        title: 'Essay',
+        dueAt: new Date('2026-11-16T13:30:00Z'),
+        maxMark: 20,
+        submissionMode: 'text',
+        status: 'published',
+        publishedAt: T0,
+        createdBy: fx.lecturer.user.id,
+      })
+      .returning()
+    await handleWhatsAppEvent(db, { kind: 'assignmentPublished', assignmentId: a.id }, at(5))
+    expect(sent[0].msg).toMatchObject({ name: 'assignment_published', buttonPath: `assignments/${a.id}` })
+    expect(sent[0].msg.bodyParams[2]).toMatch(/14:30/)
+  })
+
+  it('a class starting soon goes to the course lecturer', async () => {
+    await connect(fx.lecturer)
+    const result = await handleWhatsAppEvent(
+      db,
+      { kind: 'classSoonLecturer', courseId: fx.bio.id, sittingKey: 'slot-1:2026-11-16', startsAt: '2026-11-16T13:30:00.000Z' },
+      at(5),
+    )
+    expect(result).toEqual({ sent: 1, skipped: 0 })
+    expect(sent[0]).toMatchObject({
+      to: phoneOf(fx.lecturer.user.id),
+      msg: { name: 'class_soon_lecturer', bodyParams: ['Cell biology', '14:30'], buttonPath: 'schedule/class/slot-1%3A2026-11-16' },
+    })
+  })
+
+  it('does nothing when WhatsApp is not set up', async () => {
+    await connect(fx.alice)
+    vi.stubEnv('WHATSAPP_AWS_REGION', '')
+    setWhatsAppProviderForTests(null)
+    const { test } = await insertStartedTest(db, fx.lecturer, fx.bio.id)
+    expect(await handleWhatsAppEvent(db, { kind: 'testStarted', testId: test.id }, at(5))).toEqual({ sent: 0, skipped: 0 })
+  })
+})
+
+describe('enqueueWhatsApp', () => {
+  it('hands the event and delivery time to the queue', async () => {
+    const queued: { event: WhatsAppEvent; deliverAt: Date }[] = []
+    setWhatsAppQueueForTests({ send: async (event, deliverAt) => void queued.push({ event, deliverAt }) })
+    const when = new Date('2026-11-16T09:00:00Z')
+    await enqueueWhatsApp({ kind: 'checkinOpen', windowId: 'w1' }, when)
+    expect(queued).toEqual([{ event: { kind: 'checkinOpen', windowId: 'w1' }, deliverAt: when }])
+  })
+
+  it('does nothing when WhatsApp is not set up', async () => {
+    const queued: unknown[] = []
+    setWhatsAppQueueForTests({ send: async (e) => void queued.push(e) })
+    vi.stubEnv('WHATSAPP_SNS_TOPIC_ARN', '')
+    await enqueueWhatsApp({ kind: 'testStarted', testId: 't1' })
+    expect(queued).toEqual([])
+  })
+
+  it('names each event with a stable key', () => {
+    expect(eventKey({ kind: 'checkinOpen', windowId: 'w' })).toBe('checkin:w')
+    expect(eventKey({ kind: 'testStarted', testId: 't' })).toBe('test:t')
+    expect(eventKey({ kind: 'resultsReleased', source: 'test', id: 'x' })).toBe('results:test:x')
+    expect(eventKey({ kind: 'assignmentPublished', assignmentId: 'a' })).toBe('assignment:a')
+    expect(eventKey({ kind: 'classSoonLecturer', courseId: 'c', sittingKey: 'k', startsAt: 's' })).toBe('class:k')
+  })
+})

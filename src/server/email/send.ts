@@ -22,7 +22,7 @@ export async function sendEmail(args: {
   to: string
   subject: string
   react: ReactElement
-  kind: EmailKind
+  kind: EmailKind | 'whatsappCapReached'
 }): Promise<void> {
   if (!isAllowedRecipient(args.to)) {
     console.info('[email] recipient not on EMAIL_ALLOWLIST, email not sent', {
