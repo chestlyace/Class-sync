@@ -8,6 +8,7 @@ import { requireCourseOwner } from '@/server/courses/service'
 import type { Db } from '@/server/db'
 import { courseTest, testAnswer, testAttempt, testExit, testLog, testQuestion } from '@/server/db/schema'
 import { pushTestStarted } from '@/server/push/course-events'
+import { queueWhatsApp, WHATSAPP_FALLBACK_DELAY_MS } from '@/server/whatsapp/trigger'
 import { summarizeTest, type TestSummary } from './authoring'
 import { endsAt, testPhase, type TestPhase } from './phase'
 import { requireOwnedTest, type TestRow } from './queries'
@@ -148,7 +149,10 @@ export async function startTest(ctx: Ctx, testId: string): Promise<TestSummary> 
   // Deleted after the owner check: the same answer as any missing test.
   if (!row) forbidden()
   // Only the first Start announces the test.
-  if (started) await pushTestStarted(ctx.db, row.courseId, { id: row.id, title: row.title, code: row.code })
+  if (started) {
+    await pushTestStarted(ctx.db, row.courseId, { id: row.id, title: row.title, code: row.code })
+    queueWhatsApp({ kind: 'testStarted', testId: row.id }, new Date(at.getTime() + WHATSAPP_FALLBACK_DELAY_MS))
+  }
   return summarizeTest(ctx.db, row)
 }
 

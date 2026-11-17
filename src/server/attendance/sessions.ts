@@ -18,6 +18,7 @@ import { isOnCourseRoster, requireCourseOwner, type CourseSummary } from '@/serv
 import { getSchool } from '@/server/schools/service'
 import { isUniqueViolation } from '@/server/lib/db-errors'
 import { pushWindowOpened } from '@/server/push/course-events'
+import { queueWhatsApp, WHATSAPP_FALLBACK_DELAY_MS } from '@/server/whatsapp/trigger'
 import { currentCode, newWindowSecret } from './code'
 import { checkInLinkPath, signCheckInLink } from './link'
 import { loadStatusMatrixForRoster, type StudentSessionState } from './matrix'
@@ -251,6 +252,13 @@ export async function openWindow(ctx: Ctx, sessionId: string, kind: WindowKind):
     kind,
     closesAt: new Date(at.getTime() + WINDOW_MAX_MS),
   })
+  // Only a check-in is worth a WhatsApp fallback; a check-out is not.
+  if (kind === 'start') {
+    queueWhatsApp(
+      { kind: 'checkinOpen', windowId: created.id },
+      new Date(created.openedAt.getTime() + WHATSAPP_FALLBACK_DELAY_MS),
+    )
+  }
   return liveWindow(ctx.db, created, session.courseId, at)
 }
 

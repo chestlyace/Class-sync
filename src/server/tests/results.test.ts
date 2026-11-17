@@ -8,6 +8,7 @@ import { setResendClientFactoryForTests, type NotifyClient } from '@/server/emai
 import { setAfterResponseForTests } from '@/server/lib/after-response'
 import { sendPush, type PushItem } from '@/server/push/send'
 import { createTestDb } from '@/test/db'
+import { captureWhatsApp } from '@/test/whatsapp-capture'
 import { ctxFor, makeUser } from '@/test/factories'
 import {
   at,
@@ -192,6 +193,50 @@ describe('releasing test results', () => {
     await releaseResults(s.lecturer, s.test.id)
     await flush()
     expect(push).toHaveBeenCalledTimes(1)
+  })
+
+  describe('whatsapp', () => {
+    let wa: ReturnType<typeof captureWhatsApp> | null = null
+    afterEach(() => {
+      wa?.stop()
+      wa = null
+    })
+
+    it('the first release queues a results alert after the update, a second release queues nothing', async () => {
+      const s = await scenario()
+      await confirmAll(s)
+      wa = captureWhatsApp({ ownAfterResponse: false })
+      await releaseResults(s.lecturer, s.test.id)
+      expect(wa.captured).toEqual([]) // only after the response
+      await flush()
+      expect(wa.captured).toEqual([{ event: { kind: 'resultsReleased', source: 'test', id: s.test.id }, deliverAt: at(40) }])
+
+      setClock(at(50))
+      await releaseResults(s.lecturer, s.test.id)
+      await flush()
+      expect(wa.captured).toHaveLength(1)
+    })
+
+    it('queues nothing when WhatsApp is not configured', async () => {
+      const s = await scenario()
+      await confirmAll(s)
+      wa = captureWhatsApp({ configured: false, ownAfterResponse: false })
+      await releaseResults(s.lecturer, s.test.id)
+      await flush()
+      expect(wa.captured).toEqual([])
+    })
+
+    it('a failing queue never fails the release', async () => {
+      const s = await scenario()
+      await confirmAll(s)
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      wa = captureWhatsApp({ failWith: new Error('queue down'), ownAfterResponse: false })
+      expect(await releaseResults(s.lecturer, s.test.id)).toEqual({ released: 3 })
+      await flush()
+      expect((await testRowOf(db, s.test.id)).resultsReleasedAt).toEqual(at(40))
+      expect(error).toHaveBeenCalled()
+      error.mockRestore()
+    })
   })
 
   it('a send failure never fails the release', async () => {

@@ -29,6 +29,7 @@ import { createCourse, setRosterAdjustment } from '@/server/courses/service'
 import { createSchool } from '@/server/schools/service'
 import { ctxFor, makeUser } from '@/test/factories'
 import { racing } from '@/test/race'
+import { captureWhatsApp } from '@/test/whatsapp-capture'
 import {
   endTestForEveryone,
   getAttemptLog,
@@ -264,6 +265,48 @@ describe('running a test (lecturer)', () => {
     expect((push.mock.calls[0][0] as { payload: { url: string } }[])[0].payload.url).toBe(`/t/${test.code}`)
     await startTest(lecturer, test.id)
     expect(push).toHaveBeenCalledTimes(1)
+  })
+
+  describe('whatsapp', () => {
+    let wa: ReturnType<typeof captureWhatsApp> | null = null
+    afterEach(() => {
+      wa?.stop()
+      wa = null
+    })
+
+    it('the first Start queues a test-started alert 3 minutes later, a second Start queues nothing more', async () => {
+      const { lecturer, algo } = await setup()
+      const { test } = await insertTest(lecturer, algo.id)
+      wa = captureWhatsApp()
+      setClock(T0)
+      await startTest(lecturer, test.id)
+      await startTest(lecturer, test.id)
+      await wa.flush()
+      expect(wa.captured).toEqual([{ event: { kind: 'testStarted', testId: test.id }, deliverAt: at(3) }])
+    })
+
+    it('queues nothing when WhatsApp is not configured', async () => {
+      const { lecturer, algo } = await setup()
+      const { test } = await insertTest(lecturer, algo.id)
+      wa = captureWhatsApp({ configured: false })
+      setClock(T0)
+      await startTest(lecturer, test.id)
+      await wa.flush()
+      expect(wa.captured).toEqual([])
+    })
+
+    it('a failing queue never fails the Start', async () => {
+      const { lecturer, algo } = await setup()
+      const { test } = await insertTest(lecturer, algo.id)
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      wa = captureWhatsApp({ failWith: new Error('queue down') })
+      setClock(T0)
+      const summary = await startTest(lecturer, test.id)
+      await wa.flush()
+      expect(summary.state).toBe('running')
+      expect(error).toHaveBeenCalled()
+      error.mockRestore()
+    })
   })
 
   it('starting twice keeps the first deadline', async () => {
