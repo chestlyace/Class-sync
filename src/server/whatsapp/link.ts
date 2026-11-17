@@ -1,5 +1,5 @@
 import { randomInt } from "node:crypto";
-import { and, eq, gt, isNull, ne } from "drizzle-orm";
+import { and, eq, gt, isNotNull, isNull, ne } from "drizzle-orm";
 import { createTranslator } from "next-intl";
 import { localesOf } from "@/server/assignments/queries";
 import { AppError } from "@/server/core/errors";
@@ -173,6 +173,20 @@ export async function handleInboundMessage(
   });
 
   if (!linkedUserId) {
+    // SNS can deliver a message twice. If this code was already used by the account that holds
+    // this very number, the first delivery did the work and replied: stay quiet.
+    const [alreadyLinked] = await db
+      .select({ userId: whatsappLink.userId })
+      .from(whatsappConnectCode)
+      .innerJoin(whatsappLink, eq(whatsappLink.userId, whatsappConnectCode.userId))
+      .where(
+        and(
+          eq(whatsappConnectCode.code, command.code),
+          isNotNull(whatsappConnectCode.usedAt),
+          eq(whatsappLink.phone, msg.from),
+        ),
+      );
+    if (alreadyLinked) return;
     await sendReply(msg.from, reply("badCode", "en"));
     return;
   }

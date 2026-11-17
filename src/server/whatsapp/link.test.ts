@@ -99,6 +99,20 @@ describe("WhatsApp linking", () => {
     expect(sent).toHaveLength(1);
   });
 
+  it("the same join delivered twice replies once and keeps the link", async () => {
+    const db = await createTestDb();
+    const u = await makeUser(db);
+    const { code } = await createConnectCode(ctxFor(db, u));
+    const msg = { from: PHONE, text: `JOIN ${code}`, at: new Date() };
+    await handleInboundMessage(db, msg);
+    await handleInboundMessage(db, msg);
+    const links = await db.select().from(whatsappLink);
+    expect(links).toHaveLength(1);
+    expect(links[0]).toMatchObject({ userId: u.id, phone: PHONE });
+    expect(sent).toHaveLength(1);
+    expect(sent[0].text).toContain("Connected to Clasync");
+  });
+
   it("join from a number linked to another account moves the link", async () => {
     const db = await createTestDb();
     const a = await makeUser(db);

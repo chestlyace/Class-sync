@@ -136,33 +136,41 @@ async function fetchCertificate(url: string): Promise<string> {
   return pem
 }
 
+export type SnsVerdict = 'valid' | 'invalid' | 'unavailable'
+
 /**
  * Checks the SNS signature (SHA1 for SignatureVersion 1, SHA256 for 2) against the certificate
- * at `SigningCertURL`, which must be on SNS's own host for our region. False when anything is
- * off; a certificate that cannot be fetched also gives false (the message is refused, SNS retries).
+ * at `SigningCertURL`, which must be on SNS's own host for our region. 'invalid' when the message
+ * does not check out; 'unavailable' when the certificate could not be fetched, so the caller can
+ * answer with a retryable status instead of dropping the message.
  */
 export async function verifySnsSignature(
   msg: SnsMessage,
   region: string,
   getCertificate: (url: string) => Promise<string> = fetchCertificate,
-): Promise<boolean> {
-  if (!isSnsUrl(msg.SigningCertURL, region, '.pem') || !msg.Signature) return false
+): Promise<SnsVerdict> {
+  if (!isSnsUrl(msg.SigningCertURL, region, '.pem') || !msg.Signature) return 'invalid'
   const algorithm = msg.SignatureVersion === '1' ? 'RSA-SHA1' : msg.SignatureVersion === '2' ? 'RSA-SHA256' : null
   const toSign = snsStringToSign(msg)
-  if (!algorithm || toSign === null) return false
+  if (!algorithm || toSign === null) return 'invalid'
+  let pem: string
   try {
-    const pem = await getCertificate(msg.SigningCertURL as string)
-    return createVerify(algorithm).update(toSign, 'utf8').verify(pem, msg.Signature, 'base64')
+    pem = await getCertificate(msg.SigningCertURL as string)
   } catch (err) {
-    console.error('[whatsapp] could not verify an SNS message', err)
-    return false
+    console.error('[whatsapp] could not fetch the SNS certificate', err)
+    return 'unavailable'
+  }
+  try {
+    return createVerify(algorithm).update(toSign, 'utf8').verify(pem, msg.Signature, 'base64') ? 'valid' : 'invalid'
+  } catch {
+    return 'invalid'
   }
 }
 
-let testVerifier: ((body: SnsMessage) => Promise<boolean>) | null = null
+let testVerifier: ((body: SnsMessage) => Promise<boolean | SnsVerdict>) | null = null
 
 /** Replaces signature verification in tests. Pass null to restore the real one. */
-export function setSnsVerifierForTests(fn: ((body: SnsMessage) => Promise<boolean>) | null): void {
+export function setSnsVerifierForTests(fn: ((body: SnsMessage) => Promise<boolean | SnsVerdict>) | null): void {
   testVerifier = fn
 }
 
@@ -188,8 +196,11 @@ export async function handleSnsPost(db: Db, rawBody: string): Promise<SnsResult>
     return { status: 400, body: 'bad request' }
   }
 
-  const verified = testVerifier ? await testVerifier(msg) : await verifySnsSignature(msg, config.region)
-  if (!verified || msg.TopicArn !== config.topicArn) return { status: 403, body: 'forbidden' }
+  const raw = testVerifier ? await testVerifier(msg) : await verifySnsSignature(msg, config.region)
+  const verdict: SnsVerdict = raw === true ? 'valid' : raw === false ? 'invalid' : raw
+  // SNS does not retry most 4xx answers, so a certificate we could not fetch gets a 503.
+  if (verdict === 'unavailable') return { status: 503, body: 'try again' }
+  if (verdict !== 'valid' || msg.TopicArn !== config.topicArn) return { status: 403, body: 'forbidden' }
 
   if (msg.Type === 'SubscriptionConfirmation') {
     if (!isSnsUrl(msg.SubscribeURL, config.region)) return { status: 403, body: 'forbidden' }

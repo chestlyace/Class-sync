@@ -42,6 +42,11 @@ describe('POST /api/whatsapp/events', () => {
     expect((await post(body())).status).toBe(403)
   })
 
+  it('is 503 when the signature could not be checked, so SNS tries again', async () => {
+    setSnsVerifierForTests(async () => 'unavailable')
+    expect((await post(body())).status).toBe(503)
+  })
+
   it('is 200 for a verified notification', async () => {
     expect((await post(body())).status).toBe(200)
   })

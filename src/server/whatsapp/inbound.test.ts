@@ -184,6 +184,13 @@ describe('handleSnsPost', () => {
     expect(handled).toEqual([])
   })
 
+  it('is 503 (retryable) when the signature could not be checked', async () => {
+    const db = await createTestDb()
+    setSnsVerifierForTests(async () => 'unavailable')
+    expect((await handleSnsPost(db, notification(textEntry))).status).toBe(503)
+    expect(handled).toEqual([])
+  })
+
   it('hands each text to the linker with the number in E.164, and records statuses', async () => {
     const db = await createTestDb()
     const res = await handleSnsPost(db, notification(textEntry))
@@ -295,25 +302,25 @@ describe('verifySnsSignature', () => {
 
   it('accepts a valid version 1 and version 2 signature', async () => {
     const getCert = async () => pem
-    expect(await verifySnsSignature({ ...base, SignatureVersion: '1', Signature: sign(base, 'RSA-SHA1') }, 'eu-west-1', getCert)).toBe(true)
-    expect(await verifySnsSignature({ ...base, SignatureVersion: '2', Signature: sign(base, 'RSA-SHA256') }, 'eu-west-1', getCert)).toBe(true)
+    expect(await verifySnsSignature({ ...base, SignatureVersion: '1', Signature: sign(base, 'RSA-SHA1') }, 'eu-west-1', getCert)).toBe('valid')
+    expect(await verifySnsSignature({ ...base, SignatureVersion: '2', Signature: sign(base, 'RSA-SHA256') }, 'eu-west-1', getCert)).toBe('valid')
   })
 
   it('refuses a changed message, a wrong version, a foreign certificate host and a missing signature', async () => {
     const getCert = vi.fn(async () => pem)
     const signed = { ...base, SignatureVersion: '2', Signature: sign(base, 'RSA-SHA256') }
-    expect(await verifySnsSignature({ ...signed, Message: 'tampered' }, 'eu-west-1', getCert)).toBe(false)
-    expect(await verifySnsSignature({ ...signed, SignatureVersion: '1' }, 'eu-west-1', getCert)).toBe(false)
-    expect(await verifySnsSignature({ ...signed, SignatureVersion: '3' }, 'eu-west-1', getCert)).toBe(false)
-    expect(await verifySnsSignature({ ...signed, Signature: undefined }, 'eu-west-1', getCert)).toBe(false)
+    expect(await verifySnsSignature({ ...signed, Message: 'tampered' }, 'eu-west-1', getCert)).toBe('invalid')
+    expect(await verifySnsSignature({ ...signed, SignatureVersion: '1' }, 'eu-west-1', getCert)).toBe('invalid')
+    expect(await verifySnsSignature({ ...signed, SignatureVersion: '3' }, 'eu-west-1', getCert)).toBe('invalid')
+    expect(await verifySnsSignature({ ...signed, Signature: undefined }, 'eu-west-1', getCert)).toBe('invalid')
     getCert.mockClear()
-    expect(await verifySnsSignature({ ...signed, SigningCertURL: 'https://evil.example/c.pem' }, 'eu-west-1', getCert)).toBe(false)
+    expect(await verifySnsSignature({ ...signed, SigningCertURL: 'https://evil.example/c.pem' }, 'eu-west-1', getCert)).toBe('invalid')
     expect(getCert).not.toHaveBeenCalled()
   })
 
-  it('refuses when the certificate cannot be fetched', async () => {
+  it('reports unavailable, not invalid, when the certificate cannot be fetched', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     const signed = { ...base, SignatureVersion: '2', Signature: sign(base, 'RSA-SHA256') }
-    expect(await verifySnsSignature(signed, 'eu-west-1', async () => { throw new Error('down') })).toBe(false)
+    expect(await verifySnsSignature(signed, 'eu-west-1', async () => { throw new Error('down') })).toBe('unavailable')
   })
 })
