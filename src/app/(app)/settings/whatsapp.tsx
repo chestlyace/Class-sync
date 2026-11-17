@@ -13,12 +13,8 @@ import { ErrorCodeMessage } from '@/components/action-error'
 import { Button } from '@/components/ui/button'
 import type { ActionResult } from '@/lib/action-result'
 import { cn } from '@/lib/utils'
+import { POLL_MS, pollOutcome } from '@/lib/whatsapp-connect'
 import type { WhatsAppPrefs } from '@/server/whatsapp/link'
-
-/** How often the page asks whether the WhatsApp message arrived. */
-const POLL_MS = 3000
-/** Stop asking after this long (the connect code lasts the same time). */
-const POLL_LIMIT_MS = 15 * 60_000
 
 const STUDENT_KEYS = ['checkin', 'tests', 'results', 'assignments'] as const satisfies readonly (keyof WhatsAppPrefs)[]
 const LECTURER_KEYS = ['classSoon'] as const satisfies readonly (keyof WhatsAppPrefs)[]
@@ -33,7 +29,7 @@ type Failure = ActionResult<unknown> | 'unexpected' | null
  */
 export function WhatsAppSettings({
   maskedPhone: initialPhone,
-  prefs,
+  prefs: initialPrefs,
   roles,
 }: {
   maskedPhone: string | null
@@ -43,44 +39,53 @@ export function WhatsAppSettings({
   const t = useTranslations('settings.whatsapp')
   const tCommon = useTranslations('common')
   const [phone, setPhone] = useState(initialPhone)
+  const [prefs, setPrefs] = useState(initialPrefs)
   // The wa.me link while waiting for the message to arrive.
   const [waiting, setWaiting] = useState<string | null>(null)
   const [expired, setExpired] = useState(false)
   const [pending, setPending] = useState<'connect' | 'disconnect' | null>(null)
   const [failure, setFailure] = useState<Failure>(null)
 
-  // While waiting: ask every few seconds, and give up after 15 minutes. Stops when the number
-  // shows up, when the code runs out and when the page goes away.
+  // While waiting: ask every few seconds, and at once when the tab comes back into view (the user
+  // returns from WhatsApp). The answer always counts first; "expired" only when the 15 minutes
+  // are over and the server still shows no number. Stops when connected, expired or unmounted.
   useEffect(() => {
     if (!waiting) return
     let alive = true
     let busy = false
     const startedAt = Date.now()
-    const timer = setInterval(async () => {
-      if (Date.now() - startedAt >= POLL_LIMIT_MS) {
-        clearInterval(timer)
-        setWaiting(null)
-        setExpired(true)
-        return
-      }
-      if (busy) return
+    const stop = () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+    async function check() {
+      if (busy || !alive) return
       busy = true
       try {
         const result = await getWhatsAppSettingsAction()
-        if (alive && result.ok && result.data.maskedPhone) {
-          clearInterval(timer)
+        if (!alive || !result.ok) return
+        const outcome = pollOutcome({ phone: result.data.maskedPhone, startedAt, now: Date.now() })
+        if (outcome === 'waiting') return
+        stop()
+        setWaiting(null)
+        if (outcome === 'connected') {
           setPhone(result.data.maskedPhone)
-          setWaiting(null)
-        }
+          setPrefs(result.data.prefs)
+        } else setExpired(true)
       } catch {
         // A failed check is tried again on the next tick.
       } finally {
         busy = false
       }
-    }, POLL_MS)
+    }
+    function onVisible() {
+      if (document.visibilityState === 'visible') void check()
+    }
+    const timer = setInterval(() => void check(), POLL_MS)
+    document.addEventListener('visibilitychange', onVisible)
     return () => {
       alive = false
-      clearInterval(timer)
+      stop()
     }
   }, [waiting])
 
@@ -94,8 +99,12 @@ export function WhatsAppSettings({
         setFailure(result)
         return
       }
-      // A new tab, so on a phone this hands off to the WhatsApp app and this page stays here.
-      window.open(result.data.url, '_blank', 'noopener,noreferrer')
+      // A new tab, so this page stays here; on a phone the link opens the WhatsApp app. If the
+      // browser blocks the tab (this runs after a server round trip), go there in this tab: that
+      // is never blocked, and the settings page is fine to come back to.
+      const tab = window.open(result.data.url, '_blank')
+      if (tab) tab.opener = null
+      else window.location.assign(result.data.url)
       setWaiting(result.data.url)
     } catch {
       setFailure('unexpected')
@@ -142,7 +151,12 @@ export function WhatsAppSettings({
         </div>
       ) : (
         <div className="flex flex-col items-start gap-3">
-          <Button type="button" onClick={connect} pending={pending === 'connect'} disabled={pending !== null}>
+          <Button
+            type="button"
+            onClick={connect}
+            pending={pending === 'connect'}
+            disabled={pending !== null || waiting !== null}
+          >
             {pending === 'connect' ? t('connecting') : t('connect')}
           </Button>
           {waiting && (
@@ -177,7 +191,7 @@ export function WhatsAppSettings({
       {phone && keys.length > 0 && (
         <div role="group" aria-label={t('alertsTitle')} className="flex flex-col divide-y border-t">
           {keys.map((key) => (
-            <PreferenceSwitch key={key} prefKey={key} initial={prefs[key]} />
+            <PreferenceSwitch key={`${phone}-${key}`} prefKey={key} initial={prefs[key]} />
           ))}
         </div>
       )}
