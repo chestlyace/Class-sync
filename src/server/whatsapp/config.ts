@@ -24,11 +24,14 @@ export function whatsAppConfig(env: Record<string, string | undefined> = process
 
 /** Outside production, set WHATSAPP_ALLOWLIST (comma-separated E.164 numbers) so only those numbers get messages. Empty or unset allows everyone. */
 export function isAllowedWhatsAppNumber(e164: string, env: Record<string, string | undefined> = process.env): boolean {
-  const list = (env.WHATSAPP_ALLOWLIST ?? '')
+  const entries = (env.WHATSAPP_ALLOWLIST ?? '')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean)
-  return list.length === 0 || list.includes(e164)
+  if (entries.length === 0) return true
+  const number = normalizePhone(e164)
+  if (!number) return false
+  return entries.some((entry) => normalizePhone(entry) === number)
 }
 
 /** Meta sends numbers as digits without the plus sign. Returns +digits, or null unless there are 8 to 15 digits. */

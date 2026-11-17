@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildTemplatePayload } from './aws-provider'
 import { setWhatsAppProviderForTests, whatsAppProvider, type WhatsAppProvider } from './provider'
 
@@ -34,9 +34,20 @@ describe('buildTemplatePayload', () => {
 })
 
 describe('whatsAppProvider', () => {
-  afterEach(() => setWhatsAppProviderForTests(null))
+  afterEach(() => {
+    setWhatsAppProviderForTests(null)
+    vi.unstubAllEnvs()
+  })
 
   it('is null without configuration', () => {
+    for (const name of [
+      'WHATSAPP_AWS_REGION',
+      'WHATSAPP_AWS_ROLE_ARN',
+      'WHATSAPP_PHONE_NUMBER_ID',
+      'WHATSAPP_DISPLAY_NUMBER',
+      'WHATSAPP_SNS_TOPIC_ARN',
+    ])
+      vi.stubEnv(name, '')
     expect(whatsAppProvider()).toBeNull()
   })
 

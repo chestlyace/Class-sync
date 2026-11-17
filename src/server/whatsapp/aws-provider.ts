@@ -52,7 +52,10 @@ export function createAwsProvider(config: WhatsAppConfig): WhatsAppProvider {
           return { messageId: out.messageId }
         },
       }
-    })()
+    })().catch((e) => {
+      clientPromise = null
+      throw e
+    })
     return clientPromise
   }
 

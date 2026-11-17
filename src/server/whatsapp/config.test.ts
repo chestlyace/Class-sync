@@ -40,6 +40,12 @@ describe('isAllowedWhatsAppNumber', () => {
     expect(isAllowedWhatsAppNumber('+237600000002', env)).toBe(true)
     expect(isAllowedWhatsAppNumber('+237699999999', env)).toBe(false)
   })
+  it('matches entries written without the plus sign', () => {
+    expect(isAllowedWhatsAppNumber('+237600000001', { WHATSAPP_ALLOWLIST: '237600000001' })).toBe(true)
+  })
+  it('allows nobody when the list has only invalid entries', () => {
+    expect(isAllowedWhatsAppNumber('+237600000001', { WHATSAPP_ALLOWLIST: 'abc, 12' })).toBe(false)
+  })
   it('allows everyone when the list is unset or empty', () => {
     expect(isAllowedWhatsAppNumber('+237699999999', {})).toBe(true)
     expect(isAllowedWhatsAppNumber('+237699999999', { WHATSAPP_ALLOWLIST: '  ' })).toBe(true)
