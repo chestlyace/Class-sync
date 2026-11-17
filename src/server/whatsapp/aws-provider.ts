@@ -37,6 +37,9 @@ export function createAwsProvider(config: WhatsAppConfig): WhatsAppProvider {
       ])
       const sdk = new SocialMessagingClient({
         region: config.region,
+        // A hung call must not eat the dispatcher's 60 s: fail fast and let the queue retry the event.
+        requestHandler: { requestTimeout: 8000 },
+        maxAttempts: 2,
         credentials: awsCredentialsProvider({ roleArn: config.roleArn }),
       })
       return {

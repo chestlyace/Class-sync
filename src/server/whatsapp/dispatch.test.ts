@@ -23,6 +23,22 @@ import { setWhatsAppProviderForTests, type TemplateMessage } from './provider'
 const sendEmail = vi.hoisted(() => vi.fn(async () => {}))
 vi.mock('@/server/email/send', () => ({ sendEmail }))
 
+const capFaults = vi.hoisted(() => ({ claim: false, release: false }))
+vi.mock('./cap', async (importOriginal) => {
+  const real = await importOriginal<typeof import('./cap')>()
+  return {
+    ...real,
+    claimSend: async (...args: Parameters<typeof real.claimSend>) => {
+      if (capFaults.claim) throw new Error('database unavailable')
+      return real.claimSend(...args)
+    },
+    releaseClaim: async (...args: Parameters<typeof real.releaseClaim>) => {
+      if (capFaults.release) throw new Error('database unavailable')
+      return real.releaseClaim(...args)
+    },
+  }
+})
+
 type Sent = { to: string; msg: TemplateMessage }
 
 let db: Db
@@ -65,6 +81,8 @@ beforeEach(async () => {
   vi.stubEnv('WHATSAPP_MONTHLY_CAP', '')
   vi.stubEnv('ADMIN_EMAILS', 'boss@example.com')
   sendEmail.mockClear()
+  capFaults.claim = false
+  capFaults.release = false
   sent = []
   failFor = new Set()
   phones.clear()
@@ -274,6 +292,70 @@ describe('handleWhatsAppEvent', () => {
       to: phoneOf(fx.lecturer.user.id),
       msg: { name: 'class_soon_lecturer', bodyParams: ['Cell biology', '14:30'], buttonPath: 'schedule/class/slot-1%3A2026-11-16' },
     })
+  })
+
+  it('a db error while claiming leaves the student retryable', async () => {
+    await connect(fx.alice)
+    const { test } = await insertStartedTest(db, fx.lecturer, fx.bio.id)
+    const event: WhatsAppEvent = { kind: 'testStarted', testId: test.id }
+    capFaults.claim = true
+    await expect(handleWhatsAppEvent(db, event, at(5))).rejects.toThrow('database unavailable')
+    expect(await messages()).toEqual([])
+    expect(sent).toEqual([])
+    capFaults.claim = false
+    expect(await handleWhatsAppEvent(db, event, at(6))).toEqual({ sent: 1, skipped: 0 })
+    expect((await messages())[0]).toMatchObject({ status: 'sent' })
+  })
+
+  it('a db error while releasing a failed send leaves the student retryable', async () => {
+    await connect(fx.alice)
+    failFor.add(phoneOf(fx.alice.user.id))
+    const { test } = await insertStartedTest(db, fx.lecturer, fx.bio.id)
+    const event: WhatsAppEvent = { kind: 'testStarted', testId: test.id }
+    capFaults.release = true
+    await expect(handleWhatsAppEvent(db, event, at(5))).rejects.toThrow('database unavailable')
+    expect(await messages()).toEqual([])
+    capFaults.release = false
+    failFor.clear()
+    expect(await handleWhatsAppEvent(db, event, at(6))).toEqual({ sent: 1, skipped: 0 })
+  })
+
+  it('a message is pending until the provider accepts it', async () => {
+    await connect(fx.alice)
+    let during: string | undefined
+    setWhatsAppProviderForTests({
+      sendTemplate: async () => {
+        during = (await messages())[0]?.status
+        return { messageId: 'wamid.p' }
+      },
+      sendText: async () => ({ messageId: 'text' }),
+    })
+    const { test } = await insertStartedTest(db, fx.lecturer, fx.bio.id)
+    await handleWhatsAppEvent(db, { kind: 'testStarted', testId: test.id }, at(5))
+    expect(during).toBe('pending')
+    expect((await messages())[0]).toMatchObject({ status: 'sent', providerMessageId: 'wamid.p' })
+  })
+
+  it('the time budget stops starting new batches', async () => {
+    await connect(fx.alice, fx.bob, fx.carol)
+    let ms = 0
+    setWhatsAppProviderForTests({
+      sendTemplate: async (to, msg) => {
+        sent.push({ to, msg })
+        ms += 30_000
+        return { messageId: `wamid.${sent.length}` }
+      },
+      sendText: async () => ({ messageId: 'text' }),
+    })
+    const { test } = await insertStartedTest(db, fx.lecturer, fx.bio.id)
+    const event: WhatsAppEvent = { kind: 'testStarted', testId: test.id }
+    const options = { batchSize: 1, budgetMs: 45_000, clock: () => ms }
+    await expect(handleWhatsAppEvent(db, event, at(5), options)).rejects.toThrow('ran out of time')
+    expect(sent).toHaveLength(2)
+    // The retry sends only to the student who was not reached.
+    expect(await handleWhatsAppEvent(db, event, at(6), options)).toEqual({ sent: 1, skipped: 0 })
+    expect(new Set(sent.map((s) => s.to)).size).toBe(3)
+    expect(sent).toHaveLength(3)
   })
 
   it('does nothing when WhatsApp is not set up', async () => {

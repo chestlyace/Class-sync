@@ -219,16 +219,32 @@ async function mailCapReached(at: Date, cap: number): Promise<void> {
   }
 }
 
+/** Stop starting new batches after this long; the queue then retries and only the students not yet logged are left. */
+const TIME_BUDGET_MS = 45_000
+
+export type DispatchOptions = {
+  /** Recipients handled at once. */
+  batchSize?: number
+  /** How long the event may run before it stops and throws so the queue retries it. */
+  budgetMs?: number
+  /** Milliseconds clock; tests inject their own. */
+  clock?: () => number
+}
+
 /**
  * Delivers one queued event: works out, as of `at`, who still needs a message and sends each of them the
  * approved template. One message per (student, event), so a redelivered event sends nothing new. A provider
- * failure is logged against that student and never stops the others; a database error throws, so the queue retries.
+ * failure is logged against that student and never stops the others; a database error, or running out of time,
+ * throws so the queue retries (students already logged are skipped, the rest are sent).
  */
 export async function handleWhatsAppEvent(
   db: Db,
   event: WhatsAppEvent,
   at: Date,
+  options: DispatchOptions = {},
 ): Promise<{ sent: number; skipped: number }> {
+  const { batchSize = BATCH, budgetMs = TIME_BUDGET_MS, clock = Date.now } = options
+  const startedAt = clock()
   const config = whatsAppConfig()
   const provider = whatsAppProvider()
   if (!config || !provider) return { sent: 0, skipped: 0 }
@@ -240,18 +256,33 @@ export async function handleWhatsAppEvent(
 
   async function deliver(r: Recipient): Promise<void> {
     const template = plan!.template(r.locale)
-    // The log row comes first: it is what makes a redelivery a no-op. A crash before the provider call leaves a
-    // 'sent' row without a provider id, which is better than a duplicate.
+    // The log row comes first: it is what makes a redelivery a no-op. It starts 'pending' and turns 'sent' only
+    // with the provider's id. A crash around the provider call leaves it pending, which is better than a duplicate.
     const [row] = await db
       .insert(whatsappMessage)
-      .values({ userId: r.userId, kind: plan!.kind, eventKey: key, template: template.name, status: 'sent' })
+      .values({ userId: r.userId, kind: plan!.kind, eventKey: key, template: template.name, status: 'pending' })
       .onConflictDoNothing({ target: [whatsappMessage.userId, whatsappMessage.eventKey] })
       .returning({ id: whatsappMessage.id })
     if (!row) return
     const setRow = (values: Partial<typeof whatsappMessage.$inferInsert>) =>
       db.update(whatsappMessage).set({ ...values, updatedAt: new Date() }).where(eq(whatsappMessage.id, row.id))
+    /** The cap bookkeeping hit a database error before anything was sent: forget the row so the retry sends. */
+    const forgetRow = async () => {
+      try {
+        await db.delete(whatsappMessage).where(eq(whatsappMessage.id, row.id))
+      } catch (error) {
+        console.error('[whatsapp] could not clear a pending message row', error)
+      }
+    }
 
-    if (!(await claimSend(db, plan!.kind, at, config!.cap))) {
+    let claimed: boolean
+    try {
+      claimed = await claimSend(db, plan!.kind, at, config!.cap)
+    } catch (error) {
+      await forgetRow()
+      throw error
+    }
+    if (!claimed) {
       await setRow({ status: 'skipped_cap' })
       totals.skipped += 1
       if (await noteCapReached(db, at)) await mailCapReached(at, config!.cap)
@@ -263,17 +294,23 @@ export async function handleWhatsAppEvent(
     } catch (error) {
       const message = scrubError(error instanceof Error ? error.message : String(error))
       console.error('[whatsapp] send failed', { kind: plan!.kind, template: template.name, error: message })
-      await releaseClaim(db, at)
+      try {
+        await releaseClaim(db, at)
+      } catch (releaseError) {
+        await forgetRow()
+        throw releaseError
+      }
       await setRow({ status: 'failed', error: message })
       totals.skipped += 1
       return
     }
-    await setRow({ providerMessageId: messageId })
+    await setRow({ status: 'sent', providerMessageId: messageId })
     totals.sent += 1
   }
 
-  for (let i = 0; i < recipients.length; i += BATCH) {
-    const results = await Promise.allSettled(recipients.slice(i, i + BATCH).map(deliver))
+  for (let i = 0; i < recipients.length; i += batchSize) {
+    if (clock() - startedAt >= budgetMs) throw new Error('WhatsApp dispatch ran out of time; the queue will retry')
+    const results = await Promise.allSettled(recipients.slice(i, i + batchSize).map(deliver))
     const failed = results.find((x): x is PromiseRejectedResult => x.status === 'rejected')
     if (failed) throw failed.reason
   }

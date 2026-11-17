@@ -10,7 +10,9 @@ export const WHATSAPP_KINDS = [
 ] as const
 export type WhatsAppKind = (typeof WHATSAPP_KINDS)[number]
 
-export const WHATSAPP_STATUSES = ['sent', 'delivered', 'read', 'failed', 'skipped_cap'] as const
+// 'pending' is the dispatcher's claim on a (user, event) before the provider call; it becomes 'sent' with the provider id.
+// The column is plain text (the enum is TypeScript only), so adding a status needs no migration.
+export const WHATSAPP_STATUSES = ['pending', 'sent', 'delivered', 'read', 'failed', 'skipped_cap'] as const
 export type WhatsAppStatus = (typeof WHATSAPP_STATUSES)[number]
 
 /** A user's linked WhatsApp number (E.164, for example +2376...). One number per user, one user per number. */
