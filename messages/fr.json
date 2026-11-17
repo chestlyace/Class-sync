@@ -2604,6 +2604,13 @@
       "description": "Les nombres quotidiens sur toute la plateforme ces 30 derniers jours, jamais détaillés par personne.",
       "total": "{count} en 30 jours",
       "chart": "{label} par jour, 30 derniers jours",
+      "whatsapp": {
+        "title": "WhatsApp ce mois-ci",
+        "notConfigured": "WhatsApp n'est pas configuré ici.",
+        "sent": "Envoyés, sur {cap}",
+        "skippedCap": "Ignorés à cause du plafond",
+        "failed": "Échecs"
+      },
       "series": {
         "checkInsOpened": "Appels ouverts",
         "checkIns": "Présences enregistrées",
@@ -2724,7 +2731,8 @@
       "classes": "Vos classes et cours : votre matricule, vos présences, vos devoirs et les fichiers que vous rendez, vos réponses aux tests, vos notes et votre contrôle continu (CC).",
       "tests": "Pendant un test : quand vous quittez la page du test et pendant combien de temps, pour que votre enseignant le voie.",
       "location": "Lors d'un pointage de présence uniquement : votre position à ce moment-là, pour confirmer que vous êtes à l'école. Clasync ne suit pas votre position le reste du temps.",
-      "signIns": "Quand vous vous connectez : l'adresse IP et le navigateur de cette session, pour protéger votre compte."
+      "signIns": "Quand vous vous connectez : l'adresse IP et le navigateur de cette session, pour protéger votre compte.",
+      "whatsapp": "Si vous connectez WhatsApp : votre numéro WhatsApp, pour vous envoyer vos alertes de classe."
     },
     "access": {
       "title": "Qui peut les voir",
@@ -2742,7 +2750,8 @@
       "errors": "Sentry reçoit les rapports d'erreurs pour corriger les problèmes, sans les adresses IP.",
       "push": "Si vous activez les notifications, le service de notifications du fabricant de votre navigateur (Google, Apple, Mozilla ou Microsoft) les livre à votre appareil. Il ne voit qu'un message chiffré.",
       "ai": "Vercel AI Gateway envoie une réponse rédigée et sa question à un modèle d'IA quand un enseignant demande une note suggérée, sans votre nom, matricule ni e-mail. L'enseignant décide de la note.",
-      "google": "Google, uniquement si vous choisissez Continuer avec Google."
+      "google": "Google, uniquement si vous choisissez Continuer avec Google.",
+      "whatsapp": "Si vous connectez WhatsApp, vos alertes passent par Amazon Web Services (AWS) et Meta (WhatsApp), qui voient votre numéro et le message."
     },
     "assistants": {
       "title": "Les assistants IA connectés par les enseignants",
@@ -2756,6 +2765,7 @@
       "title": "Vos choix",
       "edit": "Vous pouvez modifier votre nom et votre langue dans les Paramètres, et ajouter votre matricule à une classe.",
       "google": "Vous pouvez associer ou dissocier Google dans les Paramètres.",
+      "whatsapp": "Pour arrêter les alertes WhatsApp et supprimer votre numéro, envoyez STOP sur WhatsApp ou touchez Déconnecter dans les Paramètres.",
       "delete": "Pour obtenir une copie de vos données ou faire supprimer votre compte, écrivez à <email>{address}</email>. La suppression d'un compte supprime aussi ses données.",
       "keep": "Clasync conserve vos données tant que votre compte existe."
     },
@@ -2872,6 +2882,10 @@
     "description": "Tout ce qui est arrivé dans Clasync, du plus récent au plus ancien.",
     "eyebrow": "Journal des changements",
     "items": {
+      "whatsapp": {
+        "title": "Alertes WhatsApp",
+        "body": "Les étudiants peuvent connecter WhatsApp dans les Paramètres pour recevoir un message quand un pointage ou un test s'ouvre et qu'ils n'ont pas encore agi, ainsi que les résultats et les nouveaux devoirs. Les enseignants peuvent recevoir des rappels de cours. Envoyez STOP sur WhatsApp à tout moment pour tout désactiver."
+      },
       "app": {
         "title": "Installez Clasync comme une application",
         "body": "Ajoutez Clasync à votre téléphone ou à votre ordinateur et ouvrez-le comme n'importe quelle application."
