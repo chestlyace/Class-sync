@@ -3156,5 +3156,12 @@
     "timetableSlots": "{count, plural, one {# créneau de l'emploi du temps} other {# créneaux de l'emploi du temps}}",
     "notes": "{count, plural, one {# note de cours ou fichier} other {# notes de cours et fichiers}}",
     "confirmLabel": "Tapez « {name} » pour confirmer"
+  },
+  "whatsapp": {
+    "reply": {
+      "connected": "Connecté à Clasync. Vous recevrez vos alertes de cours ici. Envoyez STOP pour les arrêter.",
+      "badCode": "This code has expired or was already used. Tap Connect WhatsApp in Clasync again. / Ce code a expiré ou a déjà servi. Touchez à nouveau Connecter WhatsApp dans Clasync.",
+      "stopped": "Les alertes WhatsApp sont arrêtées. Reconnectez-vous quand vous voulez depuis les paramètres de Clasync."
+    }
   }
 }

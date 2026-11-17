@@ -3156,5 +3156,12 @@
     "timetableSlots": "{count, plural, one {# timetable slot} other {# timetable slots}}",
     "notes": "{count, plural, one {# note or file} other {# notes and files}}",
     "confirmLabel": "Type “{name}” to confirm"
+  },
+  "whatsapp": {
+    "reply": {
+      "connected": "Connected to Clasync. You'll get your class alerts here. Send STOP to turn them off.",
+      "badCode": "This code has expired or was already used. Tap Connect WhatsApp in Clasync again. / Ce code a expiré ou a déjà servi. Touchez à nouveau Connecter WhatsApp dans Clasync.",
+      "stopped": "WhatsApp alerts are off. Connect again any time from Clasync settings."
+    }
   }
 }
