@@ -2757,6 +2757,7 @@
       "errors": "Sentry reçoit les rapports d'erreurs pour corriger les problèmes, sans les adresses IP.",
       "push": "Si vous activez les notifications, le service de notifications du fabricant de votre navigateur (Google, Apple, Mozilla ou Microsoft) les livre à votre appareil. Il ne voit qu'un message chiffré.",
       "ai": "Vercel AI Gateway envoie une réponse rédigée et sa question à un modèle d'IA quand un enseignant demande une note suggérée, sans votre nom, matricule ni e-mail. L'enseignant décide de la note.",
+      "aiAssignments": "Quand un enseignant demande à Clasync de suggérer des notes pour un devoir, la réponse et les fichiers de l'étudiant (sans son nom ni son matricule) sont envoyés à Amazon Bedrock, dans l'Union européenne, pour produire une suggestion. Ils ne servent pas à entraîner des modèles d'IA. L'enseignant décide de chaque note.",
       "google": "Google, uniquement si vous choisissez Continuer avec Google."
     },
     "assistants": {
@@ -2890,6 +2891,10 @@
       "app": {
         "title": "Installez Clasync comme une application",
         "body": "Ajoutez Clasync à votre téléphone ou à votre ordinateur et ouvrez-le comme n'importe quelle application."
+      },
+      "aiMarking": {
+        "title": "Notes suggérées pour les devoirs",
+        "body": "Enseignants : Clasync peut suggérer des notes pour les devoirs, y compris à partir de photos de travaux manuscrits. Vous vérifiez chaque suggestion avant d'enregistrer une note."
       },
       "notifications": {
         "title": "Notifications",
