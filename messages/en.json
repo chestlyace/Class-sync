@@ -1347,7 +1347,6 @@
         "saving": "Saving…",
         "save": "Save grade",
         "saved": "Saved",
-        "suggestionTitle": "Suggested by your assistant",
         "useSuggestion": "Use suggestion",
         "suggestionHint": "Fills the form. Nothing is saved until you save the grade."
       },
@@ -1374,6 +1373,40 @@
         "fileMismatch": "One of the uploads didn't arrive complete. Remove it and upload it again.",
         "fileCount": "Attach at most {max} files.",
         "files": "Some attachments are no longer available. Remove them and upload them again."
+      },
+      "ai": {
+        "column": "AI",
+        "suggestMarks": "Suggest marks",
+        "suggestingCount": "{count, plural, one {Suggesting a mark for # submission.} other {Suggesting marks for # submissions.}} You can leave this page.",
+        "badge": {
+          "suggested": "Suggested",
+          "queued": "Suggesting…",
+          "failed": "Couldn't suggest"
+        },
+        "byClasync": "Suggested by Clasync AI",
+        "byAssistant": "Suggested by your AI assistant",
+        "whatAiRead": "What the AI read",
+        "notRead": "Not read: File {n} ({reason})",
+        "unreadReason": {
+          "heic": "iPhone HEIC photo",
+          "too_large": "too large",
+          "unsupported": "file type not supported",
+          "limit": "over the file limit"
+        },
+        "suggestingOne": "Suggesting a mark…",
+        "failed": {
+          "provider": "The AI could not suggest a mark.",
+          "cap": "This month's AI limit is reached.",
+          "unreadable": "Nothing in this work could be read."
+        },
+        "tryAgain": "Try again",
+        "suggestOne": "Suggest a mark",
+        "errors": {
+          "cap": "This month's AI limit is reached.",
+          "aiOff": "AI mark suggestions are not available here.",
+          "graded": "This submission already has a grade.",
+          "notPublished": "Publish the assignment first."
+        }
       }
     },
     "files": {

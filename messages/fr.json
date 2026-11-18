@@ -1347,7 +1347,6 @@
         "saving": "Enregistrement…",
         "save": "Enregistrer la note",
         "saved": "Enregistré",
-        "suggestionTitle": "Suggéré par votre assistant",
         "useSuggestion": "Utiliser la suggestion",
         "suggestionHint": "Remplit le formulaire. Rien n'est enregistré avant que vous enregistriez la note."
       },
@@ -1374,6 +1373,40 @@
         "fileMismatch": "Un des envois n'est pas arrivé en entier. Retirez-le et envoyez-le de nouveau.",
         "fileCount": "Joignez {max} fichiers au plus.",
         "files": "Certaines pièces jointes ne sont plus disponibles. Retirez-les et envoyez-les de nouveau."
+      },
+      "ai": {
+        "column": "IA",
+        "suggestMarks": "Suggérer des notes",
+        "suggestingCount": "{count, plural, one {Suggestion de la note pour # copie.} other {Suggestion des notes pour # copies.}} Vous pouvez quitter cette page.",
+        "badge": {
+          "suggested": "Suggérée",
+          "queued": "En cours…",
+          "failed": "Échec"
+        },
+        "byClasync": "Suggérée par l'IA de Clasync",
+        "byAssistant": "Suggérée par votre assistant IA",
+        "whatAiRead": "Ce que l'IA a lu",
+        "notRead": "Non lu : fichier {n} ({reason})",
+        "unreadReason": {
+          "heic": "photo HEIC d'iPhone",
+          "too_large": "trop volumineux",
+          "unsupported": "type de fichier non pris en charge",
+          "limit": "au-delà de la limite de fichiers"
+        },
+        "suggestingOne": "Suggestion en cours…",
+        "failed": {
+          "provider": "L'IA n'a pas pu suggérer de note.",
+          "cap": "La limite mensuelle d'IA est atteinte.",
+          "unreadable": "Rien dans ce travail n'a pu être lu."
+        },
+        "tryAgain": "Réessayer",
+        "suggestOne": "Suggérer une note",
+        "errors": {
+          "cap": "La limite mensuelle d'IA est atteinte.",
+          "aiOff": "Les suggestions de notes par l'IA ne sont pas disponibles ici.",
+          "graded": "Cette copie a déjà une note.",
+          "notPublished": "Publiez d'abord le devoir."
+        }
       }
     },
     "files": {

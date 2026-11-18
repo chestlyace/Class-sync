@@ -1,5 +1,6 @@
 import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, max, sql } from 'drizzle-orm'
 import { createElement } from 'react'
+import { isAssignmentMarkingOn } from '@/server/ai/config'
 import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import type { Ctx } from '@/server/core/context'
@@ -18,6 +19,10 @@ import {
   submissionFile,
   SUBMISSION_MODES,
   user,
+  type AiError,
+  type AiStatus,
+  type SuggestedBy,
+  type UnreadFile,
 } from '@/server/db/schema'
 import { sendNotifications, type Notification } from '@/server/email/notify'
 import { AssignmentPublishedEmail } from '@/server/email/templates/assignment-published'
@@ -43,7 +48,7 @@ import {
   type LecturerAssignmentDetail,
 } from './queries'
 import { sanitizeRichText, type Block } from './rich-text'
-import { FEEDBACK_MAX, isValidMark, MARKING_GUIDE_MAX } from './rules'
+import { FEEDBACK_MAX, isStaleQueued, isValidMark, MARKING_GUIDE_MAX } from './rules'
 
 export type { AssignmentDetail, LecturerAssignmentDetail } from './queries'
 
@@ -82,6 +87,8 @@ export type SubmissionRow = {
   /** The hand-in has typed text / how many files it has (both false/0 when missing). */
   hasText: boolean
   fileCount: number
+  /** AI mark suggestion state: one waiting to be applied, a job running, or a job that failed. */
+  ai: 'suggested' | 'queued' | 'failed' | null
 }
 
 export type LecturerSubmissionView = {
@@ -93,9 +100,40 @@ export type LecturerSubmissionView = {
   isLate: boolean
   mark: number | null
   feedback: string | null
-  /** A grade suggested by the lecturer's assistant, never applied by itself. */
-  suggestion: { mark: number; feedback: string | null; at: Date } | null
+  /**
+   * A suggested grade, never applied by itself: by the lecturer's own AI assistant (MCP) or by
+   * Clasync's AI, with what Clasync's AI read (`transcript`) and the files it could not read.
+   */
+  suggestion: {
+    mark: number
+    feedback: string | null
+    at: Date
+    by: SuggestedBy
+    transcript: string | null
+    unread: UnreadFile[]
+  } | null
+  /** Clasync AI marking: offered here at all, and the state of a requested suggestion. */
+  ai: { available: boolean; status: AiStatus | null; error: AiError | null }
 }
+
+/**
+ * The AI job state as the lecturer sees it. A queued job that has run past STALE_QUEUED_MS is
+ * presumed lost and reads as failed (`provider`), so it can be asked for again; a failed one with
+ * no recorded error reads as `provider` too.
+ */
+function aiJobState(
+  s: { aiStatus: AiStatus | null; aiStatusAt: Date | null; aiError: AiError | null },
+  at: Date,
+): { status: AiStatus | null; error: AiError | null } {
+  if (s.aiStatus === 'queued') {
+    return isStaleQueued(s.aiStatus, s.aiStatusAt, at) ? { status: 'failed', error: 'provider' } : { status: 'queued', error: null }
+  }
+  if (s.aiStatus === 'failed') return { status: 'failed', error: s.aiError ?? 'provider' }
+  return { status: null, error: null }
+}
+
+/** Clasync AI suggestions are offered on published assignments, where the feature is on. */
+const aiAvailableFor = (row: AssignmentRow) => row.status === 'published' && isAssignmentMarkingOn()
 
 const TITLE_MIN = 2
 const TITLE_MAX = 200
@@ -475,7 +513,7 @@ export async function listCourseAssignments(ctx: Ctx, courseId: string): Promise
 export async function listSubmissions(
   ctx: Ctx,
   assignmentId: string,
-): Promise<{ assignment: LecturerAssignmentDetail; rows: SubmissionRow[] }> {
+): Promise<{ assignment: LecturerAssignmentDetail; rows: SubmissionRow[]; aiAvailable: boolean }> {
   const { row, course } = await requireOwnedAssignment(ctx, assignmentId)
   const [detail, roster, submissions] = await Promise.all([
     loadLecturerAssignmentDetail(ctx.db, row),
@@ -488,6 +526,10 @@ export async function listSubmissions(
         isLate: submission.isLate,
         mark: submission.mark,
         hasText: sql<boolean>`${submission.text} is not null`,
+        suggestedAt: submission.suggestedAt,
+        aiStatus: submission.aiStatus,
+        aiStatusAt: submission.aiStatusAt,
+        aiError: submission.aiError,
       })
       .from(submission)
       .where(eq(submission.assignmentId, assignmentId)),
@@ -502,6 +544,12 @@ export async function listSubmissions(
           .groupBy(submissionFile.submissionId)
   const filesBySubmission = new Map(fileCounts.map((f) => [f.submissionId, f.n]))
   const byStudent = new Map(submissions.map((s) => [s.studentId, s]))
+  const at = now()
+  const rowAi = (s: (typeof submissions)[number]): SubmissionRow['ai'] => {
+    const job = aiJobState(s, at)
+    if (job.status) return job.status
+    return s.suggestedAt !== null ? 'suggested' : null
+  }
   const rows: SubmissionRow[] = roster.map((student) => {
     const s = byStudent.get(student.studentId)
     return {
@@ -515,9 +563,10 @@ export async function listSubmissions(
       graded: s?.mark != null,
       hasText: s?.hasText ?? false,
       fileCount: s ? (filesBySubmission.get(s.id) ?? 0) : 0,
+      ai: s ? rowAi(s) : null,
     }
   })
-  return { assignment: detail, rows }
+  return { assignment: detail, rows, aiAvailable: aiAvailableFor(row) }
 }
 
 /** The student's matricule for this course: from the roster, else their latest one in the course's class. */
@@ -553,8 +602,17 @@ export async function getSubmissionForLecturer(ctx: Ctx, submissionId: string): 
     feedback: sub.feedback,
     suggestion:
       sub.suggestedMark !== null && sub.suggestedAt !== null
-        ? { mark: sub.suggestedMark, feedback: sub.suggestedFeedback, at: sub.suggestedAt }
+        ? {
+            mark: sub.suggestedMark,
+            feedback: sub.suggestedFeedback,
+            at: sub.suggestedAt,
+            // Suggestions stored before suggested_by existed came from the assistant.
+            by: sub.suggestedBy ?? 'assistant',
+            transcript: sub.suggestedTranscript,
+            unread: sub.suggestedUnread ?? [],
+          }
         : null,
+    ai: { available: aiAvailableFor(row), ...aiJobState(sub, now()) },
   }
 }
 
