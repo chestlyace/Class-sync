@@ -280,7 +280,6 @@
   "email": {
     "verify": {
       "subject": "Confirmez votre adresse e-mail Clasync",
-      "preview": "Confirmez votre adresse e-mail pour activer votre compte Clasync",
       "greeting": "Bonjour,",
       "body": "Merci de rejoindre Clasync. Veuillez confirmer votre adresse e-mail pour activer votre compte.",
       "cta": "Confirmer mon e-mail",
@@ -289,7 +288,6 @@
     },
     "assignmentPublished": {
       "subject": "Nouveau devoir dans {course} : {assignment}",
-      "preview": "Le devoir « {assignment} » vient d'être publié dans {course}",
       "greeting": "Bonjour {name},",
       "body": "Un nouveau devoir, « {assignment} », a été publié dans {course}.",
       "due": "À rendre le {date} à {time}.",
@@ -298,7 +296,6 @@
     },
     "assignmentReminder": {
       "subject": "Rappel : « {assignment} » ({course}) est bientôt à rendre",
-      "preview": "« {assignment} » ({course}) est à rendre le {date} à {time}",
       "greeting": "Bonjour {name},",
       "body": "Petit rappel : le devoir « {assignment} » de {course} est bientôt à rendre.",
       "due": "Date limite : le {date} à {time}.",
@@ -307,7 +304,6 @@
     },
     "gradesReleased": {
       "subject": "Vos notes pour « {assignment} » ({course}) sont disponibles",
-      "preview": "Les notes de « {assignment} » ({course}) ont été publiées",
       "greeting": "Bonjour {name},",
       "body": "Votre enseignant a publié les notes du devoir « {assignment} » dans {course}.",
       "cta": "Voir ma note",
@@ -315,7 +311,6 @@
     },
     "testResultsReleased": {
       "subject": "Votre résultat pour « {test} » ({course}) est disponible",
-      "preview": "Les résultats de « {test} » ({course}) ont été publiés",
       "greeting": "Bonjour {name},",
       "body": "Votre enseignant a publié les résultats du test « {test} » dans {course}. Vous pouvez voir votre total, la note de chaque question et les éventuels commentaires.",
       "cta": "Voir mon résultat",
@@ -323,7 +318,6 @@
     },
     "classJoined": {
       "subject": "Vous avez rejoint {class} ({school})",
-      "preview": "Bienvenue en {class} ({school})",
       "greeting": "Bonjour {name},",
       "body": "Vous avez rejoint la classe {class} à {school}. Bienvenue !",
       "next": "Les cours, devoirs et tests de vos enseignants pour cette classe apparaîtront sur votre tableau de bord dès qu'ils les ajouteront.",
@@ -332,7 +326,6 @@
     },
     "lecturerJoinedClass": {
       "subject": "Vous enseignez maintenant en {class} ({school})",
-      "preview": "Vous avez rejoint {class} ({school}) en tant qu'enseignant",
       "greeting": "Bonjour {name},",
       "body": "Vous avez rejoint la classe {class} à {school} en tant qu'enseignant.",
       "next": "Depuis la page de la classe, vous pouvez ajouter vos cours et partager le code étudiant avec vos étudiants.",
@@ -341,7 +334,6 @@
     },
     "colleagueJoinedClass": {
       "subject": "{name} a rejoint {class}",
-      "preview": "{name} enseigne maintenant en {class}",
       "greeting": "Bonjour {recipient},",
       "body": "{name} a rejoint la classe {class} à {school} en tant qu'enseignant, avec le code enseignant de la classe.",
       "next": "Si vous ne connaissez pas cette personne, ouvrez la classe et générez un nouveau code enseignant.",
@@ -350,7 +342,6 @@
     },
     "assignmentSubmitted": {
       "subject": "Rendu reçu : {assignment} ({course})",
-      "preview": "Nous avons bien reçu votre rendu pour « {assignment} » ({course})",
       "greeting": "Bonjour {name},",
       "body": "Nous avons bien reçu votre rendu pour le devoir « {assignment} » dans {course}.",
       "at": "Rendu le {date} à {time}.",
@@ -360,7 +351,6 @@
     },
     "testHandedIn": {
       "subject": "Test remis : {test} ({course})",
-      "preview": "Vos réponses au test « {test} » ({course}) ont été remises",
       "greeting": "Bonjour {name},",
       "body": "Vos réponses au test « {test} » dans {course} ont bien été remises.",
       "at": "Remis le {date} à {time}.",

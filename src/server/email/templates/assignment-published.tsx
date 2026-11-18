@@ -19,7 +19,6 @@ export function AssignmentPublishedEmail({ locale, studentName, courseTitle, ass
   return (
     <NotificationLayout
       locale={locale}
-      preview={e('assignmentPublished.preview', vars)}
       greeting={e('assignmentPublished.greeting', { name: studentName })}
       paragraphs={[e('assignmentPublished.body', vars), e('assignmentPublished.due', vars)]}
       cta={e('assignmentPublished.cta')}

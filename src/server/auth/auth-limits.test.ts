@@ -1,3 +1,5 @@
+import type { ReactElement } from 'react'
+import { render } from '@react-email/render'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { config, setConfigForTests } from '@/server/core/config'
 import { createTestDb } from '@/test/db'
@@ -5,9 +7,11 @@ import { createAuth } from './auth'
 
 // Count verification emails instead of sending (or logging) them.
 const sent = vi.hoisted(() => [] as { to: string; subject: string }[])
+const bodies = vi.hoisted(() => [] as ReactElement[])
 vi.mock('@/server/email/send', () => ({
-  sendEmail: vi.fn(async (args: { to: string; subject: string }) => {
+  sendEmail: vi.fn(async (args: { to: string; subject: string; react: ReactElement }) => {
     sent.push({ to: args.to, subject: args.subject })
+    bodies.push(args.react)
   }),
 }))
 
@@ -41,6 +45,18 @@ describe('auth: verification lockout', () => {
   afterAll(() => setConfigForTests({ requireEmailVerification: original }))
   beforeEach(() => {
     sent.length = 0
+    bodies.length = 0
+  })
+
+  it('sends a verification link that stays valid for 7 days (students may open it days later)', async () => {
+    const signUp = await post(auth, '/sign-up/email', { name: 'Late', email: 'late@example.com', password: PASSWORD, role: 'student' })
+    expect(signUp.status).toBe(200)
+    await until(() => bodies.length >= 1)
+    const text = await render(bodies[0]!, { plainText: true })
+    const token = /verify-email\?token=([\w-]+\.[\w-]+\.[\w-]+)/.exec(text)?.[1]
+    expect(token).toBeDefined()
+    const payload = JSON.parse(Buffer.from(token!.split('.')[1]!, 'base64url').toString()) as { iat: number; exp: number }
+    expect(payload.exp - payload.iat).toBe(7 * 24 * 60 * 60)
   })
 
   it('sends a fresh verification link when an unverified user tries to sign in', async () => {

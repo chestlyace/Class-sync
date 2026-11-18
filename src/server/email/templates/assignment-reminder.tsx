@@ -19,7 +19,6 @@ export function AssignmentReminderEmail({ locale, studentName, courseTitle, assi
   return (
     <NotificationLayout
       locale={locale}
-      preview={e('assignmentReminder.preview', vars)}
       greeting={e('assignmentReminder.greeting', { name: studentName })}
       paragraphs={[e('assignmentReminder.body', vars), e('assignmentReminder.due', vars)]}
       cta={e('assignmentReminder.cta')}

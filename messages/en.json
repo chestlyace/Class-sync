@@ -280,7 +280,6 @@
   "email": {
     "verify": {
       "subject": "Verify your Clasync email address",
-      "preview": "Confirm your email address to activate your Clasync account",
       "greeting": "Hello,",
       "body": "Thanks for joining Clasync. Please confirm your email address to activate your account.",
       "cta": "Verify my email",
@@ -289,7 +288,6 @@
     },
     "assignmentPublished": {
       "subject": "New assignment in {course}: {assignment}",
-      "preview": "{assignment} has just been published in {course}",
       "greeting": "Hello {name},",
       "body": "A new assignment, {assignment}, has been published in {course}.",
       "due": "Due {date} at {time}.",
@@ -298,7 +296,6 @@
     },
     "assignmentReminder": {
       "subject": "Reminder: {assignment} in {course} is due soon",
-      "preview": "{assignment} in {course} is due {date} at {time}",
       "greeting": "Hello {name},",
       "body": "A quick reminder that {assignment} in {course} is due soon.",
       "due": "Deadline: {date} at {time}.",
@@ -307,7 +304,6 @@
     },
     "gradesReleased": {
       "subject": "Your grades for {assignment} in {course} are available",
-      "preview": "Your grades for {assignment} in {course} have been released",
       "greeting": "Hello {name},",
       "body": "Your lecturer has released the grades for {assignment} in {course}.",
       "cta": "See my grade",
@@ -315,7 +311,6 @@
     },
     "testResultsReleased": {
       "subject": "Your result for {test} in {course} is available",
-      "preview": "Your result for {test} in {course} has been released",
       "greeting": "Hello {name},",
       "body": "Your lecturer has released the results of the test {test} in {course}. You can now see your total, your mark for each question and any comments.",
       "cta": "See my result",
@@ -323,7 +318,6 @@
     },
     "classJoined": {
       "subject": "You've joined {class} at {school}",
-      "preview": "Welcome to {class} at {school}",
       "greeting": "Hello {name},",
       "body": "You've joined {class} at {school}. Welcome!",
       "next": "Your lecturers' courses, assignments and tests for this class will appear on your dashboard as they add them.",
@@ -332,7 +326,6 @@
     },
     "lecturerJoinedClass": {
       "subject": "You're now a lecturer of {class} at {school}",
-      "preview": "You've joined {class} at {school} as a lecturer",
       "greeting": "Hello {name},",
       "body": "You've joined {class} at {school} as a lecturer.",
       "next": "From the class page you can add your courses and share the student code with your students.",
@@ -341,7 +334,6 @@
     },
     "colleagueJoinedClass": {
       "subject": "{name} joined {class}",
-      "preview": "{name} is now a lecturer of {class}",
       "greeting": "Hello {recipient},",
       "body": "{name} joined {class} at {school} as a lecturer, using the class's lecturer code.",
       "next": "If you don't know this person, open the class and generate a new lecturer code.",
@@ -350,7 +342,6 @@
     },
     "assignmentSubmitted": {
       "subject": "Submission received: {assignment} in {course}",
-      "preview": "We received your submission for {assignment} in {course}",
       "greeting": "Hello {name},",
       "body": "We received your submission for {assignment} in {course}.",
       "at": "Submitted {date} at {time}.",
@@ -360,7 +351,6 @@
     },
     "testHandedIn": {
       "subject": "Test handed in: {test} in {course}",
-      "preview": "Your answers for {test} in {course} have been handed in",
       "greeting": "Hello {name},",
       "body": "Your answers for the test {test} in {course} have been handed in.",
       "at": "Handed in {date} at {time}.",

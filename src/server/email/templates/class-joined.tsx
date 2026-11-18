@@ -18,7 +18,6 @@ export function ClassJoinedEmail({ locale, studentName, className, schoolName, u
   return (
     <NotificationLayout
       locale={locale}
-      preview={e('classJoined.preview', vars)}
       greeting={e('classJoined.greeting', { name: studentName })}
       paragraphs={[e('classJoined.body', vars), e('classJoined.next')]}
       cta={e('classJoined.cta')}
