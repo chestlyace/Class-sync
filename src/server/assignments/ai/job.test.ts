@@ -28,6 +28,7 @@ import { AssignmentSuggesterError, type AssignmentSuggester, type MarkingSuggest
 
 const NOW = new Date('2026-11-21T10:00:00Z')
 const SUBMITTED = new Date('2026-11-20T00:00:00Z')
+const REQUESTED = new Date('2026-11-21T09:59:00.123Z')
 const para = (text: string) => [{ type: 'paragraph', content: [{ type: 'text', text, styles: {} }] }]
 
 const SUGGESTION: MarkingSuggestion = {
@@ -101,13 +102,13 @@ describe('runMarkingJob', () => {
         text: opts.text === undefined ? para('Quicksort picks a pivot.') : opts.text,
         submittedAt: SUBMITTED,
         aiStatus: opts.aiStatus === undefined ? 'queued' : opts.aiStatus,
-        aiStatusAt: new Date('2026-11-21T09:59:00Z'),
+        aiStatusAt: REQUESTED,
       })
       .returning({ id: submission.id })
     const message: MarkingMessage = {
       submissionId: s.id,
       submittedAt: SUBMITTED.toISOString(),
-      requestedAt: '2026-11-21T09:59:00.000Z',
+      requestedAt: REQUESTED.toISOString(),
     }
     return { lecturer, student, assignmentId: a.id, submissionId: s.id, message }
   }
@@ -121,6 +122,7 @@ describe('runMarkingJob', () => {
     expect(await runMarkingJob(db, s.message, suggester)).toBe('stored')
     expect(suggester).toHaveBeenCalledTimes(1)
     expect(suggester.mock.calls[0][0]).toMatchObject({ studentText: 'Quicksort picks a pivot.', maxMark: 20 })
+    expect(suggester.mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal)
     const row = await readSub(s.submissionId)
     expect(row).toMatchObject({
       mark: null,
@@ -189,10 +191,10 @@ describe('runMarkingJob', () => {
   it('skips a message about an older hand-in and writes nothing; the new version still gets its suggestion', async () => {
     const s = await seed()
     const NEWER = new Date('2026-11-21T08:00:00Z')
-    // New hand-in, then a new request queued the new version.
+    // New hand-in, queued again. ai_status_at is left as it was so only the hand-in time differs.
     await db
       .update(submission)
-      .set({ submittedAt: NEWER, text: para('Second try'), aiStatus: 'queued', aiStatusAt: NOW })
+      .set({ submittedAt: NEWER, text: para('Second try'), aiStatus: 'queued', aiStatusAt: REQUESTED })
       .where(eq(submission.id, s.submissionId))
     const before = await readSub(s.submissionId)
     const suggester = stub()
@@ -216,6 +218,72 @@ describe('runMarkingJob', () => {
     expect(await readSub(graded.submissionId)).toMatchObject({ mark: 10, aiStatus: 'queued', suggestedAt: null })
 
     expect(suggester).not.toHaveBeenCalled()
+    expect(await usageRows()).toHaveLength(0)
+  })
+
+  it('skips a message from an earlier request without calling the model', async () => {
+    const s = await seed()
+    // The row was queued again (a stale queued row re-requested), so this message is the old one.
+    const REQUEUED = new Date('2026-11-21T09:59:30.456Z')
+    await db.update(submission).set({ aiStatusAt: REQUEUED }).where(eq(submission.id, s.submissionId))
+    const before = await readSub(s.submissionId)
+    const suggester = stub()
+    expect(await runMarkingJob(db, s.message, suggester)).toBe('skipped')
+    expect(suggester).not.toHaveBeenCalled()
+    expect(await readSub(s.submissionId)).toEqual(before)
+    expect(await usageRows()).toHaveLength(0)
+
+    expect(await runMarkingJob(db, { ...s.message, requestedAt: REQUEUED.toISOString() }, suggester)).toBe('stored')
+  })
+
+  it('skips a message with an unreadable hand-in time', async () => {
+    const s = await seed()
+    const suggester = stub()
+    expect(await runMarkingJob(db, { ...s.message, submittedAt: 'not a date' }, suggester)).toBe('skipped')
+    expect(await runMarkingJob(db, { ...s.message, requestedAt: 'not a date' }, suggester)).toBe('skipped')
+    expect(suggester).not.toHaveBeenCalled()
+    expect(await readSub(s.submissionId)).toMatchObject({ aiStatus: 'queued', suggestedAt: null })
+  })
+
+  it('fails with provider on a third delivery without calling the model', async () => {
+    const s = await seed()
+    const suggester = stub()
+    expect(await runMarkingJob(db, s.message, suggester, { deliveryCount: 3 })).toBe('failed')
+    expect(suggester).not.toHaveBeenCalled()
+    expect(await readSub(s.submissionId)).toMatchObject({ aiStatus: 'failed', aiError: 'provider' })
+    expect(await usageRows()).toHaveLength(0)
+  })
+
+  it('still runs on a second delivery', async () => {
+    const s = await seed()
+    expect(await runMarkingJob(db, s.message, stub(), { deliveryCount: 2 })).toBe('stored')
+  })
+
+  it('fails with provider without calling the model when loading used up the time', async () => {
+    const s = await seed()
+    const [pdf] = await db
+      .insert(file)
+      .values({
+        ownerId: s.student.user.id,
+        purpose: 'submission',
+        storageKey: `submission/${crypto.randomUUID()}/work.pdf`,
+        name: 'work.pdf',
+        mimeType: 'application/pdf',
+        sizeBytes: 1000,
+        confirmedAt: SUBMITTED,
+      })
+      .returning()
+    await db.insert(submissionFile).values({ submissionId: s.submissionId, fileId: pdf.id, position: 0 })
+    let clock = NOW
+    setNowForTests(() => clock)
+    const slowRead = async () => {
+      clock = new Date(clock.getTime() + 46_000)
+      return new Uint8Array([37, 80, 68, 70])
+    }
+    const suggester = stub()
+    expect(await runMarkingJob(db, s.message, suggester, { read: slowRead })).toBe('failed')
+    expect(suggester).not.toHaveBeenCalled()
+    expect(await readSub(s.submissionId)).toMatchObject({ aiStatus: 'failed', aiError: 'provider' })
     expect(await usageRows()).toHaveLength(0)
   })
 

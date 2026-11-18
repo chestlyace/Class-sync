@@ -7,10 +7,12 @@ import {
   MAX_FILES,
   MAX_RICH_TEXT_BYTES,
   REMINDER_LEAD_HOURS,
+  STALE_QUEUED_MS,
   canSubmit,
   extensionsFor,
   isAllowedFile,
   isLate,
+  isStaleQueued,
   isValidMark,
 } from './rules'
 
@@ -120,5 +122,22 @@ describe('canSubmit', () => {
     expect(canSubmit({ status: 'published', latePolicy: 'accept', dueAt, now: after, gradesReleasedAt })).toBe('released')
     expect(canSubmit({ status: 'published', latePolicy: 'close', dueAt, now: after, gradesReleasedAt })).toBe('released')
     expect(canSubmit({ status: 'draft', latePolicy: 'accept', dueAt, now: before, gradesReleasedAt })).toBe('not_published')
+  })
+})
+
+describe('isStaleQueued', () => {
+  const now = new Date('2026-11-21T10:00:00Z')
+  const ago = (ms: number) => new Date(now.getTime() - ms)
+
+  it('is stale once queued for STALE_QUEUED_MS or with no time recorded', () => {
+    expect(isStaleQueued('queued', ago(STALE_QUEUED_MS), now)).toBe(true)
+    expect(isStaleQueued('queued', ago(STALE_QUEUED_MS + 1), now)).toBe(true)
+    expect(isStaleQueued('queued', null, now)).toBe(true)
+  })
+
+  it('is not stale when queued recently or not queued at all', () => {
+    expect(isStaleQueued('queued', ago(STALE_QUEUED_MS - 1), now)).toBe(false)
+    expect(isStaleQueued('failed', ago(STALE_QUEUED_MS * 3), now)).toBe(false)
+    expect(isStaleQueued(null, null, now)).toBe(false)
   })
 })

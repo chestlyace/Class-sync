@@ -111,6 +111,21 @@ describe('createModelSuggester (mock model, no network)', () => {
     expect(filePart?.providerOptions).toEqual({ bedrock: { citations: { enabled: true } } })
   })
 
+  it("stops at the caller's signal and reports a timeout", async () => {
+    const model = new MockLanguageModelV4({
+      doGenerate: ({ abortSignal }) =>
+        new Promise<GenerateResult>((_, reject) => {
+          abortSignal?.addEventListener('abort', () => reject(abortSignal.reason), { once: true })
+        }),
+    })
+    const e = await createModelSuggester(model, 'm')(input, { signal: AbortSignal.timeout(20) }).then(
+      () => null,
+      (err: unknown) => err as AssignmentSuggesterError,
+    )
+    expect(e).toBeInstanceOf(AssignmentSuggesterError)
+    expect(e?.category).toBe('timeout')
+  })
+
   it('rejects with invalid_output when the text is not the expected object', async () => {
     const model = new MockLanguageModelV4({ doGenerate: async () => textResult('I cannot do that') })
     const e = await failure(model)

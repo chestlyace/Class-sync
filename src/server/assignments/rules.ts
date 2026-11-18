@@ -8,6 +8,15 @@ export const FEEDBACK_MAX = 5000
 /** The lecturer's marking guide on an assignment is at most this many characters (after trimming). */
 export const MARKING_GUIDE_MAX = 5000
 
+/** A submission queued for an AI suggestion this long ago is presumed lost and may be queued again. */
+export const STALE_QUEUED_MS = 10 * 60_000
+
+/** Whether a queued AI suggestion is stale (queued over STALE_QUEUED_MS ago, or with no time recorded). */
+export function isStaleQueued(aiStatus: string | null, aiStatusAt: Date | null, now: Date): boolean {
+  if (aiStatus !== 'queued') return false
+  return aiStatusAt === null || now.getTime() - aiStatusAt.getTime() >= STALE_QUEUED_MS
+}
+
 /** Accepted upload types and the file extensions (lowercase, no dot) each may carry. */
 const EXTENSIONS_BY_MIME = {
   'application/pdf': ['pdf'],

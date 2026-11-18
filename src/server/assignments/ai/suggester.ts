@@ -21,9 +21,9 @@ export type MarkingSuggestion = {
 
 /**
  * Suggests a mark, feedback and transcript for one submission. Never a confirmed mark: a lecturer
- * reviews it. Rejects with AssignmentSuggesterError.
+ * reviews it. Rejects with AssignmentSuggesterError. `signal` bounds the call (by default 50 s).
  */
-export type AssignmentSuggester = (input: MarkingInput) => Promise<MarkingSuggestion>
+export type AssignmentSuggester = (input: MarkingInput, opts?: { signal?: AbortSignal }) => Promise<MarkingSuggestion>
 
 export type SuggesterFailure = 'timeout' | 'auth' | 'rate_limit' | 'invalid_output' | 'other'
 
@@ -91,7 +91,7 @@ export function cleanSuggestion(
 
 /** A suggester backed by `model` (Bedrock in production, a mock in tests); `modelId` is recorded with each suggestion. */
 export function createModelSuggester(model: LanguageModel, modelId: string): AssignmentSuggester {
-  return async (input) => {
+  return async (input, opts) => {
     let output: unknown
     let usage: { inputTokens: number | undefined; outputTokens: number | undefined }
     try {
@@ -104,7 +104,7 @@ export function createModelSuggester(model: LanguageModel, modelId: string): Ass
         // Always the forced JSON tool: Bedrock's native structured output (output_config.format) is
         // incompatible with PDF citations, which buildUserContent turns on for PDFs.
         providerOptions: { amazonBedrock: { structuredOutputMode: 'jsonTool' } },
-        abortSignal: AbortSignal.timeout(TIMEOUT_MS),
+        abortSignal: opts?.signal ?? AbortSignal.timeout(TIMEOUT_MS),
       })
       output = result.output
       usage = result.usage

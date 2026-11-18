@@ -20,6 +20,8 @@ import { createCourse, setRosterAdjustment } from '@/server/courses/service'
 import { createSchool } from '@/server/schools/service'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
+import { racing } from '@/test/race'
+import { gradeSubmission } from '../lecturer'
 import { runMarkingJob } from './job'
 import { setMarkingQueueForTests, type MarkingMessage } from './queue'
 import { requestMarkingSuggestions, requestOneSuggestion } from './request'
@@ -27,6 +29,10 @@ import type { AssignmentSuggester } from './suggester'
 
 const NOW = new Date('2026-11-21T10:00:00Z')
 const SUBMITTED = new Date('2026-11-20T00:00:00Z')
+/** Queued a minute ago: still in progress. */
+const FRESH_QUEUED = new Date(NOW.getTime() - 60_000)
+/** Queued eleven minutes ago: presumed lost (over STALE_QUEUED_MS). */
+const STALE_QUEUED = new Date(NOW.getTime() - 11 * 60_000)
 const para = (text: string) => [{ type: 'paragraph', content: [{ type: 'text', text, styles: {} }] }]
 
 describe('AI marking requests', () => {
@@ -118,7 +124,8 @@ describe('AI marking requests', () => {
         suggestedAt: SUBMITTED,
         suggestedBy: 'assistant',
       })
-      const queued = await t.submit(await t.student('Dave', 'UB4'), { aiStatus: 'queued', aiStatusAt: SUBMITTED })
+      const queued = await t.submit(await t.student('Dave', 'UB4'), { aiStatus: 'queued', aiStatusAt: FRESH_QUEUED })
+      const stale = await t.submit(await t.student('Gina', 'UB7'), { aiStatus: 'queued', aiStatusAt: STALE_QUEUED })
       const failed = await t.submit(await t.student('Eve', 'UB5'), {
         aiStatus: 'failed',
         aiStatusAt: SUBMITTED,
@@ -128,24 +135,50 @@ describe('AI marking requests', () => {
       const offRoster = await t.submit(frank)
       await setRosterAdjustment(t.lecturer, t.courseId, frank.user.id, 'exclude')
 
-      expect(await requestMarkingSuggestions(t.lecturer, t.assignmentId)).toEqual({ queued: 2 })
+      expect(await requestMarkingSuggestions(t.lecturer, t.assignmentId)).toEqual({ queued: 3 })
 
-      expect(sent.map((m) => m.submissionId).sort()).toEqual([fresh, failed].sort())
+      expect(sent.map((m) => m.submissionId).sort()).toEqual([fresh, failed, stale].sort())
       for (const m of sent) {
         expect(m).toEqual({ submissionId: m.submissionId, submittedAt: SUBMITTED.toISOString(), requestedAt: NOW.toISOString() })
       }
-      for (const id of [fresh, failed]) {
+      for (const id of [fresh, failed, stale]) {
         expect(await readSub(id)).toMatchObject({ aiStatus: 'queued', aiStatusAt: NOW, aiError: null })
       }
       expect(await readSub(graded)).toMatchObject({ aiStatus: null })
       expect(await readSub(suggested)).toMatchObject({ aiStatus: null, suggestedMark: 10 })
-      expect(await readSub(queued)).toMatchObject({ aiStatus: 'queued', aiStatusAt: SUBMITTED })
+      expect(await readSub(queued)).toMatchObject({ aiStatus: 'queued', aiStatusAt: FRESH_QUEUED })
       expect(await readSub(offRoster)).toMatchObject({ aiStatus: null })
 
       // Nothing left to queue on a second press.
       sent = []
       expect(await requestMarkingSuggestions(t.lecturer, t.assignmentId)).toEqual({ queued: 0 })
       expect(sent).toEqual([])
+    })
+
+    it('queues nothing when the course roster is empty', async () => {
+      const t = await setup()
+      expect(await requestMarkingSuggestions(t.lecturer, t.assignmentId)).toEqual({ queued: 0 })
+      expect(sent).toEqual([])
+    })
+
+    it('sends the messages at most 20 at a time', async () => {
+      const t = await setup()
+      const ids: string[] = []
+      for (let i = 0; i < 25; i++) ids.push(await t.submit(await t.student(`Student ${i}`, `M${i}`)))
+      let inFlight = 0
+      let most = 0
+      setMarkingQueueForTests({
+        async send(m) {
+          inFlight += 1
+          most = Math.max(most, inFlight)
+          await new Promise((r) => setTimeout(r, 5))
+          inFlight -= 1
+          sent.push(m)
+        },
+      })
+      expect(await requestMarkingSuggestions(t.lecturer, t.assignmentId)).toEqual({ queued: 25 })
+      expect(sent.map((m) => m.submissionId).sort()).toEqual(ids.sort())
+      expect(most).toBe(20)
     })
 
     it('refuses anyone but the course owner', async () => {
@@ -236,12 +269,42 @@ describe('AI marking requests', () => {
       expect(sent).toEqual([])
     })
 
-    it('does nothing when the submission is already queued', async () => {
+    it('does nothing when the submission was queued recently', async () => {
       const t = await setup()
-      const id = await t.submit(await t.student('Alice', 'UB1'), { aiStatus: 'queued', aiStatusAt: SUBMITTED })
+      const id = await t.submit(await t.student('Alice', 'UB1'), { aiStatus: 'queued', aiStatusAt: FRESH_QUEUED })
       await requestOneSuggestion(t.lecturer, id)
       expect(sent).toEqual([])
-      expect(await readSub(id)).toMatchObject({ aiStatus: 'queued', aiStatusAt: SUBMITTED })
+      expect(await readSub(id)).toMatchObject({ aiStatus: 'queued', aiStatusAt: FRESH_QUEUED })
+    })
+
+    it('queues a stale queued submission again', async () => {
+      const t = await setup()
+      const id = await t.submit(await t.student('Alice', 'UB1'), { aiStatus: 'queued', aiStatusAt: STALE_QUEUED })
+      await requestOneSuggestion(t.lecturer, id)
+      expect(sent).toEqual([{ submissionId: id, submittedAt: SUBMITTED.toISOString(), requestedAt: NOW.toISOString() }])
+      expect(await readSub(id)).toMatchObject({ aiStatus: 'queued', aiStatusAt: NOW })
+    })
+
+    it('refuses when the lecturer grades it while the request runs', async () => {
+      const t = await setup()
+      const id = await t.submit(await t.student('Alice', 'UB1'))
+      const raced = racing(t.lecturer, 'update', () =>
+        gradeSubmission(t.lecturer, id, { mark: 11, feedback: null, expectedSubmittedAt: SUBMITTED }),
+      )
+      await expect(requestOneSuggestion(raced, id)).rejects.toMatchObject({ code: 'CONFLICT', details: { reason: 'graded' } })
+      expect(sent).toEqual([])
+      expect(await readSub(id)).toMatchObject({ mark: 11, aiStatus: null })
+    })
+
+    it('does nothing when another request queues it meanwhile', async () => {
+      const t = await setup()
+      const id = await t.submit(await t.student('Alice', 'UB1'))
+      const raced = racing(t.lecturer, 'update', () =>
+        db.update(submission).set({ aiStatus: 'queued', aiStatusAt: FRESH_QUEUED }).where(eq(submission.id, id)),
+      )
+      await requestOneSuggestion(raced, id)
+      expect(sent).toEqual([])
+      expect(await readSub(id)).toMatchObject({ aiStatus: 'queued', aiStatusAt: FRESH_QUEUED })
     })
 
     it('clears an existing suggestion, queues the submission, and the job then stores a new one', async () => {
