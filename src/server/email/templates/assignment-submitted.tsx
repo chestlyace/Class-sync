@@ -32,7 +32,6 @@ export function AssignmentSubmittedEmail({
   return (
     <NotificationLayout
       locale={locale}
-      preview={e('assignmentSubmitted.preview', vars)}
       greeting={e('assignmentSubmitted.greeting', { name: studentName })}
       paragraphs={paragraphs}
       cta={e('assignmentSubmitted.cta')}

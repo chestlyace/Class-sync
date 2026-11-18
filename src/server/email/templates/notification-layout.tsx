@@ -1,4 +1,4 @@
-import { Body, Button, Container, Head, Heading, Html, Link, Preview, Section, Text } from '@react-email/components'
+import { Body, Container, Head, Heading, Html, Link, Section, Text } from '@react-email/components'
 import type { ReactNode } from 'react'
 import type { Locale } from '@/server/core/context'
 
@@ -19,9 +19,33 @@ export function formatDue(dueAt: Date, locale: Locale, timeZone: string): { date
   return { date, time }
 }
 
+/**
+ * The call-to-action, as a plain styled link. React Email's `Button` adds Outlook-only hidden
+ * spacers (hair spaces, zero-width spaces), and iCloud rejects mail with hidden content as
+ * `554 5.7.1 [HM08]`. For the same reason no email has a hidden preview text (`Preview`).
+ */
+export function CtaLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link
+      href={href}
+      style={{
+        display: 'inline-block',
+        backgroundColor: '#18181b',
+        color: '#ffffff',
+        padding: '12px 20px',
+        borderRadius: '6px',
+        fontSize: '16px',
+        lineHeight: '20px',
+        textDecoration: 'none',
+      }}
+    >
+      {children}
+    </Link>
+  )
+}
+
 export function NotificationLayout({
   locale,
-  preview,
   greeting,
   paragraphs,
   cta,
@@ -29,7 +53,6 @@ export function NotificationLayout({
   fallback,
 }: {
   locale: Locale
-  preview: string
   greeting: string
   paragraphs: ReactNode[]
   cta: string
@@ -39,7 +62,6 @@ export function NotificationLayout({
   return (
     <Html lang={locale}>
       <Head />
-      <Preview>{preview}</Preview>
       <Body style={{ backgroundColor: '#f4f4f5', fontFamily: 'Arial, Helvetica, sans-serif' }}>
         <Container
           style={{
@@ -60,19 +82,7 @@ export function NotificationLayout({
             </Text>
           ))}
           <Section style={{ margin: '24px 0' }}>
-            <Button
-              href={url}
-              style={{
-                backgroundColor: '#18181b',
-                color: '#ffffff',
-                padding: '12px 20px',
-                borderRadius: '6px',
-                fontSize: '16px',
-                textDecoration: 'none',
-              }}
-            >
-              {cta}
-            </Button>
+            <CtaLink href={url}>{cta}</CtaLink>
           </Section>
           <Text style={{ fontSize: '14px', lineHeight: '20px', color: '#52525b' }}>{fallback}</Text>
           <Link href={url} style={{ fontSize: '14px', wordBreak: 'break-all' }}>

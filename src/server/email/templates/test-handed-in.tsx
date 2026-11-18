@@ -21,7 +21,6 @@ export function TestHandedInEmail({ locale, studentName, courseTitle, testTitle,
   return (
     <NotificationLayout
       locale={locale}
-      preview={e('testHandedIn.preview', vars)}
       greeting={e('testHandedIn.greeting', { name: studentName })}
       paragraphs={[e('testHandedIn.body', vars), e('testHandedIn.at', { date, time }), e('testHandedIn.next')]}
       cta={e('testHandedIn.cta')}
