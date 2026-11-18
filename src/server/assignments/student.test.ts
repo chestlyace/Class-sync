@@ -461,6 +461,40 @@ describe('student assignment services', () => {
       expect((await listMyAssignments(alice))[0]).toMatchObject({ state: 'submitted', mark: null })
     })
 
+    it('clears AI suggestion state on a new hand-in', async () => {
+      const { lecturer, algo, alice } = await setup()
+      const id = await makeAssignment(algo.id, lecturer)
+      await submitAssignment(alice, id, { text: para('Answer'), fileIds: [] })
+      await db
+        .update(submission)
+        .set({
+          suggestedMark: 12,
+          suggestedFeedback: 'ok',
+          suggestedAt: new Date(),
+          suggestedBy: 'clasync',
+          suggestedTranscript: 'what the AI read',
+          suggestedUnread: [{ position: 0, reason: 'heic' }],
+          aiStatus: 'queued',
+          aiStatusAt: new Date(),
+          aiError: 'provider',
+        })
+        .where(eq(submission.assignmentId, id))
+
+      await submitAssignment(alice, id, { text: para('A second version'), fileIds: [] })
+      const [row] = await submissionsOf(id)
+      expect(row).toMatchObject({
+        suggestedMark: null,
+        suggestedFeedback: null,
+        suggestedAt: null,
+        suggestedBy: null,
+        suggestedTranscript: null,
+        suggestedUnread: null,
+        aiStatus: null,
+        aiStatusAt: null,
+        aiError: null,
+      })
+    })
+
     it('refuses any submission once grades are released, keeping the released grade (CONFLICT released)', async () => {
       const { lecturer, algo, alice, bob } = await setup()
       const id = await makeAssignment(algo.id, lecturer)

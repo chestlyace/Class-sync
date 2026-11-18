@@ -13,7 +13,7 @@ import {
   updateAssignment,
   type AssignmentInput,
 } from '@/server/assignments/lecturer'
-import { FEEDBACK_MAX, MAX_FILES, MAX_RICH_TEXT_BYTES } from '@/server/assignments/rules'
+import { FEEDBACK_MAX, MARKING_GUIDE_MAX, MAX_FILES, MAX_RICH_TEXT_BYTES } from '@/server/assignments/rules'
 import { getCtx } from '@/server/auth/session'
 import { config } from '@/server/core/config'
 import { AppError } from '@/server/core/errors'
@@ -77,6 +77,10 @@ function parseAssignmentForm(data: FormData): AssignmentInput {
     bad.push('attachments')
   }
 
+  // Always posted by the form: a blank field clears the guide.
+  const markingGuide = formString(data, 'markingGuide')
+  if (markingGuide.trim().length > MARKING_GUIDE_MAX) bad.push('markingGuide')
+
   if (bad.length > 0) invalid(bad)
   return {
     title,
@@ -87,6 +91,7 @@ function parseAssignmentForm(data: FormData): AssignmentInput {
     submissionMode,
     latePolicy,
     attachmentIds: attachmentIds as string[],
+    markingGuide,
   }
 }
 

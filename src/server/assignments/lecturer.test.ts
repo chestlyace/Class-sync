@@ -24,11 +24,13 @@ import { createSchool } from '@/server/schools/service'
 import { sendNotifications, type Notification } from '@/server/email/notify'
 import { setAfterResponseForTests } from '@/server/lib/after-response'
 import { sendPush, type PushItem } from '@/server/push/send'
+import { getAssignmentForStudent } from './student'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
 import {
   createAssignment,
   deleteDraftAssignment,
+  getAssignmentForEdit,
   getSubmissionForLecturer,
   gradeSubmission,
   listCourseAssignments,
@@ -643,6 +645,90 @@ describe('lecturer assignment services', () => {
     await gradeSubmission(lecturer, subId, { mark: 20, feedback: '   ', expectedSubmittedAt: await versionOf(subId) })
     const [again] = await db.select().from(submission).where(eq(submission.id, subId))
     expect(again).toMatchObject({ mark: 20, feedback: null })
+  })
+
+  it('stores a trimmed marking guide and returns it only to the lecturer', async () => {
+    const { lecturer, algo, alice } = await setup()
+    const a = await createAssignment(lecturer, algo.id, baseInput({ markingGuide: '  Award 2 marks for the diagram  ' }))
+    expect(a.markingGuide).toBe('Award 2 marks for the diagram')
+    expect((await getAssignmentForEdit(lecturer, a.id)).markingGuide).toBe('Award 2 marks for the diagram')
+    const { assignment: listed } = await listSubmissions(lecturer, a.id)
+    expect(listed.markingGuide).toBe('Award 2 marks for the diagram')
+
+    await publishAssignment(lecturer, a.id)
+    const subId = await addSubmission(alice, a.id)
+    expect((await getSubmissionForLecturer(lecturer, subId)).assignment.markingGuide).toBe('Award 2 marks for the diagram')
+
+    const view = await getAssignmentForStudent(alice, a.id)
+    expect(view.assignment).not.toHaveProperty('markingGuide')
+    expect(JSON.stringify(view)).not.toContain('Award 2 marks')
+    expect(JSON.stringify(view)).not.toContain('markingGuide')
+  })
+
+  it('treats a blank marking guide as none', async () => {
+    const { lecturer, algo } = await setup()
+    const a = await createAssignment(lecturer, algo.id, baseInput({ markingGuide: '   ' }))
+    expect(a.markingGuide).toBeNull()
+    const b = await createAssignment(lecturer, algo.id, baseInput({ markingGuide: null }))
+    expect(b.markingGuide).toBeNull()
+    const updated = await updateAssignment(lecturer, a.id, { ...baseInput(), markingGuide: 'Now there is one' })
+    expect(updated.markingGuide).toBe('Now there is one')
+    const cleared = await updateAssignment(lecturer, a.id, { ...baseInput(), markingGuide: '  ' })
+    expect(cleared.markingGuide).toBeNull()
+  })
+
+  it('refuses a marking guide over 5000 characters', async () => {
+    const { lecturer, algo } = await setup()
+    await expect(createAssignment(lecturer, algo.id, baseInput({ markingGuide: 'x'.repeat(5001) }))).rejects.toMatchObject({
+      code: 'VALIDATION',
+      details: { fields: expect.arrayContaining(['markingGuide']) },
+    })
+    const ok = await createAssignment(lecturer, algo.id, baseInput({ markingGuide: 'x'.repeat(5000) }))
+    expect(ok.markingGuide).toHaveLength(5000)
+    await expect(
+      updateAssignment(lecturer, ok.id, baseInput({ markingGuide: 'y'.repeat(5001) })),
+    ).rejects.toMatchObject({ code: 'VALIDATION', details: { fields: expect.arrayContaining(['markingGuide']) } })
+    await expect(
+      createAssignment(lecturer, algo.id, baseInput({ markingGuide: 42 as unknown as string })),
+    ).rejects.toMatchObject({ code: 'VALIDATION', details: { fields: expect.arrayContaining(['markingGuide']) } })
+  })
+
+  it('keeps the marking guide when an update omits it', async () => {
+    const { lecturer, algo } = await setup()
+    const a = await createAssignment(lecturer, algo.id, baseInput({ markingGuide: 'Keep me' }))
+    const updated = await updateAssignment(lecturer, a.id, baseInput({ title: 'Renamed lab' }))
+    expect(updated).toMatchObject({ title: 'Renamed lab', markingGuide: 'Keep me' })
+    expect((await getAssignmentForEdit(lecturer, a.id)).markingGuide).toBe('Keep me')
+  })
+
+  it('clears AI suggestion state when the lecturer grades', async () => {
+    const { lecturer, algo, alice } = await setup()
+    const a = await published(lecturer, algo.id)
+    const subId = await addSubmission(alice, a.id, {
+      suggestedMark: 12,
+      suggestedFeedback: 'ok',
+      suggestedAt: new Date(),
+      suggestedBy: 'clasync',
+      suggestedTranscript: 'what the AI read',
+      suggestedUnread: [{ position: 1, reason: 'heic' }],
+      aiStatus: 'failed',
+      aiStatusAt: new Date(),
+      aiError: 'provider',
+    })
+    await gradeSubmission(lecturer, subId, { mark: 15, feedback: null, expectedSubmittedAt: await versionOf(subId) })
+    const [row] = await db.select().from(submission).where(eq(submission.id, subId))
+    expect(row).toMatchObject({
+      mark: 15,
+      suggestedMark: null,
+      suggestedFeedback: null,
+      suggestedAt: null,
+      suggestedBy: null,
+      suggestedTranscript: null,
+      suggestedUnread: null,
+      aiStatus: null,
+      aiStatusAt: null,
+      aiError: null,
+    })
   })
 
   it('refuses a grade for a version the student has since replaced (CONFLICT resubmitted)', async () => {
