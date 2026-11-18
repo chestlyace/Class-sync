@@ -902,6 +902,27 @@
         "iosStep2": "Choose Add to Home Screen"
       }
     },
+    "whatsapp": {
+      "title": "WhatsApp",
+      "description": "Get your most important Clasync alerts on WhatsApp.",
+      "connect": "Connect WhatsApp",
+      "connecting": "Connecting…",
+      "waiting": "Tap Send in WhatsApp. This page updates once you're connected.",
+      "openAgain": "Open WhatsApp again",
+      "expired": "That link has expired. Tap Connect WhatsApp to get a new one.",
+      "connected": "Connected: {phone}",
+      "disconnect": "Disconnect",
+      "disconnecting": "Disconnecting…",
+      "stopHint": "Send STOP on WhatsApp to turn everything off.",
+      "alertsTitle": "Alerts on WhatsApp",
+      "prefs": {
+        "checkin": "Check-in opened",
+        "tests": "Test started",
+        "results": "Results released",
+        "assignments": "New assignment",
+        "classSoon": "Class starts soon"
+      }
+    },
     "schools": {
       "title": "Where you teach",
       "add": "Add a school",
@@ -2570,9 +2591,16 @@
     },
     "usage": {
       "title": "Usage",
-      "description": "Daily counts across the platform for the last 30 days, never broken down by person.",
+      "description": "Daily counts across the platform for the last 30 days, plus this month's WhatsApp messages, never broken down by person.",
       "total": "{count} in 30 days",
       "chart": "{label} per day, last 30 days",
+      "whatsapp": {
+        "title": "WhatsApp this month",
+        "notConfigured": "WhatsApp is not configured here.",
+        "sent": "Sent, of {cap}",
+        "skippedCap": "Skipped for the cap",
+        "failed": "Failed"
+      },
       "series": {
         "checkInsOpened": "Check-ins opened",
         "checkIns": "Student check-ins",
@@ -2693,7 +2721,8 @@
       "classes": "Your classes and courses: your matricule, attendance, assignments and the files you hand in, test answers, marks and continuous assessment (CA).",
       "tests": "During a test: when you leave the test page and for how long, so your lecturer can see it.",
       "location": "At an attendance check-in only: your position at that moment, to confirm you are at the school. Clasync does not follow your location at any other time.",
-      "signIns": "When you sign in: the IP address and browser of that session, to keep your account secure."
+      "signIns": "When you sign in: the IP address and browser of that session, to keep your account secure.",
+      "whatsapp": "If you connect WhatsApp: your WhatsApp number, to send you your class alerts."
     },
     "access": {
       "title": "Who can see it",
@@ -2711,7 +2740,8 @@
       "errors": "Sentry receives error reports so problems can be fixed, with IP addresses removed.",
       "push": "If you turn on notifications, the push service of your browser's maker (Google, Apple, Mozilla or Microsoft) delivers them to your device. It only sees an encrypted message.",
       "ai": "Vercel AI Gateway sends a written test answer and its question to an AI model when a lecturer asks for a suggested mark, without your name, matricule or email. The lecturer decides the mark.",
-      "google": "Google, only if you choose Continue with Google."
+      "google": "Google, only if you choose Continue with Google.",
+      "whatsapp": "If you connect WhatsApp, your alerts are sent through Amazon Web Services (AWS) and Meta (WhatsApp), which see your number and the message."
     },
     "assistants": {
       "title": "AI assistants connected by lecturers",
@@ -2725,6 +2755,7 @@
       "title": "Your choices",
       "edit": "You can change your name and language in Settings, and add your matricule to a class.",
       "google": "You can connect or disconnect Google in Settings.",
+      "whatsapp": "To stop WhatsApp alerts and remove your number, send STOP on WhatsApp or tap Disconnect in Settings.",
       "delete": "To get a copy of your data or have your account deleted, write to <email>{address}</email>. Deleting an account deletes its data with it.",
       "keep": "Clasync keeps your data while your account exists."
     },
@@ -2841,6 +2872,10 @@
     "description": "Everything that has shipped in Clasync, newest first.",
     "eyebrow": "Changelog",
     "items": {
+      "whatsapp": {
+        "title": "WhatsApp alerts",
+        "body": "Students can connect WhatsApp in Settings to get a message when a check-in or a test opens and they haven't acted yet, plus results and new assignments. Lecturers can get class reminders. Send STOP on WhatsApp at any time to turn everything off."
+      },
       "app": {
         "title": "Install Clasync as an app",
         "body": "Add Clasync to your phone or computer and open it like any other app."
@@ -3146,5 +3181,12 @@
     "timetableSlots": "{count, plural, one {# timetable slot} other {# timetable slots}}",
     "notes": "{count, plural, one {# note or file} other {# notes and files}}",
     "confirmLabel": "Type “{name}” to confirm"
+  },
+  "whatsapp": {
+    "reply": {
+      "connected": "Connected to Clasync. You'll get your class alerts here. Send STOP to turn them off.",
+      "badCode": "This code has expired or was already used. Tap Connect WhatsApp in Clasync again. / Ce code a expiré ou a déjà servi. Touchez à nouveau Connecter WhatsApp dans Clasync.",
+      "stopped": "WhatsApp alerts are off. Connect again any time from Clasync settings."
+    }
   }
 }

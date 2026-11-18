@@ -34,6 +34,8 @@ import {
   type AdminActionDetails,
 } from '@/server/db/schema'
 import { containsPattern } from '@/server/lib/like'
+import { monthlyUsage } from '@/server/whatsapp/cap'
+import { whatsAppConfig } from '@/server/whatsapp/config'
 
 // Read models for the admin dashboard. They stay inside the data fence (fence.test.ts): counts
 // across the platform and account facts about people, never marks, submissions, answers, content,
@@ -436,6 +438,15 @@ export async function getAiAndMcp(ctx: Ctx, at: Date, credits: () => Promise<Cre
 
 // ---------------------------------------------------------------------------------------------
 // Health
+
+export type WhatsAppUsage = { month: string; sent: number; cap: number; skippedCap: number; failed: number }
+
+/** This month's WhatsApp messages against the cap. Null when WhatsApp is not set up here. Counts only, no numbers or text. */
+export async function getWhatsAppUsage(ctx: Ctx, at: Date, env: Record<string, string | undefined> = process.env): Promise<WhatsAppUsage | null> {
+  requireAdmin(ctx)
+  if (!whatsAppConfig(env)) return null
+  return monthlyUsage(ctx.db, at)
+}
 
 export type Health = {
   cron: { lastRunAt: Date | null; ok: boolean | null; assignments?: number; reminded?: number; stale: boolean; runsHere: boolean }

@@ -1,10 +1,10 @@
 import { getTranslations } from 'next-intl/server'
 import { BarChart } from '@/components/bar-chart'
 import { ErrorState } from '@/components/error-state'
-import { PageHeader } from '@/components/page-header'
-import { getUsage, USAGE_SERIES } from '@/server/admin/queries'
+import { PageHeader, Panel, SectionHeading } from '@/components/page-header'
+import { getUsage, getWhatsAppUsage, USAGE_SERIES } from '@/server/admin/queries'
 import { now } from '@/server/core/clock'
-import { Card } from '../admin-ui'
+import { Card, Stat, StatGrid } from '../admin-ui'
 import { getFormatters } from '../format'
 import { loadAdminPage } from '../load-admin'
 import { adminMetadata } from '../metadata'
@@ -15,9 +15,13 @@ export async function generateMetadata() {
 
 export default async function AdminUsagePage() {
   const [t, f] = await Promise.all([getTranslations('admin'), getFormatters()])
-  const result = await loadAdminPage((ctx) => getUsage(ctx, now()))
+  const result = await loadAdminPage(async (ctx) => {
+    const at = now()
+    const [series, whatsapp] = await Promise.all([getUsage(ctx, at), getWhatsAppUsage(ctx, at)])
+    return { series, whatsapp }
+  })
   if (!result.ok) return <ErrorState code={result.code} />
-  const usage = result.data
+  const { series: usage, whatsapp } = result.data
 
   return (
     <>
@@ -42,6 +46,20 @@ export default async function AdminUsagePage() {
           )
         })}
       </ul>
+      <section aria-labelledby="whatsapp" className="flex flex-col gap-4">
+        <SectionHeading id="whatsapp">{t('usage.whatsapp.title')}</SectionHeading>
+        {whatsapp ? (
+          <StatGrid className="sm:grid-cols-3 lg:grid-cols-3">
+            <Stat label={t('usage.whatsapp.sent', { cap: f.number(whatsapp.cap) })} value={f.number(whatsapp.sent)} />
+            <Stat label={t('usage.whatsapp.skippedCap')} value={f.number(whatsapp.skippedCap)} />
+            <Stat label={t('usage.whatsapp.failed')} value={f.number(whatsapp.failed)} />
+          </StatGrid>
+        ) : (
+          <Panel>
+            <p className="text-muted-foreground">{t('usage.whatsapp.notConfigured')}</p>
+          </Panel>
+        )}
+      </section>
     </>
   )
 }

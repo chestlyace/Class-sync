@@ -25,6 +25,7 @@ import { sendNotifications, type Notification } from '@/server/email/notify'
 import { setAfterResponseForTests } from '@/server/lib/after-response'
 import { sendPush, type PushItem } from '@/server/push/send'
 import { createTestDb } from '@/test/db'
+import { captureWhatsApp } from '@/test/whatsapp-capture'
 import { ctxFor, makeUser } from '@/test/factories'
 import {
   createAssignment,
@@ -703,6 +704,65 @@ describe('lecturer assignment services', () => {
     await gradeSubmission(lecturer, aliceSub, { mark: 17, feedback: 'Updated', expectedSubmittedAt: await versionOf(aliceSub) })
     await runScheduled()
     expect(send).toHaveBeenCalledTimes(1)
+  })
+
+  describe('whatsapp', () => {
+    let wa: ReturnType<typeof captureWhatsApp> | null = null
+    afterEach(() => {
+      wa?.stop()
+      wa = null
+    })
+
+    it('publishing queues an assignment alert after the response, once', async () => {
+      const { lecturer, algo } = await setup()
+      wa = captureWhatsApp({ ownAfterResponse: false })
+      const a = await createAssignment(lecturer, algo.id, baseInput())
+      await publishAssignment(lecturer, a.id)
+      expect(wa.captured).toEqual([])
+      await runScheduled()
+      expect(wa.captured.map((c) => c.event)).toEqual([{ kind: 'assignmentPublished', assignmentId: a.id }])
+
+      await publishAssignment(lecturer, a.id)
+      await runScheduled()
+      expect(wa.captured).toHaveLength(1)
+    })
+
+    it('the first release queues a results alert, a second release queues nothing', async () => {
+      const { lecturer, algo, alice } = await setup()
+      const a = await published(lecturer, algo.id)
+      const aliceSub = await addSubmission(alice, a.id)
+      await gradeSubmission(lecturer, aliceSub, { mark: 16, feedback: null, expectedSubmittedAt: await versionOf(aliceSub) })
+      await runScheduled()
+      wa = captureWhatsApp({ ownAfterResponse: false })
+      await releaseGrades(lecturer, a.id)
+      await runScheduled()
+      expect(wa.captured.map((c) => c.event)).toEqual([{ kind: 'resultsReleased', source: 'assignment', id: a.id }])
+
+      await releaseGrades(lecturer, a.id)
+      await runScheduled()
+      expect(wa.captured).toHaveLength(1)
+    })
+
+    it('queues nothing when WhatsApp is not configured', async () => {
+      const { lecturer, algo } = await setup()
+      wa = captureWhatsApp({ configured: false, ownAfterResponse: false })
+      const a = await createAssignment(lecturer, algo.id, baseInput())
+      await publishAssignment(lecturer, a.id)
+      await runScheduled()
+      expect(wa.captured).toEqual([])
+    })
+
+    it('a failing queue never fails the publish', async () => {
+      const { lecturer, algo } = await setup()
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      wa = captureWhatsApp({ failWith: new Error('queue down'), ownAfterResponse: false })
+      const a = await createAssignment(lecturer, algo.id, baseInput())
+      const detail = await publishAssignment(lecturer, a.id)
+      await runScheduled()
+      expect(detail.status).toBe('published')
+      expect(error).toHaveBeenCalled()
+      error.mockRestore()
+    })
   })
 
   it('grades of a draft cannot be released', async () => {
