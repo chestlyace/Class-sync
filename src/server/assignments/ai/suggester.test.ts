@@ -95,6 +95,22 @@ describe('createModelSuggester (mock model, no network)', () => {
     expect(JSON.stringify(call.prompt)).toContain('My secret student text.')
   })
 
+  it('forces the JSON-tool structured output and keeps the PDF citations option', async () => {
+    const model = new MockLanguageModelV4({
+      doGenerate: async () => textResult(JSON.stringify({ transcript: 't', mark: 5, feedback: 'f' })),
+    })
+    const bytes = new Uint8Array([37, 80, 68, 70])
+    await createModelSuggester(model, 'm')({
+      ...input,
+      documents: [{ position: 1, data: bytes, mediaType: 'application/pdf' }],
+    })
+    const call = model.doGenerateCalls[0]
+    expect(call.providerOptions).toEqual({ amazonBedrock: { structuredOutputMode: 'jsonTool' } })
+    const parts = call.prompt.flatMap((m) => (Array.isArray(m.content) ? (m.content as unknown[]) : []))
+    const filePart = (parts as { type: string; providerOptions?: unknown }[]).find((p) => p.type === 'file')
+    expect(filePart?.providerOptions).toEqual({ bedrock: { citations: { enabled: true } } })
+  })
+
   it('rejects with invalid_output when the text is not the expected object', async () => {
     const model = new MockLanguageModelV4({ doGenerate: async () => textResult('I cannot do that') })
     const e = await failure(model)

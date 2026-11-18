@@ -101,6 +101,9 @@ export function createModelSuggester(model: LanguageModel, modelId: string): Ass
         system: buildSystemPrompt(),
         messages: [{ role: 'user', content: buildUserContent(input) }],
         temperature: 0,
+        // Always the forced JSON tool: Bedrock's native structured output (output_config.format) is
+        // incompatible with PDF citations, which buildUserContent turns on for PDFs.
+        providerOptions: { amazonBedrock: { structuredOutputMode: 'jsonTool' } },
         abortSignal: AbortSignal.timeout(TIMEOUT_MS),
       })
       output = result.output
