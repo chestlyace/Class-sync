@@ -2,6 +2,8 @@ import { createAmazonBedrock } from '@ai-sdk/amazon-bedrock'
 import type { LanguageModel } from 'ai'
 import type { AiConfig } from './config'
 
+type Credentials = { accessKeyId: string; secretAccessKey: string; sessionToken?: string }
+
 /**
  * Bedrock model signed in through Vercel's OIDC token exchange for an IAM role: no AWS keys are stored.
  * The provider itself is imported statically (it is light and the model must be returned synchronously);
@@ -10,7 +12,7 @@ import type { AiConfig } from './config'
 export function createBedrockModel(cfg: AiConfig): LanguageModel {
   const roleArn = cfg.roleArn
   if (!roleArn) throw new Error('AI_AWS_ROLE_ARN is not set')
-  let provider: Promise<() => Promise<{ accessKeyId: string; secretAccessKey: string; sessionToken?: string }>> | undefined
+  let provider: Promise<() => Promise<Credentials>> | undefined
   const credentialProvider = async () => {
     provider ??= import('@vercel/functions/oidc').then(({ awsCredentialsProvider }) => {
       const get = awsCredentialsProvider({ roleArn })
@@ -19,7 +21,13 @@ export function createBedrockModel(cfg: AiConfig): LanguageModel {
         return { accessKeyId: c.accessKeyId, secretAccessKey: c.secretAccessKey, sessionToken: c.sessionToken }
       }
     })
-    return (await provider)()
+    try {
+      return await (await provider)()
+    } catch (err) {
+      // A failed import or credential fetch must not be cached forever: the next call retries.
+      provider = undefined
+      throw err
+    }
   }
   return createAmazonBedrock({ region: cfg.region, credentialProvider })(cfg.assignmentModel)
 }

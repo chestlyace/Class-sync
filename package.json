@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "^5.0.145",
+    "@aws-sdk/credential-provider-web-identity": "^3.972.90",
     "@better-auth/api-key": "^1.7.18",
     "@better-auth/cimd": "^1.7.18",
     "@better-auth/mcp": "^1.7.18",
