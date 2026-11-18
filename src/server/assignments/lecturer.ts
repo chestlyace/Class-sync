@@ -194,7 +194,7 @@ async function assertAttachable(db: Db, target: { ownerId: string; assignmentId:
 }
 
 /** Owner-only lookup of an assignment. "No such assignment" and "not yours" are both FORBIDDEN. */
-async function requireOwnedAssignment(ctx: Ctx, assignmentId: string): Promise<{ row: AssignmentRow; course: CourseSummary }> {
+export async function requireOwnedAssignment(ctx: Ctx, assignmentId: string): Promise<{ row: AssignmentRow; course: CourseSummary }> {
   requireRole(ctx, 'lecturer')
   const row = await loadAssignmentRow(ctx.db, assignmentId)
   if (!row) forbidden()
@@ -202,7 +202,7 @@ async function requireOwnedAssignment(ctx: Ctx, assignmentId: string): Promise<{
 }
 
 /** Owner-only lookup of a submission (through its assignment's course); nonexistent is FORBIDDEN too. */
-async function requireOwnedSubmission(ctx: Ctx, submissionId: string) {
+export async function requireOwnedSubmission(ctx: Ctx, submissionId: string) {
   requireRole(ctx, 'lecturer')
   if (typeof submissionId !== 'string' || submissionId.length === 0) forbidden()
   const [found] = await ctx.db
