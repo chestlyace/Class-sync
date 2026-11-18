@@ -28,6 +28,19 @@ export type LatePolicy = (typeof LATE_POLICIES)[number]
 export const ASSIGNMENT_STATUSES = ['draft', 'published'] as const
 export type AssignmentStatus = (typeof ASSIGNMENT_STATUSES)[number]
 
+export const SUGGESTED_BY = ['assistant', 'clasync'] as const
+export type SuggestedBy = (typeof SUGGESTED_BY)[number]
+
+export const AI_STATUSES = ['queued', 'failed'] as const
+export type AiStatus = (typeof AI_STATUSES)[number]
+
+export const AI_ERRORS = ['provider', 'cap', 'unreadable'] as const
+export type AiError = (typeof AI_ERRORS)[number]
+
+export const UNREAD_REASONS = ['heic', 'too_large', 'unsupported', 'limit'] as const
+/** A submitted file the AI could not read; `position` is its place in the submission's file list. */
+export type UnreadFile = { position: number; reason: (typeof UNREAD_REASONS)[number] }
+
 export const file = pgTable(
   'file',
   {
@@ -62,6 +75,8 @@ export const assignment = pgTable(
       .references(() => course.id, { onDelete: 'cascade' }),
     title: text('title').notNull(),
     instructions: jsonb('instructions').notNull().default(sql`'[]'::jsonb`),
+    // Lecturer-only notes for the AI marker (what a good answer contains); never shown to students.
+    markingGuide: text('marking_guide'),
     dueAt: timestamp('due_at', { withTimezone: true }).notNull(),
     maxMark: numeric('max_mark', { precision: 7, scale: 2, mode: 'number' }).notNull(),
     weight: numeric('weight', { precision: 6, scale: 2, mode: 'number' }).notNull().default(1),
@@ -123,9 +138,20 @@ export const submission = pgTable(
     suggestedMark: numeric('suggested_mark', { precision: 7, scale: 2, mode: 'number' }),
     suggestedFeedback: text('suggested_feedback'),
     suggestedAt: timestamp('suggested_at', { withTimezone: true }),
+    // Who made the suggestion: the lecturer's own assistant (MCP) or Clasync's built-in AI marking.
+    suggestedBy: text('suggested_by', { enum: SUGGESTED_BY }),
+    // What the AI read from the submitted files, so the lecturer can check it against the originals.
+    suggestedTranscript: text('suggested_transcript'),
+    suggestedUnread: jsonb('suggested_unread').$type<UnreadFile[]>(),
+    aiStatus: text('ai_status', { enum: AI_STATUSES }),
+    aiStatusAt: timestamp('ai_status_at', { withTimezone: true }),
+    aiError: text('ai_error', { enum: AI_ERRORS }),
   },
   (t) => [
     check('submission_suggested_mark_check', sql`${t.suggestedMark} >= 0`),
+    check('submission_suggested_by_check', sql`${t.suggestedBy} in ('assistant', 'clasync')`),
+    check('submission_ai_status_check', sql`${t.aiStatus} in ('queued', 'failed')`),
+    check('submission_ai_error_check', sql`${t.aiError} in ('provider', 'cap', 'unreadable')`),
     unique('submission_assignment_student_unique').on(t.assignmentId, t.studentId),
     index('submission_student_id_idx').on(t.studentId),
   ],
