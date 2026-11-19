@@ -19,14 +19,24 @@ describe('parseItemForm', () => {
     expect(out).toEqual({ ok: true, value: { kind: 'link', title: 'Docs', url: 'https://example.com/' } })
   })
 
-  it('requires a title on a note', () => {
-    expect(parseItemForm('note', form({ title: '  ', body: BODY }))).toEqual({ ok: false, fields: ['title'] })
+  it('allows a blank title on a note', () => {
+    expect(parseItemForm('note', form({ title: '  ', body: BODY }))).toEqual({
+      ok: true,
+      value: { kind: 'note', title: '', body: JSON.parse(BODY) },
+    })
   })
 
-  it('reports every bad field of a note together', () => {
+  it('rejects a title longer than 200 characters', () => {
+    expect(parseItemForm('note', form({ title: 'a'.repeat(201), body: BODY }))).toEqual({
+      ok: false,
+      fields: ['title'],
+    })
+  })
+
+  it('reports a bad body on its own', () => {
     expect(parseItemForm('note', form({ title: '', body: 'not json' }))).toEqual({
       ok: false,
-      fields: ['title', 'body'],
+      fields: ['body'],
     })
   })
 

@@ -8,6 +8,7 @@ import { getCtx } from '@/server/auth/session'
 import { AppError } from '@/server/core/errors'
 import {
   createFileItem,
+  createFileItems,
   createLink,
   createNote,
   moveItem,
@@ -113,9 +114,35 @@ export async function createItemAction(
     if (!parsed.ok) invalid(parsed.fields)
     const ctx = await getCtx()
     const { value } = parsed
-    if (value.kind === 'note') await createNote(ctx, { courseId: course, topicId: topic, title: value.title, body: value.body })
-    else if (value.kind === 'link') await createLink(ctx, { courseId: course, topicId: topic, title: value.title, url: value.url })
-    else await createFileItem(ctx, { courseId: course, topicId: topic, title: value.title, fileId: value.fileId })
+    const fallbackTitle = formString(data, 'fallbackTitle')
+    if (value.kind === 'note')
+      await createNote(ctx, { courseId: course, topicId: topic, title: value.title, body: value.body, fallbackTitle })
+    else if (value.kind === 'link')
+      await createLink(ctx, { courseId: course, topicId: topic, title: value.title, url: value.url, fallbackTitle })
+    else await createFileItem(ctx, { courseId: course, topicId: topic, title: value.title, fileId: value.fileId, fallbackTitle })
+    revalidateNotes()
+    redirect(notesPath(course))
+  })
+}
+
+/** Uploads several confirmed files into one topic as separate file notes, then goes back to notes. */
+export async function bulkUploadAction(
+  courseId: string,
+  topicId: string,
+  _prev: ActionResult<null> | null,
+  data: FormData,
+): Promise<ActionResult<null>> {
+  return toActionResult(async () => {
+    const course = requireId(courseId, 'courseId')
+    const topic = requireId(topicId, 'topic')
+    const fileIds = data.getAll('fileId')
+    if (fileIds.some((id) => typeof id !== 'string' || id === '' || id.length > 100)) invalid(['file'])
+    await createFileItems(await getCtx(), {
+      courseId: course,
+      topicId: topic,
+      fileIds: fileIds as string[],
+      fallbackTitle: formString(data, 'fallbackTitle'),
+    })
     revalidateNotes()
     redirect(notesPath(course))
   })
