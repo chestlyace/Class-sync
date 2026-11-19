@@ -121,7 +121,10 @@ export function SignInForm({
         <Field>
           <FieldLabel htmlFor="password">{t('password')}</FieldLabel>
           <PasswordInput id="password" name="password" autoComplete="current-password" required />
-          <Link href="/forgot-password" className="-mt-1 self-end text-sm text-[#48484a] underline-offset-4 hover:underline">
+          <Link
+            href={next ? `/forgot-password?next=${encodeURIComponent(next)}` : '/forgot-password'}
+            className="-mt-1 self-end text-sm text-[#48484a] underline-offset-4 hover:underline"
+          >
             {t('forgotPassword')}
           </Link>
         </Field>

@@ -10,7 +10,7 @@ import { authClient } from '@/lib/auth-client'
 import { authErrorKey } from '@/lib/auth-errors'
 
 /** Asks the server to email a reset link. The confirmation never reveals whether the address exists. */
-export function ForgotPasswordForm() {
+export function ForgotPasswordForm({ next = null }: { next?: string | null }) {
   const t = useTranslations('auth.forgotPassword')
   const tRoot = useTranslations()
   const [sentTo, setSentTo] = useState<string | null>(null)
@@ -24,7 +24,12 @@ export function ForgotPasswordForm() {
     setPending(true)
     setError(null)
     try {
-      const { error: authError } = await authClient.requestPasswordReset({ email })
+      const { error: authError } = await authClient.requestPasswordReset({
+        email,
+        // Better Auth passes this to sendResetPassword; the server re-validates it before
+        // putting it on the emailed link.
+        ...(next ? { redirectTo: next } : {}),
+      })
       if (authError) {
         setError(tRoot(authErrorKey(authError.code, authError.status)))
         return
@@ -46,7 +51,7 @@ export function ForgotPasswordForm() {
           <p className="text-sm text-muted-foreground">{t('sentDescription', { email: sentTo })}</p>
           <p className="text-sm text-muted-foreground">{t('hint')}</p>
         </div>
-        <Link href="/sign-in" className={buttonVariants({ variant: 'outline', size: 'lg' })}>
+        <Link href={next ? `/sign-in?next=${encodeURIComponent(next)}` : '/sign-in'} className={buttonVariants({ variant: 'outline', size: 'lg' })}>
           {t('backToSignIn')}
         </Link>
       </>
@@ -71,7 +76,10 @@ export function ForgotPasswordForm() {
           {pending ? t('submitting') : t('submit')}
         </Button>
       </form>
-      <Link href="/sign-in" className="self-start text-sm text-[#48484a] underline-offset-4 hover:underline">
+      <Link
+        href={next ? `/sign-in?next=${encodeURIComponent(next)}` : '/sign-in'}
+        className="self-start text-sm text-[#48484a] underline-offset-4 hover:underline"
+      >
         {t('backToSignIn')}
       </Link>
     </>

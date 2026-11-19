@@ -2,8 +2,10 @@ import type { ReactElement } from 'react'
 import { render } from '@react-email/render'
 import { eq } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { setNowForTests } from '@/server/core/clock'
 import { config, setConfigForTests } from '@/server/core/config'
 import type { Db } from '@/server/db'
+import { sendEmail } from '@/server/email/send'
 import { session, verification } from '@/server/db/schema'
 import { createTestDb } from '@/test/db'
 import { createAuth } from './auth'
@@ -45,6 +47,15 @@ async function lastResetToken(): Promise<string> {
   return token!
 }
 
+/** The full reset link in the last email, so its query can be inspected. */
+async function lastResetUrl(): Promise<URL> {
+  await until(() => sent.length >= 1)
+  const text = await render(sent[sent.length - 1]!.react, { plainText: true })
+  const raw = /https?:\/\/[^\s"'<>]+reset-password\?token=[^\s"'<>]+/.exec(text)?.[0]
+  expect(raw).toBeDefined()
+  return new URL(raw!.replace(/&amp;/g, '&'))
+}
+
 describe('auth: password reset', () => {
   const original = config.requireEmailVerification
   let db: Db
@@ -79,6 +90,7 @@ describe('auth: password reset', () => {
     await signUp(email, 'fr')
     const request = await post(auth, '/request-password-reset', { email })
     expect(request.status).toBe(200)
+    await until(() => sent.length >= 1)
     expect(sent[0]?.to).toBe(email)
     expect(sent[0]?.subject).toMatch(/mot de passe/i)
     const token = await lastResetToken()
@@ -132,5 +144,80 @@ describe('auth: password reset', () => {
     const hours = (row!.expiresAt.getTime() - Date.now()) / (60 * 60 * 1000)
     expect(hours).toBeGreaterThan(23)
     expect(hours).toBeLessThanOrEqual(24)
+  })
+
+  it('does not send another link for the same address inside the cooldown', async () => {
+    const email = 'cooldown-me@example.com'
+    await signUp(email)
+    expect((await post(auth, '/request-password-reset', { email })).status).toBe(200)
+    await until(() => sent.length >= 1)
+    expect((await post(auth, '/request-password-reset', { email })).status).toBe(200)
+    await new Promise((r) => setTimeout(r, 50))
+    expect(sent).toHaveLength(1)
+  })
+
+  it('sends another link once the per-address cooldown has passed', async () => {
+    const email = 'cooldown-two@example.com'
+    await signUp(email)
+    expect((await post(auth, '/request-password-reset', { email })).status).toBe(200)
+    await until(() => sent.length >= 1)
+    setNowForTests(() => new Date(Date.now() + 6 * 60 * 1000))
+    try {
+      expect((await post(auth, '/request-password-reset', { email })).status).toBe(200)
+      await until(() => sent.length >= 2)
+      expect(sent).toHaveLength(2)
+    } finally {
+      setNowForTests(null)
+    }
+  })
+
+  it('carries a safe next destination into the emailed link', async () => {
+    const email = 'next-me@example.com'
+    await signUp(email)
+    const res = await post(auth, '/request-password-reset', { email, redirectTo: '/courses/bio?tab=1' })
+    expect(res.status).toBe(200)
+    const url = await lastResetUrl()
+    expect(url.searchParams.get('token')).toBeTruthy()
+    expect(url.searchParams.get('next')).toBe('/courses/bio?tab=1')
+  })
+
+  it('answers normally even when the email provider fails', async () => {
+    const email = 'resend-fail@example.com'
+    await signUp(email)
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      vi.mocked(sendEmail).mockRejectedValueOnce(new Error('Resend is down'))
+      expect((await post(auth, '/request-password-reset', { email })).status).toBe(200)
+      await new Promise((r) => setTimeout(r, 50))
+      expect(errorLog).toHaveBeenCalled()
+    } finally {
+      errorLog.mockRestore()
+    }
+  })
+
+  it('does not wait for the email provider before answering', async () => {
+    const email = 'slow-mail@example.com'
+    await signUp(email)
+    let release: (() => void) | undefined
+    let finished = false
+    vi.mocked(sendEmail).mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          release = () => {
+            finished = true
+            resolve()
+          }
+        }),
+    )
+    try {
+      const status = await Promise.race([
+        post(auth, '/request-password-reset', { email }).then((res) => res.status),
+        new Promise<'pending'>((resolve) => setTimeout(() => resolve('pending'), 500)),
+      ])
+      expect(status).toBe(200)
+      expect(finished).toBe(false)
+    } finally {
+      release?.()
+    }
   })
 })

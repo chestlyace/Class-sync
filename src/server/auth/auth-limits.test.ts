@@ -116,14 +116,14 @@ describe('auth: rate limits sized for a classroom', () => {
     expect(statuses[30]).toBe(429)
   })
 
-  it('allows only 10 password-reset requests per hour from one address', async () => {
+  it('allows 100 password-reset requests per minute from one address (a class behind one NAT), then answers 429', async () => {
     const ip = '198.51.100.10'
     const statuses: number[] = []
-    for (let i = 0; i < 11; i++) {
+    for (let i = 0; i < 101; i++) {
       // An unknown address still gets the generic success, so only the limiter can answer 429.
-      statuses.push((await post(auth, '/request-password-reset', { email: 'nobody@example.com' }, ip)).status)
+      statuses.push((await post(auth, '/request-password-reset', { email: `nobody${i}@example.com` }, ip)).status)
     }
-    expect(statuses.slice(0, 10).every((s) => s === 200)).toBe(true)
-    expect(statuses[10]).toBe(429)
-  })
+    expect(statuses.slice(0, 100).every((s) => s === 200)).toBe(true)
+    expect(statuses[100]).toBe(429)
+  }, 120_000)
 })

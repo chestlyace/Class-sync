@@ -65,10 +65,13 @@ export function emailSubject(
   })
 }
 
-export function VerifyEmail({ url, locale }: { url: string; locale: Locale }) {
+type AuthLinkPrefix = 'verify' | 'resetPassword'
+
+/** The shared shape of the two auth emails: same layout, different translated copy. */
+export function AuthLinkEmail({ url, locale, prefix }: { url: string; locale: Locale; prefix: AuthLinkPrefix }) {
   const e = emailTranslator(locale)
   const t = (key: 'greeting' | 'body' | 'cta' | 'fallback' | 'ignore', values?: Record<string, string>) =>
-    e(`verify.${key}`, values)
+    e(`${prefix}.${key}`, values)
   return (
     <Html lang={locale}>
       <Head />
@@ -103,4 +106,8 @@ export function VerifyEmail({ url, locale }: { url: string; locale: Locale }) {
       </Body>
     </Html>
   )
+}
+
+export function VerifyEmail({ url, locale }: { url: string; locale: Locale }) {
+  return <AuthLinkEmail url={url} locale={locale} prefix="verify" />
 }

@@ -1,4 +1,5 @@
 import { getTranslations } from 'next-intl/server'
+import { safeNextPath } from '@/lib/next-path'
 import { ResetPasswordForm } from './reset-password-form'
 
 export async function generateMetadata() {
@@ -10,5 +11,6 @@ export default async function ResetPasswordPage({ searchParams }: PageProps<'/re
   const search = await searchParams
   // The email link carries the raw token; bound its length before handing it to the auth client.
   const token = typeof search.token === 'string' && search.token.length > 0 && search.token.length <= 200 ? search.token : null
-  return <ResetPasswordForm token={token} />
+  const next = safeNextPath(search.next)
+  return <ResetPasswordForm token={token} next={next} />
 }

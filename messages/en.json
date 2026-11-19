@@ -64,7 +64,7 @@
     },
     "resetPassword": {
       "title": "Choose a new password",
-      "description": "Pick a password you haven't used on Clasync before.",
+      "description": "Choose a new password with at least 8 characters.",
       "newPassword": "New password",
       "confirmPassword": "Confirm new password",
       "passwordHint": "At least 8 characters.",
