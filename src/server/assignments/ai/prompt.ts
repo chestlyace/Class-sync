@@ -13,7 +13,7 @@ export function buildSystemPrompt(): string {
     'Judge the work against the marking guide when there is one; otherwise judge it against the assignment instructions.',
     'Give the mark in steps of 0.25, from 0 up to the maximum mark and never above it.',
     'Write the feedback to the student: one short paragraph, in the language the student wrote in.',
-    'Write the transcript as a faithful reading of everything the student submitted (typed text, handwriting, files), in the order of the files. Do not correct or improve it. Write [unreadable] in place of any part you cannot read.',
+    'Write the transcript as a faithful reading of everything the student submitted (typed text, handwriting, files), in the order of the files. Do not correct or improve it. Write [unreadable] in place of any part you cannot read. Keep the transcript to at most about 12,000 characters: if the work is longer, summarise the rest or mark the gap with […].',
   ].join('\n')
 }
 

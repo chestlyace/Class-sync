@@ -9,6 +9,8 @@ import { buildSystemPrompt, buildUserContent } from './prompt'
 
 const TIMEOUT_MS = 50_000
 const TRANSCRIPT_MAX = 20_000
+/** Room for the transcript (about 12,000 characters asked for), the feedback and the JSON around them. */
+const MAX_OUTPUT_TOKENS = 8192
 
 export type MarkingSuggestion = {
   mark: number
@@ -79,8 +81,9 @@ export function cleanSuggestion(
   if (typeof raw !== 'object' || raw === null) return null
   const { mark, feedback, transcript } = raw as Record<string, unknown>
   if (typeof mark !== 'number' || !Number.isFinite(mark)) return null
-  const rounded = Math.round(mark * 4) / 4
-  if (rounded < 0 || rounded > maxMark) return null
+  if (mark < 0 || mark > maxMark) return null
+  // Rounding can push a mark within range past a maximum that is not a multiple of 0.25 (10.2 -> 10.25).
+  const rounded = Math.min(Math.round(mark * 4) / 4, Math.floor(maxMark * 4) / 4)
   const trimmed = typeof feedback === 'string' ? feedback.trim() : ''
   return {
     mark: rounded,
@@ -101,6 +104,7 @@ export function createModelSuggester(model: LanguageModel, modelId: string): Ass
         system: buildSystemPrompt(),
         messages: [{ role: 'user', content: buildUserContent(input) }],
         temperature: 0,
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
         // Always the forced JSON tool: Bedrock's native structured output (output_config.format) is
         // incompatible with PDF citations, which buildUserContent turns on for PDFs.
         providerOptions: { amazonBedrock: { structuredOutputMode: 'jsonTool' } },

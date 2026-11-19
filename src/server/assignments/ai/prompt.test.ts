@@ -21,6 +21,7 @@ describe('buildSystemPrompt', () => {
     expect(p).toMatch(/language the student wrote in/i)
     expect(p).toContain('[unreadable]')
     expect(p).toMatch(/escaped/i)
+    expect(p).toMatch(/12,000 characters/)
   })
 })
 

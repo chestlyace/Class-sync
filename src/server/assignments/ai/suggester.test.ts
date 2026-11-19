@@ -70,6 +70,12 @@ describe('cleanSuggestion', () => {
     expect(cleanSuggestion({ ...ok, feedback: 'a'.repeat(6000) }, 10)?.feedback).toHaveLength(FEEDBACK_MAX)
   })
 
+  it('keeps full marks when the maximum is not a multiple of 0.25', () => {
+    expect(cleanSuggestion({ ...ok, mark: 10.2 }, 10.2)?.mark).toBe(10)
+    expect(cleanSuggestion({ ...ok, mark: 10.2 }, 10.2)).not.toBeNull()
+    expect(cleanSuggestion({ ...ok, mark: 10.3 }, 10.2)).toBeNull()
+  })
+
   it('cuts the transcript to 20,000 characters', () => {
     expect(cleanSuggestion({ ...ok, transcript: 'x'.repeat(25_000) }, 10)?.transcript).toHaveLength(20_000)
   })
@@ -91,6 +97,7 @@ describe('createModelSuggester (mock model, no network)', () => {
     })
     const call = model.doGenerateCalls[0]
     expect(call.temperature).toBe(0)
+    expect(call.maxOutputTokens).toBe(8192)
     expect(call.abortSignal).toBeInstanceOf(AbortSignal)
     expect(JSON.stringify(call.prompt)).toContain('My secret student text.')
   })
