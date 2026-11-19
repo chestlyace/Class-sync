@@ -157,6 +157,7 @@ export function GradeForm({
             </Button>
             <span className="text-xs text-muted-foreground">{t('suggestionHint')}</span>
           </div>
+          {suggestion.by === 'clasync' && ai.available && <SuggestOneButton submissionId={submissionId} retry />}
           {suggestion.unread.length > 0 && (
             <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
               {suggestion.unread.map((f) => (
