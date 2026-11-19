@@ -1,5 +1,5 @@
-/** Claude Haiku 4.5 through Bedrock's EU cross-region inference profile (data stays in the EU). */
-export const DEFAULT_ASSIGNMENT_MODEL = 'eu.anthropic.claude-haiku-4-5-20251001-v1:0'
+/** Claude Haiku 5.5 through Bedrock's EU cross-region inference profile (data stays in the EU). */
+export const DEFAULT_ASSIGNMENT_MODEL = 'eu.anthropic.claude-haiku-5-5'
 
 /** Deterministic stand-in model id for local work and e2e; refused on Vercel production. */
 export const FAKE_MODEL = 'fake'

@@ -9,7 +9,7 @@ describe('readAiConfig', () => {
       assignmentModel: DEFAULT_ASSIGNMENT_MODEL,
       monthlyCap: 3000,
     })
-    expect(DEFAULT_ASSIGNMENT_MODEL).toBe('eu.anthropic.claude-haiku-4-5-20251001-v1:0')
+    expect(DEFAULT_ASSIGNMENT_MODEL).toBe('eu.anthropic.claude-haiku-5-5')
   })
 
   it('reads overrides', () => {
