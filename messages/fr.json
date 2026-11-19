@@ -44,10 +44,36 @@
       "description": "Connectez-vous pour accéder à Clasync.",
       "email": "Adresse e-mail",
       "password": "Mot de passe",
+      "forgotPassword": "Mot de passe oublié ?",
+      "passwordReset": "Votre mot de passe a été modifié. Connectez-vous avec votre nouveau mot de passe.",
       "submit": "Se connecter",
       "submitting": "Connexion…",
       "noAccount": "Nouveau sur Clasync ?",
       "createAccount": "Créer un compte"
+    },
+    "forgotPassword": {
+      "title": "Réinitialiser votre mot de passe",
+      "description": "Saisissez l'adresse e-mail de votre compte Clasync. Nous vous enverrons un lien pour choisir un nouveau mot de passe.",
+      "email": "Adresse e-mail",
+      "submit": "Envoyer le lien",
+      "submitting": "Envoi du lien…",
+      "sentTitle": "Vérifiez votre boîte mail",
+      "sentDescription": "Si un compte existe pour {email}, nous avons envoyé un lien pour réinitialiser son mot de passe. Ce lien est valable 24 heures.",
+      "hint": "Vous ne le trouvez pas ? Regardez dans vos courriers indésirables.",
+      "backToSignIn": "Retour à la connexion"
+    },
+    "resetPassword": {
+      "title": "Choisissez un nouveau mot de passe",
+      "description": "Choisissez un nouveau mot de passe d'au moins 8 caractères.",
+      "newPassword": "Nouveau mot de passe",
+      "confirmPassword": "Confirmer le nouveau mot de passe",
+      "passwordHint": "Au moins 8 caractères.",
+      "mismatch": "Les deux mots de passe ne correspondent pas.",
+      "invalidLink": "Ce lien n'est pas valide ou a expiré. Demandez-en un nouveau.",
+      "revokeNote": "Pour votre sécurité, cette action vous déconnecte de tous vos appareils.",
+      "submit": "Modifier le mot de passe",
+      "submitting": "Modification du mot de passe…",
+      "backToSignIn": "Retour à la connexion"
     },
     "verify": {
       "title": "Vérifiez votre boîte mail",
@@ -67,7 +93,8 @@
       "accountSuspended": "Ce compte est suspendu.",
       "accountSuspendedContact": "Contactez {email}.",
       "signInAgain": "Par sécurité, déconnectez-vous puis reconnectez-vous, et réessayez.",
-      "invalidName": "Indiquez seulement votre nom : 80 caractères au plus, sans lien, adresse e-mail ni caractères < > / \\."
+      "invalidName": "Indiquez seulement votre nom : 80 caractères au plus, sans lien, adresse e-mail ni caractères < > / \\.",
+      "invalidToken": "Ce lien n'est pas valide ou a expiré. Demandez-en un nouveau."
     },
     "google": {
       "continue": "Continuer avec Google",
@@ -285,6 +312,14 @@
       "cta": "Confirmer mon e-mail",
       "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :",
       "ignore": "Si vous n'avez pas créé de compte Clasync, vous pouvez ignorer cet e-mail."
+    },
+    "resetPassword": {
+      "subject": "Réinitialisez votre mot de passe Clasync",
+      "greeting": "Bonjour,",
+      "body": "Nous avons reçu une demande de réinitialisation du mot de passe de votre compte Clasync. Ouvrez le lien ci-dessous pour en choisir un nouveau. Il est valable 24 heures.",
+      "cta": "Choisir un nouveau mot de passe",
+      "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :",
+      "ignore": "Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet e-mail. Votre mot de passe n'a pas changé."
     },
     "assignmentPublished": {
       "subject": "Nouveau devoir dans {course} : {assignment}",

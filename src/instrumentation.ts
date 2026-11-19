@@ -1,6 +1,13 @@
 import * as Sentry from '@sentry/nextjs'
 import { sentryEnvironment } from '@/lib/sentry-environment'
-import { isNextRequestErrorLog, isNodeWarningLog, withoutVisitorIp } from '@/lib/sentry-filters'
+import {
+  isNextRequestErrorLog,
+  isNodeWarningLog,
+  withoutResetToken,
+  withoutResetTokenInBreadcrumb,
+  withoutResetTokenInSpan,
+  withoutVisitorIp,
+} from '@/lib/sentry-filters'
 
 /**
  * Server error tracking (Sentry). Off while NEXT_PUBLIC_SENTRY_DSN is unset, so locally and in
@@ -11,7 +18,9 @@ export function register() {
     dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
     environment: sentryEnvironment(process.env.VERCEL_ENV, process.env.VERCEL_GIT_COMMIT_REF),
     tracesSampleRate: 0.1,
-    beforeSend: withoutVisitorIp,
+    beforeSend: (event) => withoutVisitorIp(withoutResetToken(event)),
+    beforeBreadcrumb: withoutResetTokenInBreadcrumb,
+    beforeSendSpan: withoutResetTokenInSpan,
   })
   if (Sentry.isEnabled()) reportLoggedErrors()
 }
