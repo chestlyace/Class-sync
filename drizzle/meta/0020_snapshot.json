@@ -1,5 +1,5 @@
 {
-  "id": "aebef71a-b655-4270-b9f6-3b66e606d83e",
+  "id": "1bef5151-0a90-4ea0-8add-3c3881367617",
   "prevId": "3a4bdf2f-dde8-416a-9434-7311e419c6c0",
   "version": "7",
   "dialect": "postgresql",
@@ -258,6 +258,21 @@
           "columns": [
             {
               "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "ai_usage_submission_id_idx": {
+          "name": "ai_usage_submission_id_idx",
+          "columns": [
+            {
+              "expression": "submission_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

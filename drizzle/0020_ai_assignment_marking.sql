@@ -21,6 +21,7 @@ ALTER TABLE "submission" ADD COLUMN "ai_error" text;--> statement-breakpoint
 ALTER TABLE "ai_usage" ADD CONSTRAINT "ai_usage_lecturer_id_user_id_fk" FOREIGN KEY ("lecturer_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ai_usage" ADD CONSTRAINT "ai_usage_submission_id_submission_id_fk" FOREIGN KEY ("submission_id") REFERENCES "public"."submission"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "ai_usage_created_at_idx" ON "ai_usage" USING btree ("created_at");--> statement-breakpoint
+CREATE INDEX "ai_usage_submission_id_idx" ON "ai_usage" USING btree ("submission_id");--> statement-breakpoint
 ALTER TABLE "submission" ADD CONSTRAINT "submission_suggested_by_check" CHECK ("submission"."suggested_by" in ('assistant', 'clasync'));--> statement-breakpoint
 ALTER TABLE "submission" ADD CONSTRAINT "submission_ai_status_check" CHECK ("submission"."ai_status" in ('queued', 'failed'));--> statement-breakpoint
 ALTER TABLE "submission" ADD CONSTRAINT "submission_ai_error_check" CHECK ("submission"."ai_error" in ('provider', 'cap', 'unreadable'));

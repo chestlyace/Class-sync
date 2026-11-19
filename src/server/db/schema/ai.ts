@@ -27,5 +27,6 @@ export const aiUsage = pgTable(
   (t) => [
     check('ai_usage_purpose_check', sql`${t.purpose} in ('assignment_marking')`),
     index('ai_usage_created_at_idx').on(t.createdAt),
+    index('ai_usage_submission_id_idx').on(t.submissionId),
   ],
 )

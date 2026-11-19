@@ -1145,4 +1145,10 @@ describe('AI assignment marking schema', () => {
     const res = await db.execute(sql`select 1 from pg_indexes where indexname = 'ai_usage_created_at_idx'`)
     expect(res.rows).toHaveLength(1)
   })
+
+  it('has the ai_usage submission_id index', async () => {
+    const db = await createTestDb()
+    const res = await db.execute(sql`select 1 from pg_indexes where indexname = 'ai_usage_submission_id_idx'`)
+    expect(res.rows).toHaveLength(1)
+  })
 })
