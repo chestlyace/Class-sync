@@ -11,6 +11,9 @@
     },
     "src/app/api/queues/whatsapp/route.ts": {
       "experimentalTriggers": [{ "type": "queue/v2beta", "topic": "whatsapp" }]
+    },
+    "src/app/api/queues/assignment-marking/route.ts": {
+      "experimentalTriggers": [{ "type": "queue/v2beta", "topic": "assignment-marking" }]
     }
   }
 }

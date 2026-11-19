@@ -1,5 +1,6 @@
 import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, max, sql } from 'drizzle-orm'
 import { createElement } from 'react'
+import { isAssignmentMarkingOn } from '@/server/ai/config'
 import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import type { Ctx } from '@/server/core/context'
@@ -18,6 +19,10 @@ import {
   submissionFile,
   SUBMISSION_MODES,
   user,
+  type AiError,
+  type AiStatus,
+  type SuggestedBy,
+  type UnreadFile,
 } from '@/server/db/schema'
 import { sendNotifications, type Notification } from '@/server/email/notify'
 import { AssignmentPublishedEmail } from '@/server/email/templates/assignment-published'
@@ -35,16 +40,19 @@ import {
   loadAssignmentDetail,
   loadAssignmentRow,
   loadAttachmentsByAssignment,
+  loadLecturerAssignmentDetail,
   loadSubmissionFiles,
   localesOf,
+  NO_SUGGESTION,
   toAssignmentDetail,
   type AssignmentDetail,
   type AssignmentRow,
+  type LecturerAssignmentDetail,
 } from './queries'
 import { sanitizeRichText, type Block } from './rich-text'
-import { FEEDBACK_MAX, isValidMark } from './rules'
+import { FEEDBACK_MAX, isStaleQueued, isValidMark, MARKING_GUIDE_MAX } from './rules'
 
-export type { AssignmentDetail } from './queries'
+export type { AssignmentDetail, LecturerAssignmentDetail } from './queries'
 
 export type AssignmentInput = {
   title: string
@@ -55,9 +63,14 @@ export type AssignmentInput = {
   submissionMode: 'files' | 'text' | 'both'
   latePolicy: 'accept' | 'close'
   attachmentIds: string[]
+  /**
+   * Lecturer-only notes on what a good answer contains (trimmed, blank = none, at most
+   * MARKING_GUIDE_MAX characters). Omitted on an update keeps the current guide.
+   */
+  markingGuide?: string | null
 }
 
-export type AssignmentListItem = AssignmentDetail & {
+export type AssignmentListItem = LecturerAssignmentDetail & {
   submittedCount: number
   lateCount: number
   gradedCount: number
@@ -76,10 +89,12 @@ export type SubmissionRow = {
   /** The hand-in has typed text / how many files it has (both false/0 when missing). */
   hasText: boolean
   fileCount: number
+  /** AI mark suggestion state: one waiting to be applied, a job running, or a job that failed. */
+  ai: 'suggested' | 'queued' | 'failed' | null
 }
 
 export type LecturerSubmissionView = {
-  assignment: AssignmentDetail
+  assignment: LecturerAssignmentDetail
   student: { id: string; name: string; matricule: string | null }
   text: Block[] | null
   files: FileInfo[]
@@ -87,9 +102,40 @@ export type LecturerSubmissionView = {
   isLate: boolean
   mark: number | null
   feedback: string | null
-  /** A grade suggested by the lecturer's assistant, never applied by itself. */
-  suggestion: { mark: number; feedback: string | null; at: Date } | null
+  /**
+   * A suggested grade, never applied by itself: by the lecturer's own AI assistant (MCP) or by
+   * Clasync's AI, with what Clasync's AI read (`transcript`) and the files it could not read.
+   */
+  suggestion: {
+    mark: number
+    feedback: string | null
+    at: Date
+    by: SuggestedBy
+    transcript: string | null
+    unread: UnreadFile[]
+  } | null
+  /** Clasync AI marking: offered here at all, and the state of a requested suggestion. */
+  ai: { available: boolean; status: AiStatus | null; error: AiError | null }
 }
+
+/**
+ * The AI job state as the lecturer sees it. A queued job that has run past STALE_QUEUED_MS is
+ * presumed lost and reads as failed (`provider`), so it can be asked for again; a failed one with
+ * no recorded error reads as `provider` too.
+ */
+function aiJobState(
+  s: { aiStatus: AiStatus | null; aiStatusAt: Date | null; aiError: AiError | null },
+  at: Date,
+): { status: AiStatus | null; error: AiError | null } {
+  if (s.aiStatus === 'queued') {
+    return isStaleQueued(s.aiStatus, s.aiStatusAt, at) ? { status: 'failed', error: 'provider' } : { status: 'queued', error: null }
+  }
+  if (s.aiStatus === 'failed') return { status: 'failed', error: s.aiError ?? 'provider' }
+  return { status: null, error: null }
+}
+
+/** Clasync AI suggestions are offered on published assignments, where the feature is on. */
+const aiAvailableFor = (row: AssignmentRow) => row.status === 'published' && isAssignmentMarkingOn()
 
 const TITLE_MIN = 2
 const TITLE_MAX = 200
@@ -129,6 +175,8 @@ type CleanInput = {
   submissionMode: SubmissionMode
   latePolicy: LatePolicy
   attachmentIds: string[]
+  /** `undefined` = not given (keep the current one on update). */
+  markingGuide: string | null | undefined
 }
 
 /**
@@ -157,6 +205,15 @@ function parseInput(input: AssignmentInput, current?: AssignmentRow): CleanInput
   const latePolicy = raw.latePolicy as LatePolicy
   if (!LATE_POLICIES.includes(latePolicy)) bad.push('latePolicy')
 
+  let markingGuide: string | null | undefined
+  if (raw.markingGuide === undefined) markingGuide = undefined
+  else if (raw.markingGuide === null) markingGuide = null
+  else if (typeof raw.markingGuide === 'string') {
+    const guide = raw.markingGuide.trim()
+    if (guide.length > MARKING_GUIDE_MAX) bad.push('markingGuide')
+    markingGuide = guide === '' ? null : guide
+  } else bad.push('markingGuide')
+
   if (bad.length > 0) invalidFields(bad)
   return {
     title,
@@ -167,6 +224,7 @@ function parseInput(input: AssignmentInput, current?: AssignmentRow): CleanInput
     submissionMode,
     latePolicy,
     attachmentIds: raw.attachmentIds as string[],
+    markingGuide,
   }
 }
 
@@ -176,7 +234,7 @@ async function assertAttachable(db: Db, target: { ownerId: string; assignmentId:
 }
 
 /** Owner-only lookup of an assignment. "No such assignment" and "not yours" are both FORBIDDEN. */
-async function requireOwnedAssignment(ctx: Ctx, assignmentId: string): Promise<{ row: AssignmentRow; course: CourseSummary }> {
+export async function requireOwnedAssignment(ctx: Ctx, assignmentId: string): Promise<{ row: AssignmentRow; course: CourseSummary }> {
   requireRole(ctx, 'lecturer')
   const row = await loadAssignmentRow(ctx.db, assignmentId)
   if (!row) forbidden()
@@ -184,7 +242,7 @@ async function requireOwnedAssignment(ctx: Ctx, assignmentId: string): Promise<{
 }
 
 /** Owner-only lookup of a submission (through its assignment's course); nonexistent is FORBIDDEN too. */
-async function requireOwnedSubmission(ctx: Ctx, submissionId: string) {
+export async function requireOwnedSubmission(ctx: Ctx, submissionId: string) {
   requireRole(ctx, 'lecturer')
   if (typeof submissionId !== 'string' || submissionId.length === 0) forbidden()
   const [found] = await ctx.db
@@ -205,7 +263,11 @@ async function replaceAttachments(db: Db, assignmentId: string, fileIds: string[
     .values(fileIds.map((fileId, position) => ({ assignmentId, fileId, position })))
 }
 
-export async function createAssignment(ctx: Ctx, courseId: string, input: AssignmentInput): Promise<AssignmentDetail> {
+export async function createAssignment(
+  ctx: Ctx,
+  courseId: string,
+  input: AssignmentInput,
+): Promise<LecturerAssignmentDetail> {
   await requireCourseOwner(ctx, courseId)
   const data = parseInput(input)
   const id = crypto.randomUUID()
@@ -220,6 +282,7 @@ export async function createAssignment(ctx: Ctx, courseId: string, input: Assign
         courseId,
         title: data.title,
         instructions: data.instructions,
+        markingGuide: data.markingGuide ?? null,
         dueAt: data.dueAt,
         maxMark: data.maxMark,
         weight: data.weight,
@@ -234,7 +297,7 @@ export async function createAssignment(ctx: Ctx, courseId: string, input: Assign
     await replaceAttachments(tx, id, data.attachmentIds)
     return created
   })
-  return loadAssignmentDetail(ctx.db, row)
+  return loadLecturerAssignmentDetail(ctx.db, row)
 }
 
 /**
@@ -249,7 +312,7 @@ export async function updateAssignment(
   assignmentId: string,
   input: AssignmentInput,
   opts: { draftOnly?: boolean } = {},
-): Promise<AssignmentDetail> {
+): Promise<LecturerAssignmentDetail> {
   const { row: current } = await requireOwnedAssignment(ctx, assignmentId)
   if (opts.draftOnly && current.status !== 'draft') throw notDraft()
   const data = parseInput(input, current)
@@ -289,6 +352,8 @@ export async function updateAssignment(
       .set({
         title: data.title,
         instructions: data.instructions,
+        // Not given: keep the current guide.
+        ...(data.markingGuide !== undefined ? { markingGuide: data.markingGuide } : {}),
         dueAt: data.dueAt,
         maxMark: data.maxMark,
         weight: data.weight,
@@ -313,13 +378,13 @@ export async function updateAssignment(
     }
     return updated
   })
-  return loadAssignmentDetail(ctx.db, row)
+  return loadLecturerAssignmentDetail(ctx.db, row)
 }
 
 /** One assignment of mine as the editor loads it (drafts included). Owner only. */
-export async function getAssignmentForEdit(ctx: Ctx, assignmentId: string): Promise<AssignmentDetail> {
+export async function getAssignmentForEdit(ctx: Ctx, assignmentId: string): Promise<LecturerAssignmentDetail> {
   const { row } = await requireOwnedAssignment(ctx, assignmentId)
-  return loadAssignmentDetail(ctx.db, row)
+  return loadLecturerAssignmentDetail(ctx.db, row)
 }
 
 export async function deleteDraftAssignment(ctx: Ctx, assignmentId: string): Promise<void> {
@@ -441,6 +506,7 @@ export async function listCourseAssignments(ctx: Ctx, courseId: string): Promise
   }
   return rows.map((r) => ({
     ...toAssignmentDetail(r, attachments.get(r.id) ?? []),
+    markingGuide: r.markingGuide,
     ...counts.get(r.id)!,
     rosterSize: roster.length,
   }))
@@ -450,10 +516,10 @@ export async function listCourseAssignments(ctx: Ctx, courseId: string): Promise
 export async function listSubmissions(
   ctx: Ctx,
   assignmentId: string,
-): Promise<{ assignment: AssignmentDetail; rows: SubmissionRow[] }> {
+): Promise<{ assignment: LecturerAssignmentDetail; rows: SubmissionRow[]; aiAvailable: boolean }> {
   const { row, course } = await requireOwnedAssignment(ctx, assignmentId)
   const [detail, roster, submissions] = await Promise.all([
-    loadAssignmentDetail(ctx.db, row),
+    loadLecturerAssignmentDetail(ctx.db, row),
     courseRosterQuery(ctx.db, { courseId: course.id }),
     ctx.db
       .select({
@@ -463,6 +529,10 @@ export async function listSubmissions(
         isLate: submission.isLate,
         mark: submission.mark,
         hasText: sql<boolean>`${submission.text} is not null`,
+        suggestedAt: submission.suggestedAt,
+        aiStatus: submission.aiStatus,
+        aiStatusAt: submission.aiStatusAt,
+        aiError: submission.aiError,
       })
       .from(submission)
       .where(eq(submission.assignmentId, assignmentId)),
@@ -477,6 +547,12 @@ export async function listSubmissions(
           .groupBy(submissionFile.submissionId)
   const filesBySubmission = new Map(fileCounts.map((f) => [f.submissionId, f.n]))
   const byStudent = new Map(submissions.map((s) => [s.studentId, s]))
+  const at = now()
+  const rowAi = (s: (typeof submissions)[number]): SubmissionRow['ai'] => {
+    const job = aiJobState(s, at)
+    if (job.status) return job.status
+    return s.suggestedAt !== null ? 'suggested' : null
+  }
   const rows: SubmissionRow[] = roster.map((student) => {
     const s = byStudent.get(student.studentId)
     return {
@@ -490,9 +566,10 @@ export async function listSubmissions(
       graded: s?.mark != null,
       hasText: s?.hasText ?? false,
       fileCount: s ? (filesBySubmission.get(s.id) ?? 0) : 0,
+      ai: s ? rowAi(s) : null,
     }
   })
-  return { assignment: detail, rows }
+  return { assignment: detail, rows, aiAvailable: aiAvailableFor(row) }
 }
 
 /** The student's matricule for this course: from the roster, else their latest one in the course's class. */
@@ -511,7 +588,7 @@ async function matriculeFor(db: Db, course: CourseSummary, studentId: string): P
 export async function getSubmissionForLecturer(ctx: Ctx, submissionId: string): Promise<LecturerSubmissionView> {
   const { sub, row, course } = await requireOwnedSubmission(ctx, submissionId)
   const [detail, files, [student], matricule] = await Promise.all([
-    loadAssignmentDetail(ctx.db, row),
+    loadLecturerAssignmentDetail(ctx.db, row),
     loadSubmissionFiles(ctx.db, sub.id),
     ctx.db.select({ id: user.id, name: user.name }).from(user).where(eq(user.id, sub.studentId)),
     matriculeFor(ctx.db, course, sub.studentId),
@@ -528,8 +605,17 @@ export async function getSubmissionForLecturer(ctx: Ctx, submissionId: string): 
     feedback: sub.feedback,
     suggestion:
       sub.suggestedMark !== null && sub.suggestedAt !== null
-        ? { mark: sub.suggestedMark, feedback: sub.suggestedFeedback, at: sub.suggestedAt }
+        ? {
+            mark: sub.suggestedMark,
+            feedback: sub.suggestedFeedback,
+            at: sub.suggestedAt,
+            // Suggestions stored before suggested_by existed came from the assistant.
+            by: sub.suggestedBy ?? 'assistant',
+            transcript: sub.suggestedTranscript,
+            unread: sub.suggestedUnread ?? [],
+          }
         : null,
+    ai: { available: aiAvailableFor(row), ...aiJobState(sub, now()) },
   }
 }
 
@@ -564,9 +650,7 @@ export async function gradeSubmission(
       feedback,
       gradedAt: now(),
       gradedBy: ctx.user.id,
-      suggestedMark: null,
-      suggestedFeedback: null,
-      suggestedAt: null,
+      ...NO_SUGGESTION,
     })
     .where(and(eq(submission.id, sub.id), eq(submission.submittedAt, expected)))
     .returning({ id: submission.id })
@@ -611,7 +695,13 @@ export async function suggestSubmissionMark(
   // Conditional, so a grade saved (or a new version handed in) meanwhile is never shadowed.
   const updated = await ctx.db
     .update(submission)
-    .set({ suggestedMark: mark, suggestedFeedback: feedback, suggestedAt: at })
+    .set({
+      ...NO_SUGGESTION,
+      suggestedMark: mark,
+      suggestedFeedback: feedback,
+      suggestedAt: at,
+      suggestedBy: 'assistant',
+    })
     .where(
       and(eq(submission.id, sub.id), isNull(submission.mark), expected ? eq(submission.submittedAt, expected) : undefined),
     )

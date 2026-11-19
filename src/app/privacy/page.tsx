@@ -8,7 +8,7 @@ import { getSessionUser } from '@/server/auth/session'
 const PRIVACY_CONTACT = 'chestlyace@clasync.online'
 
 /** Change along with the text: shown as "Last updated". */
-const UPDATED = new Date('2026-11-17T12:00:00Z')
+const UPDATED = new Date('2026-11-18T12:00:00Z')
 
 export async function generateMetadata() {
   const t = await getTranslations('privacy')
@@ -19,7 +19,7 @@ export async function generateMetadata() {
 const sections = [
   { key: 'collect', items: ['account', 'google', 'classes', 'tests', 'location', 'signIns', 'whatsapp'] },
   { key: 'access', items: ['lecturers', 'you', 'admins', 'sold'] },
-  { key: 'services', intro: true, items: ['vercel', 'database', 'email', 'errors', 'push', 'whatsapp', 'ai', 'google'] },
+  { key: 'services', intro: true, items: ['vercel', 'database', 'email', 'errors', 'push', 'whatsapp', 'ai', 'aiAssignments', 'google'] },
   { key: 'assistants', items: ['body'] },
   { key: 'cookies', items: ['body'] },
   { key: 'rights', items: ['edit', 'google', 'whatsapp', 'delete', 'keep'] },

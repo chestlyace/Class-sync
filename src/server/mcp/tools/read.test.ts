@@ -102,6 +102,7 @@ describe('MCP read tools', () => {
       submissionMode: 'both',
       latePolicy: 'accept',
       attachmentIds: [],
+      markingGuide: 'Full marks for naming osmosis.',
     })
     await db.update(assignment).set({ status: 'published', publishedAt: new Date() }).where(eq(assignment.id, created.id))
     await submitAssignment(alice, created.id, { text: [block('paragraph', 'The potato lost water.')], fileIds: [] })
@@ -285,6 +286,7 @@ describe('MCP read tools', () => {
       maxMark: 20,
       gradesReleased: false,
       instructions: '## Lab\n- Measure the potato',
+      markingGuide: 'Full marks for naming osmosis.',
       attachments: [],
       counts: { roster: 4, submitted: 1, late: 0, missing: 3, graded: 0 },
     })
@@ -303,10 +305,16 @@ describe('MCP read tools', () => {
       text: 'The potato lost water.',
       files: [{ name: 'report.pdf', type: 'application/pdf', sizeBytes: 2048 }],
       mark: null,
-      suggestion: { mark: 15, feedback: 'Clear method.' },
+      suggestion: { mark: 15, feedback: 'Clear method.', by: 'assistant' },
     })
     expect(one.assignment.instructions).toBe('## Lab\n- Measure the potato')
+    expect(one.assignment.markingGuide).toBe('Full marks for naming osmosis.')
     expect(one.files[0].id).toBeUndefined()
+
+    // A suggestion made by Clasync's own AI says so.
+    await db.update(submission).set({ suggestedBy: 'clasync' }).where(eq(submission.id, ids.submission))
+    const byClasync = await call(fx.lecturer, 'get_submission', { submissionId: ids.submission })
+    expect(byClasync.suggestion).toMatchObject({ mark: 15, by: 'clasync' })
   })
 
   it('list_tests and get_test: state, questions with correct option and guide', async () => {

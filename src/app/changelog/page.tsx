@@ -11,6 +11,7 @@ export async function generateMetadata() {
 
 /** What shipped, newest first: message keys under `changelog.items.<key>`. Add new releases at the top. */
 const releases = [
+  { date: '2026-11-18', items: ['aiMarking'] },
   { date: '2026-11-17', items: ['whatsapp'] },
   { date: '2026-11-12', items: ['app', 'notifications'] },
   { date: '2026-11-11', items: ['google', 'legal', 'matricule'] },

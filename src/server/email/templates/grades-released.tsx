@@ -16,7 +16,6 @@ export function GradesReleasedEmail({ locale, studentName, courseTitle, assignme
   return (
     <NotificationLayout
       locale={locale}
-      preview={e('gradesReleased.preview', vars)}
       greeting={e('gradesReleased.greeting', { name: studentName })}
       paragraphs={[e('gradesReleased.body', vars)]}
       cta={e('gradesReleased.cta')}

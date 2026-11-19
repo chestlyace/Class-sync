@@ -1,17 +1,7 @@
-import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Heading,
-  Html,
-  Link,
-  Preview,
-  Section,
-  Text,
-} from '@react-email/components'
+import { Body, Container, Head, Heading, Html, Link, Section, Text } from '@react-email/components'
 import { createTranslator } from 'next-intl'
 import type { Locale } from '@/server/core/context'
+import { CtaLink } from './notification-layout'
 import en from '../../../../messages/en.json'
 import fr from '../../../../messages/fr.json'
 
@@ -76,12 +66,11 @@ export function emailSubject(
 
 export function VerifyEmail({ url, locale }: { url: string; locale: Locale }) {
   const e = emailTranslator(locale)
-  const t = (key: 'preview' | 'greeting' | 'body' | 'cta' | 'fallback' | 'ignore', values?: Record<string, string>) =>
+  const t = (key: 'greeting' | 'body' | 'cta' | 'fallback' | 'ignore', values?: Record<string, string>) =>
     e(`verify.${key}`, values)
   return (
     <Html lang={locale}>
       <Head />
-      <Preview>{t('preview')}</Preview>
       <Body style={{ backgroundColor: '#f4f4f5', fontFamily: 'Arial, Helvetica, sans-serif' }}>
         <Container
           style={{
@@ -98,19 +87,7 @@ export function VerifyEmail({ url, locale }: { url: string; locale: Locale }) {
           <Text style={{ fontSize: '16px', lineHeight: '24px' }}>{t('greeting')}</Text>
           <Text style={{ fontSize: '16px', lineHeight: '24px' }}>{t('body')}</Text>
           <Section style={{ margin: '24px 0' }}>
-            <Button
-              href={url}
-              style={{
-                backgroundColor: '#18181b',
-                color: '#ffffff',
-                padding: '12px 20px',
-                borderRadius: '6px',
-                fontSize: '16px',
-                textDecoration: 'none',
-              }}
-            >
-              {t('cta')}
-            </Button>
+            <CtaLink href={url}>{t('cta')}</CtaLink>
           </Section>
           <Text style={{ fontSize: '14px', lineHeight: '20px', color: '#52525b' }}>
             {t('fallback')}

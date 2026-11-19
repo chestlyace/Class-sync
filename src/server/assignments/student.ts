@@ -19,6 +19,7 @@ import {
   loadAssignmentRow,
   loadAttachmentsByAssignment,
   loadSubmissionFiles,
+  NO_SUGGESTION,
   toAssignmentDetail,
 } from './queries'
 import { isRichTextEmpty, sanitizeRichText, type Block } from './rich-text'
@@ -306,10 +307,8 @@ export async function submitAssignment(
           feedback: null,
           gradedAt: null,
           gradedBy: null,
-          // A suggestion was about the previous version.
-          suggestedMark: null,
-          suggestedFeedback: null,
-          suggestedAt: null,
+          // A suggestion (and any AI marking in progress) was about the previous version.
+          ...NO_SUGGESTION,
         },
       })
       .returning({ id: submission.id })

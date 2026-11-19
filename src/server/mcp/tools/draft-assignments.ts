@@ -4,9 +4,9 @@ import {
   getAssignmentForEdit,
   suggestSubmissionMark,
   updateAssignment,
-  type AssignmentDetail,
+  type LecturerAssignmentDetail,
 } from '@/server/assignments/lecturer'
-import { FEEDBACK_MAX, MARK_STEP } from '@/server/assignments/rules'
+import { FEEDBACK_MAX, MARK_STEP, MARKING_GUIDE_MAX } from '@/server/assignments/rules'
 import { markdownToBlocks } from '../markdown'
 import { defineTool } from '../tool'
 
@@ -43,9 +43,16 @@ const fields = {
   latePolicy: z
     .enum(['accept', 'close'])
     .describe('After the due date: accept late work (marked late) or close submissions.'),
+  markingGuide: z
+    .string()
+    .trim()
+    .max(MARKING_GUIDE_MAX)
+    .describe(
+      `What a good answer contains and how marks are awarded, up to ${MARKING_GUIDE_MAX} characters. Only the lecturer sees it; Clasync AI uses it to suggest marks.`,
+    ),
 }
 
-function view(a: AssignmentDetail) {
+function view(a: LecturerAssignmentDetail) {
   return {
     id: a.id,
     courseId: a.courseId,
@@ -56,6 +63,7 @@ function view(a: AssignmentDetail) {
     weight: a.weight,
     submissionType: a.submissionMode,
     latePolicy: a.latePolicy,
+    markingGuide: a.markingGuide,
     attachments: a.attachments.map((f) => f.name),
     note: 'Draft: students cannot see it. The lecturer reviews and publishes it in Clasync.',
   }
@@ -76,6 +84,7 @@ const createAssignmentDraft = defineTool({
     weight: fields.weight.default(1),
     submissionType: fields.submissionType.default('both'),
     latePolicy: fields.latePolicy.default('accept'),
+    markingGuide: fields.markingGuide.optional(),
   }),
   run: async (ctx, input) => {
     const created = await createAssignment(ctx, input.courseId, {
@@ -86,6 +95,7 @@ const createAssignmentDraft = defineTool({
       weight: input.weight,
       submissionMode: input.submissionType,
       latePolicy: input.latePolicy,
+      markingGuide: input.markingGuide,
       attachmentIds: [],
     })
     return view(created)
@@ -96,7 +106,7 @@ const updateAssignmentDraft = defineTool({
   name: 'update_assignment_draft',
   title: 'Update an assignment draft',
   description:
-    'Changes a DRAFT assignment (assignmentId from list_assignments or create_assignment_draft). Only the fields given change; instructions given replace the old ones. A published assignment is refused (CONFLICT): the lecturer edits it in Clasync. It stays a draft until the lecturer publishes it in Clasync. Existing attachments are kept.',
+    'Changes a DRAFT assignment (assignmentId from list_assignments or create_assignment_draft). Only the fields given change; instructions and markingGuide given replace the old ones. A published assignment is refused (CONFLICT): the lecturer edits it in Clasync. It stays a draft until the lecturer publishes it in Clasync. Existing attachments are kept.',
   scope: 'clasync:write',
   input: z.object({
     assignmentId: z.string().min(1).describe('The draft assignment, from list_assignments or create_assignment_draft.'),
@@ -107,6 +117,7 @@ const updateAssignmentDraft = defineTool({
     weight: fields.weight.optional(),
     submissionType: fields.submissionType.optional(),
     latePolicy: fields.latePolicy.optional(),
+    markingGuide: fields.markingGuide.optional(),
   }),
   run: async (ctx, input) => {
     const current = await getAssignmentForEdit(ctx, input.assignmentId)
@@ -121,6 +132,7 @@ const updateAssignmentDraft = defineTool({
         weight: input.weight ?? current.weight,
         submissionMode: input.submissionType ?? current.submissionMode,
         latePolicy: input.latePolicy ?? current.latePolicy,
+        markingGuide: input.markingGuide ?? current.markingGuide,
         attachmentIds: current.attachments.map((f) => f.id),
       },
       { draftOnly: true },

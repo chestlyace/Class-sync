@@ -24,12 +24,14 @@ import { createSchool } from '@/server/schools/service'
 import { sendNotifications, type Notification } from '@/server/email/notify'
 import { setAfterResponseForTests } from '@/server/lib/after-response'
 import { sendPush, type PushItem } from '@/server/push/send'
+import { getAssignmentForStudent } from './student'
 import { createTestDb } from '@/test/db'
 import { captureWhatsApp } from '@/test/whatsapp-capture'
 import { ctxFor, makeUser } from '@/test/factories'
 import {
   createAssignment,
   deleteDraftAssignment,
+  getAssignmentForEdit,
   getSubmissionForLecturer,
   gradeSubmission,
   listCourseAssignments,
@@ -579,9 +581,9 @@ describe('lecturer assignment services', () => {
     const { assignment: detail, rows } = await listSubmissions(lecturer, a.id)
     expect(detail.id).toBe(a.id)
     expect(rows).toEqual([
-      { studentId: alice.user.id, name: 'Alice', matricule: 'UB1', state: 'submitted', submissionId: aliceSub, submittedAt: expect.any(Date), mark: 18, graded: true, hasText: false, fileCount: 0 },
-      { studentId: bob.user.id, name: 'Bob', matricule: 'UB2', state: 'late', submissionId: bobSub, submittedAt: at, mark: null, graded: false, hasText: false, fileCount: 0 },
-      { studentId: carol.user.id, name: 'Carol', matricule: 'UB3', state: 'missing', submissionId: null, submittedAt: null, mark: null, graded: false, hasText: false, fileCount: 0 },
+      { studentId: alice.user.id, name: 'Alice', matricule: 'UB1', state: 'submitted', submissionId: aliceSub, submittedAt: expect.any(Date), mark: 18, graded: true, hasText: false, fileCount: 0, ai: null },
+      { studentId: bob.user.id, name: 'Bob', matricule: 'UB2', state: 'late', submissionId: bobSub, submittedAt: at, mark: null, graded: false, hasText: false, fileCount: 0, ai: null },
+      { studentId: carol.user.id, name: 'Carol', matricule: 'UB3', state: 'missing', submissionId: null, submittedAt: null, mark: null, graded: false, hasText: false, fileCount: 0, ai: null },
     ])
   })
 
@@ -617,7 +619,121 @@ describe('lecturer assignment services', () => {
       .update(submission)
       .set({ suggestedMark: 15, suggestedFeedback: 'Clear.', suggestedAt })
       .where(eq(submission.id, subId))
-    expect((await getSubmissionForLecturer(lecturer, subId)).suggestion).toEqual({ mark: 15, feedback: 'Clear.', at: suggestedAt })
+    // A suggestion stored before suggested_by existed counts as the assistant's.
+    expect((await getSubmissionForLecturer(lecturer, subId)).suggestion).toEqual({
+      mark: 15,
+      feedback: 'Clear.',
+      at: suggestedAt,
+      by: 'assistant',
+      transcript: null,
+      unread: [],
+    })
+  })
+
+  describe('AI mark suggestion state', () => {
+    const T0 = new Date('2026-11-18T10:00:00Z')
+    const MIN = 60_000
+
+    function aiOn() {
+      vi.stubEnv('AI_ASSIGNMENT_MODEL', 'fake')
+      vi.stubEnv('VERCEL_ENV', '')
+    }
+    function aiOff() {
+      vi.stubEnv('AI_ASSIGNMENT_MODEL', '')
+      vi.stubEnv('AI_AWS_ROLE_ARN', '')
+      vi.stubEnv('VERCEL_ENV', '')
+    }
+
+    it('listSubmissions reports each row as suggested, queued, failed or null (a stale queued row is failed)', async () => {
+      aiOn()
+      const { lecturer, algo, alice, bob, carol, cls } = await setup()
+      const dave = ctxFor(db, await makeUser(db, { role: 'student', name: 'Dave' }))
+      const erin = ctxFor(db, await makeUser(db, { role: 'student', name: 'Erin' }))
+      await joinClassAsStudent(dave, cls.studentCode!, 'UB4')
+      await joinClassAsStudent(erin, cls.studentCode!, 'UB5')
+      const a = await published(lecturer, algo.id)
+      setNowForTests(() => T0)
+      const fresh = await addSubmission(alice, a.id, { aiStatus: 'queued', aiStatusAt: new Date(T0.getTime() - 2 * MIN) })
+      const stale = await addSubmission(bob, a.id, { aiStatus: 'queued', aiStatusAt: new Date(T0.getTime() - 11 * MIN) })
+      const failed = await addSubmission(carol, a.id, { aiStatus: 'failed', aiStatusAt: T0, aiError: 'cap' })
+      const suggested = await addSubmission(dave, a.id, {
+        suggestedMark: 12,
+        suggestedAt: T0,
+        suggestedBy: 'clasync',
+        suggestedTranscript: 'read',
+      })
+
+      const { rows, aiAvailable } = await listSubmissions(lecturer, a.id)
+      expect(aiAvailable).toBe(true)
+      expect(rows.map((r) => [r.submissionId, r.ai])).toEqual([
+        [fresh, 'queued'],
+        [stale, 'failed'],
+        [failed, 'failed'],
+        [suggested, 'suggested'],
+        [null, null],
+      ])
+    })
+
+    it('listSubmissions: AI is unavailable when the feature is off or the assignment is a draft', async () => {
+      aiOff()
+      const { lecturer, algo } = await setup()
+      const a = await published(lecturer, algo.id)
+      expect((await listSubmissions(lecturer, a.id)).aiAvailable).toBe(false)
+      aiOn()
+      expect((await listSubmissions(lecturer, a.id)).aiAvailable).toBe(true)
+      const draft = await createAssignment(lecturer, algo.id, baseInput())
+      expect((await listSubmissions(lecturer, draft.id)).aiAvailable).toBe(false)
+    })
+
+    it('getSubmissionForLecturer returns the suggestion source, transcript and unread files', async () => {
+      aiOn()
+      const { lecturer, algo, alice } = await setup()
+      const a = await published(lecturer, algo.id)
+      const subId = await addSubmission(alice, a.id, {
+        suggestedMark: 14,
+        suggestedFeedback: 'Good.',
+        suggestedAt: T0,
+        suggestedBy: 'clasync',
+        suggestedTranscript: 'File 1: merge sort',
+        suggestedUnread: [
+          { position: 2, reason: 'heic' },
+          { position: 3, reason: 'limit' },
+        ],
+      })
+      const view = await getSubmissionForLecturer(lecturer, subId)
+      expect(view.suggestion).toEqual({
+        mark: 14,
+        feedback: 'Good.',
+        at: T0,
+        by: 'clasync',
+        transcript: 'File 1: merge sort',
+        unread: [
+          { position: 2, reason: 'heic' },
+          { position: 3, reason: 'limit' },
+        ],
+      })
+      expect(view.ai).toEqual({ available: true, status: null, error: null })
+    })
+
+    it('getSubmissionForLecturer reports queued, failed with its error, and a stale queued job as failed (provider)', async () => {
+      aiOn()
+      const { lecturer, algo, alice, bob, carol } = await setup()
+      const a = await published(lecturer, algo.id)
+      setNowForTests(() => T0)
+      const queued = await addSubmission(alice, a.id, { aiStatus: 'queued', aiStatusAt: new Date(T0.getTime() - MIN) })
+      const failed = await addSubmission(bob, a.id, { aiStatus: 'failed', aiStatusAt: T0, aiError: 'unreadable' })
+      const stale = await addSubmission(carol, a.id, { aiStatus: 'queued', aiStatusAt: new Date(T0.getTime() - 10 * MIN) })
+
+      expect((await getSubmissionForLecturer(lecturer, queued)).ai).toEqual({ available: true, status: 'queued', error: null })
+      expect((await getSubmissionForLecturer(lecturer, failed)).ai).toEqual({ available: true, status: 'failed', error: 'unreadable' })
+      expect((await getSubmissionForLecturer(lecturer, stale)).ai).toEqual({ available: true, status: 'failed', error: 'provider' })
+      // A failed row with no recorded error reads as a provider failure.
+      await db.update(submission).set({ aiError: null }).where(eq(submission.id, failed))
+      expect((await getSubmissionForLecturer(lecturer, failed)).ai.error).toBe('provider')
+
+      aiOff()
+      expect((await getSubmissionForLecturer(lecturer, queued)).ai.available).toBe(false)
+    })
   })
 
   it('grades with a valid mark and feedback, recording who and when', async () => {
@@ -644,6 +760,90 @@ describe('lecturer assignment services', () => {
     await gradeSubmission(lecturer, subId, { mark: 20, feedback: '   ', expectedSubmittedAt: await versionOf(subId) })
     const [again] = await db.select().from(submission).where(eq(submission.id, subId))
     expect(again).toMatchObject({ mark: 20, feedback: null })
+  })
+
+  it('stores a trimmed marking guide and returns it only to the lecturer', async () => {
+    const { lecturer, algo, alice } = await setup()
+    const a = await createAssignment(lecturer, algo.id, baseInput({ markingGuide: '  Award 2 marks for the diagram  ' }))
+    expect(a.markingGuide).toBe('Award 2 marks for the diagram')
+    expect((await getAssignmentForEdit(lecturer, a.id)).markingGuide).toBe('Award 2 marks for the diagram')
+    const { assignment: listed } = await listSubmissions(lecturer, a.id)
+    expect(listed.markingGuide).toBe('Award 2 marks for the diagram')
+
+    await publishAssignment(lecturer, a.id)
+    const subId = await addSubmission(alice, a.id)
+    expect((await getSubmissionForLecturer(lecturer, subId)).assignment.markingGuide).toBe('Award 2 marks for the diagram')
+
+    const view = await getAssignmentForStudent(alice, a.id)
+    expect(view.assignment).not.toHaveProperty('markingGuide')
+    expect(JSON.stringify(view)).not.toContain('Award 2 marks')
+    expect(JSON.stringify(view)).not.toContain('markingGuide')
+  })
+
+  it('treats a blank marking guide as none', async () => {
+    const { lecturer, algo } = await setup()
+    const a = await createAssignment(lecturer, algo.id, baseInput({ markingGuide: '   ' }))
+    expect(a.markingGuide).toBeNull()
+    const b = await createAssignment(lecturer, algo.id, baseInput({ markingGuide: null }))
+    expect(b.markingGuide).toBeNull()
+    const updated = await updateAssignment(lecturer, a.id, { ...baseInput(), markingGuide: 'Now there is one' })
+    expect(updated.markingGuide).toBe('Now there is one')
+    const cleared = await updateAssignment(lecturer, a.id, { ...baseInput(), markingGuide: '  ' })
+    expect(cleared.markingGuide).toBeNull()
+  })
+
+  it('refuses a marking guide over 5000 characters', async () => {
+    const { lecturer, algo } = await setup()
+    await expect(createAssignment(lecturer, algo.id, baseInput({ markingGuide: 'x'.repeat(5001) }))).rejects.toMatchObject({
+      code: 'VALIDATION',
+      details: { fields: expect.arrayContaining(['markingGuide']) },
+    })
+    const ok = await createAssignment(lecturer, algo.id, baseInput({ markingGuide: 'x'.repeat(5000) }))
+    expect(ok.markingGuide).toHaveLength(5000)
+    await expect(
+      updateAssignment(lecturer, ok.id, baseInput({ markingGuide: 'y'.repeat(5001) })),
+    ).rejects.toMatchObject({ code: 'VALIDATION', details: { fields: expect.arrayContaining(['markingGuide']) } })
+    await expect(
+      createAssignment(lecturer, algo.id, baseInput({ markingGuide: 42 as unknown as string })),
+    ).rejects.toMatchObject({ code: 'VALIDATION', details: { fields: expect.arrayContaining(['markingGuide']) } })
+  })
+
+  it('keeps the marking guide when an update omits it', async () => {
+    const { lecturer, algo } = await setup()
+    const a = await createAssignment(lecturer, algo.id, baseInput({ markingGuide: 'Keep me' }))
+    const updated = await updateAssignment(lecturer, a.id, baseInput({ title: 'Renamed lab' }))
+    expect(updated).toMatchObject({ title: 'Renamed lab', markingGuide: 'Keep me' })
+    expect((await getAssignmentForEdit(lecturer, a.id)).markingGuide).toBe('Keep me')
+  })
+
+  it('clears AI suggestion state when the lecturer grades', async () => {
+    const { lecturer, algo, alice } = await setup()
+    const a = await published(lecturer, algo.id)
+    const subId = await addSubmission(alice, a.id, {
+      suggestedMark: 12,
+      suggestedFeedback: 'ok',
+      suggestedAt: new Date(),
+      suggestedBy: 'clasync',
+      suggestedTranscript: 'what the AI read',
+      suggestedUnread: [{ position: 1, reason: 'heic' }],
+      aiStatus: 'failed',
+      aiStatusAt: new Date(),
+      aiError: 'provider',
+    })
+    await gradeSubmission(lecturer, subId, { mark: 15, feedback: null, expectedSubmittedAt: await versionOf(subId) })
+    const [row] = await db.select().from(submission).where(eq(submission.id, subId))
+    expect(row).toMatchObject({
+      mark: 15,
+      suggestedMark: null,
+      suggestedFeedback: null,
+      suggestedAt: null,
+      suggestedBy: null,
+      suggestedTranscript: null,
+      suggestedUnread: null,
+      aiStatus: null,
+      aiStatusAt: null,
+      aiError: null,
+    })
   })
 
   it('refuses a grade for a version the student has since replaced (CONFLICT resubmitted)', async () => {

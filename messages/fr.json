@@ -280,7 +280,6 @@
   "email": {
     "verify": {
       "subject": "Confirmez votre adresse e-mail Clasync",
-      "preview": "Confirmez votre adresse e-mail pour activer votre compte Clasync",
       "greeting": "Bonjour,",
       "body": "Merci de rejoindre Clasync. Veuillez confirmer votre adresse e-mail pour activer votre compte.",
       "cta": "Confirmer mon e-mail",
@@ -289,7 +288,6 @@
     },
     "assignmentPublished": {
       "subject": "Nouveau devoir dans {course} : {assignment}",
-      "preview": "Le devoir « {assignment} » vient d'être publié dans {course}",
       "greeting": "Bonjour {name},",
       "body": "Un nouveau devoir, « {assignment} », a été publié dans {course}.",
       "due": "À rendre le {date} à {time}.",
@@ -298,7 +296,6 @@
     },
     "assignmentReminder": {
       "subject": "Rappel : « {assignment} » ({course}) est bientôt à rendre",
-      "preview": "« {assignment} » ({course}) est à rendre le {date} à {time}",
       "greeting": "Bonjour {name},",
       "body": "Petit rappel : le devoir « {assignment} » de {course} est bientôt à rendre.",
       "due": "Date limite : le {date} à {time}.",
@@ -307,7 +304,6 @@
     },
     "gradesReleased": {
       "subject": "Vos notes pour « {assignment} » ({course}) sont disponibles",
-      "preview": "Les notes de « {assignment} » ({course}) ont été publiées",
       "greeting": "Bonjour {name},",
       "body": "Votre enseignant a publié les notes du devoir « {assignment} » dans {course}.",
       "cta": "Voir ma note",
@@ -315,7 +311,6 @@
     },
     "testResultsReleased": {
       "subject": "Votre résultat pour « {test} » ({course}) est disponible",
-      "preview": "Les résultats de « {test} » ({course}) ont été publiés",
       "greeting": "Bonjour {name},",
       "body": "Votre enseignant a publié les résultats du test « {test} » dans {course}. Vous pouvez voir votre total, la note de chaque question et les éventuels commentaires.",
       "cta": "Voir mon résultat",
@@ -323,7 +318,6 @@
     },
     "classJoined": {
       "subject": "Vous avez rejoint {class} ({school})",
-      "preview": "Bienvenue en {class} ({school})",
       "greeting": "Bonjour {name},",
       "body": "Vous avez rejoint la classe {class} à {school}. Bienvenue !",
       "next": "Les cours, devoirs et tests de vos enseignants pour cette classe apparaîtront sur votre tableau de bord dès qu'ils les ajouteront.",
@@ -332,7 +326,6 @@
     },
     "lecturerJoinedClass": {
       "subject": "Vous enseignez maintenant en {class} ({school})",
-      "preview": "Vous avez rejoint {class} ({school}) en tant qu'enseignant",
       "greeting": "Bonjour {name},",
       "body": "Vous avez rejoint la classe {class} à {school} en tant qu'enseignant.",
       "next": "Depuis la page de la classe, vous pouvez ajouter vos cours et partager le code étudiant avec vos étudiants.",
@@ -341,7 +334,6 @@
     },
     "colleagueJoinedClass": {
       "subject": "{name} a rejoint {class}",
-      "preview": "{name} enseigne maintenant en {class}",
       "greeting": "Bonjour {recipient},",
       "body": "{name} a rejoint la classe {class} à {school} en tant qu'enseignant, avec le code enseignant de la classe.",
       "next": "Si vous ne connaissez pas cette personne, ouvrez la classe et générez un nouveau code enseignant.",
@@ -350,7 +342,6 @@
     },
     "assignmentSubmitted": {
       "subject": "Rendu reçu : {assignment} ({course})",
-      "preview": "Nous avons bien reçu votre rendu pour « {assignment} » ({course})",
       "greeting": "Bonjour {name},",
       "body": "Nous avons bien reçu votre rendu pour le devoir « {assignment} » dans {course}.",
       "at": "Rendu le {date} à {time}.",
@@ -360,7 +351,6 @@
     },
     "testHandedIn": {
       "subject": "Test remis : {test} ({course})",
-      "preview": "Vos réponses au test « {test} » ({course}) ont été remises",
       "greeting": "Bonjour {name},",
       "body": "Vos réponses au test « {test} » dans {course} ont bien été remises.",
       "at": "Remis le {date} à {time}.",
@@ -1275,6 +1265,9 @@
         "titlePlaceholder": "ex. Compte rendu de TP 2 : loi d'Ohm",
         "instructions": "Consignes",
         "instructionsHint": "Tapez / pour les titres, listes et tableaux. Ajoutez des fichiers ci-dessous en pièces jointes.",
+        "markingGuide": "Barème de correction",
+        "markingGuidePlaceholder": "p. ex. 2 points pour le schéma, 3 pour la méthode, 1 pour l'unité",
+        "markingGuideHint": "Vous seul le voyez. L'IA de Clasync s'en sert pour suggérer des notes.",
         "attachments": "Pièces jointes",
         "attachmentsAfterSave": "Enregistrez d'abord le brouillon : vous pourrez ajouter des pièces jointes à la page suivante.",
         "dueAt": "Date et heure limites",
@@ -1365,7 +1358,6 @@
         "saving": "Enregistrement…",
         "save": "Enregistrer la note",
         "saved": "Enregistré",
-        "suggestionTitle": "Suggéré par votre assistant",
         "useSuggestion": "Utiliser la suggestion",
         "suggestionHint": "Remplit le formulaire. Rien n'est enregistré avant que vous enregistriez la note."
       },
@@ -1392,6 +1384,40 @@
         "fileMismatch": "Un des envois n'est pas arrivé en entier. Retirez-le et envoyez-le de nouveau.",
         "fileCount": "Joignez {max} fichiers au plus.",
         "files": "Certaines pièces jointes ne sont plus disponibles. Retirez-les et envoyez-les de nouveau."
+      },
+      "ai": {
+        "column": "IA",
+        "suggestMarks": "Suggérer des notes",
+        "suggestingCount": "{count, plural, one {Suggestion de la note pour # copie.} other {Suggestion des notes pour # copies.}} Vous pouvez quitter cette page.",
+        "badge": {
+          "suggested": "Suggérée",
+          "queued": "En cours…",
+          "failed": "Échec"
+        },
+        "byClasync": "Suggérée par l'IA de Clasync",
+        "byAssistant": "Suggérée par votre assistant IA",
+        "whatAiRead": "Ce que l'IA a lu",
+        "notRead": "Non lu : fichier {n} ({reason})",
+        "unreadReason": {
+          "heic": "photo HEIC d'iPhone",
+          "too_large": "trop volumineux",
+          "unsupported": "type de fichier non pris en charge",
+          "limit": "au-delà de la limite de fichiers"
+        },
+        "suggestingOne": "Suggestion en cours…",
+        "failed": {
+          "provider": "L'IA n'a pas pu suggérer de note.",
+          "cap": "La limite mensuelle d'IA est atteinte.",
+          "unreadable": "Rien dans ce travail n'a pu être lu."
+        },
+        "tryAgain": "Réessayer",
+        "suggestOne": "Suggérer une note",
+        "errors": {
+          "cap": "La limite mensuelle d'IA est atteinte.",
+          "aiOff": "Les suggestions de notes par l'IA ne sont pas disponibles ici.",
+          "graded": "Cette copie a déjà une note.",
+          "notPublished": "Publiez d'abord le devoir."
+        }
       }
     },
     "files": {
@@ -2750,6 +2776,7 @@
       "errors": "Sentry reçoit les rapports d'erreurs pour corriger les problèmes, sans les adresses IP.",
       "push": "Si vous activez les notifications, le service de notifications du fabricant de votre navigateur (Google, Apple, Mozilla ou Microsoft) les livre à votre appareil. Il ne voit qu'un message chiffré.",
       "ai": "Vercel AI Gateway envoie une réponse rédigée et sa question à un modèle d'IA quand un enseignant demande une note suggérée, sans votre nom, matricule ni e-mail. L'enseignant décide de la note.",
+      "aiAssignments": "Quand un enseignant demande à Clasync de suggérer des notes pour un devoir, la réponse et les fichiers de l'étudiant sont envoyés à Amazon Bedrock, dans l'Union européenne, pour produire une suggestion. Clasync n'ajoute ni le nom, ni le matricule, ni l'e-mail de l'étudiant ; tout ce qui est écrit dans le travail lui-même est envoyé tel quel. Le travail ne sert pas à entraîner des modèles d'IA. L'enseignant décide de chaque note.",
       "google": "Google, uniquement si vous choisissez Continuer avec Google.",
       "whatsapp": "Si vous connectez WhatsApp, vos alertes passent par Amazon Web Services (AWS) et Meta (WhatsApp), qui voient votre numéro et le message."
     },
@@ -2889,6 +2916,10 @@
       "app": {
         "title": "Installez Clasync comme une application",
         "body": "Ajoutez Clasync à votre téléphone ou à votre ordinateur et ouvrez-le comme n'importe quelle application."
+      },
+      "aiMarking": {
+        "title": "Notes suggérées pour les devoirs",
+        "body": "Enseignants : Clasync peut suggérer des notes pour les devoirs, y compris à partir de photos de travaux manuscrits. Vous vérifiez chaque suggestion avant d'enregistrer une note."
       },
       "notifications": {
         "title": "Notifications",

@@ -39,6 +39,7 @@ type CreateAuthOptions = {
  */
 const SIGN_IN_RULE = { window: 60, max: 100 }
 const SIGN_UP_RULE = { window: 60, max: 30 }
+const VERIFY_LINK_TTL_SECONDS = 7 * 24 * 60 * 60
 
 
 /** The OAuth provider's client CRUD routes, closed over HTTP (see `disabledPaths`). */
@@ -145,6 +146,9 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
       },
     },
     emailVerification: {
+      // Students often read mail days later, on patchy data. The link only confirms the address
+      // (it does not sign anyone in), so a long life costs little.
+      expiresIn: VERIFY_LINK_TTL_SECONDS,
       sendOnSignUp: config.requireEmailVerification,
       // An unverified user who signs in (e.g. after the first link expired) gets a fresh link,
       // instead of being stuck with no way to verify.

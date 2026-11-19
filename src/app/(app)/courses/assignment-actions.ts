@@ -13,7 +13,8 @@ import {
   updateAssignment,
   type AssignmentInput,
 } from '@/server/assignments/lecturer'
-import { FEEDBACK_MAX, MAX_FILES, MAX_RICH_TEXT_BYTES } from '@/server/assignments/rules'
+import { requestMarkingSuggestions, requestOneSuggestion } from '@/server/assignments/ai/request'
+import { FEEDBACK_MAX, MARKING_GUIDE_MAX, MAX_FILES, MAX_RICH_TEXT_BYTES } from '@/server/assignments/rules'
 import { getCtx } from '@/server/auth/session'
 import { config } from '@/server/core/config'
 import { AppError } from '@/server/core/errors'
@@ -77,6 +78,10 @@ function parseAssignmentForm(data: FormData): AssignmentInput {
     bad.push('attachments')
   }
 
+  // Always posted by the form: a blank field clears the guide.
+  const markingGuide = formString(data, 'markingGuide')
+  if (markingGuide.trim().length > MARKING_GUIDE_MAX) bad.push('markingGuide')
+
   if (bad.length > 0) invalid(bad)
   return {
     title,
@@ -87,6 +92,7 @@ function parseAssignmentForm(data: FormData): AssignmentInput {
     submissionMode,
     latePolicy,
     attachmentIds: attachmentIds as string[],
+    markingGuide,
   }
 }
 
@@ -183,5 +189,26 @@ export async function releaseGradesAction(assignmentId: string): Promise<ActionR
     const result = await releaseGrades(await getCtx(), requireId(assignmentId, 'assignmentId'))
     revalidateAssignments()
     return result
+  })
+}
+
+/**
+ * Asks Clasync's AI to suggest a mark for every ungraded submission without one. Refusals come
+ * back as CONFLICT with `reason` not_published, ai_off or cap; `queued` is how many were sent.
+ */
+export async function suggestMarksAction(assignmentId: string): Promise<ActionResult<{ queued: number }>> {
+  return toActionResult(async () => {
+    const result = await requestMarkingSuggestions(await getCtx(), requireId(assignmentId, 'assignmentId'))
+    revalidateAssignments()
+    return result
+  })
+}
+
+/** Asks Clasync's AI for a (new) suggestion on one submission; CONFLICT reasons graded, ai_off, cap. */
+export async function suggestOneAction(submissionId: string): Promise<ActionResult<null>> {
+  return toActionResult(async () => {
+    await requestOneSuggestion(await getCtx(), requireId(submissionId, 'submissionId'))
+    revalidateAssignments()
+    return null
   })
 }
