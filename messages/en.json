@@ -1244,6 +1244,9 @@
         "titlePlaceholder": "e.g. Lab report 2: Ohm's law",
         "instructions": "Instructions",
         "instructionsHint": "Type / for headings, lists and tables. Add files below as attachments.",
+        "markingGuide": "Marking guide",
+        "markingGuidePlaceholder": "e.g. 2 marks for the diagram, 3 for the method, 1 for the unit",
+        "markingGuideHint": "Only you see this. Clasync AI uses it to suggest marks.",
         "attachments": "Attachments",
         "attachmentsAfterSave": "Save the draft first: you can add attachments on the next page.",
         "dueAt": "Due date and time",
@@ -1334,7 +1337,6 @@
         "saving": "Saving…",
         "save": "Save grade",
         "saved": "Saved",
-        "suggestionTitle": "Suggested by your assistant",
         "useSuggestion": "Use suggestion",
         "suggestionHint": "Fills the form. Nothing is saved until you save the grade."
       },
@@ -1361,6 +1363,40 @@
         "fileMismatch": "One of the uploads didn't arrive complete. Remove it and upload it again.",
         "fileCount": "Attach at most {max} files.",
         "files": "Some attachments are no longer available. Remove them and upload them again."
+      },
+      "ai": {
+        "column": "AI",
+        "suggestMarks": "Suggest marks",
+        "suggestingCount": "{count, plural, one {Suggesting a mark for # submission.} other {Suggesting marks for # submissions.}} You can leave this page.",
+        "badge": {
+          "suggested": "Suggested",
+          "queued": "Suggesting…",
+          "failed": "Couldn't suggest"
+        },
+        "byClasync": "Suggested by Clasync AI",
+        "byAssistant": "Suggested by your AI assistant",
+        "whatAiRead": "What the AI read",
+        "notRead": "Not read: File {n} ({reason})",
+        "unreadReason": {
+          "heic": "iPhone HEIC photo",
+          "too_large": "too large",
+          "unsupported": "file type not supported",
+          "limit": "over the file limit"
+        },
+        "suggestingOne": "Suggesting a mark…",
+        "failed": {
+          "provider": "The AI could not suggest a mark.",
+          "cap": "This month's AI limit is reached.",
+          "unreadable": "Nothing in this work could be read."
+        },
+        "tryAgain": "Try again",
+        "suggestOne": "Suggest a mark",
+        "errors": {
+          "cap": "This month's AI limit is reached.",
+          "aiOff": "AI mark suggestions are not available here.",
+          "graded": "This submission already has a grade.",
+          "notPublished": "Publish the assignment first."
+        }
       }
     },
     "files": {
@@ -2711,6 +2747,7 @@
       "errors": "Sentry receives error reports so problems can be fixed, with IP addresses removed.",
       "push": "If you turn on notifications, the push service of your browser's maker (Google, Apple, Mozilla or Microsoft) delivers them to your device. It only sees an encrypted message.",
       "ai": "Vercel AI Gateway sends a written test answer and its question to an AI model when a lecturer asks for a suggested mark, without your name, matricule or email. The lecturer decides the mark.",
+      "aiAssignments": "When a lecturer asks Clasync to suggest marks for an assignment, the student's answer and files are sent to Amazon Bedrock in the European Union to produce a suggestion. Clasync does not add the student's name, matricule or email; anything written in the work itself is sent as it is. The work is not used to train AI models. The lecturer decides every mark.",
       "google": "Google, only if you choose Continue with Google."
     },
     "assistants": {
@@ -2844,6 +2881,10 @@
       "app": {
         "title": "Install Clasync as an app",
         "body": "Add Clasync to your phone or computer and open it like any other app."
+      },
+      "aiMarking": {
+        "title": "Suggested marks for assignments",
+        "body": "Lecturers: Clasync can suggest marks for assignments, including photos of handwritten work. You review every suggestion before saving a grade."
       },
       "notifications": {
         "title": "Notifications",

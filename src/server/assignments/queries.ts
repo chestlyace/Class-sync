@@ -22,6 +22,22 @@ export type AssignmentDetail = {
   attachments: FileInfo[]
 }
 
+/** An assignment as its lecturer sees it: also carries the marking guide, which students never get. */
+export type LecturerAssignmentDetail = AssignmentDetail & { markingGuide: string | null }
+
+/** Every column a suggestion (or Clasync's AI marking) fills, cleared: a grade or a new hand-in replaces it. */
+export const NO_SUGGESTION = {
+  suggestedMark: null,
+  suggestedFeedback: null,
+  suggestedAt: null,
+  suggestedBy: null,
+  suggestedTranscript: null,
+  suggestedUnread: null,
+  aiStatus: null,
+  aiStatusAt: null,
+  aiError: null,
+} as const
+
 export type AssignmentRow = typeof assignment.$inferSelect
 
 const fileInfoColumns = { id: file.id, name: file.name, mimeType: file.mimeType, sizeBytes: file.sizeBytes }
@@ -78,6 +94,11 @@ export function toAssignmentDetail(row: AssignmentRow, attachments: FileInfo[]):
 export async function loadAssignmentDetail(db: Db, row: AssignmentRow): Promise<AssignmentDetail> {
   const attachments = await loadAttachmentsByAssignment(db, [row.id])
   return toAssignmentDetail(row, attachments.get(row.id) ?? [])
+}
+
+/** The lecturer's view of an assignment row: `toAssignmentDetail` plus the marking guide. */
+export async function loadLecturerAssignmentDetail(db: Db, row: AssignmentRow): Promise<LecturerAssignmentDetail> {
+  return { ...(await loadAssignmentDetail(db, row)), markingGuide: row.markingGuide }
 }
 
 /** Each user's email language (unknown values fall back to English). */

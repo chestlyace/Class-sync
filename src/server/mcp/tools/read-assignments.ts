@@ -26,7 +26,7 @@ export const listAssignments = defineTool({
   description:
     "A course's assignments (drafts included), by due date: id, title, status (draft or published), due date, max mark, " +
     'weight in the CA, submission mode (files, text or both), late policy, whether grades are released, the instructions ' +
-    'as plain text, attachment file names, and counts over the current roster (on time, late, missing, graded). ' +
+    'as plain text, the marking guide (lecturer-only notes on what a good answer contains, null when none), attachment file names, and counts over the current roster (on time, late, missing, graded). ' +
     'Needs courseId from list_courses.',
   scope: 'clasync:read',
   input: z.object({ courseId: id('The course id, from list_courses.') }),
@@ -40,6 +40,7 @@ export const listAssignments = defineTool({
         submissionMode: a.submissionMode,
         latePolicy: a.latePolicy,
         instructions: richTextToPlain(a.instructions),
+        markingGuide: a.markingGuide,
         attachments: a.attachments.map((f) => f.name),
         counts: {
           roster: a.rosterSize,
@@ -86,15 +87,19 @@ export const getSubmission = defineTool({
   title: 'Get a submission',
   description:
     "One student's hand-in: the typed text as plain text (null when none), the names and types of the files (file contents " +
-    'are not available), when it was handed in and whether late, the mark and feedback if graded, and the grade your ' +
-    'assistant suggested if any. Also the assignment with its instructions as plain text. Needs submissionId from list_submissions.',
+    'are not available), when it was handed in and whether late, the mark and feedback if graded, and the grade ' +
+    "suggested for it if any, with who suggested it (by: 'assistant' for your assistant, 'clasync' for Clasync's own AI). Also the assignment with its instructions and marking guide as plain text. Needs submissionId from list_submissions.",
   scope: 'clasync:read',
   input: z.object({ submissionId: id('The submission id, from list_submissions.') }),
   run: async (ctx, { submissionId }) => {
     const view = await getSubmissionForLecturer(ctx, submissionId)
     return {
       id: submissionId,
-      assignment: { ...assignmentBrief(view.assignment), instructions: richTextToPlain(view.assignment.instructions) },
+      assignment: {
+        ...assignmentBrief(view.assignment),
+        instructions: richTextToPlain(view.assignment.instructions),
+        markingGuide: view.assignment.markingGuide,
+      },
       student: view.student,
       submittedAt: iso(view.submittedAt),
       late: view.isLate,
@@ -103,7 +108,12 @@ export const getSubmission = defineTool({
       mark: view.mark,
       feedback: view.feedback,
       suggestion: view.suggestion
-        ? { mark: view.suggestion.mark, feedback: view.suggestion.feedback, at: iso(view.suggestion.at) }
+        ? {
+            mark: view.suggestion.mark,
+            feedback: view.suggestion.feedback,
+            at: iso(view.suggestion.at),
+            by: view.suggestion.by,
+          }
         : null,
     }
   },

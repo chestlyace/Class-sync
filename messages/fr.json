@@ -1244,6 +1244,9 @@
         "titlePlaceholder": "ex. Compte rendu de TP 2 : loi d'Ohm",
         "instructions": "Consignes",
         "instructionsHint": "Tapez / pour les titres, listes et tableaux. Ajoutez des fichiers ci-dessous en pièces jointes.",
+        "markingGuide": "Barème de correction",
+        "markingGuidePlaceholder": "p. ex. 2 points pour le schéma, 3 pour la méthode, 1 pour l'unité",
+        "markingGuideHint": "Vous seul le voyez. L'IA de Clasync s'en sert pour suggérer des notes.",
         "attachments": "Pièces jointes",
         "attachmentsAfterSave": "Enregistrez d'abord le brouillon : vous pourrez ajouter des pièces jointes à la page suivante.",
         "dueAt": "Date et heure limites",
@@ -1334,7 +1337,6 @@
         "saving": "Enregistrement…",
         "save": "Enregistrer la note",
         "saved": "Enregistré",
-        "suggestionTitle": "Suggéré par votre assistant",
         "useSuggestion": "Utiliser la suggestion",
         "suggestionHint": "Remplit le formulaire. Rien n'est enregistré avant que vous enregistriez la note."
       },
@@ -1361,6 +1363,40 @@
         "fileMismatch": "Un des envois n'est pas arrivé en entier. Retirez-le et envoyez-le de nouveau.",
         "fileCount": "Joignez {max} fichiers au plus.",
         "files": "Certaines pièces jointes ne sont plus disponibles. Retirez-les et envoyez-les de nouveau."
+      },
+      "ai": {
+        "column": "IA",
+        "suggestMarks": "Suggérer des notes",
+        "suggestingCount": "{count, plural, one {Suggestion de la note pour # copie.} other {Suggestion des notes pour # copies.}} Vous pouvez quitter cette page.",
+        "badge": {
+          "suggested": "Suggérée",
+          "queued": "En cours…",
+          "failed": "Échec"
+        },
+        "byClasync": "Suggérée par l'IA de Clasync",
+        "byAssistant": "Suggérée par votre assistant IA",
+        "whatAiRead": "Ce que l'IA a lu",
+        "notRead": "Non lu : fichier {n} ({reason})",
+        "unreadReason": {
+          "heic": "photo HEIC d'iPhone",
+          "too_large": "trop volumineux",
+          "unsupported": "type de fichier non pris en charge",
+          "limit": "au-delà de la limite de fichiers"
+        },
+        "suggestingOne": "Suggestion en cours…",
+        "failed": {
+          "provider": "L'IA n'a pas pu suggérer de note.",
+          "cap": "La limite mensuelle d'IA est atteinte.",
+          "unreadable": "Rien dans ce travail n'a pu être lu."
+        },
+        "tryAgain": "Réessayer",
+        "suggestOne": "Suggérer une note",
+        "errors": {
+          "cap": "La limite mensuelle d'IA est atteinte.",
+          "aiOff": "Les suggestions de notes par l'IA ne sont pas disponibles ici.",
+          "graded": "Cette copie a déjà une note.",
+          "notPublished": "Publiez d'abord le devoir."
+        }
       }
     },
     "files": {
@@ -2711,6 +2747,7 @@
       "errors": "Sentry reçoit les rapports d'erreurs pour corriger les problèmes, sans les adresses IP.",
       "push": "Si vous activez les notifications, le service de notifications du fabricant de votre navigateur (Google, Apple, Mozilla ou Microsoft) les livre à votre appareil. Il ne voit qu'un message chiffré.",
       "ai": "Vercel AI Gateway envoie une réponse rédigée et sa question à un modèle d'IA quand un enseignant demande une note suggérée, sans votre nom, matricule ni e-mail. L'enseignant décide de la note.",
+      "aiAssignments": "Quand un enseignant demande à Clasync de suggérer des notes pour un devoir, la réponse et les fichiers de l'étudiant sont envoyés à Amazon Bedrock, dans l'Union européenne, pour produire une suggestion. Clasync n'ajoute ni le nom, ni le matricule, ni l'e-mail de l'étudiant ; tout ce qui est écrit dans le travail lui-même est envoyé tel quel. Le travail ne sert pas à entraîner des modèles d'IA. L'enseignant décide de chaque note.",
       "google": "Google, uniquement si vous choisissez Continuer avec Google."
     },
     "assistants": {
@@ -2844,6 +2881,10 @@
       "app": {
         "title": "Installez Clasync comme une application",
         "body": "Ajoutez Clasync à votre téléphone ou à votre ordinateur et ouvrez-le comme n'importe quelle application."
+      },
+      "aiMarking": {
+        "title": "Notes suggérées pour les devoirs",
+        "body": "Enseignants : Clasync peut suggérer des notes pour les devoirs, y compris à partir de photos de travaux manuscrits. Vous vérifiez chaque suggestion avant d'enregistrer une note."
       },
       "notifications": {
         "title": "Notifications",

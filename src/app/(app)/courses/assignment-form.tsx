@@ -13,7 +13,7 @@ import { NativeSelect } from '@/components/ui/native-select'
 import type { Locale } from '@/i18n/locale'
 import type { ActionResult } from '@/lib/action-result'
 import { submitWith } from '@/lib/form-submit'
-import { MARK_STEP } from '@/server/assignments/rules'
+import { MARK_STEP, MARKING_GUIDE_MAX } from '@/server/assignments/rules'
 import { createAssignmentAction, updateAssignmentAction } from './assignment-actions'
 import { AssignmentError } from './assignment-error'
 
@@ -26,6 +26,7 @@ export type AssignmentFormValues = {
   weight: number
   submissionMode: 'files' | 'text' | 'both'
   latePolicy: 'accept' | 'close'
+  markingGuide: string
   attachments: FileInfo[]
 }
 
@@ -37,6 +38,7 @@ const EMPTY: AssignmentFormValues = {
   weight: 1,
   submissionMode: 'files',
   latePolicy: 'accept',
+  markingGuide: '',
   attachments: [],
 }
 
@@ -103,6 +105,24 @@ export function AssignmentForm({
             invalid={invalid('instructions')}
           />
           <FieldDescription id="assignment-instructions-hint">{t('instructionsHint')}</FieldDescription>
+        </Field>
+
+        <Field data-invalid={invalid('markingGuide')}>
+          <FieldLabel htmlFor="assignment-marking-guide">
+            {t('markingGuide')} <span className="font-normal text-muted-foreground">({tCommon('optional')})</span>
+          </FieldLabel>
+          <textarea
+            id="assignment-marking-guide"
+            name="markingGuide"
+            rows={5}
+            maxLength={MARKING_GUIDE_MAX}
+            defaultValue={initial.markingGuide}
+            placeholder={t('markingGuidePlaceholder')}
+            aria-invalid={invalid('markingGuide')}
+            aria-describedby="assignment-marking-guide-hint"
+            className="w-full min-w-0 rounded-xl border border-input bg-transparent px-3.5 py-2.5 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm"
+          />
+          <FieldDescription id="assignment-marking-guide-hint">{t('markingGuideHint')}</FieldDescription>
         </Field>
 
         <Field data-invalid={invalid('attachments')}>

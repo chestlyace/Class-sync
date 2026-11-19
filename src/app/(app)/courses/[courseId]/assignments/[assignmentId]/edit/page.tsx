@@ -5,7 +5,7 @@ import { ErrorState } from '@/components/error-state'
 import { PageHeader, Panel } from '@/components/page-header'
 import { buttonVariants } from '@/components/ui/button'
 import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
-import { listSubmissions, type AssignmentDetail } from '@/server/assignments/lecturer'
+import { listSubmissions, type LecturerAssignmentDetail } from '@/server/assignments/lecturer'
 import { config } from '@/server/core/config'
 import { AppError } from '@/server/core/errors'
 import { getCourse, type CourseSummary } from '@/server/courses/service'
@@ -13,7 +13,7 @@ import { toLocalDateTimeInput } from '@/server/lib/local-time'
 import { loadPage } from '../../../../../load-page'
 import { AssignmentForm } from '../../../../assignment-form'
 
-type EditView = { course: CourseSummary; assignment: AssignmentDetail; hasSubmissions: boolean }
+type EditView = { course: CourseSummary; assignment: LecturerAssignmentDetail; hasSubmissions: boolean }
 
 export async function generateMetadata() {
   const t = await getTranslations('assignments.lecturer')
@@ -73,6 +73,7 @@ export default async function EditAssignmentPage({
             weight: assignment.weight,
             submissionMode: assignment.submissionMode,
             latePolicy: assignment.latePolicy,
+            markingGuide: assignment.markingGuide ?? '',
             attachments: assignment.attachments,
           }}
           locale={locale}
