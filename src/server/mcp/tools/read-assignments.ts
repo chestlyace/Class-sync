@@ -87,8 +87,8 @@ export const getSubmission = defineTool({
   title: 'Get a submission',
   description:
     "One student's hand-in: the typed text as plain text (null when none), the names and types of the files (file contents " +
-    'are not available), when it was handed in and whether late, the mark and feedback if graded, and the grade your ' +
-    'assistant suggested if any. Also the assignment with its instructions and marking guide as plain text. Needs submissionId from list_submissions.',
+    'are not available), when it was handed in and whether late, the mark and feedback if graded, and the grade ' +
+    "suggested for it if any, with who suggested it (by: 'assistant' for your assistant, 'clasync' for Clasync's own AI). Also the assignment with its instructions and marking guide as plain text. Needs submissionId from list_submissions.",
   scope: 'clasync:read',
   input: z.object({ submissionId: id('The submission id, from list_submissions.') }),
   run: async (ctx, { submissionId }) => {
@@ -108,7 +108,12 @@ export const getSubmission = defineTool({
       mark: view.mark,
       feedback: view.feedback,
       suggestion: view.suggestion
-        ? { mark: view.suggestion.mark, feedback: view.suggestion.feedback, at: iso(view.suggestion.at) }
+        ? {
+            mark: view.suggestion.mark,
+            feedback: view.suggestion.feedback,
+            at: iso(view.suggestion.at),
+            by: view.suggestion.by,
+          }
         : null,
     }
   },

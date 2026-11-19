@@ -45,6 +45,7 @@ const fields = {
     .describe('After the due date: accept late work (marked late) or close submissions.'),
   markingGuide: z
     .string()
+    .trim()
     .max(MARKING_GUIDE_MAX)
     .describe(
       `What a good answer contains and how marks are awarded, up to ${MARKING_GUIDE_MAX} characters. Only the lecturer sees it; Clasync AI uses it to suggest marks.`,

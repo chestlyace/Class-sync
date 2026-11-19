@@ -305,11 +305,16 @@ describe('MCP read tools', () => {
       text: 'The potato lost water.',
       files: [{ name: 'report.pdf', type: 'application/pdf', sizeBytes: 2048 }],
       mark: null,
-      suggestion: { mark: 15, feedback: 'Clear method.' },
+      suggestion: { mark: 15, feedback: 'Clear method.', by: 'assistant' },
     })
     expect(one.assignment.instructions).toBe('## Lab\n- Measure the potato')
     expect(one.assignment.markingGuide).toBe('Full marks for naming osmosis.')
     expect(one.files[0].id).toBeUndefined()
+
+    // A suggestion made by Clasync's own AI says so.
+    await db.update(submission).set({ suggestedBy: 'clasync' }).where(eq(submission.id, ids.submission))
+    const byClasync = await call(fx.lecturer, 'get_submission', { submissionId: ids.submission })
+    expect(byClasync.suggestion).toMatchObject({ mark: 15, by: 'clasync' })
   })
 
   it('list_tests and get_test: state, questions with correct option and guide', async () => {

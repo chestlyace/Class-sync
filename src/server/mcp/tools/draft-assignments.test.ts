@@ -90,6 +90,9 @@ describe('assignment draft tools', () => {
     expect(replaced.markingGuide).toBe('3 marks for the method')
 
     expect(parseToolInput('create_assignment_draft', { courseId: 'c', title: 'Ok', instructions: 'x', dueAt: inAWeek(), markingGuide: 'x'.repeat(5001) }).success).toBe(false)
+    // The limit applies to the trimmed text, as in the service.
+    const padded = `  ${'x'.repeat(5000)}  `
+    expect(parseToolInput('create_assignment_draft', { courseId: 'c', title: 'Ok', instructions: 'x', dueAt: inAWeek(), markingGuide: padded }).success).toBe(true)
 
     await publishAssignment(fx.lecturer, id)
     expect(JSON.stringify(await getAssignmentForStudent(fx.alice, id))).not.toContain('method')
