@@ -56,18 +56,20 @@ export function NoteItemForm({
     <form onSubmit={submitWith(dispatch)} noValidate className="flex flex-col gap-6">
       {kind === 'note' && <input type="hidden" name="body" value={JSON.stringify(body ?? [])} />}
       {kind === 'file' && files[0] && <input type="hidden" name="fileId" value={files[0].id} />}
+      <input type="hidden" name="fallbackTitle" value={t('untitled')} />
       <FieldGroup>
         <Field data-invalid={invalid('title')}>
           <FieldLabel htmlFor="item-title">{t('title')}</FieldLabel>
           <Input
             id="item-title"
             name="title"
-            required
             maxLength={200}
             defaultValue={initial.title}
             placeholder={t(`titlePlaceholder.${kind}`)}
             aria-invalid={invalid('title')}
+            aria-describedby="item-title-hint"
           />
+          <FieldDescription id="item-title-hint">{t('titleHint')}</FieldDescription>
         </Field>
 
         {kind === 'note' && (

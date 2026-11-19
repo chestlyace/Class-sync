@@ -57,6 +57,7 @@ import {
   renameTopicAction,
   setTopicHiddenAction,
 } from './notes-actions'
+import { BulkUploadDialog } from './notes-bulk-upload'
 import { NotesError } from './notes-error'
 import type { ItemKind } from './notes-form'
 import { ShareDialog } from './share-dialog'
@@ -317,6 +318,7 @@ function TopicCard({
             {t(`add.${kind}`)}
           </Link>
         ))}
+        <BulkUploadDialog courseId={courseId} topicId={topic.id} />
       </div>
 
       {topic.hidden && (

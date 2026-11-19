@@ -1,4 +1,5 @@
 import { and, asc, eq, max, ne } from 'drizzle-orm'
+import { MAX_FILES } from '@/server/assignments/rules'
 import { sanitizeRichText } from '@/server/assignments/rich-text'
 import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
@@ -9,7 +10,7 @@ import { courseTopic, resource, resourcePlacement, type ResourceKind } from '@/s
 import { isUniqueViolation } from '@/server/lib/db-errors'
 import { claimResourceFile, deleteStoredFile } from '@/server/files/service'
 import { richTextPlainText } from '@/lib/rich-text-content'
-import { parseLinkUrl, parseTitle, swapPositions } from './rules'
+import { hostOf, parseLinkUrl, parseOptionalTitle, swapPositions, titleFromContent } from './rules'
 import { now } from '@/server/core/clock'
 import { pushNotesAdded } from '@/server/push/course-events'
 import { assertTopicHidden, assertTopicInCourse } from './topics'
@@ -24,14 +25,24 @@ function forbidden(): never {
   throw new AppError('FORBIDDEN', 'You cannot change this item')
 }
 
-function titleOf(raw: unknown): string {
-  return parseTitle(raw) ?? invalid('title')
+/**
+ * A supplied title, or one derived from the file name, note body or host. A blank title on an edit
+ * keeps the item's current title (passed as `fallback`); a blank title with nothing to derive from
+ * is still invalid.
+ */
+function titleOf(raw: unknown, fallback: string): string {
+  const title = parseOptionalTitle(raw)
+  if (title === null) invalid('title')
+  if (title !== '') return title
+  const derived = titleFromContent(fallback)
+  if (!derived) invalid('title')
+  return derived
 }
 
 /** The item's resource when the caller owns it; missing and not-yours are both FORBIDDEN. */
 async function requireOwnedResource(db: Executor, ctx: Ctx, resourceId: string) {
   const [row] = await db
-    .select({ id: resource.id, kind: resource.kind, ownerId: resource.ownerId, fileId: resource.fileId })
+    .select({ id: resource.id, kind: resource.kind, ownerId: resource.ownerId, title: resource.title, fileId: resource.fileId })
     .from(resource)
     .where(eq(resource.id, resourceId))
   if (!row || row.ownerId !== ctx.user.id) forbidden()
@@ -63,50 +74,57 @@ async function topicIsHidden(db: Executor, topicId: string): Promise<boolean> {
 /** `hiddenTopicOnly`: CONFLICT visible_topic unless the topic is hidden (an assistant's draft). */
 type NewItem = { courseId: string; topicId: string; hiddenTopicOnly?: boolean }
 
-async function insertItem(
+type ItemValues = {
+  kind: ResourceKind
+  title: string
+  body?: unknown
+  bodyText?: string
+  url?: string
+  fileId?: string
+}
+type PlacedItem = { id: string; title: string; visible: boolean }
+
+/** One insert inside an existing transaction, so a bulk upload is all-or-nothing. */
+async function insertItemInTx(
+  tx: Executor,
   ctx: Ctx,
   input: NewItem,
-  values: (tx: Executor) => Promise<{
-    kind: ResourceKind
-    title: string
-    body?: unknown
-    bodyText?: string
-    url?: string
-    fileId?: string
-  }>,
-): Promise<{ id: string }> {
-  await requireCourseOwner(ctx, input.courseId)
-  const placed = await ctx.db.transaction(async (tx) => {
-    await assertTopicInCourse(tx, input.topicId, input.courseId)
-    if (input.hiddenTopicOnly) await assertTopicHidden(tx, input.topicId)
-    const v = await values(tx)
-    let row: { id: string }
-    try {
-      ;[row] = await tx
-        .insert(resource)
-        .values({
-          ownerId: ctx.user.id,
-          kind: v.kind,
-          title: v.title,
-          body: v.body ?? null,
-          bodyText: v.bodyText ?? null,
-          url: v.url ?? null,
-          fileId: v.fileId ?? null,
-        })
-        .returning({ id: resource.id })
-    } catch (err) {
-      // Two items racing for one file: the loser of the unique index is a bad file, not a crash.
-      if (isUniqueViolation(err, 'resource_file_id_unique')) invalid('file')
-      throw err
-    }
-    await tx.insert(resourcePlacement).values({
-      resourceId: row.id,
-      courseId: input.courseId,
-      topicId: input.topicId,
-      position: await nextPosition(tx, input.topicId),
-    })
-    return { id: row.id, title: v.title, visible: !(await topicIsHidden(tx, input.topicId)) }
+  values: (tx: Executor) => Promise<ItemValues>,
+): Promise<PlacedItem> {
+  await assertTopicInCourse(tx, input.topicId, input.courseId)
+  if (input.hiddenTopicOnly) await assertTopicHidden(tx, input.topicId)
+  const v = await values(tx)
+  let row: { id: string }
+  try {
+    ;[row] = await tx
+      .insert(resource)
+      .values({
+        ownerId: ctx.user.id,
+        kind: v.kind,
+        title: v.title,
+        body: v.body ?? null,
+        bodyText: v.bodyText ?? null,
+        url: v.url ?? null,
+        fileId: v.fileId ?? null,
+      })
+      .returning({ id: resource.id })
+  } catch (err) {
+    // Two items racing for one file: the loser of the unique index is a bad file, not a crash.
+    if (isUniqueViolation(err, 'resource_file_id_unique')) invalid('file')
+    throw err
+  }
+  await tx.insert(resourcePlacement).values({
+    resourceId: row.id,
+    courseId: input.courseId,
+    topicId: input.topicId,
+    position: await nextPosition(tx, input.topicId),
   })
+  return { id: row.id, title: v.title, visible: !(await topicIsHidden(tx, input.topicId)) }
+}
+
+async function insertItem(ctx: Ctx, input: NewItem, values: (tx: Executor) => Promise<ItemValues>): Promise<{ id: string }> {
+  await requireCourseOwner(ctx, input.courseId)
+  const placed = await ctx.db.transaction((tx) => insertItemInTx(tx, ctx, input, values))
   // After the transaction, so a rolled-back item is never announced; a hidden topic is not announced.
   if (placed.visible) await pushNotesAdded(ctx.db, input.courseId, placed.title, now())
   return { id: placed.id }
@@ -114,35 +132,77 @@ async function insertItem(
 
 export async function createNote(
   ctx: Ctx,
-  input: { courseId: string; topicId: string; title: string; body: unknown; hiddenTopicOnly?: boolean },
+  input: {
+    courseId: string
+    topicId: string
+    title: string
+    body: unknown
+    fallbackTitle?: string
+    hiddenTopicOnly?: boolean
+  },
 ): Promise<{ id: string }> {
   return insertItem(ctx, input, async () => {
-    const title = titleOf(input.title)
     const body = sanitizeRichText(input.body) ?? invalid('body')
+    const title = titleOf(input.title, richTextPlainText(body) || input.fallbackTitle || '')
     return { kind: 'note', title, body, bodyText: richTextPlainText(body) }
   })
 }
 
 export async function createLink(
   ctx: Ctx,
-  input: { courseId: string; topicId: string; title: string; url: string },
+  input: { courseId: string; topicId: string; title: string; url: string; fallbackTitle?: string },
 ): Promise<{ id: string }> {
   return insertItem(ctx, input, async () => {
-    const title = titleOf(input.title)
     const url = parseLinkUrl(input.url) ?? invalid('url')
+    const title = titleOf(input.title, hostOf(url) || input.fallbackTitle || '')
     return { kind: 'link', title, url }
   })
 }
 
 export async function createFileItem(
   ctx: Ctx,
-  input: { courseId: string; topicId: string; title: string; fileId: string },
+  input: { courseId: string; topicId: string; title: string; fileId: string; fallbackTitle?: string },
 ): Promise<{ id: string }> {
   return insertItem(ctx, input, async (tx) => {
-    const title = titleOf(input.title)
     const claimed = await claimResourceFile(tx, input.fileId, ctx.user.id)
+    const title = titleOf(input.title, claimed.name)
     return { kind: 'file', title, fileId: claimed.id }
   })
+}
+
+/**
+ * Uploads several confirmed resource files at once: each becomes its own item in the same topic,
+ * titled after its file when no title is supplied. One transaction means one bad file rolls them
+ * all back instead of leaving a half-uploaded set.
+ */
+export async function createFileItems(
+  ctx: Ctx,
+  input: { courseId: string; topicId: string; fileIds: string[]; fallbackTitle?: string },
+): Promise<{ ids: string[] }> {
+  await requireCourseOwner(ctx, input.courseId)
+  const { fileIds } = input
+  if (!Array.isArray(fileIds) || fileIds.length < 1 || fileIds.length > MAX_FILES) invalid('file')
+  const unique = [...new Set(fileIds)]
+  if (unique.some((id) => typeof id !== 'string' || id.length === 0 || id.length > 100) || unique.length !== fileIds.length) {
+    invalid('file')
+  }
+  const placed = await ctx.db.transaction(async (tx) => {
+    const out: PlacedItem[] = []
+    for (const fileId of unique) {
+      const claimed = await claimResourceFile(tx, fileId, ctx.user.id)
+      const title = titleOf('', claimed.name || input.fallbackTitle || '')
+      out.push(
+        await insertItemInTx(tx, ctx, { courseId: input.courseId, topicId: input.topicId }, async () => ({
+          kind: 'file',
+          title,
+          fileId: claimed.id,
+        })),
+      )
+    }
+    return out
+  })
+  for (const item of placed) if (item.visible) await pushNotesAdded(ctx.db, input.courseId, item.title, now())
+  return { ids: placed.map((item) => item.id) }
 }
 
 /** Editing the shared item changes it in every course it is placed in. */
@@ -150,7 +210,7 @@ export async function updateNote(ctx: Ctx, resourceId: string, input: { title: s
   requireRole(ctx, 'lecturer')
   const row = await requireOwnedResource(ctx.db, ctx, resourceId)
   if (row.kind !== 'note') invalid('kind')
-  const title = titleOf(input.title)
+  const title = titleOf(input.title, row.title)
   const body = sanitizeRichText(input.body) ?? invalid('body')
   await ctx.db
     .update(resource)
@@ -162,7 +222,7 @@ export async function updateLink(ctx: Ctx, resourceId: string, input: { title: s
   requireRole(ctx, 'lecturer')
   const row = await requireOwnedResource(ctx.db, ctx, resourceId)
   if (row.kind !== 'link') invalid('kind')
-  const title = titleOf(input.title)
+  const title = titleOf(input.title, row.title)
   const url = parseLinkUrl(input.url) ?? invalid('url')
   await ctx.db.update(resource).set({ title, url, updatedAt: new Date() }).where(eq(resource.id, resourceId))
 }
@@ -176,7 +236,7 @@ export async function updateFileItem(
   requireRole(ctx, 'lecturer')
   const row = await requireOwnedResource(ctx.db, ctx, resourceId)
   if (row.kind !== 'file') invalid('kind')
-  const title = titleOf(input.title)
+  const title = titleOf(input.title, row.title)
   const replaced = await ctx.db.transaction(async (tx) => {
     // Lock the resource: the old file is whatever it holds now, and a removed item rolls the claim back.
     const [locked] = await tx
