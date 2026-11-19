@@ -2757,7 +2757,7 @@
       "errors": "Sentry receives error reports so problems can be fixed, with IP addresses removed.",
       "push": "If you turn on notifications, the push service of your browser's maker (Google, Apple, Mozilla or Microsoft) delivers them to your device. It only sees an encrypted message.",
       "ai": "Vercel AI Gateway sends a written test answer and its question to an AI model when a lecturer asks for a suggested mark, without your name, matricule or email. The lecturer decides the mark.",
-      "aiAssignments": "When a lecturer asks Clasync to suggest marks for an assignment, the student's answer and files (without their name or matricule) are sent to Amazon Bedrock in the European Union to produce a suggestion. They are not used to train AI models. The lecturer decides every mark.",
+      "aiAssignments": "When a lecturer asks Clasync to suggest marks for an assignment, the student's answer and files are sent to Amazon Bedrock in the European Union to produce a suggestion. Clasync does not add the student's name, matricule or email; anything written in the work itself is sent as it is. The work is not used to train AI models. The lecturer decides every mark.",
       "google": "Google, only if you choose Continue with Google."
     },
     "assistants": {
