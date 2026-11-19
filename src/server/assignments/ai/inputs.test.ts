@@ -78,7 +78,7 @@ describe('planFiles', () => {
 describe('prepareImage', () => {
   it('resizes a wide image to 2000 px on its longer side and returns a JPEG', async () => {
     const png = await sharp({ create: { width: 3000, height: 1000, channels: 3, background: '#336699' } }).png().toBuffer()
-    const out = await prepareImage(new Uint8Array(png), 'image/png')
+    const out = await prepareImage(new Uint8Array(png))
     expect(out.mediaType).toBe('image/jpeg')
     const meta = await sharp(out.data).metadata()
     expect(meta.format).toBe('jpeg')
@@ -90,7 +90,16 @@ describe('prepareImage', () => {
     const png = new Uint8Array(
       await sharp({ create: { width: 100, height: 100, channels: 3, background: '#ffffff' } }).png().toBuffer(),
     )
-    const out = await prepareImage(png, 'image/png')
+    const out = await prepareImage(png)
+    expect(out.mediaType).toBe('image/png')
+    expect(out.data).toBe(png)
+  })
+
+  it('names an unchanged image by what its bytes are', async () => {
+    const png = new Uint8Array(
+      await sharp({ create: { width: 100, height: 100, channels: 3, background: '#ffffff' } }).png().toBuffer(),
+    )
+    const out = await prepareImage(png)
     expect(out.mediaType).toBe('image/png')
     expect(out.data).toBe(png)
   })
@@ -100,7 +109,7 @@ describe('prepareImage', () => {
     for (let i = 0; i < raw.length; i++) raw[i] = (i * 2654435761) >>> 24
     const png = new Uint8Array(await sharp(raw, { raw: { width: 1800, height: 1800, channels: 3 } }).png({ compressionLevel: 0 }).toBuffer())
     expect(png.byteLength).toBeGreaterThan(3.5 * MB)
-    const out = await prepareImage(png, 'image/png')
+    const out = await prepareImage(png)
     expect(out.mediaType).toBe('image/jpeg')
     expect(out.data.byteLength).toBeLessThan(png.byteLength)
   })
@@ -225,6 +234,45 @@ describe('loadMarkingInput', () => {
       { position: 3, reason: 'heic' },
       { position: 4, reason: 'unsupported' },
     ])
+  })
+
+  it('sends a PNG declared as image/jpeg as image/png', async () => {
+    const s = await seed()
+    const png = new Uint8Array(
+      await sharp({ create: { width: 50, height: 50, channels: 3, background: '#fff' } }).png().toBuffer(),
+    )
+    await attach(s, 1, 'photo.jpg', 'image/jpeg')
+    const out = await loadMarkingInput(db, s.submissionId, async () => png)
+    expect(out!.input.images).toEqual([{ position: 1, data: png, mediaType: 'image/png' }])
+  })
+
+  it('stops sending files once 15 MB have been prepared and reports the rest as over the limit', async () => {
+    const s = await seed()
+    const docs = []
+    for (let i = 1; i <= 5; i++) docs.push(await attach(s, i, `d${i}.pdf`, PDF, 4 * MB))
+    const out = await loadMarkingInput(db, s.submissionId, async () => new Uint8Array(4 * MB))
+    expect(out!.input.documents.map((d) => d.position)).toEqual([1, 2, 3])
+    expect(out!.unread).toEqual([
+      { position: 4, reason: 'limit' },
+      { position: 5, reason: 'limit' },
+    ])
+  })
+
+  it('counts resized image bytes, not the original size, against the 15 MB budget', async () => {
+    const s = await seed()
+    const png = new Uint8Array(
+      await sharp({ create: { width: 100, height: 100, channels: 3, background: '#fff' } }).png().toBuffer(),
+    )
+    const img = await attach(s, 1, 'a.png', 'image/png', 12 * MB) // declared huge, real bytes tiny
+    await attach(s, 2, 'b.pdf', PDF, 4 * MB)
+    await attach(s, 3, 'c.pdf', PDF, 4 * MB)
+    await attach(s, 4, 'd.pdf', PDF, 4 * MB)
+    const out = await loadMarkingInput(db, s.submissionId, async (key) =>
+      key === img.storageKey ? png : new Uint8Array(4 * MB),
+    )
+    expect(out!.input.images.map((i) => i.position)).toEqual([1])
+    expect(out!.input.documents.map((d) => d.position)).toEqual([2, 3, 4])
+    expect(out!.unread).toEqual([])
   })
 
   it('never puts the student name, matricule or file name in the model input', async () => {

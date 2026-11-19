@@ -14,12 +14,16 @@ const MAX_DOCUMENT_BYTES = 4.5 * 1024 * 1024
 const IMAGE_AS_IS_BYTES = 3.5 * 1024 * 1024
 const IMAGE_MAX_SIDE = 2000
 const IMAGE_JPEG_QUALITY = 80
+/** All prepared images and documents together stay under this (the model's request size is limited). */
+const MAX_TOTAL_BYTES = 15 * 1024 * 1024
 
 const IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const DOCUMENT_MIMES = new Set([
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ])
+/** What sharp reports for the formats the model accepts, as media types. */
+const FORMAT_MEDIA_TYPES: Record<string, string> = { jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }
 const HEIC_MIMES = new Set(['image/heic', 'image/heif'])
 
 export type MarkingFile = { position: number; mimeType: string; sizeBytes: number; storageKey: string }
@@ -56,18 +60,17 @@ export function planFiles(files: MarkingFile[]): {
 }
 
 /**
- * A photo as the model should see it: untouched when it is small enough in bytes and pixels,
- * otherwise scaled down to 2,000 px on its longer side and re-encoded as JPEG. Throws when the
+ * A photo as the model should see it: untouched when it is a JPEG, PNG or WebP small enough in
+ * bytes and pixels, otherwise scaled down to 2,000 px on its longer side and re-encoded as JPEG. Throws when the
  * bytes are not a readable image.
  */
-export async function prepareImage(
-  bytes: Uint8Array,
-  mimeType: string,
-): Promise<{ data: Uint8Array; mediaType: string }> {
+export async function prepareImage(bytes: Uint8Array): Promise<{ data: Uint8Array; mediaType: string }> {
   const meta = await sharp(bytes).metadata()
   const longest = Math.max(meta.width ?? 0, meta.height ?? 0)
-  if (bytes.byteLength <= IMAGE_AS_IS_BYTES && longest <= IMAGE_MAX_SIDE) {
-    return { data: bytes, mediaType: mimeType }
+  // The media type comes from the bytes themselves: a file's declared type can be wrong, and the model rejects a mismatch.
+  const asIs = FORMAT_MEDIA_TYPES[meta.format ?? '']
+  if (asIs && bytes.byteLength <= IMAGE_AS_IS_BYTES && longest <= IMAGE_MAX_SIDE) {
+    return { data: bytes, mediaType: asIs }
   }
   const out = await sharp(bytes)
     .rotate() // honour the phone's orientation tag before it is dropped
@@ -130,19 +133,27 @@ export async function loadMarkingInput(
   const plan = planFiles(files)
   const unread = [...plan.unread]
 
+  // Files are prepared in hand-in order under one byte budget; one that would not fit is not sent.
   const images: MarkingInput['images'] = []
-  for (const f of plan.images) {
-    try {
-      const prepared = await prepareImage(await read(f.storageKey), f.mimeType)
-      images.push({ position: f.position, ...prepared })
-    } catch {
-      unread.push({ position: f.position, reason: 'unsupported' })
-    }
-  }
   const documents: MarkingInput['documents'] = []
-  for (const f of plan.documents) {
+  let budget = MAX_TOTAL_BYTES
+  const ordered = [
+    ...plan.images.map((f) => ({ f, kind: 'image' as const })),
+    ...plan.documents.map((f) => ({ f, kind: 'document' as const })),
+  ].sort((a, b) => a.f.position - b.f.position)
+  for (const { f, kind } of ordered) {
     try {
-      documents.push({ position: f.position, data: await read(f.storageKey), mediaType: f.mimeType.trim().toLowerCase() })
+      const bytes = await read(f.storageKey)
+      const prepared =
+        kind === 'image'
+          ? await prepareImage(bytes)
+          : { data: bytes, mediaType: f.mimeType.trim().toLowerCase() }
+      if (prepared.data.byteLength > budget) {
+        unread.push({ position: f.position, reason: 'limit' })
+        continue
+      }
+      budget -= prepared.data.byteLength
+      ;(kind === 'image' ? images : documents).push({ position: f.position, ...prepared })
     } catch {
       unread.push({ position: f.position, reason: 'unsupported' })
     }
