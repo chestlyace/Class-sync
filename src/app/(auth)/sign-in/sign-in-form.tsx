@@ -1,6 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { GoogleButton, OrDivider } from '@/components/google-button'
@@ -120,6 +121,9 @@ export function SignInForm({
         <Field>
           <FieldLabel htmlFor="password">{t('password')}</FieldLabel>
           <PasswordInput id="password" name="password" autoComplete="current-password" required />
+          <Link href="/forgot-password" className="-mt-1 self-end text-sm text-[#48484a] underline-offset-4 hover:underline">
+            {t('forgotPassword')}
+          </Link>
         </Field>
         <FieldError>{error}</FieldError>
       </FieldGroup>

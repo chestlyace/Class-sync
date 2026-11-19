@@ -23,9 +23,9 @@ export type TestNotificationKind = 'testResultsReleased' | 'testHandedIn'
 export type ClassNotificationKind = 'classJoined' | 'lecturerJoinedClass'
 
 /** Every kind of email Clasync sends; health events and `emailSubject` name them the same way. */
-export type EmailKind = 'verify' | NotificationKind | TestNotificationKind | ClassNotificationKind | 'colleagueJoinedClass'
+export type EmailKind = 'verify' | 'resetPassword' | NotificationKind | TestNotificationKind | ClassNotificationKind | 'colleagueJoinedClass'
 
-export function emailSubject(kind: 'verify', locale: Locale): string
+export function emailSubject(kind: 'verify' | 'resetPassword', locale: Locale): string
 export function emailSubject(
   kind: NotificationKind,
   locale: Locale,
@@ -53,6 +53,7 @@ export function emailSubject(
 ): string {
   const t = emailTranslator(locale)
   if (kind === 'verify') return t('verify.subject')
+  if (kind === 'resetPassword') return t('resetPassword.subject')
   const v = (name: string) => singleLine(vars?.[name] ?? '')
   return t(`${kind}.subject`, {
     course: v('courseTitle'),

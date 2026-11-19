@@ -44,10 +44,36 @@
       "description": "Sign in to continue to Clasync.",
       "email": "Email address",
       "password": "Password",
+      "forgotPassword": "Forgot password?",
+      "passwordReset": "Your password has been changed. Sign in with your new password.",
       "submit": "Sign in",
       "submitting": "Signing in…",
       "noAccount": "New to Clasync?",
       "createAccount": "Create an account"
+    },
+    "forgotPassword": {
+      "title": "Reset your password",
+      "description": "Enter the email address of your Clasync account. We'll send you a link to choose a new password.",
+      "email": "Email address",
+      "submit": "Send reset link",
+      "submitting": "Sending link…",
+      "sentTitle": "Check your inbox",
+      "sentDescription": "If an account exists for {email}, we've sent a link to reset its password. The link is valid for 24 hours.",
+      "hint": "Can't find it? Check your spam folder.",
+      "backToSignIn": "Back to sign in"
+    },
+    "resetPassword": {
+      "title": "Choose a new password",
+      "description": "Pick a password you haven't used on Clasync before.",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "passwordHint": "At least 8 characters.",
+      "mismatch": "The two passwords don't match.",
+      "invalidLink": "This link is invalid or has expired. Ask for a new one.",
+      "revokeNote": "For your security, this signs you out of all your devices.",
+      "submit": "Change password",
+      "submitting": "Changing password…",
+      "backToSignIn": "Back to sign in"
     },
     "verify": {
       "title": "Check your inbox",
@@ -67,7 +93,8 @@
       "accountSuspended": "This account is suspended.",
       "accountSuspendedContact": "Contact {email}.",
       "signInAgain": "For your security, sign out and sign in again, then try once more.",
-      "invalidName": "Use your name only: up to 80 characters, with no links, email addresses or < > / \\ characters."
+      "invalidName": "Use your name only: up to 80 characters, with no links, email addresses or < > / \\ characters.",
+      "invalidToken": "This link is invalid or has expired. Ask for a new one."
     },
     "google": {
       "continue": "Continue with Google",
@@ -285,6 +312,14 @@
       "cta": "Verify my email",
       "fallback": "If the button doesn't work, copy and paste this link into your browser:",
       "ignore": "If you didn't create a Clasync account, you can safely ignore this email."
+    },
+    "resetPassword": {
+      "subject": "Reset your Clasync password",
+      "greeting": "Hello,",
+      "body": "We received a request to reset your Clasync password. Open the link below to choose a new one. It is valid for 24 hours.",
+      "cta": "Choose a new password",
+      "fallback": "If the button doesn't work, copy and paste this link into your browser:",
+      "ignore": "If you didn't ask to reset your password, you can safely ignore this email. Your password is unchanged."
     },
     "assignmentPublished": {
       "subject": "New assignment in {course}: {assignment}",

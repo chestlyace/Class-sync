@@ -28,6 +28,11 @@ export default async function SignInPage({ searchParams }: PageProps<'/sign-in'>
         <h1 className="font-display text-5xl leading-[0.95] tracking-[0.01em]">{t('title')}</h1>
         <p className="text-sm text-muted-foreground">{t('description')}</p>
       </div>
+      {search.passwordReset === '1' && (
+        <p role="status" className="text-sm text-[#047857]">
+          {t('passwordReset')}
+        </p>
+      )}
       <SignInForm
         next={next}
         supportEmail={supportEmail()}

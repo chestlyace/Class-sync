@@ -15,6 +15,7 @@ import { AppError } from '@/server/core/errors'
 import { db, type Db } from '@/server/db'
 import * as schema from '@/server/db/schema'
 import { sendEmail } from '@/server/email/send'
+import { ResetPasswordEmail } from '@/server/email/templates/reset-password'
 import { emailSubject, VerifyEmail } from '@/server/email/templates/verify-email'
 import { googleCredentials, signupFieldsFromOAuthState } from './google'
 import { assertValidSignup, assertValidUserUpdate, cleanName } from './signup-rules'
@@ -39,7 +40,12 @@ type CreateAuthOptions = {
  */
 const SIGN_IN_RULE = { window: 60, max: 100 }
 const SIGN_UP_RULE = { window: 60, max: 30 }
+// A request can be used to spam a mailbox, so keep it well below the sign-in and sign-up limits.
+const RESET_REQUEST_RULE = { window: 60 * 60, max: 10 }
 const VERIFY_LINK_TTL_SECONDS = 7 * 24 * 60 * 60
+// Students read mail days later and may be on a patchy connection; a day is still short enough
+// that a stolen link has little time to be used.
+const RESET_LINK_TTL_SECONDS = 24 * 60 * 60
 
 
 /** The OAuth provider's client CRUD routes, closed over HTTP (see `disabledPaths`). */
@@ -120,6 +126,26 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: config.requireEmailVerification,
+      resetPasswordTokenExpiresIn: RESET_LINK_TTL_SECONDS,
+      // A changed password must end every session, including one an attacker may already hold.
+      revokeSessionsOnPasswordReset: true,
+      sendResetPassword: async ({ user, token }) => {
+        // additionalFields are not reflected in this callback's user type.
+        const rawLocale = (user as { locale?: unknown }).locale
+        const locale = isLocale(rawLocale) ? rawLocale : 'en'
+        // Better Auth's own callback URL is an API redirect; our page takes the token directly.
+        const url = `${origin}/reset-password?token=${encodeURIComponent(token)}`
+        if (process.env.NODE_ENV !== 'production' && !process.env.RESEND_API_KEY) {
+          // Local testing only: lets a developer finish a reset without an email provider.
+          console.info('[email] dev password reset link:', url)
+        }
+        await sendEmail({
+          to: user.email,
+          subject: emailSubject('resetPassword', locale),
+          kind: 'resetPassword',
+          react: ResetPasswordEmail({ url, locale }),
+        })
+      },
     },
     socialProviders: google
       ? {
@@ -176,6 +202,7 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
         '/sign-in/email': SIGN_IN_RULE,
         '/sign-in/social': SIGN_IN_RULE,
         '/sign-up/email': SIGN_UP_RULE,
+        '/request-password-reset': RESET_REQUEST_RULE,
       },
     },
     user: {
