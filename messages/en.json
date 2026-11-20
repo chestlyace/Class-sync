@@ -60,19 +60,20 @@
       "sentTitle": "Check your inbox",
       "sentDescription": "If an account exists for {email}, we've sent a link to reset its password. The link is valid for 24 hours.",
       "hint": "Can't find it? Check your spam folder.",
+      "google": "Signed up with Google? You don't need a password: use Continue with Google on the sign-in page.",
+      "resend": "Send again",
+      "resendIn": "Send again in {time}",
+      "resent": "We sent another link. Only the newest one is needed.",
       "backToSignIn": "Back to sign in"
     },
     "resetPassword": {
       "title": "Choose a new password",
       "forAccount": "For the Clasync account {email}.",
       "newPassword": "New password",
-      "confirmPassword": "Confirm new password",
       "passwordHint": "At least 8 characters.",
-      "match": "The two passwords match.",
-      "mismatch": "The two passwords don't match.",
       "invalidLink": "This link has expired or was already used. Ask for a new one: it takes a minute.",
       "newLink": "Send me a new link",
-      "revokeNote": "For your security, this signs you out of all your devices.",
+      "revokeNote": "This signs you out of your other devices and signs you in here.",
       "submit": "Change password",
       "submitting": "Changing password…",
       "backToSignIn": "Back to sign in"
@@ -2639,6 +2640,12 @@
         "title": "Resend the verification email?",
         "body": "A new verification link goes to {email}.",
         "confirm": "Send"
+      },
+      "reset": {
+        "trigger": "Send password reset link",
+        "title": "Send a password reset link?",
+        "body": "A link to choose a new password goes to {email}. It works for 24 hours, and you won't see it.",
+        "confirm": "Send link"
       }
     },
     "usage": {
@@ -2743,6 +2750,7 @@
         "unsuspend": "Unsuspended",
         "revoke_sessions": "Signed out everywhere",
         "resend_verification": "Resent the verification email",
+        "send_password_reset": "Sent a password reset link",
         "school_update": "Edited a school",
         "school_delete": "Deleted a school",
         "school_merge": "Merged schools"
