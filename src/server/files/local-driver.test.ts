@@ -56,7 +56,7 @@ describe('local driver', () => {
       await expect(driver.stat(key), key).rejects.toMatchObject({ code: 'VALIDATION' })
       await expect(driver.read(key), key).rejects.toMatchObject({ code: 'VALIDATION' })
       await expect(driver.remove(key), key).rejects.toMatchObject({ code: 'VALIDATION' })
-      await expect(driver.uploadTarget(key, 'application/pdf'), key).rejects.toMatchObject({ code: 'VALIDATION' })
+      await expect(driver.uploadTarget(key, 'application/pdf', 4), key).rejects.toMatchObject({ code: 'VALIDATION' })
       await expect(driver.write(key, streamOf(bytes(3)), 3), key).rejects.toMatchObject({ code: 'VALIDATION' })
     }
     // Nothing was written anywhere near the upload root.
@@ -111,7 +111,7 @@ describe('local driver', () => {
 
   it('upload target is a PUT to the local upload route with each segment encoded', async () => {
     const driver = createLocalDriver(dir)
-    expect(await driver.uploadTarget('assignments/a1/f1-my notes é.pdf', 'application/pdf')).toEqual({
+    expect(await driver.uploadTarget('assignments/a1/f1-my notes é.pdf', 'application/pdf', 4)).toEqual({
       kind: 'local',
       url: '/api/uploads/local/assignments/a1/f1-my%20notes%20%C3%A9.pdf',
       method: 'PUT',
@@ -124,7 +124,7 @@ describe('blob driver (no network)', () => {
   it('upload target hands the browser the pathname and the token endpoint', async () => {
     const driver = createBlobDriver()
     expect(driver.kind).toBe('blob')
-    expect(await driver.uploadTarget('assignments/a1/f1-notes.pdf', 'application/pdf')).toEqual({
+    expect(await driver.uploadTarget('assignments/a1/f1-notes.pdf', 'application/pdf', 4)).toEqual({
       kind: 'blob',
       pathname: 'assignments/a1/f1-notes.pdf',
       handleUploadUrl: '/api/uploads/blob',

@@ -5,6 +5,7 @@ describe('readAiConfig', () => {
   it('uses the defaults when nothing is set', () => {
     expect(readAiConfig({})).toEqual({
       roleArn: null,
+      accessKey: null,
       region: 'eu-west-3',
       assignmentModel: DEFAULT_ASSIGNMENT_MODEL,
       monthlyCap: 3000,
@@ -22,10 +23,20 @@ describe('readAiConfig', () => {
       }),
     ).toEqual({
       roleArn: 'arn:aws:iam::123456789012:role/clasync-ai',
+      accessKey: null,
       region: 'eu-central-1',
       assignmentModel: 'eu.anthropic.claude-sonnet-4-6',
       monthlyCap: 500,
     })
+  })
+
+  it('reads an access key only when both halves are set', () => {
+    expect(readAiConfig({ AWS_ACCESS_KEY_ID: 'AKIA1', AWS_SECRET_ACCESS_KEY: 'secret' }).accessKey).toEqual({
+      accessKeyId: 'AKIA1',
+      secretAccessKey: 'secret',
+    })
+    expect(readAiConfig({ AWS_ACCESS_KEY_ID: 'AKIA1' }).accessKey).toBeNull()
+    expect(readAiConfig({ AWS_ACCESS_KEY_ID: ' ', AWS_SECRET_ACCESS_KEY: 'secret' }).accessKey).toBeNull()
   })
 
   it('treats blank values as unset and an invalid cap as the default', () => {
@@ -47,6 +58,9 @@ describe('isAssignmentMarkingOn', () => {
     ['fake model in production', { AI_ASSIGNMENT_MODEL: FAKE_MODEL, VERCEL_ENV: 'production' }, false],
     ['fake model in production even with a role', { AI_ASSIGNMENT_MODEL: FAKE_MODEL, AI_AWS_ROLE_ARN: role, VERCEL_ENV: 'production' }, false],
     ['role set, default model', { AI_AWS_ROLE_ARN: role, VERCEL_ENV: 'production' }, true],
+    ['access key set (Heroku)', { AWS_ACCESS_KEY_ID: 'AKIA1', AWS_SECRET_ACCESS_KEY: 'secret', APP_ENV: 'production' }, true],
+    ['half an access key', { AWS_ACCESS_KEY_ID: 'AKIA1', APP_ENV: 'production' }, false],
+    ['fake model on Heroku production', { AI_ASSIGNMENT_MODEL: FAKE_MODEL, APP_ENV: 'production' }, false],
     ['role set, explicit real model', { AI_AWS_ROLE_ARN: role, AI_ASSIGNMENT_MODEL: 'eu.anthropic.claude-sonnet-4-6' }, true],
     ['nothing set', {}, false],
     ['real model without a role', { AI_ASSIGNMENT_MODEL: 'eu.anthropic.claude-sonnet-4-6' }, false],

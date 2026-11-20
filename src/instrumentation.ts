@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
-import { sentryEnvironment } from '@/lib/sentry-environment'
+import { deployEnv } from '@/lib/deploy-env'
 import {
   isNextRequestErrorLog,
   isNodeWarningLog,
@@ -16,13 +16,32 @@ import {
 export function register() {
   Sentry.init({
     dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-    environment: sentryEnvironment(process.env.VERCEL_ENV, process.env.VERCEL_GIT_COMMIT_REF),
+    environment: deployEnv(),
     tracesSampleRate: 0.1,
     beforeSend: (event) => withoutVisitorIp(withoutResetToken(event)),
     beforeBreadcrumb: withoutResetTokenInBreadcrumb,
     beforeSendSpan: withoutResetTokenInSpan,
   })
   if (Sentry.isEnabled()) reportLoggedErrors()
+  if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.NEXT_PHASE !== 'phase-production-build') {
+    void startBackgroundJobs()
+  }
+}
+
+/**
+ * Heroku: background jobs run in this server process (src/server/jobs/worker.ts). Started without
+ * holding up the server; a failure is logged (and so reported) and the site keeps serving.
+ */
+async function startBackgroundJobs() {
+  const { queueDriver } = await import('@/server/jobs/driver')
+  if (queueDriver() !== 'pgboss') return
+  try {
+    const { startJobWorkers } = await import('@/server/jobs/worker')
+    await startJobWorkers()
+    console.log('[jobs] background job workers started')
+  } catch (error) {
+    console.error('[jobs] background job workers failed to start', error)
+  }
 }
 
 export const onRequestError = Sentry.captureRequestError

@@ -3,6 +3,7 @@ import { drizzle } from 'drizzle-orm/node-postgres'
 import type { PgDatabase } from 'drizzle-orm/pg-core'
 import { Pool } from 'pg'
 import * as schema from './schema'
+import { poolSsl } from './ssl'
 
 // Structural type shared by the node-postgres client and the PGlite test client.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -15,8 +16,8 @@ function create(): Db {
   const connectionString = process.env.DATABASE_URL
   if (!connectionString) throw new Error('DATABASE_URL is not set')
   // Small pool: on Vercel Fluid Compute one instance serves many requests concurrently, and many
-  // instances share the database's connection limit.
-  const pool = new Pool({ connectionString, max: 5 })
+  // instances share the database's connection limit; Heroku's Essential-0 plan allows 20 in all.
+  const pool = new Pool({ connectionString, max: 5, ssl: poolSsl(connectionString) })
   // Lets Fluid Compute keep the instance alive until idle clients are released, so suspended
   // instances don't leak connections. A no-op outside Vercel.
   attachDatabasePool(pool)

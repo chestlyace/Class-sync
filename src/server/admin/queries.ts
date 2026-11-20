@@ -1,6 +1,7 @@
 import { gateway } from 'ai'
 import { and, count, desc, eq, gt, gte, ilike, inArray, isNotNull, isNull, lt, lte, max, or, sql, type SQL } from 'drizzle-orm'
 import { alias, union, type PgColumn, type PgTable } from 'drizzle-orm/pg-core'
+import { deployEnv, isProductionDeploy } from '@/lib/deploy-env'
 import { isAdmin, type Env } from '@/server/core/admin'
 import { config } from '@/server/core/config'
 import type { Ctx, Role } from '@/server/core/context'
@@ -452,10 +453,16 @@ const detailInt = (field: string) => sql<number | null>`(${opsEvent.detail}->>${
 /** A batch event stands for `count` emails; a single one for one. */
 const emailsInEvent = sql`coalesce((${opsEvent.detail}->>'count')::int, 1)`
 
+/** The deployed commit, short: Vercel's, or Heroku's (runtime dyno metadata, `heroku labs:enable runtime-dyno-metadata`). */
+function commitOf(env: Env): string | null {
+  const sha = env.VERCEL_GIT_COMMIT_SHA || env.HEROKU_SLUG_COMMIT
+  return sha ? sha.slice(0, 7) : null
+}
+
 export async function getHealth(ctx: Ctx, at: Date, env: Env = process.env): Promise<Health> {
   requireAdmin(ctx)
   const { db } = ctx
-  const runsHere = env.VERCEL_ENV === 'production'
+  const runsHere = isProductionDeploy(env)
   const [[cron], [email], [push], recentFailures, [files], migrations, [{ oldestEventAt }]] = await Promise.all([
     db
       .select({
@@ -535,8 +542,8 @@ export async function getHealth(ctx: Ctx, at: Date, env: Env = process.env): Pro
     push: { sent7d: push.sent7d, failed7d: push.failed7d },
     files: { count: files.count, bytes: files.bytes },
     env: {
-      name: env.VERCEL_ENV || 'local',
-      commit: env.VERCEL_GIT_COMMIT_SHA ? env.VERCEL_GIT_COMMIT_SHA.slice(0, 7) : null,
+      name: deployEnv(env) === 'development' ? 'local' : deployEnv(env),
+      commit: commitOf(env),
       migrations,
     },
   }

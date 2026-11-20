@@ -27,7 +27,14 @@ describe('createBedrockModel', () => {
     expect(oidc.awsCredentialsProvider).not.toHaveBeenCalled()
   })
 
-  it('refuses to build a model without a role', () => {
+  it('signs in with an access key when no role is set (Heroku), without OIDC', () => {
+    const model = createBedrockModel(readAiConfig({ AWS_ACCESS_KEY_ID: 'AKIA1', AWS_SECRET_ACCESS_KEY: 'secret' }))
+    expect((model as unknown as { modelId: string }).modelId).toBe(DEFAULT_ASSIGNMENT_MODEL)
+    expect(bedrock.opts).toMatchObject({ region: 'eu-west-3', accessKeyId: 'AKIA1', secretAccessKey: 'secret' })
+    expect(oidc.awsCredentialsProvider).not.toHaveBeenCalled()
+  })
+
+  it('refuses to build a model without a role or an access key', () => {
     expect(() => createBedrockModel(readAiConfig({}))).toThrow(/AI_AWS_ROLE_ARN/)
   })
 
