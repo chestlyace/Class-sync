@@ -1,6 +1,8 @@
+import { createAmazonBedrock } from '@ai-sdk/amazon-bedrock'
 import { APICallError } from 'ai'
 import { MockLanguageModelV4 } from 'ai/test'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { DEFAULT_ASSIGNMENT_MODEL } from '@/server/ai/config'
 import { FEEDBACK_MAX } from '../rules'
 import { fakeAssignmentSuggester } from './fake'
 import type { MarkingInput } from './inputs'
@@ -96,13 +98,16 @@ describe('createModelSuggester (mock model, no network)', () => {
       model: 'eu.test-model',
     })
     const call = model.doGenerateCalls[0]
-    expect(call.temperature).toBe(0)
+    // Haiku 5.5 answers a non-default temperature with a 400.
+    expect(call.temperature).toBeUndefined()
+    expect(call.topP).toBeUndefined()
+    expect(call.topK).toBeUndefined()
     expect(call.maxOutputTokens).toBe(8192)
     expect(call.abortSignal).toBeInstanceOf(AbortSignal)
     expect(JSON.stringify(call.prompt)).toContain('My secret student text.')
   })
 
-  it('forces the JSON-tool structured output and keeps the PDF citations option', async () => {
+  it('forces the JSON-tool structured output with thinking off and keeps the PDF citations option', async () => {
     const model = new MockLanguageModelV4({
       doGenerate: async () => textResult(JSON.stringify({ transcript: 't', mark: 5, feedback: 'f' })),
     })
@@ -112,7 +117,9 @@ describe('createModelSuggester (mock model, no network)', () => {
       documents: [{ position: 1, data: bytes, mediaType: 'application/pdf' }],
     })
     const call = model.doGenerateCalls[0]
-    expect(call.providerOptions).toEqual({ amazonBedrock: { structuredOutputMode: 'jsonTool' } })
+    expect(call.providerOptions).toEqual({
+      amazonBedrock: { structuredOutputMode: 'jsonTool', reasoningConfig: { type: 'disabled' } },
+    })
     const parts = call.prompt.flatMap((m) => (Array.isArray(m.content) ? (m.content as unknown[]) : []))
     const filePart = (parts as { type: string; providerOptions?: unknown }[]).find((p) => p.type === 'file')
     expect(filePart?.providerOptions).toEqual({ bedrock: { citations: { enabled: true } } })
@@ -175,6 +182,44 @@ describe('createModelSuggester (mock model, no network)', () => {
     const timeout = new Error('signal timed out')
     timeout.name = 'TimeoutError'
     expect((await failWith(timeout)).category).toBe('timeout')
+  })
+})
+
+describe('createModelSuggester on the Bedrock provider (fetch stubbed, no network)', () => {
+  it('sends thinking disabled, no sampling parameters and the forced json tool to Converse', async () => {
+    const bodies: Record<string, unknown>[] = []
+    const fetch = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>)
+      const reply = {
+        output: {
+          message: {
+            role: 'assistant',
+            content: [{ toolUse: { toolUseId: 'tu1', name: 'json', input: { transcript: 't', mark: 6, feedback: 'f' } } }],
+          },
+        },
+        stopReason: 'tool_use',
+        usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
+      }
+      return new Response(JSON.stringify(reply), { status: 200, headers: { 'content-type': 'application/json' } })
+    })
+    const provider = createAmazonBedrock({
+      region: 'eu-west-3',
+      credentialProvider: async () => ({ accessKeyId: 'AK', secretAccessKey: 'SK' }),
+      fetch,
+    })
+    const out = await createModelSuggester(provider(DEFAULT_ASSIGNMENT_MODEL), DEFAULT_ASSIGNMENT_MODEL)(input)
+    expect(out.mark).toBe(6)
+    expect(String(fetch.mock.calls[0][0])).toContain(encodeURIComponent(DEFAULT_ASSIGNMENT_MODEL))
+    const body = bodies[0] as {
+      additionalModelRequestFields?: Record<string, unknown>
+      inferenceConfig?: Record<string, unknown>
+      toolConfig?: { tools: { toolSpec?: { name: string } }[]; toolChoice?: unknown }
+    }
+    expect(body.additionalModelRequestFields?.thinking).toEqual({ type: 'disabled' })
+    expect(body.additionalModelRequestFields?.output_config).toBeUndefined()
+    expect(body.inferenceConfig).toEqual({ maxTokens: 8192 })
+    expect(body.toolConfig?.tools.map((t) => t.toolSpec?.name)).toEqual(['json'])
+    expect(body.toolConfig?.toolChoice).toEqual({ any: {} })
   })
 })
 
