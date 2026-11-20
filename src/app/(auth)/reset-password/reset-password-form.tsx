@@ -9,6 +9,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { authClient } from '@/lib/auth-client'
 import { authErrorKey } from '@/lib/auth-errors'
+import { passwordsMatch } from '@/lib/password-match'
 
 /**
  * Sets a new password with the token from the email link. On success every session is revoked
@@ -21,6 +22,8 @@ export function ResetPasswordForm({ token, next = null }: { token: string | null
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
 
   // The token is already in the component state; drop it from the address bar, browser history
   // and error reports. Keeping the server-rendered prop means no useSearchParams/Suspense needed.
@@ -28,13 +31,15 @@ export function ResetPasswordForm({ token, next = null }: { token: string | null
     if (token) window.history.replaceState(null, '', window.location.pathname)
   }, [token])
 
+  // Password managers can leave one field untouched or fill it with a different value. Comparing
+  // the controlled values and showing a live match state makes that visible before submission.
+  const fieldsMatch = newPassword.length > 0 && passwordsMatch(newPassword, confirmPassword)
+  const showMatch = fieldsMatch && newPassword.length >= 8
+
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!token) return
-    const form = new FormData(event.currentTarget)
-    const newPassword = String(form.get('newPassword') ?? '')
-    const confirmPassword = String(form.get('confirmPassword') ?? '')
-    if (newPassword !== confirmPassword) {
+    if (!passwordsMatch(newPassword, confirmPassword)) {
       setError(t('mismatch'))
       return
     }
@@ -80,12 +85,43 @@ export function ResetPasswordForm({ token, next = null }: { token: string | null
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="newPassword">{t('newPassword')}</FieldLabel>
-              <PasswordInput id="newPassword" name="newPassword" autoComplete="new-password" minLength={8} required />
+              <PasswordInput
+                id="newPassword"
+                name="newPassword"
+                autoComplete="off"
+                data-lpignore="true"
+                data-1p-ignore="true"
+                minLength={8}
+                required
+                value={newPassword}
+                onChange={(event) => {
+                  setNewPassword(event.target.value)
+                  setError(null)
+                }}
+              />
               <FieldDescription>{t('passwordHint')}</FieldDescription>
             </Field>
             <Field>
               <FieldLabel htmlFor="confirmPassword">{t('confirmPassword')}</FieldLabel>
-              <PasswordInput id="confirmPassword" name="confirmPassword" autoComplete="new-password" minLength={8} required />
+              <PasswordInput
+                id="confirmPassword"
+                name="confirmPassword"
+                autoComplete="off"
+                data-lpignore="true"
+                data-1p-ignore="true"
+                minLength={8}
+                required
+                value={confirmPassword}
+                onChange={(event) => {
+                  setConfirmPassword(event.target.value)
+                  setError(null)
+                }}
+              />
+              {showMatch && (
+                <p role="status" className="text-sm text-ok">
+                  {t('match')}
+                </p>
+              )}
             </Field>
             <FieldError>{error}</FieldError>
           </FieldGroup>
