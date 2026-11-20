@@ -11,6 +11,7 @@ import { createFileItem, createLink, createNote } from '@/server/notes/items'
 import { insertResourceFile, setupNotes } from '@/server/notes/test-support'
 import { createTopic, setTopicHidden } from '@/server/notes/topics'
 import { addPracticeQuestion } from '@/server/revision/authoring'
+import { giveCatchUp } from '@/server/tests/authoring'
 import { createTestDb } from '@/test/db'
 import { at, insertStartedTest, joinTest, putAnswer, setClock } from '@/test/marking-fixture'
 import type { McpTool } from '../tool'
@@ -425,6 +426,25 @@ describe('MCP read tools', () => {
   it('rejects missing ids at the input schema', () => {
     expect(() => tool('get_course').input.parse({})).toThrow()
     expect(() => tool('get_course').input.parse({ courseId: '' })).toThrow()
+  })
+
+  it('list_tests marks a catch-up with its original', async () => {
+    // The original (ids.test) has ended; a picked catch-up for Bob is given to it.
+    setClock(at(40))
+    const catchUp = await giveCatchUp(fx.lecturer, ids.test, { for: 'picked', studentIds: [fx.bob.user.id] }, 'catch-up')
+
+    const { tests } = await call(fx.lecturer, 'list_tests', { courseId: ids.course })
+    const found = tests.find((t: Json) => t.id === catchUp.id)
+    expect(found).toMatchObject({
+      id: catchUp.id,
+      catchUpOf: { id: ids.test, title: 'CA 1' },
+      catchUpFor: 'picked',
+    })
+    const original = tests.find((t: Json) => t.id === ids.test)
+    expect(original).toMatchObject({ catchUpOf: null, catchUpFor: null })
+
+    const single = await call(fx.lecturer, 'get_test', { testId: catchUp.id })
+    expect(single).toMatchObject({ catchUpOf: { id: ids.test, title: 'CA 1' }, catchUpFor: 'picked' })
   })
 })
 

@@ -2099,6 +2099,44 @@
       "switchLabel": "Permettre aux étudiants de revoir ce test",
       "switchHelp": "Une fois les résultats publiés et le test passé par toutes les classes, les étudiants voient les questions, leurs réponses et le corrigé, et peuvent s'entraîner dessus. Désactivez si vous comptez réutiliser ces questions.",
       "questions": "Questions"
+    },
+    "catchUp": {
+      "badge": "Rattrapage",
+      "titleSuffix": "rattrapage",
+      "give": "Donner un rattrapage",
+      "whoCanSit": "Qui peut le passer",
+      "missed": "Tous ceux qui l'ont manqué ({count})",
+      "picked": "Seulement ces étudiants",
+      "everyoneSat": "Tout le monde a passé ce test",
+      "answersNote": "Ceux qui l'ont passé connaissent peut-être déjà les réponses. Vous pourrez modifier les questions à l'étape suivante.",
+      "status": {
+        "not_joined": "Pas venu",
+        "left_early": "Sorti avant la fin",
+        "not_handed_in": "N'a pas remis",
+        "handed_in": "A remis"
+      },
+      "pickedCount": "{count, plural, =0 {Aucun étudiant choisi} one {# étudiant choisi} other {# étudiants choisis}}",
+      "forMissed": "Tous ceux qui l'ont manqué",
+      "missedCount": "{count, plural, =0 {Personne qui l'a manqué} one {# qui l'a manqué} other {# qui l'ont manqué}}",
+      "listHeading": "Rattrapages",
+      "original": "Test d'origine : {title}",
+      "rowScore": "Rattrapage : {score} / {outOf}",
+      "rowPending": "{count, plural, one {# à corriger} other {# à corriger}}",
+      "noStudents": "Aucun étudiant dans ce cours pour l'instant.",
+      "giving": "Création du rattrapage…",
+      "save": "Enregistrer qui peut le passer",
+      "saving": "Enregistrement…",
+      "saved": "Enregistré.",
+      "startedPicked": "Le rattrapage a commencé : vous pouvez ajouter des étudiants, et ne retirer que ceux qui ne l'ont pas ouvert.",
+      "startedMissed": "Le rattrapage a commencé : qui peut le passer ne peut plus changer.",
+      "errors": {
+        "notEnded": "Ce test n'est pas encore terminé. Donnez un rattrapage une fois qu'il l'est.",
+        "isCatchUp": "Ce test est un rattrapage. Donnez un autre rattrapage depuis le test d'origine.",
+        "notCatchUp": "Ce test n'est pas un rattrapage.",
+        "started": "Le rattrapage a commencé : vous pouvez ajouter des étudiants, mais pas en retirer ni changer pour qui il est.",
+        "nobodyMissed": "Tout le monde a passé ce test. Choisissez plutôt les étudiants.",
+        "studentIds": "Choisissez au moins un étudiant du cours."
+      }
     }
   },
   "notes": {
