@@ -18,7 +18,6 @@ export function LecturerJoinedClassEmail({ locale, lecturerName, className, scho
   return (
     <NotificationLayout
       locale={locale}
-      preview={e('lecturerJoinedClass.preview', vars)}
       greeting={e('lecturerJoinedClass.greeting', { name: lecturerName })}
       paragraphs={[e('lecturerJoinedClass.body', vars), e('lecturerJoinedClass.next')]}
       cta={e('lecturerJoinedClass.cta')}
@@ -52,7 +51,6 @@ export function ColleagueJoinedClassEmail({
   return (
     <NotificationLayout
       locale={locale}
-      preview={e('colleagueJoinedClass.preview', vars)}
       greeting={e('colleagueJoinedClass.greeting', { recipient: recipientName })}
       paragraphs={[e('colleagueJoinedClass.body', vars), e('colleagueJoinedClass.next')]}
       cta={e('colleagueJoinedClass.cta')}

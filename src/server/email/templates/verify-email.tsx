@@ -1,17 +1,7 @@
-import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Heading,
-  Html,
-  Link,
-  Preview,
-  Section,
-  Text,
-} from '@react-email/components'
+import { Body, Container, Head, Heading, Html, Link, Section, Text } from '@react-email/components'
 import { createTranslator } from 'next-intl'
 import type { Locale } from '@/server/core/context'
+import { CtaLink } from './notification-layout'
 import en from '../../../../messages/en.json'
 import fr from '../../../../messages/fr.json'
 
@@ -33,9 +23,9 @@ export type TestNotificationKind = 'testResultsReleased' | 'testHandedIn'
 export type ClassNotificationKind = 'classJoined' | 'lecturerJoinedClass'
 
 /** Every kind of email Clasync sends; health events and `emailSubject` name them the same way. */
-export type EmailKind = 'verify' | NotificationKind | TestNotificationKind | ClassNotificationKind | 'colleagueJoinedClass'
+export type EmailKind = 'verify' | 'resetPassword' | NotificationKind | TestNotificationKind | ClassNotificationKind | 'colleagueJoinedClass'
 
-export function emailSubject(kind: 'verify', locale: Locale): string
+export function emailSubject(kind: 'verify' | 'resetPassword', locale: Locale): string
 export function emailSubject(
   kind: NotificationKind,
   locale: Locale,
@@ -63,6 +53,7 @@ export function emailSubject(
 ): string {
   const t = emailTranslator(locale)
   if (kind === 'verify') return t('verify.subject')
+  if (kind === 'resetPassword') return t('resetPassword.subject')
   const v = (name: string) => singleLine(vars?.[name] ?? '')
   return t(`${kind}.subject`, {
     course: v('courseTitle'),
@@ -74,14 +65,16 @@ export function emailSubject(
   })
 }
 
-export function VerifyEmail({ url, locale }: { url: string; locale: Locale }) {
+type AuthLinkPrefix = 'verify' | 'resetPassword'
+
+/** The shared shape of the two auth emails: same layout, different translated copy. */
+export function AuthLinkEmail({ url, locale, prefix }: { url: string; locale: Locale; prefix: AuthLinkPrefix }) {
   const e = emailTranslator(locale)
-  const t = (key: 'preview' | 'greeting' | 'body' | 'cta' | 'fallback' | 'ignore', values?: Record<string, string>) =>
-    e(`verify.${key}`, values)
+  const t = (key: 'greeting' | 'body' | 'cta' | 'fallback' | 'ignore', values?: Record<string, string>) =>
+    e(`${prefix}.${key}`, values)
   return (
     <Html lang={locale}>
       <Head />
-      <Preview>{t('preview')}</Preview>
       <Body style={{ backgroundColor: '#f4f4f5', fontFamily: 'Arial, Helvetica, sans-serif' }}>
         <Container
           style={{
@@ -98,19 +91,7 @@ export function VerifyEmail({ url, locale }: { url: string; locale: Locale }) {
           <Text style={{ fontSize: '16px', lineHeight: '24px' }}>{t('greeting')}</Text>
           <Text style={{ fontSize: '16px', lineHeight: '24px' }}>{t('body')}</Text>
           <Section style={{ margin: '24px 0' }}>
-            <Button
-              href={url}
-              style={{
-                backgroundColor: '#18181b',
-                color: '#ffffff',
-                padding: '12px 20px',
-                borderRadius: '6px',
-                fontSize: '16px',
-                textDecoration: 'none',
-              }}
-            >
-              {t('cta')}
-            </Button>
+            <CtaLink href={url}>{t('cta')}</CtaLink>
           </Section>
           <Text style={{ fontSize: '14px', lineHeight: '20px', color: '#52525b' }}>
             {t('fallback')}
@@ -125,4 +106,8 @@ export function VerifyEmail({ url, locale }: { url: string; locale: Locale }) {
       </Body>
     </Html>
   )
+}
+
+export function VerifyEmail({ url, locale }: { url: string; locale: Locale }) {
+  return <AuthLinkEmail url={url} locale={locale} prefix="verify" />
 }

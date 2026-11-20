@@ -17,7 +17,6 @@ export function TestResultsReleasedEmail({ locale, studentName, courseTitle, tes
   return (
     <NotificationLayout
       locale={locale}
-      preview={e('testResultsReleased.preview', vars)}
       greeting={e('testResultsReleased.greeting', { name: studentName })}
       paragraphs={[e('testResultsReleased.body', vars)]}
       cta={e('testResultsReleased.cta')}

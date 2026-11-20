@@ -57,14 +57,10 @@ describe.each([
   ['AssignmentPublishedEmail', AssignmentPublishedEmail],
   ['AssignmentReminderEmail', AssignmentReminderEmail],
 ] as const)('%s escaping', (_name, Template) => {
-  it('escapes titles in the body and the preview text', async () => {
+  it('escapes titles in the body', async () => {
     const html = await render(<Template {...base} {...due} assignmentTitle={nasty} courseTitle={nasty} locale="en" />)
     expect(html).not.toContain('<b>x</b>')
     expect(html).toContain('&lt;b&gt;x&lt;/b&gt; &amp; &quot;Ada&#x27;s lab&quot;')
-    // the preview text is the hidden preheader div
-    const preheader = html.slice(html.indexOf('data-skip-in-text'), html.indexOf('</div>', html.indexOf('data-skip-in-text')))
-    expect(preheader).toContain('&lt;b&gt;x&lt;/b&gt;')
-    expect(preheader).not.toContain('<b>')
   })
 })
 

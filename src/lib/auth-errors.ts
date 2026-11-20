@@ -6,6 +6,8 @@ const AUTH_ERROR_KEYS: Record<string, string> = {
   PASSWORD_TOO_SHORT: 'auth.errors.passwordTooShort',
   PASSWORD_TOO_LONG: 'auth.errors.passwordTooLong',
   INVALID_EMAIL: 'auth.errors.invalidEmail',
+  INVALID_TOKEN: 'auth.errors.invalidToken',
+  TOKEN_EXPIRED: 'auth.errors.invalidToken',
   EMAIL_NOT_VERIFIED: 'auth.errors.emailNotVerified',
   ACCOUNT_SUSPENDED: 'auth.errors.accountSuspended',
   // Disconnecting Google needs a recent sign-in.

@@ -8,6 +8,9 @@
   "functions": {
     "src/app/api/queues/class-notices/route.ts": {
       "experimentalTriggers": [{ "type": "queue/v2beta", "topic": "class-notices" }]
+    },
+    "src/app/api/queues/assignment-marking/route.ts": {
+      "experimentalTriggers": [{ "type": "queue/v2beta", "topic": "assignment-marking" }]
     }
   }
 }

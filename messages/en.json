@@ -44,10 +44,36 @@
       "description": "Sign in to continue to Clasync.",
       "email": "Email address",
       "password": "Password",
+      "forgotPassword": "Forgot password?",
+      "passwordReset": "Your password has been changed. Sign in with your new password.",
       "submit": "Sign in",
       "submitting": "Signing in…",
       "noAccount": "New to Clasync?",
       "createAccount": "Create an account"
+    },
+    "forgotPassword": {
+      "title": "Reset your password",
+      "description": "Enter the email address of your Clasync account. We'll send you a link to choose a new password.",
+      "email": "Email address",
+      "submit": "Send reset link",
+      "submitting": "Sending link…",
+      "sentTitle": "Check your inbox",
+      "sentDescription": "If an account exists for {email}, we've sent a link to reset its password. The link is valid for 24 hours.",
+      "hint": "Can't find it? Check your spam folder.",
+      "backToSignIn": "Back to sign in"
+    },
+    "resetPassword": {
+      "title": "Choose a new password",
+      "description": "Choose a new password with at least 8 characters.",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "passwordHint": "At least 8 characters.",
+      "mismatch": "The two passwords don't match.",
+      "invalidLink": "This link is invalid or has expired. Ask for a new one.",
+      "revokeNote": "For your security, this signs you out of all your devices.",
+      "submit": "Change password",
+      "submitting": "Changing password…",
+      "backToSignIn": "Back to sign in"
     },
     "verify": {
       "title": "Check your inbox",
@@ -67,7 +93,8 @@
       "accountSuspended": "This account is suspended.",
       "accountSuspendedContact": "Contact {email}.",
       "signInAgain": "For your security, sign out and sign in again, then try once more.",
-      "invalidName": "Use your name only: up to 80 characters, with no links, email addresses or < > / \\ characters."
+      "invalidName": "Use your name only: up to 80 characters, with no links, email addresses or < > / \\ characters.",
+      "invalidToken": "This link is invalid or has expired. Ask for a new one."
     },
     "google": {
       "continue": "Continue with Google",
@@ -280,16 +307,22 @@
   "email": {
     "verify": {
       "subject": "Verify your Clasync email address",
-      "preview": "Confirm your email address to activate your Clasync account",
       "greeting": "Hello,",
       "body": "Thanks for joining Clasync. Please confirm your email address to activate your account.",
       "cta": "Verify my email",
       "fallback": "If the button doesn't work, copy and paste this link into your browser:",
       "ignore": "If you didn't create a Clasync account, you can safely ignore this email."
     },
+    "resetPassword": {
+      "subject": "Reset your Clasync password",
+      "greeting": "Hello,",
+      "body": "We received a request to reset your Clasync password. Open the link below to choose a new one. It is valid for 24 hours.",
+      "cta": "Choose a new password",
+      "fallback": "If the button doesn't work, copy and paste this link into your browser:",
+      "ignore": "If you didn't ask to reset your password, you can safely ignore this email. Your password is unchanged."
+    },
     "assignmentPublished": {
       "subject": "New assignment in {course}: {assignment}",
-      "preview": "{assignment} has just been published in {course}",
       "greeting": "Hello {name},",
       "body": "A new assignment, {assignment}, has been published in {course}.",
       "due": "Due {date} at {time}.",
@@ -298,7 +331,6 @@
     },
     "assignmentReminder": {
       "subject": "Reminder: {assignment} in {course} is due soon",
-      "preview": "{assignment} in {course} is due {date} at {time}",
       "greeting": "Hello {name},",
       "body": "A quick reminder that {assignment} in {course} is due soon.",
       "due": "Deadline: {date} at {time}.",
@@ -307,7 +339,6 @@
     },
     "gradesReleased": {
       "subject": "Your grades for {assignment} in {course} are available",
-      "preview": "Your grades for {assignment} in {course} have been released",
       "greeting": "Hello {name},",
       "body": "Your lecturer has released the grades for {assignment} in {course}.",
       "cta": "See my grade",
@@ -315,7 +346,6 @@
     },
     "testResultsReleased": {
       "subject": "Your result for {test} in {course} is available",
-      "preview": "Your result for {test} in {course} has been released",
       "greeting": "Hello {name},",
       "body": "Your lecturer has released the results of the test {test} in {course}. You can now see your total, your mark for each question and any comments.",
       "cta": "See my result",
@@ -323,7 +353,6 @@
     },
     "classJoined": {
       "subject": "You've joined {class} at {school}",
-      "preview": "Welcome to {class} at {school}",
       "greeting": "Hello {name},",
       "body": "You've joined {class} at {school}. Welcome!",
       "next": "Your lecturers' courses, assignments and tests for this class will appear on your dashboard as they add them.",
@@ -332,7 +361,6 @@
     },
     "lecturerJoinedClass": {
       "subject": "You're now a lecturer of {class} at {school}",
-      "preview": "You've joined {class} at {school} as a lecturer",
       "greeting": "Hello {name},",
       "body": "You've joined {class} at {school} as a lecturer.",
       "next": "From the class page you can add your courses and share the student code with your students.",
@@ -341,7 +369,6 @@
     },
     "colleagueJoinedClass": {
       "subject": "{name} joined {class}",
-      "preview": "{name} is now a lecturer of {class}",
       "greeting": "Hello {recipient},",
       "body": "{name} joined {class} at {school} as a lecturer, using the class's lecturer code.",
       "next": "If you don't know this person, open the class and generate a new lecturer code.",
@@ -350,7 +377,6 @@
     },
     "assignmentSubmitted": {
       "subject": "Submission received: {assignment} in {course}",
-      "preview": "We received your submission for {assignment} in {course}",
       "greeting": "Hello {name},",
       "body": "We received your submission for {assignment} in {course}.",
       "at": "Submitted {date} at {time}.",
@@ -360,7 +386,6 @@
     },
     "testHandedIn": {
       "subject": "Test handed in: {test} in {course}",
-      "preview": "Your answers for {test} in {course} have been handed in",
       "greeting": "Hello {name},",
       "body": "Your answers for the test {test} in {course} have been handed in.",
       "at": "Handed in {date} at {time}.",
@@ -1254,6 +1279,9 @@
         "titlePlaceholder": "e.g. Lab report 2: Ohm's law",
         "instructions": "Instructions",
         "instructionsHint": "Type / for headings, lists and tables. Add files below as attachments.",
+        "markingGuide": "Marking guide",
+        "markingGuidePlaceholder": "e.g. 2 marks for the diagram, 3 for the method, 1 for the unit",
+        "markingGuideHint": "Only you see this. Clasync AI uses it to suggest marks.",
         "attachments": "Attachments",
         "attachmentsAfterSave": "Save the draft first: you can add attachments on the next page.",
         "dueAt": "Due date and time",
@@ -1344,7 +1372,6 @@
         "saving": "Saving…",
         "save": "Save grade",
         "saved": "Saved",
-        "suggestionTitle": "Suggested by your assistant",
         "useSuggestion": "Use suggestion",
         "suggestionHint": "Fills the form. Nothing is saved until you save the grade."
       },
@@ -1371,6 +1398,40 @@
         "fileMismatch": "One of the uploads didn't arrive complete. Remove it and upload it again.",
         "fileCount": "Attach at most {max} files.",
         "files": "Some attachments are no longer available. Remove them and upload them again."
+      },
+      "ai": {
+        "column": "AI",
+        "suggestMarks": "Suggest marks",
+        "suggestingCount": "{count, plural, one {Suggesting a mark for # submission.} other {Suggesting marks for # submissions.}} You can leave this page.",
+        "badge": {
+          "suggested": "Suggested",
+          "queued": "Suggesting…",
+          "failed": "Couldn't suggest"
+        },
+        "byClasync": "Suggested by Clasync AI",
+        "byAssistant": "Suggested by your AI assistant",
+        "whatAiRead": "What the AI read",
+        "notRead": "Not read: File {n} ({reason})",
+        "unreadReason": {
+          "heic": "iPhone HEIC photo",
+          "too_large": "too large",
+          "unsupported": "file type not supported",
+          "limit": "over the file limit"
+        },
+        "suggestingOne": "Suggesting a mark…",
+        "failed": {
+          "provider": "The AI could not suggest a mark.",
+          "cap": "This month's AI limit is reached.",
+          "unreadable": "Nothing in this work could be read."
+        },
+        "tryAgain": "Try again",
+        "suggestOne": "Suggest a mark",
+        "errors": {
+          "cap": "This month's AI limit is reached.",
+          "aiOff": "AI mark suggestions are not available here.",
+          "graded": "This submission already has a grade.",
+          "notPublished": "Publish the assignment first."
+        }
       }
     },
     "files": {
@@ -2721,6 +2782,7 @@
       "errors": "Sentry receives error reports so problems can be fixed, with IP addresses removed.",
       "push": "If you turn on notifications, the push service of your browser's maker (Google, Apple, Mozilla or Microsoft) delivers them to your device. It only sees an encrypted message.",
       "ai": "Vercel AI Gateway sends a written test answer and its question to an AI model when a lecturer asks for a suggested mark, without your name, matricule or email. The lecturer decides the mark.",
+      "aiAssignments": "When a lecturer asks Clasync to suggest marks for an assignment, the student's answer and files are sent to Amazon Bedrock in the European Union to produce a suggestion. Clasync does not add the student's name, matricule or email; anything written in the work itself is sent as it is. The work is not used to train AI models. The lecturer decides every mark.",
       "google": "Google, only if you choose Continue with Google."
     },
     "assistants": {
@@ -2854,6 +2916,10 @@
       "app": {
         "title": "Install Clasync as an app",
         "body": "Add Clasync to your phone or computer and open it like any other app."
+      },
+      "aiMarking": {
+        "title": "Suggested marks for assignments",
+        "body": "Lecturers: Clasync can suggest marks for assignments, including photos of handwritten work. You review every suggestion before saving a grade."
       },
       "notifications": {
         "title": "Notifications",
