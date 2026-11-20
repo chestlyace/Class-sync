@@ -10,7 +10,6 @@ import type { Db } from '@/server/db'
 import { courseTest, testAnswer, testAttempt, testQuestion } from '@/server/db/schema'
 import { MAX_ANSWERS_PER_CALL, SuggesterError } from './ai/gateway'
 import { getMarkSuggester, type MarkSuggester, type Suggestion } from './ai/suggester'
-import { onlyEligible } from './catch-up'
 import { answersFinalAt } from './phase'
 import { requireOwnedTest, type TestRow } from './queries'
 import { COMMENT_MAX, questionMark, type QuestionKind } from './rules'
@@ -143,8 +142,7 @@ export async function getMarkingQuestion(ctx: Ctx, testId: string, questionId: s
   if (shorts.length === 0) automatic()
   requireFinal(test, now())
 
-  // A catch-up's marking page counts only the students who may sit it.
-  const roster = await onlyEligible(ctx.db, test, await courseRosterQuery(ctx.db, { courseId: course.id }))
+  const roster = await courseRosterQuery(ctx.db, { courseId: course.id })
   const onRoster = new Map(roster.map((r) => [r.studentId, r]))
 
   let question: QuestionRow | undefined
@@ -309,7 +307,7 @@ export async function suggestMarks(
       )
       .orderBy(asc(testAnswer.attemptId)),
   ])
-  const onRoster = new Set((await onlyEligible(ctx.db, test, roster)).map((r) => r.studentId))
+  const onRoster = new Set(roster.map((r) => r.studentId))
   const pending: PendingAnswer[] = rows
     .filter((r) => onRoster.has(r.studentId) && !isBlank(r.text))
     .map((r) => ({ attemptId: r.attemptId, text: r.text!.trim() }))
@@ -470,7 +468,7 @@ export async function storeAssistantSuggestions(
       .innerJoin(testAttempt, eq(testAttempt.id, testAnswer.attemptId))
       .where(eq(testAttempt.testId, test.id)),
   ])
-  const onRoster = new Set((await onlyEligible(ctx.db, test, roster)).map((r) => r.studentId))
+  const onRoster = new Set(roster.map((r) => r.studentId))
   const found = new Map(rows.map((r) => [key(r.attemptId, r.questionId), r]))
 
   const skipped: SkippedSuggestion[] = []

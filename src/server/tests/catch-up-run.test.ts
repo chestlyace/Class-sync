@@ -8,7 +8,6 @@ import { sendPush } from '@/server/push/send'
 import { createTestDb } from '@/test/db'
 import { at, clearMarkingData, insertStartedTest, joinTest, putAnswer, setClock, setupCourse } from '@/test/marking-fixture'
 import { giveCatchUp } from './authoring'
-import { getMarkingQuestion } from './marking'
 import { loadStoredQuestions } from './queries'
 import { getLiveTest, getTestResults, startTest } from './run'
 
@@ -136,19 +135,5 @@ describe('running a catch-up', () => {
     const items = calls[0][0] as PushItem[]
     expect(items.map((i) => i.userId).sort()).toEqual([o.carol.user.id, o.dave.user.id].sort())
     expect(items[0].payload).toMatchObject({ kind: 'testStarted' })
-  })
-
-  it('marking of a catch-up counts blanks among eligible students only', async () => {
-    const o = await ended()
-    const cu = await giveCatchUp(o.lecturer, o.test.id, picked(o.carol, o.dave), 'catch-up')
-    await start(cu.id)
-    // Carol opened the catch-up and left every answer blank; Dave, picked, never opened it.
-    await joinTest(db, cu.id, o.carol, at(46))
-    setClock(at(80))
-
-    const question = await getMarkingQuestion(o.lecturer, cu.id, null)
-    expect(question.answers).toEqual([])
-    // Not the four roster students, nor Dave: only Carol joined and left it blank.
-    expect(question.blank).toBe(1)
   })
 })
