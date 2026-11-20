@@ -19,6 +19,7 @@ import { racing } from '@/test/race'
 import {
   copyTest,
   getCatchUpOptions,
+  getCatchUpStudents,
   getTestForEdit,
   giveCatchUp,
   listCourseTests,
@@ -317,6 +318,19 @@ describe('giving and editing a catch-up', () => {
       setCatchUpStudents(racing(o.lecturer, 'transaction', gone), other.id, picked(o.carol)),
       'FORBIDDEN',
     )
+  })
+
+  it('getCatchUpStudents returns the picked ids to the owner only', async () => {
+    const o = await ended()
+    const cu = await giveCatchUp(o.lecturer, o.test.id, picked(o.carol, o.dave), 'catch-up')
+    expect((await getCatchUpStudents(o.lecturer, cu.id)).sort()).toEqual(ids(o.carol, o.dave))
+
+    const forMissed = await giveCatchUp(o.lecturer, o.test.id, missed, 'catch-up')
+    expect(await getCatchUpStudents(o.lecturer, forMissed.id)).toEqual([])
+
+    await expectAppError(getCatchUpStudents(o.colleague, cu.id), 'FORBIDDEN')
+    await expectAppError(getCatchUpStudents(o.alice, cu.id), 'FORBIDDEN')
+    await expectAppError(getCatchUpStudents(o.lecturer, o.test.id), 'CONFLICT', { reason: 'not_catch_up' })
   })
 
   it('updateTest on a catch-up keeps the original weight', async () => {

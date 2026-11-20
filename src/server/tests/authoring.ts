@@ -22,6 +22,8 @@ import { endsAt, testPhase, testState, type TestState } from './phase'
 import { loadStoredQuestions, requireOwnedTest, type StoredQuestion, type TestRow } from './queries'
 import { validateTestInput, type QuestionInput, type TestInput } from './rules'
 
+export type { CatchUpFor }
+
 export type TestSummary = {
   id: string
   courseId: string
@@ -526,6 +528,23 @@ export async function giveCatchUp(
     { ofId: original.id, for: choice.for, studentIds: choice.studentIds },
   )
   return summarizeTest(ctx.db, created)
+}
+
+/**
+ * The students picked for a catch-up I own (empty for "everyone who missed it"), as the edit
+ * page ticks them. CONFLICT not_catch_up on an ordinary test.
+ */
+export async function getCatchUpStudents(ctx: Ctx, catchUpId: string): Promise<string[]> {
+  const { test } = await requireOwnedTest(ctx, catchUpId)
+  if (test.catchUpOfId === null || test.catchUpFor === null) {
+    throw new AppError('CONFLICT', 'This test is not a catch-up', { reason: 'not_catch_up' })
+  }
+  if (test.catchUpFor !== 'picked') return []
+  const rows = await ctx.db
+    .select({ studentId: testCatchUpStudent.studentId })
+    .from(testCatchUpStudent)
+    .where(eq(testCatchUpStudent.testId, catchUpId))
+  return rows.map((r) => r.studentId)
 }
 
 /**
