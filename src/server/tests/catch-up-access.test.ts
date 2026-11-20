@@ -69,25 +69,39 @@ describe('who may open a catch-up', () => {
     await expect(resolveTestLink(o.lecturer, cu.code)).resolves.toMatchObject({ role: 'owner', testId: cu.id })
   })
 
-  it('sync and hand-in refuse a student removed before Start', async () => {
+  /** Carol is picked and has opened the catch-up (a waiting attempt); then she is taken off the list. */
+  async function pickedThenRemoved() {
     const o = await ended()
     const cu = await giveCatchUp(o.lecturer, o.test.id, picked(o.carol, o.dave), 'catch-up')
     const view = await openTest(o.carol, cu.code, 'dev-A')
     const attemptId = view.attemptId!
     await expect(syncAttempt(o.carol, attemptId, { deviceId: 'dev-A', answers: [], exits: [] })).resolves.toBeTruthy()
-
-    // Taken off the picked list while the attempt row is still there: before Start it gives no hold.
+    // Removed with the attempt row still there (the service would delete the waiting attempt too).
     await db
       .delete(testCatchUpStudent)
       .where(and(eq(testCatchUpStudent.testId, cu.id), eq(testCatchUpStudent.studentId, o.carol.user.id)))
-    await start(cu.id)
-    setClock(at(46))
+    return { o, cu, attemptId }
+  }
 
+  it('sync and hand-in refuse a student removed before Start', async () => {
+    const { o, attemptId } = await pickedThenRemoved()
+
+    // Not started: the attempt gives no hold, so the refusal comes before hand-in's not_started check.
     const refused = { code: 'FORBIDDEN' }
     await expect(syncAttempt(o.carol, attemptId, { deviceId: 'dev-A', answers: [], exits: [] })).rejects.toMatchObject(
       refused,
     )
     await expect(handIn(o.carol, attemptId, { deviceId: 'dev-A', answers: [] })).rejects.toMatchObject(refused)
+  })
+
+  it('a picked student with an attempt keeps access after Start even if removed from the list', async () => {
+    const { o, cu, attemptId } = await pickedThenRemoved()
+    await start(cu.id)
+    setClock(at(46))
+
+    await expect(syncAttempt(o.carol, attemptId, { deviceId: 'dev-A', answers: [], exits: [] })).resolves.toBeTruthy()
+    await expect(openTest(o.carol, cu.code, 'dev-A')).resolves.toMatchObject({ stage: 'answering' })
+    await expect(resolveTestLink(o.carol, cu.code)).resolves.toEqual({ role: 'student', testId: cu.id })
   })
 
   it('a student who sat catch-up 1 cannot open catch-up 2', async () => {
