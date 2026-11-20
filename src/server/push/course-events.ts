@@ -83,8 +83,11 @@ export async function pushTestStarted(
   db: Db,
   courseId: string,
   test: { id: string; title: string; code: string },
-  /** A catch-up's eligible students: when given, everyone else on the roster is left out. */
-  onlyStudentIds?: Set<string>,
+  /**
+   * For a catch-up: of the roster's student ids, those who may sit it; everyone else is left out.
+   * Called while the push is prepared, so a failure there sends nothing and never fails Start.
+   */
+  eligibleOf?: (studentIds: string[]) => Promise<Set<string>>,
 ): Promise<void> {
   await queuePush('test-started', () =>
     toRoster(
@@ -97,7 +100,11 @@ export async function pushTestStarted(
         url: '/t/' + encodeURIComponent(test.code),
         tag: `test-${test.id}`,
       }),
-      onlyStudentIds && (async (studentIds) => new Set(studentIds.filter((id) => !onlyStudentIds.has(id)))),
+      eligibleOf &&
+        (async (studentIds) => {
+          const eligible = await eligibleOf(studentIds)
+          return new Set(studentIds.filter((id) => !eligible.has(id)))
+        }),
     ),
   )
 }

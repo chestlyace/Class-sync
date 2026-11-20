@@ -156,8 +156,8 @@ export async function eligibleStudents(
 }
 
 /**
- * `roster` narrowed to the students who may sit `test`: a catch-up's live, results and marking
- * views list only these. An ordinary test returns `roster` as it is, with no query.
+ * `roster` narrowed to the students who may sit `test`: a catch-up's live and results views
+ * list only these. An ordinary test returns `roster` as it is, with no query.
  */
 export async function onlyEligible<T extends { studentId: string }>(
   db: Db,

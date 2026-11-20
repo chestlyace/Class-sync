@@ -152,17 +152,11 @@ export async function startTest(ctx: Ctx, testId: string): Promise<TestSummary> 
   if (!row) forbidden()
   // Only the first Start announces the test.
   if (started) {
-    // A catch-up announces itself only to the students who may sit it.
-    let only: Set<string> | undefined
-    if (row.catchUpOfId !== null) {
-      const roster = await courseRosterQuery(ctx.db, { courseId: row.courseId })
-      only = await eligibleStudents(
-        ctx.db,
-        row,
-        roster.map((r) => r.studentId),
-      )
-    }
-    await pushTestStarted(ctx.db, row.courseId, { id: row.id, title: row.title, code: row.code }, only)
+    // A catch-up announces itself only to the students who may sit it. They are worked out while
+    // the push is prepared (from the roster it loads), where a failure is logged, not thrown.
+    const eligibleOf =
+      row.catchUpOfId === null ? undefined : (studentIds: string[]) => eligibleStudents(ctx.db, row, studentIds)
+    await pushTestStarted(ctx.db, row.courseId, { id: row.id, title: row.title, code: row.code }, eligibleOf)
   }
   return summarizeTest(ctx.db, row)
 }

@@ -311,7 +311,15 @@ async function requireMyAttempt(
     .innerJoin(course, eq(course.id, courseTest.courseId))
     .where(and(eq(testAttempt.id, attemptId), eq(testAttempt.studentId, ctx.user.id)))
   if (!row || !(await isOnCourseRoster(ctx.db, row.test.courseId, ctx.user.id))) forbidden()
-  if (row.test.catchUpOfId !== null && !(await mayTakeCatchUp(ctx.db, row.test, ctx.user.id))) forbidden()
+  // Once a catch-up has started, an attempt on it always holds eligibility, so only a waiting
+  // attempt (before Start) needs the check: no extra queries on each sync or hand-in.
+  if (
+    row.test.catchUpOfId !== null &&
+    row.test.startedAt === null &&
+    !(await mayTakeCatchUp(ctx.db, row.test, ctx.user.id))
+  ) {
+    forbidden()
+  }
   return row
 }
 
