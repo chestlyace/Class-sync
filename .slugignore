@@ -1,0 +1,5 @@
+e2e
+docs
+brand
+*.test.ts
+*.test.tsx
