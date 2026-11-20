@@ -205,13 +205,14 @@ describe('CA with catch-up tests', () => {
     const cu = await catchUp(o.lecturer, o.test.id, picked(o.carol, o.dave))
     await start(cu.id)
     await sit(cu.id, o.carol, 'right')
-    // Dave opens the catch-up and answers nothing: he took it, so the original counts (0).
+    // Dave opens the catch-up and answers nothing: he did not sit it, nor take the original,
+    // so he stays left out rather than getting 0.
     await sit(cu.id, o.dave, null)
     setClock(at(80))
 
     const ca = await lines(o.bio.id)
     expect(ca.of(o.carol)).toEqual([{ weight: WEIGHT, ratio: 1 }])
-    expect(ca.of(o.dave)).toEqual([{ weight: WEIGHT, ratio: 0 }])
+    expect(ca.of(o.dave)).toEqual([])
     // Erin was not picked and took nothing.
     expect(ca.of(erin)).toEqual([])
   })

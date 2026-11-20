@@ -97,7 +97,8 @@ function countsInCa(t: TestForCa, at: Date): boolean {
  * the latest joined, if several), else T. The line counts once its source counts, with the
  * source's score / out of. With T as the source, S is left out (pending) while they may still sit
  * a catch-up of T that does not count yet. "Took it", for the ended-before-joining rule, is an
- * attempt on T or on any of its catch-ups.
+ * attempt on T or a sat catch-up of T (which is then the source); opening a catch-up and
+ * answering nothing is not taking it.
  *
  * A part has started for the class when: attendance — a roster student has a counted session;
  * assignments — a published assignment has its grades released; participation — a roster student
@@ -272,11 +273,12 @@ export async function loadCaInputs(
       if (source === t) {
         // They may still sit a catch-up that does not count yet: pending, not 0.
         if (ownCatchUps.some((c) => mayStillSit.get(c.id)?.has(studentId))) continue
-        // Ended before they joined and not taken (no attempt on it or a catch-up): left out.
-        // Taken: counts, whenever it ended.
+        // Ended before they joined and not taken: left out. Taken: counts, whenever it ended.
+        // "Took" is an attempt on T or a sat catch-up; a sat catch-up is always the source, so
+        // here only an attempt on T counts (a catch-up opened and left blank does not).
         const end = endsAt(t)
         const endedBeforeJoining = start !== undefined && end !== null && end.getTime() < start.getTime()
-        const took = [t, ...ownCatchUps].some((x) => tookTest.has(`${x.id}:${studentId}`))
+        const took = tookTest.has(`${t.id}:${studentId}`)
         if (endedBeforeJoining && !took) continue
       }
       // No attempt scores like an empty one: 0. The ratio is the source's; the weight is the test's.
