@@ -14,6 +14,7 @@ import { runAfterResponse } from '@/server/lib/after-response'
 import { safePushItems } from '@/server/push/build'
 import { pushPayload } from '@/server/push/payload'
 import { sendPush } from '@/server/push/send'
+import { mayTakeCatchUp } from './catch-up'
 import { automatic, requireFinal } from './marking'
 import { scoreAttempt, type ScoringAnswer } from './paper'
 import { canSeeResult, testPhase } from './phase'
@@ -148,6 +149,9 @@ export async function getMyTestResult(ctx: Ctx, testId: string): Promise<MyTestR
     throw new AppError('FORBIDDEN', 'You do not have access to this test')
   }
   const { test } = found
+  if (test.catchUpOfId !== null && !(await mayTakeCatchUp(ctx.db, test, ctx.user.id))) {
+    throw new AppError('FORBIDDEN', 'You do not have access to this test')
+  }
 
   const [questions, answers, attempts] = await Promise.all([
     ctx.db

@@ -2099,6 +2099,44 @@
       "switchLabel": "Let students review this test",
       "switchHelp": "Once results are out and every class has taken it, students see the questions, their answers and the correct answers, and can practise it again. Turn this off if you'll reuse these questions.",
       "questions": "Questions"
+    },
+    "catchUp": {
+      "badge": "Catch-up",
+      "titleSuffix": "catch-up",
+      "give": "Give a catch-up",
+      "whoCanSit": "Who can sit it",
+      "missed": "Everyone who missed it ({count})",
+      "picked": "Only these students",
+      "everyoneSat": "Everyone sat this test",
+      "answersNote": "Students who sat it may already know the answers. You can change the questions on the next screen.",
+      "status": {
+        "not_joined": "Not joined",
+        "left_early": "Left early",
+        "not_handed_in": "Didn't hand in",
+        "handed_in": "Handed in"
+      },
+      "pickedCount": "{count, plural, =0 {No students picked} one {# student picked} other {# students picked}}",
+      "forMissed": "Everyone who missed it",
+      "missedCount": "{count, plural, =0 {Nobody who missed it} one {# who missed it} other {# who missed it}}",
+      "listHeading": "Catch-ups",
+      "original": "Original test: {title}",
+      "rowScore": "Catch-up: {score} / {outOf}",
+      "rowPending": "{count, plural, one {# to mark} other {# to mark}}",
+      "noStudents": "No students on this course yet.",
+      "giving": "Giving the catch-up…",
+      "save": "Save who can sit it",
+      "saving": "Saving…",
+      "saved": "Saved.",
+      "startedPicked": "The catch-up has started: you can add students, and take off only those who have not opened it.",
+      "startedMissed": "The catch-up has started: who can sit it can no longer change.",
+      "errors": {
+        "notEnded": "This test hasn't ended yet. Give a catch-up once it has.",
+        "isCatchUp": "This test is a catch-up. Give another catch-up from the original test.",
+        "notCatchUp": "This test isn't a catch-up.",
+        "started": "The catch-up has started: you can add students, but not take any off or change who it's for.",
+        "nobodyMissed": "Everyone sat this test. Pick the students instead.",
+        "studentIds": "Pick at least one student on the course."
+      }
     }
   },
   "notes": {

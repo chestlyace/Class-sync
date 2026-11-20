@@ -1,11 +1,21 @@
 'use server'
 
+import { getTranslations } from 'next-intl/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { toActionResult, type ActionResult } from '@/lib/action-result'
 import { getCtx } from '@/server/auth/session'
 import { AppError } from '@/server/core/errors'
-import { copyTest, createTest, deleteTest, setStudentsCanReview, updateTest } from '@/server/tests/authoring'
+import {
+  copyTest,
+  createTest,
+  deleteTest,
+  giveCatchUp,
+  setCatchUpStudents,
+  setStudentsCanReview,
+  updateTest,
+  type CatchUpFor,
+} from '@/server/tests/authoring'
 import { requireOwnedTest } from '@/server/tests/queries'
 import {
   endTestForEveryone,
@@ -131,6 +141,32 @@ export async function setStudentsCanReviewAction(testId: string, on: boolean): P
     const id = requireId(testId, 'testId')
     if (typeof on !== 'boolean') invalid('on')
     await setStudentsCanReview(await getCtx(), id, on)
+    revalidateTests()
+    return null
+  })
+}
+
+/** Who sits a catch-up, as the catch-up form sends it; the service validates it. */
+export type CatchUpChoice = { for: CatchUpFor; studentIds: string[] }
+
+/**
+ * "Give a catch-up" of an ended test: creates it titled "<original title> (catch-up)" in the
+ * lecturer's language. The form then opens the new test's edit page.
+ */
+export async function giveCatchUpAction(testId: string, input: CatchUpChoice): Promise<ActionResult<{ id: string }>> {
+  return toActionResult(async () => {
+    const id = requireId(testId, 'testId')
+    const t = await getTranslations('tests.catchUp')
+    const created = await giveCatchUp(await getCtx(), id, input, t('titleSuffix'))
+    revalidateTests()
+    return { id: created.id }
+  })
+}
+
+/** Changes who sits a catch-up: anything before Start, additions only after it. */
+export async function setCatchUpStudentsAction(testId: string, input: CatchUpChoice): Promise<ActionResult<null>> {
+  return toActionResult(async () => {
+    await setCatchUpStudents(await getCtx(), requireId(testId, 'testId'), input)
     revalidateTests()
     return null
   })
