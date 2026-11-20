@@ -1,18 +1,20 @@
-import { ArrowLeft, ChevronRight, Info, Plus } from 'lucide-react'
+import { ArrowLeft, ChevronRight, CornerDownRight, Info, Plus } from 'lucide-react'
 import { getLocale, getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
 import { PageHeader, SectionHeading } from '@/components/page-header'
+import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
-import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
+import { DEFAULT_LOCALE, isLocale, type Locale } from '@/i18n/locale'
 import { formatDecimal } from '@/lib/number-format'
+import { cn } from '@/lib/utils'
 import { config } from '@/server/core/config'
 import { getCourse, type CourseSummary } from '@/server/courses/service'
 import { getCaSettings } from '@/server/performance/inputs'
 import { listCourseTests, type TestSummary } from '@/server/tests/authoring'
 import { loadPage } from '../../../load-page'
 import { formatSessionDate } from '../../attendance-format'
-import { TestStatePill } from '../../test-state'
+import { CatchUpAudience, TestStatePill } from '../../test-state'
 
 export async function generateMetadata() {
   const t = await getTranslations('tests.lecturer')
@@ -74,38 +76,91 @@ export default async function TestListPage({ params }: PageProps<'/courses/[cour
           <p className="max-w-prose text-muted-foreground">{t('empty')}</p>
         ) : (
           <ul className="flex flex-col divide-y rounded-3xl border">
-            {tests.map((test) => (
+            {groupCatchUps(tests).map(({ test, catchUps }) => (
               <li key={test.id}>
-                <Link
-                  href={`${courseHref}/tests/${encodeURIComponent(test.id)}`}
-                  className="flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-muted/60 sm:px-5"
-                >
-                  <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <span className="flex flex-wrap items-center gap-2">
-                      <span className="min-w-0 truncate font-medium">{test.title}</span>
-                      <TestStatePill state={test.state} />
-                      {test.state === 'not_started' && test.joined > 0 && (
-                        <span className="text-sm text-muted-foreground">{t('waiting', { count: test.joined })}</span>
-                      )}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      {t('questionCount', { count: test.questionCount })} ·{' '}
-                      {t('totalMarks', { total: formatDecimal(test.totalMarks, locale), count: test.totalMarks })} ·{' '}
-                      {t('duration', { minutes: test.durationMinutes })}
-                    </span>
-                    {test.startedAt && (
-                      <span className="font-mono text-xs tracking-[0.04em] text-muted-foreground">
-                        {t('startedOn', { date: formatSessionDate(test.startedAt, locale, config.timeZone) })}
-                      </span>
-                    )}
-                  </div>
-                  <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                </Link>
+                <TestRow test={test} courseHref={courseHref} locale={locale} />
+                {catchUps.length > 0 && (
+                  // Each catch-up sits under the test it catches up on.
+                  <ul className="flex flex-col divide-y border-t">
+                    {catchUps.map((catchUp) => (
+                      <li key={catchUp.id}>
+                        <TestRow test={catchUp} courseHref={courseHref} locale={locale} nested />
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>
         )}
       </section>
     </>
+  )
+}
+
+/**
+ * Originals in list order (newest first), each with its catch-ups in the same order. A catch-up
+ * whose original is not in the list stands on its own.
+ */
+function groupCatchUps(tests: TestSummary[]): { test: TestSummary; catchUps: TestSummary[] }[] {
+  const ids = new Set(tests.map((t) => t.id))
+  const under = new Map<string, TestSummary[]>()
+  for (const test of tests) {
+    if (!test.catchUpOf || !ids.has(test.catchUpOf.id)) continue
+    under.set(test.catchUpOf.id, [...(under.get(test.catchUpOf.id) ?? []), test])
+  }
+  return tests
+    .filter((t) => !t.catchUpOf || !ids.has(t.catchUpOf.id))
+    .map((test) => ({ test, catchUps: under.get(test.id) ?? [] }))
+}
+
+async function TestRow({
+  test,
+  courseHref,
+  locale,
+  nested = false,
+}: {
+  test: TestSummary
+  courseHref: string
+  locale: Locale
+  nested?: boolean
+}) {
+  const [t, tCatchUp] = await Promise.all([getTranslations('tests.lecturer'), getTranslations('tests.catchUp')])
+  return (
+    <Link
+      href={`${courseHref}/tests/${encodeURIComponent(test.id)}`}
+      className={cn(
+        'flex items-center gap-4 py-3.5 pr-4 transition-colors hover:bg-muted/60 sm:pr-5',
+        nested ? 'pl-6 sm:pl-8' : 'pl-4 sm:pl-5',
+      )}
+    >
+      {nested && <CornerDownRight aria-hidden="true" className="mt-0.5 size-4 shrink-0 self-start text-muted-foreground" />}
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="min-w-0 truncate font-medium">{test.title}</span>
+          {test.catchUpOf && <Badge variant="secondary">{tCatchUp('badge')}</Badge>}
+          <TestStatePill state={test.state} />
+          {test.state === 'not_started' && test.joined > 0 && (
+            <span className="text-sm text-muted-foreground">{t('waiting', { count: test.joined })}</span>
+          )}
+        </span>
+        <span className="text-sm text-muted-foreground">
+          {test.catchUpFor && (
+            <>
+              <CatchUpAudience catchUpFor={test.catchUpFor} pickedCount={test.pickedCount} /> ·{' '}
+            </>
+          )}
+          {t('questionCount', { count: test.questionCount })} ·{' '}
+          {t('totalMarks', { total: formatDecimal(test.totalMarks, locale), count: test.totalMarks })} ·{' '}
+          {t('duration', { minutes: test.durationMinutes })}
+        </span>
+        {test.startedAt && (
+          <span className="font-mono text-xs tracking-[0.04em] text-muted-foreground">
+            {t('startedOn', { date: formatSessionDate(test.startedAt, locale, config.timeZone) })}
+          </span>
+        )}
+      </div>
+      <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+    </Link>
   )
 }

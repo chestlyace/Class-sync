@@ -14,3 +14,9 @@ export function TestStatePill({ state }: { state: TestState }) {
   const t = useTranslations('tests.lecturer.state')
   return <Badge variant={VARIANT[state]}>{t(state)}</Badge>
 }
+
+/** Who a catch-up is for: "Everyone who missed it" or "3 students picked". */
+export function CatchUpAudience({ catchUpFor, pickedCount }: { catchUpFor: 'missed' | 'picked'; pickedCount: number | null }) {
+  const t = useTranslations('tests.catchUp')
+  return catchUpFor === 'missed' ? t('forMissed') : t('pickedCount', { count: pickedCount ?? 0 })
+}

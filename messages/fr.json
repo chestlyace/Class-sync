@@ -2116,6 +2116,11 @@
         "handed_in": "A remis"
       },
       "pickedCount": "{count, plural, =0 {Aucun étudiant choisi} one {# étudiant choisi} other {# étudiants choisis}}",
+      "forMissed": "Tous ceux qui l'ont manqué",
+      "listHeading": "Rattrapages",
+      "original": "Test d'origine : {title}",
+      "rowScore": "Rattrapage : {score} / {outOf}",
+      "rowPending": "{count, plural, one {# à corriger} other {# à corriger}}",
       "noStudents": "Aucun étudiant dans ce cours pour l'instant.",
       "giving": "Création du rattrapage…",
       "save": "Enregistrer qui peut le passer",
