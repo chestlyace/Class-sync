@@ -27,6 +27,7 @@ export default async function AdminPersonPage({ params }: PageProps<'/admin/peop
   const isSelf = viewer?.id === person.id
   const can = {
     canResend: !person.emailVerified && !suspended,
+    canSendReset: !suspended,
     canRevoke: person.sessions.length > 0,
     canUnsuspend: suspended,
     canSuspend: !suspended && !isSelf && !person.isAdmin,

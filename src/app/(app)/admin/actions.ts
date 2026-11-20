@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { toActionResult, type ActionResult } from '@/lib/action-result'
 import { formString } from '@/lib/form-data'
-import { resendVerification, revokeSessions, suspendUser, unsuspendUser } from '@/server/admin/actions'
+import { resendVerification, revokeSessions, sendPasswordReset, suspendUser, unsuspendUser } from '@/server/admin/actions'
 import {
   adminDeleteSchool,
   adminUpdateSchool,
@@ -79,6 +79,11 @@ export async function revokeSessionsAction(targetId: string, reason?: string): P
 /** Sends a fresh verification email to an unverified account. */
 export async function resendVerificationAction(targetId: string, reason?: string): Promise<ActionResult<null>> {
   return run((ctx, id, why) => resendVerification(ctx, id, why), targetId, reason)
+}
+
+/** Emails the account a link to choose a new password (the same link as "Forgot password"). */
+export async function sendPasswordResetAction(targetId: string, reason?: string): Promise<ActionResult<null>> {
+  return run((ctx, id, why) => sendPasswordReset(ctx, id, why), targetId, reason)
 }
 
 // ---------------------------------------------------------------------------------------------
