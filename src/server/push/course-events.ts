@@ -83,14 +83,22 @@ export async function pushTestStarted(
   db: Db,
   courseId: string,
   test: { id: string; title: string; code: string },
+  /** A catch-up's eligible students: when given, everyone else on the roster is left out. */
+  onlyStudentIds?: Set<string>,
 ): Promise<void> {
   await queuePush('test-started', () =>
-    toRoster(db, courseId, 'testStarted', (courseTitle) => ({
-      courseTitle,
-      testTitle: test.title,
-      url: '/t/' + encodeURIComponent(test.code),
-      tag: `test-${test.id}`,
-    })),
+    toRoster(
+      db,
+      courseId,
+      'testStarted',
+      (courseTitle) => ({
+        courseTitle,
+        testTitle: test.title,
+        url: '/t/' + encodeURIComponent(test.code),
+        tag: `test-${test.id}`,
+      }),
+      onlyStudentIds && (async (studentIds) => new Set(studentIds.filter((id) => !onlyStudentIds.has(id)))),
+    ),
   )
 }
 

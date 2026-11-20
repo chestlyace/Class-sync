@@ -155,6 +155,24 @@ export async function eligibleStudents(
   return byTest.get(test.id) ?? new Set();
 }
 
+/**
+ * `roster` narrowed to the students who may sit `test`: a catch-up's live, results and marking
+ * views list only these. An ordinary test returns `roster` as it is, with no query.
+ */
+export async function onlyEligible<T extends { studentId: string }>(
+  db: Db,
+  test: CatchUpTest,
+  roster: T[],
+): Promise<T[]> {
+  if (test.catchUpOfId === null) return roster
+  const eligible = await eligibleStudents(
+    db,
+    test,
+    roster.map((r) => r.studentId),
+  )
+  return roster.filter((r) => eligible.has(r.studentId))
+}
+
 /** Whether one student may sit `test`. Being on the course roster stays the caller's check. */
 export async function mayTakeCatchUp(
   db: Db,
