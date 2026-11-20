@@ -5,6 +5,7 @@ import en from '../../../../messages/en.json'
 import { ResetPasswordForm } from './reset-password-form'
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }))
+vi.mock('./actions', () => ({ resetPasswordAction: vi.fn() }))
 
 function render(props: { token: string | null; email: string | null; next?: string | null }) {
   return renderToStaticMarkup(
@@ -25,13 +26,16 @@ describe('ResetPasswordForm', () => {
   const live = { token: 'live-token', email: 'ama@example.com' }
 
   it('lets password managers suggest and save the new password', () => {
+    const tag = inputTag(render(live), 'newPassword').toLowerCase()
+    expect(tag).toContain('autocomplete="new-password"')
+    expect(tag).not.toContain('data-1p-ignore')
+    expect(tag).not.toContain('data-lpignore')
+  })
+
+  it('asks for the new password once: no confirm field to mismatch', () => {
     const html = render(live)
-    for (const id of ['newPassword', 'confirmPassword']) {
-      const tag = inputTag(html, id).toLowerCase()
-      expect(tag).toContain('autocomplete="new-password"')
-      expect(tag).not.toContain('data-1p-ignore')
-      expect(tag).not.toContain('data-lpignore')
-    }
+    expect(html).not.toContain('id="confirmPassword"')
+    expect(html.match(/type="password"/g)).toHaveLength(1)
   })
 
   it('names the account, for the reader and for password managers', () => {

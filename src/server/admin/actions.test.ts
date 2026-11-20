@@ -5,7 +5,7 @@ import type { Db } from '@/server/db'
 import { adminAction, session, user } from '@/server/db/schema'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
-import { resendVerification, revokeSessions, suspendUser, unsuspendUser } from './actions'
+import { resendVerification, revokeSessions, sendPasswordReset, suspendUser, unsuspendUser } from './actions'
 
 describe('admin actions', () => {
   let db: Db
@@ -148,6 +148,29 @@ describe('admin actions', () => {
       code: 'CONFLICT',
     })
     expect(send).not.toHaveBeenCalled()
+    expect(await audits()).toHaveLength(1)
+  })
+
+  it('sends a password reset link to the account and audits it', async () => {
+    const target = await makeUser(db)
+    const send = vi.fn().mockResolvedValue(undefined)
+    await sendPasswordReset(ctxFor(db, admin), target.id, 'wrote to support', send)
+    expect(send).toHaveBeenCalledWith(target.email)
+    const [a] = await audits()
+    expect(a).toMatchObject({ adminId: admin.id, action: 'send_password_reset', targetUserId: target.id, reason: 'wrote to support' })
+  })
+
+  it('refuses a reset link for a suspended account, an unknown one, or a non-admin', async () => {
+    const suspended = await makeUser(db)
+    await suspendUser(ctxFor(db, admin), suspended.id)
+    const send = vi.fn()
+    await expect(sendPasswordReset(ctxFor(db, admin), suspended.id, undefined, send)).rejects.toMatchObject({ code: 'CONFLICT' })
+    await expect(sendPasswordReset(ctxFor(db, admin), crypto.randomUUID(), undefined, send)).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    const someone = await makeUser(db)
+    // The admin guard answers NOT_FOUND, so admin pages don't reveal that they exist.
+    await expect(sendPasswordReset(ctxFor(db, someone), suspended.id, undefined, send)).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    expect(send).not.toHaveBeenCalled()
+    // Only the suspension was audited.
     expect(await audits()).toHaveLength(1)
   })
 })
