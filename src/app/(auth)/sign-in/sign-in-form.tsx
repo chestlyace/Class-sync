@@ -123,7 +123,7 @@ export function SignInForm({
           <PasswordInput id="password" name="password" autoComplete="current-password" required />
           <Link
             href={next ? `/forgot-password?next=${encodeURIComponent(next)}` : '/forgot-password'}
-            className="-mt-1 self-end text-sm text-[#48484a] underline-offset-4 hover:underline"
+            className="-mt-1 self-end text-sm text-primary underline-offset-4 hover:underline"
           >
             {t('forgotPassword')}
           </Link>
