@@ -68,6 +68,7 @@
       "newPassword": "New password",
       "confirmPassword": "Confirm new password",
       "passwordHint": "At least 8 characters.",
+      "match": "The two passwords match.",
       "mismatch": "The two passwords don't match.",
       "invalidLink": "This link is invalid or has expired. Ask for a new one.",
       "revokeNote": "For your security, this signs you out of all your devices.",

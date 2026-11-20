@@ -68,6 +68,7 @@
       "newPassword": "Nouveau mot de passe",
       "confirmPassword": "Confirmer le nouveau mot de passe",
       "passwordHint": "Au moins 8 caractères.",
+      "match": "Les deux mots de passe correspondent.",
       "mismatch": "Les deux mots de passe ne correspondent pas.",
       "invalidLink": "Ce lien n'est pas valide ou a expiré. Demandez-en un nouveau.",
       "revokeNote": "Pour votre sécurité, cette action vous déconnecte de tous vos appareils.",
