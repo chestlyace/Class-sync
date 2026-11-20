@@ -11,6 +11,7 @@ import { jwt } from 'better-auth/plugins'
 import { waitUntil } from '@vercel/functions'
 import { isLocale } from '@/i18n/locale'
 import { safeNextPath } from '@/lib/next-path'
+import { RESET_RESEND_SECONDS } from '@/lib/password-reset'
 import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import { AppError } from '@/server/core/errors'
@@ -45,7 +46,7 @@ const SIGN_UP_RULE = { window: 60, max: 30 }
 // A class shares one public IP, so this limit must be as generous as sign-in's; flooding a single
 // inbox is stopped by the per-address cooldown below instead.
 const RESET_REQUEST_RULE = { window: 60, max: 100 }
-const RESET_COOLDOWN_MS = 5 * 60 * 1000
+const RESET_COOLDOWN_MS = RESET_RESEND_SECONDS * 1000
 const VERIFY_LINK_TTL_SECONDS = 7 * 24 * 60 * 60
 // Students read mail days later and may be on a patchy connection; a day is still short enough
 // that a stolen link has little time to be used.

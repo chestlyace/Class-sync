@@ -1,0 +1,2 @@
+ALTER TABLE "admin_action" DROP CONSTRAINT "admin_action_action_check";--> statement-breakpoint
+ALTER TABLE "admin_action" ADD CONSTRAINT "admin_action_action_check" CHECK ("admin_action"."action" in ('suspend', 'unsuspend', 'revoke_sessions', 'resend_verification', 'send_password_reset', 'school_update', 'school_delete', 'school_merge'));

@@ -60,19 +60,20 @@
       "sentTitle": "Vérifiez votre boîte mail",
       "sentDescription": "Si un compte existe pour {email}, nous avons envoyé un lien pour réinitialiser son mot de passe. Ce lien est valable 24 heures.",
       "hint": "Vous ne le trouvez pas ? Regardez dans vos courriers indésirables.",
+      "google": "Inscrit avec Google ? Vous n'avez pas besoin de mot de passe : utilisez Continuer avec Google sur la page de connexion.",
+      "resend": "Renvoyer",
+      "resendIn": "Renvoyer dans {time}",
+      "resent": "Nous avons envoyé un autre lien. Seul le plus récent est utile.",
       "backToSignIn": "Retour à la connexion"
     },
     "resetPassword": {
       "title": "Choisissez un nouveau mot de passe",
       "forAccount": "Pour le compte Clasync {email}.",
       "newPassword": "Nouveau mot de passe",
-      "confirmPassword": "Confirmer le nouveau mot de passe",
       "passwordHint": "Au moins 8 caractères.",
-      "match": "Les deux mots de passe correspondent.",
-      "mismatch": "Les deux mots de passe ne correspondent pas.",
       "invalidLink": "Ce lien a expiré ou a déjà servi. Demandez-en un nouveau : cela prend une minute.",
       "newLink": "M'envoyer un nouveau lien",
-      "revokeNote": "Pour votre sécurité, cette action vous déconnecte de tous vos appareils.",
+      "revokeNote": "Cette action vous déconnecte de vos autres appareils et vous connecte ici.",
       "submit": "Modifier le mot de passe",
       "submitting": "Modification du mot de passe…",
       "backToSignIn": "Retour à la connexion"
@@ -2639,6 +2640,12 @@
         "title": "Renvoyer l'e-mail de vérification ?",
         "body": "Un nouveau lien de vérification sera envoyé à {email}.",
         "confirm": "Envoyer"
+      },
+      "reset": {
+        "trigger": "Envoyer un lien de réinitialisation",
+        "title": "Envoyer un lien de réinitialisation ?",
+        "body": "Un lien pour choisir un nouveau mot de passe sera envoyé à {email}. Il reste valable 24 heures, et vous ne le verrez pas.",
+        "confirm": "Envoyer le lien"
       }
     },
     "usage": {
@@ -2743,6 +2750,7 @@
         "unsuspend": "Suspension levée",
         "revoke_sessions": "Déconnexion partout",
         "resend_verification": "E-mail de vérification renvoyé",
+        "send_password_reset": "Lien de réinitialisation du mot de passe envoyé",
         "school_update": "École modifiée",
         "school_delete": "École supprimée",
         "school_merge": "Écoles fusionnées"
