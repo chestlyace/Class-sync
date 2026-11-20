@@ -2133,7 +2133,7 @@
         "notEnded": "Ce test n'est pas encore terminé. Donnez un rattrapage une fois qu'il l'est.",
         "isCatchUp": "Ce test est un rattrapage. Donnez un autre rattrapage depuis le test d'origine.",
         "notCatchUp": "Ce test n'est pas un rattrapage.",
-        "started": "Le rattrapage a commencé : vous pouvez ajouter des étudiants, mais pas en retirer ni changer pour qui il est.",
+        "started": "Le rattrapage a commencé : vous ne pouvez plus retirer un étudiant qui l'a ouvert, ni changer pour qui il est.",
         "nobodyMissed": "Tout le monde a passé ce test. Choisissez plutôt les étudiants.",
         "studentIds": "Choisissez au moins un étudiant du cours."
       }

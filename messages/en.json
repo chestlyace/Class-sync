@@ -2133,7 +2133,7 @@
         "notEnded": "This test hasn't ended yet. Give a catch-up once it has.",
         "isCatchUp": "This test is a catch-up. Give another catch-up from the original test.",
         "notCatchUp": "This test isn't a catch-up.",
-        "started": "The catch-up has started: you can add students, but not take any off or change who it's for.",
+        "started": "The catch-up has started: you can no longer take off a student who has opened it, or change who it's for.",
         "nobodyMissed": "Everyone sat this test. Pick the students instead.",
         "studentIds": "Pick at least one student on the course."
       }
