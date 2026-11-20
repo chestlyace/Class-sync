@@ -23,8 +23,11 @@ import { CatchUpForm } from '../../../../catch-up-form'
 import { CopyTestForm, TestEditor } from '../../../../test-editor'
 import { TestStatePill } from '../../../../test-state'
 
-/** A catch-up's "who can sit it": the original's roster with statuses, and who is picked now. */
-type CatchUpEdit = { options: CatchUpOptions; for: CatchUpFor; studentIds: string[] }
+/**
+ * A catch-up's "who can sit it": the original's roster with statuses, who is picked now, and
+ * which picked students have an attempt on it (after Start they stay ticked).
+ */
+type CatchUpEdit = { options: CatchUpOptions; for: CatchUpFor; studentIds: string[]; withAttempt: string[] }
 
 type EditView = {
   test: TestForEdit
@@ -55,11 +58,12 @@ export default async function EditTestPage({
     const { catchUpOf, catchUpFor } = test.summary
     let catchUp: CatchUpEdit | null = null
     if (catchUpOf && catchUpFor) {
-      const [options, studentIds] = await Promise.all([
-        getCatchUpOptions(ctx, catchUpOf.id),
+      // This catch-up's own attempts do not count against "everyone who missed it".
+      const [options, students] = await Promise.all([
+        getCatchUpOptions(ctx, catchUpOf.id, test.summary.id),
         getCatchUpStudents(ctx, test.summary.id),
       ])
-      catchUp = { options, for: catchUpFor, studentIds }
+      catchUp = { options, for: catchUpFor, ...students }
     }
     return { test, courses, userId: ctx.user.id, catchUp }
   })
@@ -114,6 +118,7 @@ export default async function EditTestPage({
             missedCount={catchUp.options.missedCount}
             answersMayBeOut={catchUp.options.answersMayBeOut}
             initial={{ for: catchUp.for, studentIds: catchUp.studentIds }}
+            withAttempt={catchUp.withAttempt}
             started={locked}
           />
         </Panel>

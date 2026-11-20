@@ -66,15 +66,20 @@ describe('CatchUpForm', () => {
     expect(html).toContain(en.tests.catchUp.status.handed_in)
   })
 
-  it('after Start, already-picked students cannot be unticked', () => {
+  it('after Start, picked students with an attempt cannot be unticked', () => {
     const html = render({
       mode: 'edit',
       started: true,
-      initial: { for: 'picked', studentIds: ['s-dave'] },
+      initial: { for: 'picked', studentIds: ['s-dave', 's-carol'] },
+      withAttempt: ['s-dave'],
     })
     const dave = inputTag(html, 's-dave')
     expect(dave).toContain('checked')
     expect(dave).toContain('disabled')
+    // Carol is picked but never opened it: she can still be taken off.
+    const carol = inputTag(html, 's-carol')
+    expect(carol).toContain('checked')
+    expect(carol).not.toContain('disabled')
     // Others can still be added.
     const fred = inputTag(html, 's-fred')
     expect(fred).not.toContain('checked')
@@ -83,7 +88,12 @@ describe('CatchUpForm', () => {
     expect(inputTag(html, 'missed')).toContain('disabled')
 
     // Before Start, a picked student can be unticked.
-    const before = render({ mode: 'edit', started: false, initial: { for: 'picked', studentIds: ['s-dave'] } })
+    const before = render({
+      mode: 'edit',
+      started: false,
+      initial: { for: 'picked', studentIds: ['s-dave'] },
+      withAttempt: ['s-dave'],
+    })
     expect(inputTag(before, 's-dave')).toContain('checked')
     expect(inputTag(before, 's-dave')).not.toContain('disabled')
     expect(inputTag(before, 'missed')).not.toContain('disabled')

@@ -138,7 +138,7 @@ export default async function TestLivePage({ params }: PageProps<'/courses/[cour
                     </span>
                     {catchUp.catchUpFor && (
                       <span className="text-sm text-muted-foreground">
-                        <CatchUpAudience catchUpFor={catchUp.catchUpFor} pickedCount={catchUp.pickedCount} />
+                        <CatchUpAudience catchUpFor={catchUp.catchUpFor} pickedCount={catchUp.pickedCount} missedCount={catchUp.missedCount} />
                       </span>
                     )}
                   </span>

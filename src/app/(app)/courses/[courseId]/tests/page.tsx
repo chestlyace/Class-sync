@@ -147,7 +147,7 @@ async function TestRow({
         <span className="text-sm text-muted-foreground">
           {test.catchUpFor && (
             <>
-              <CatchUpAudience catchUpFor={test.catchUpFor} pickedCount={test.pickedCount} /> ·{' '}
+              <CatchUpAudience catchUpFor={test.catchUpFor} pickedCount={test.pickedCount} missedCount={test.missedCount} /> ·{' '}
             </>
           )}
           {t('questionCount', { count: test.questionCount })} ·{' '}

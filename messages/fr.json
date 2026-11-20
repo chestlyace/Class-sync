@@ -2117,6 +2117,7 @@
       },
       "pickedCount": "{count, plural, =0 {Aucun étudiant choisi} one {# étudiant choisi} other {# étudiants choisis}}",
       "forMissed": "Tous ceux qui l'ont manqué",
+      "missedCount": "{count, plural, =0 {Personne qui l'a manqué} one {# qui l'a manqué} other {# qui l'ont manqué}}",
       "listHeading": "Rattrapages",
       "original": "Test d'origine : {title}",
       "rowScore": "Rattrapage : {score} / {outOf}",
@@ -2126,7 +2127,7 @@
       "save": "Enregistrer qui peut le passer",
       "saving": "Enregistrement…",
       "saved": "Enregistré.",
-      "startedPicked": "Le rattrapage a commencé : vous pouvez ajouter des étudiants, mais pas en retirer.",
+      "startedPicked": "Le rattrapage a commencé : vous pouvez ajouter des étudiants, et ne retirer que ceux qui ne l'ont pas ouvert.",
       "startedMissed": "Le rattrapage a commencé : qui peut le passer ne peut plus changer.",
       "errors": {
         "notEnded": "Ce test n'est pas encore terminé. Donnez un rattrapage une fois qu'il l'est.",

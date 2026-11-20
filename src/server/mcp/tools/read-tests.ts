@@ -35,7 +35,7 @@ export const listTests = defineTool({
     "A course's tests, newest first: id, title, join code, state (not_started, running, ended, or released once results " +
     'are out), question count, total marks, whether it has short answers (marked by hand), duration, start and end times, ' +
     'and how many students joined. A catch-up is a re-run of an ended test for students who missed it or were picked, ' +
-    'and its mark counts in the original test place (catchUpOf, catchUpFor). Needs courseId from list_courses.',
+    "and its mark counts in the original test's place (catchUpOf, catchUpFor). Needs courseId from list_courses.",
   scope: 'clasync:read',
   input: z.object({ courseId: id('The course id, from list_courses.') }),
   run: async (ctx, { courseId }) => {

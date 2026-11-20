@@ -17,10 +17,10 @@ import {
   type CatchUpFor,
 } from '@/server/db/schema'
 import { isUniqueViolation } from '@/server/lib/db-errors'
-import { eligibleStudents } from './catch-up'
+import { eligibleStudents, eligibleStudentsForTests } from './catch-up'
 import { endsAt, testPhase, testState, type TestState } from './phase'
 import { loadStoredQuestions, requireOwnedTest, type StoredQuestion, type TestRow } from './queries'
-import { validateTestInput, type QuestionInput, type TestInput } from './rules'
+import { TITLE_MAX, validateTestInput, type QuestionInput, type TestInput } from './rules'
 
 export type { CatchUpFor }
 
@@ -48,6 +48,8 @@ export type TestSummary = {
   catchUpFor: CatchUpFor | null
   /** Picked catch-ups only: how many students on the current roster are picked. */
   pickedCount: number | null
+  /** "Everyone who missed it" catch-ups only: how many students on the current roster may sit it. */
+  missedCount: number | null
 }
 
 /** How a student fared on the original test, as the catch-up form shows it. */
@@ -191,7 +193,8 @@ async function insertNewTest(
 
 /**
  * Summaries for the given tests in the same order: two queries, one more when any is a catch-up,
- * plus one roster query per course, whatever the number of tests or attempts.
+ * plus one roster query per course, and (when any is an "everyone who missed it" catch-up) one
+ * batched eligibility check of at most three queries, whatever the number of tests or attempts.
  */
 async function summarize(db: Db, tests: TestRow[]): Promise<TestSummary[]> {
   if (tests.length === 0) return []
@@ -231,6 +234,14 @@ async function summarize(db: Db, tests: TestRow[]): Promise<TestSummary[]> {
   ])
   const stats = new Map(questionStats.map((s) => [s.testId, s]))
   const onRoster = new Map(courseIds.map((id, i) => [id, new Set(rosters[i].map((r) => r.studentId))]))
+  // Who may sit each "everyone who missed it" catch-up, among the rosters already loaded.
+  const missedCatchUps = tests.filter((t) => t.catchUpOfId !== null && t.catchUpFor === 'missed')
+  const eligible =
+    missedCatchUps.length === 0
+      ? new Map<string, Set<string>>()
+      : await eligibleStudentsForTests(db, missedCatchUps, [
+          ...new Set(rosters.flatMap((roster) => roster.map((r) => r.studentId))),
+        ])
   const courseOf = new Map(tests.map((t) => [t.id, t.courseId]))
   // Only students still on the roster count, so the list agrees with the live view.
   const joined = new Map<string, number>()
@@ -272,6 +283,10 @@ async function summarize(db: Db, tests: TestRow[]): Promise<TestSummary[]> {
       pickedCount:
         t.catchUpFor === 'picked'
           ? (picked.get(t.id) ?? []).filter((id) => onRoster.get(t.courseId)?.has(id)).length
+          : null,
+      missedCount:
+        t.catchUpOfId !== null && t.catchUpFor === 'missed'
+          ? [...(eligible.get(t.id) ?? [])].filter((id) => onRoster.get(t.courseId)?.has(id)).length
           : null,
     }
   })
@@ -436,36 +451,65 @@ async function requireCatchUpOriginal(ctx: Ctx, originalId: string): Promise<Tes
   return test
 }
 
-/** Of the roster, who a new "everyone who missed it" catch-up of `original` would admit now. */
-async function missedStudents(db: Db, original: TestRow, rosterIds: string[]): Promise<Set<string>> {
-  const hypothetical = {
-    id: crypto.randomUUID(),
+/**
+ * Of the roster, who an "everyone who missed it" catch-up of `original` would admit now: a new
+ * one, or `existing` (one of its catch-ups) were it in that mode, whose own attempts then do not
+ * count against it (other catch-ups' still do).
+ */
+async function missedStudents(
+  db: Db,
+  original: TestRow,
+  rosterIds: string[],
+  existing: { id: string; startedAt: Date | null } | null = null,
+): Promise<Set<string>> {
+  const imagined = {
+    id: existing?.id ?? crypto.randomUUID(),
     courseId: original.courseId,
     catchUpOfId: original.id,
     catchUpFor: 'missed' as const,
-    startedAt: null,
+    startedAt: existing?.startedAt ?? null,
   }
-  return eligibleStudents(db, hypothetical, rosterIds)
+  return eligibleStudents(db, imagined, rosterIds)
 }
 
 /**
  * What the "Give a catch-up" form shows for an ended test I own: each student on the roster with
- * how they fared on it, how many missed it, and whether its answers may be known already.
+ * how they fared on it, how many missed it, and whether its answers may be known already. The
+ * edit page of an existing catch-up passes its id as `forCatchUpId`, so its own attempts do not
+ * count against "missed"; an id that is not a catch-up of this test is VALIDATION { fields }.
  */
-export async function getCatchUpOptions(ctx: Ctx, originalId: string): Promise<CatchUpOptions> {
+export async function getCatchUpOptions(
+  ctx: Ctx,
+  originalId: string,
+  forCatchUpId?: string,
+): Promise<CatchUpOptions> {
   const original = await requireCatchUpOriginal(ctx, originalId)
-  const [summary, roster, attempts] = await Promise.all([
+  if (forCatchUpId !== undefined && (typeof forCatchUpId !== 'string' || forCatchUpId.length === 0)) {
+    throw new AppError('VALIDATION', 'Invalid input', { fields: ['forCatchUpId'] })
+  }
+  const [summary, roster, attempts, existingRows] = await Promise.all([
     summarizeTest(ctx.db, original),
     courseRosterQuery(ctx.db, { courseId: original.courseId }),
     ctx.db
       .select({ studentId: testAttempt.studentId, closedReason: testAttempt.closedReason })
       .from(testAttempt)
       .where(eq(testAttempt.testId, original.id)),
+    forCatchUpId === undefined
+      ? []
+      : ctx.db
+          .select({ id: courseTest.id, startedAt: courseTest.startedAt })
+          .from(courseTest)
+          .where(and(eq(courseTest.id, forCatchUpId), eq(courseTest.catchUpOfId, original.id))),
   ])
+  const existing = existingRows[0] ?? null
+  if (forCatchUpId !== undefined && existing === null) {
+    throw new AppError('VALIDATION', 'Not a catch-up of this test', { fields: ['forCatchUpId'] })
+  }
   const missed = await missedStudents(
     ctx.db,
     original,
     roster.map((r) => r.studentId),
+    existing,
   )
   const closedReasonOf = new Map(attempts.map((a) => [a.studentId, a.closedReason]))
   const statusOf = (studentId: string): OriginalStatus => {
@@ -486,6 +530,21 @@ export async function getCatchUpOptions(ctx: Ctx, originalId: string): Promise<C
     missedCount: missed.size,
     answersMayBeOut: summary.state === 'released' && summary.studentsCanReview,
   }
+}
+
+/**
+ * "<title> (<suffix>)" within TITLE_MAX: a title too long to take the suffix is shortened first,
+ * at the last space when one is near the cut, so a long original never blocks its catch-up.
+ */
+function catchUpTitle(title: string, suffix: string): string {
+  const room = Math.max(1, TITLE_MAX - suffix.length - 3)
+  let base = title.trim()
+  if (base.length > room) {
+    const cut = base.slice(0, room)
+    const space = cut.lastIndexOf(' ')
+    base = (space > 0 && room - space <= 30 ? cut.slice(0, space) : cut).trimEnd()
+  }
+  return `${base} (${suffix})`
 }
 
 /**
@@ -515,7 +574,7 @@ export async function giveCatchUp(
   // Checked like a new test, as a copy is.
   const data = parseTestInput({
     ...settingsOf(original),
-    title: `${original.title} (${titleSuffix.trim()})`,
+    title: catchUpTitle(original.title, titleSuffix.trim()),
     questions: questions.map(toQuestionInput),
   })
   const created = await insertNewTest(
@@ -530,29 +589,41 @@ export async function giveCatchUp(
   return summarizeTest(ctx.db, created)
 }
 
+/** The picked students of a catch-up, and which of them have an attempt on it. */
+export type CatchUpStudents = { studentIds: string[]; withAttempt: string[] }
+
 /**
  * The students picked for a catch-up I own (empty for "everyone who missed it"), as the edit
- * page ticks them. CONFLICT not_catch_up on an ordinary test.
+ * page ticks them, and those of them with an attempt on it (after Start they cannot be taken
+ * off). One query. CONFLICT not_catch_up on an ordinary test.
  */
-export async function getCatchUpStudents(ctx: Ctx, catchUpId: string): Promise<string[]> {
+export async function getCatchUpStudents(ctx: Ctx, catchUpId: string): Promise<CatchUpStudents> {
   const { test } = await requireOwnedTest(ctx, catchUpId)
   if (test.catchUpOfId === null || test.catchUpFor === null) {
     throw new AppError('CONFLICT', 'This test is not a catch-up', { reason: 'not_catch_up' })
   }
-  if (test.catchUpFor !== 'picked') return []
+  if (test.catchUpFor !== 'picked') return { studentIds: [], withAttempt: [] }
   const rows = await ctx.db
-    .select({ studentId: testCatchUpStudent.studentId })
+    .select({ studentId: testCatchUpStudent.studentId, attemptId: testAttempt.id })
     .from(testCatchUpStudent)
+    .leftJoin(
+      testAttempt,
+      and(eq(testAttempt.testId, testCatchUpStudent.testId), eq(testAttempt.studentId, testCatchUpStudent.studentId)),
+    )
     .where(eq(testCatchUpStudent.testId, catchUpId))
-  return rows.map((r) => r.studentId)
+  return {
+    studentIds: rows.map((r) => r.studentId),
+    withAttempt: rows.filter((r) => r.attemptId !== null).map((r) => r.studentId),
+  }
 }
 
 /**
  * Changes who sits a catch-up I own. Before Start: replaces the mode and the picked list, then
  * deletes the waiting attempts of students no longer eligible, in one transaction whose first
  * statement is the conditional update on `started_at is null` (so it cannot race Start: CONFLICT
- * started, nothing changed; a catch-up deleted in between is FORBIDDEN). After Start: students
- * may only be added to a picked list; a mode change or a removal is CONFLICT started.
+ * started, nothing changed; a catch-up deleted in between is FORBIDDEN). After Start, in one
+ * transaction: students may be added to a picked list, and picked students with no attempt on it
+ * removed; removing one with an attempt, or a mode change, is CONFLICT started, nothing changed.
  */
 export async function setCatchUpStudents(ctx: Ctx, catchUpId: string, input: unknown): Promise<TestSummary> {
   const { test } = await requireOwnedTest(ctx, catchUpId)
@@ -566,17 +637,34 @@ export async function setCatchUpStudents(ctx: Ctx, catchUpId: string, input: unk
   if (test.startedAt !== null) {
     if (choice.for !== test.catchUpFor) throw started()
     if (choice.for === 'picked') {
-      const current = await ctx.db
-        .select({ studentId: testCatchUpStudent.studentId })
-        .from(testCatchUpStudent)
-        .where(eq(testCatchUpStudent.testId, catchUpId))
-      // Picked students who have since left the roster are not shown, so leaving them out is no removal.
-      const kept = new Set(choice.studentIds)
-      if (current.some((c) => rosterIds.has(c.studentId) && !kept.has(c.studentId))) throw started()
-      await ctx.db
-        .insert(testCatchUpStudent)
-        .values(choice.studentIds.map((studentId) => ({ testId: catchUpId, studentId, addedBy: ctx.user.id })))
-        .onConflictDoNothing()
+      await ctx.db.transaction(async (tx) => {
+        // Picked students who have since left the roster are not shown, so leaving them out is no
+        // removal: only roster students missing from the new list are taken off.
+        const leftOut = and(
+          eq(testCatchUpStudent.testId, catchUpId),
+          inArray(testCatchUpStudent.studentId, [...rosterIds]),
+          notInArray(testCatchUpStudent.studentId, choice.studentIds),
+        )
+        // Only those with no attempt on this catch-up; the check is in the statement itself.
+        await tx.delete(testCatchUpStudent).where(
+          and(
+            leftOut,
+            sql`not exists (select 1 from ${testAttempt} as ta
+              where ta.test_id = ${catchUpId} and ta.student_id = ${testCatchUpStudent}.student_id)`,
+          ),
+        )
+        // Anyone still left out has an attempt: refused, and the removals above roll back.
+        const [kept] = await tx
+          .select({ studentId: testCatchUpStudent.studentId })
+          .from(testCatchUpStudent)
+          .where(leftOut)
+          .limit(1)
+        if (kept) throw started()
+        await tx
+          .insert(testCatchUpStudent)
+          .values(choice.studentIds.map((studentId) => ({ testId: catchUpId, studentId, addedBy: ctx.user.id })))
+          .onConflictDoNothing()
+      })
     }
     return summarizeTest(ctx.db, test)
   }

@@ -63,8 +63,8 @@ function CatchUpError({ state }: { state: ActionResult<unknown> | null }) {
 /**
  * Who can sit a catch-up: everyone who missed the original, or only the students ticked here.
  * `give` creates the catch-up and opens its edit page; `edit` saves the choice in place. After
- * Start (edit only), the mode is fixed and students already picked stay ticked: students can be
- * added, never taken off.
+ * Start (edit only), the mode is fixed and picked students with an attempt on the catch-up stay
+ * ticked: students can be added, and taken off only while they have not opened it.
  */
 export function CatchUpForm({
   mode,
@@ -74,6 +74,7 @@ export function CatchUpForm({
   missedCount,
   answersMayBeOut,
   initial,
+  withAttempt = [],
   started,
 }: {
   mode: 'give' | 'edit'
@@ -84,6 +85,8 @@ export function CatchUpForm({
   missedCount: number
   answersMayBeOut: boolean
   initial?: { for: CatchUpFor; studentIds: string[] }
+  /** Edit: the picked students with an attempt on the catch-up; after Start they stay ticked. */
+  withAttempt?: string[]
   started: boolean
 }) {
   const t = useTranslations('tests.catchUp')
@@ -97,7 +100,8 @@ export function CatchUpForm({
   const [pending, startSaving] = useTransition()
 
   const fixed = started && stored !== null
-  const locked = new Set(fixed && stored.for === 'picked' ? stored.studentIds : [])
+  const opened = new Set(withAttempt)
+  const locked = new Set(fixed && stored.for === 'picked' ? stored.studentIds.filter((id) => opened.has(id)) : [])
   const everyoneSat = missedCount === 0
   const missedDisabled = fixed ? stored.for !== 'missed' : everyoneSat && stored?.for !== 'missed'
   const pickedDisabled = fixed && stored.for !== 'picked'
