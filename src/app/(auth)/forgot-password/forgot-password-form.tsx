@@ -78,7 +78,7 @@ export function ForgotPasswordForm({ next = null }: { next?: string | null }) {
       </form>
       <Link
         href={next ? `/sign-in?next=${encodeURIComponent(next)}` : '/sign-in'}
-        className="self-start text-sm text-[#48484a] underline-offset-4 hover:underline"
+        className="self-start text-sm text-primary underline-offset-4 hover:underline"
       >
         {t('backToSignIn')}
       </Link>
