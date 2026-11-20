@@ -115,6 +115,14 @@ async function resetRequestedRecently(database: Db, userId: string, token: strin
   return rows.length > 0
 }
 
+/**
+ * Deletes a reset link nobody was emailed (skipped by the cooldown, or the send failed). Only links
+ * that went out then count toward the cooldown, so asking again after a failed send gets a link.
+ */
+async function withdrawResetLink(database: Db, token: string): Promise<void> {
+  await database.delete(schema.verification).where(eq(schema.verification.identifier, `reset-password:${token}`))
+}
+
 export function createAuth(database: Db, options: CreateAuthOptions = {}) {
   const origin = resolveAppOrigin(options.baseURL)
   const google = options.google === undefined ? googleCredentials() : options.google
@@ -179,6 +187,7 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
         try {
           if (await resetRequestedRecently(database, user.id, token)) {
             console.info('[auth] password reset email skipped: another link was sent recently')
+            await withdrawResetLink(database, token)
             return
           }
           await sendEmail({
@@ -191,7 +200,18 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
           // A Resend failure (or a missing API key) must not change the public response: that
           // would tell the requester that this address really has an account.
           console.error('[auth] password reset email failed', error)
+          await withdrawResetLink(database, token).catch((cleanupError) =>
+            console.error('[auth] could not withdraw an unsent reset link', cleanupError),
+          )
         }
+      },
+      // The link reached this inbox, which proves the address: an account that never finished
+      // verification (a lost or bounced verification email) can sign in straight away. Safe against
+      // someone who registered another person's address: the reset replaced their password and
+      // ended their sessions.
+      onPasswordReset: async ({ user }) => {
+        if (user.emailVerified) return
+        await database.update(schema.user).set({ emailVerified: true, updatedAt: now() }).where(eq(schema.user.id, user.id))
       },
     },
     socialProviders: google

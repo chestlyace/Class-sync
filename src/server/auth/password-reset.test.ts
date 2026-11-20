@@ -6,7 +6,7 @@ import { setNowForTests } from '@/server/core/clock'
 import { config, setConfigForTests } from '@/server/core/config'
 import type { Db } from '@/server/db'
 import { sendEmail } from '@/server/email/send'
-import { session, verification } from '@/server/db/schema'
+import { session, user, verification } from '@/server/db/schema'
 import { createTestDb } from '@/test/db'
 import { createAuth } from './auth'
 
@@ -219,5 +219,71 @@ describe('auth: password reset', () => {
     } finally {
       release?.()
     }
+  })
+
+  it('sends a link when the address asks again after a send that failed', async () => {
+    const email = 'first-send-failed@example.com'
+    await signUp(email)
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      vi.mocked(sendEmail).mockRejectedValueOnce(new Error('daily email sending quota'))
+      expect((await post(auth, '/request-password-reset', { email })).status).toBe(200)
+      await until(() => errorLog.mock.calls.length > 0)
+      expect((await post(auth, '/request-password-reset', { email })).status).toBe(200)
+      await until(() => sent.length >= 1)
+      expect(sent).toHaveLength(1)
+    } finally {
+      errorLog.mockRestore()
+    }
+  })
+
+  it('withdraws the link of a send that failed', async () => {
+    const email = 'unsent-link@example.com'
+    const userId = await signUp(email)
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      vi.mocked(sendEmail).mockRejectedValueOnce(new Error('Resend is down'))
+      expect((await post(auth, '/request-password-reset', { email })).status).toBe(200)
+      await until(() => errorLog.mock.calls.length > 0)
+      await new Promise((r) => setTimeout(r, 50))
+      const links = await db.select().from(verification).where(eq(verification.value, userId))
+      expect(links.filter((row) => row.identifier.startsWith('reset-password:'))).toEqual([])
+    } finally {
+      errorLog.mockRestore()
+    }
+  })
+})
+
+describe('auth: password reset with email verification on', () => {
+  const original = config.requireEmailVerification
+  let db: Db
+  let auth: ReturnType<typeof createAuth>
+
+  beforeAll(async () => {
+    setConfigForTests({ requireEmailVerification: true })
+    db = await createTestDb()
+    auth = createAuth(db, { baseURL: BASE, secret: SECRET, nextCookies: false })
+  })
+  afterAll(() => setConfigForTests({ requireEmailVerification: original }))
+  beforeEach(() => {
+    sent.length = 0
+  })
+
+  it('verifies the address, so an account that never verified can sign in after a reset', async () => {
+    const email = 'never-verified@example.com'
+    const signUpRes = await post(auth, '/sign-up/email', { name: 'Not Verified', email, password: OLD_PASSWORD, role: 'student', locale: 'en' })
+    expect(signUpRes.status).toBe(200)
+    expect((await post(auth, '/sign-in/email', { email, password: OLD_PASSWORD })).status).toBe(403)
+
+    expect((await post(auth, '/request-password-reset', { email })).status).toBe(200)
+    await until(() => sent.some((s) => s.subject === 'Reset your Clasync password'))
+    const resetEmail = sent.find((s) => s.subject === 'Reset your Clasync password')!
+    const text = await render(resetEmail.react, { plainText: true })
+    const token = /reset-password\?token=([\w-]+)/.exec(text)![1]!
+    expect((await post(auth, '/reset-password', { newPassword: NEW_PASSWORD, token })).status).toBe(200)
+
+    const [row] = await db.select({ emailVerified: user.emailVerified }).from(user).where(eq(user.email, email))
+    expect(row?.emailVerified).toBe(true)
+    expect((await post(auth, '/sign-in/email', { email, password: NEW_PASSWORD })).status).toBe(200)
   })
 })

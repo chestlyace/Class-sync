@@ -5,7 +5,11 @@ import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
-/** Password field with a show/hide button inside the input's border. */
+/**
+ * Password field with a show/hide button inside the input's border. Shown as text, a phone keyboard
+ * would capitalise, autocorrect and add a space after a suggestion, so those stay off: otherwise
+ * the saved password differs from the one the person thinks they typed.
+ */
 export function PasswordInput({ className, ...props }: Omit<React.ComponentProps<'input'>, 'type'>) {
   const t = useTranslations('auth.password')
   const [visible, setVisible] = useState(false)
@@ -17,6 +21,9 @@ export function PasswordInput({ className, ...props }: Omit<React.ComponentProps
       )}
     >
       <input
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
         {...props}
         type={visible ? 'text' : 'password'}
         className="h-full min-w-0 flex-1 bg-transparent text-base outline-none md:text-sm"
