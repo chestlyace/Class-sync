@@ -6,8 +6,7 @@
     "node": "24.x"
   },
   "cacheDirectories": [
-    "node_modules",
-    ".next/cache"
+    "node_modules"
   ],
   "scripts": {
     "dev": "next dev",
@@ -17,7 +16,8 @@
     "test": "vitest run",
     "typecheck": "next typegen && tsc --noEmit",
     "db:migrate": "drizzle-kit migrate",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "heroku-postbuild": "next build && rm -rf .next/cache"
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "^5.0.145",
