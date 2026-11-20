@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { PasswordInput } from '@/components/password-input'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
@@ -12,27 +12,24 @@ import { authErrorKey } from '@/lib/auth-errors'
 import { passwordsMatch } from '@/lib/password-match'
 
 /**
- * Sets a new password with the token from the email link. On success every session is revoked
- * server-side, so the browser is sent to sign-in with the new password rather than left signed in.
+ * Sets a new password with the token from the email link. The page checked the link first: `email`
+ * is the account's address, or null when the link is unknown, used or expired. On success every
+ * session is revoked server-side, so the browser is sent to sign-in with the new password.
+ *
+ * The token stays in the address bar: a reload, or a phone reopening the tab, must still find it.
+ * The page sends no referrer, Sentry scrubs the token, and the token dies once used.
  */
-export function ResetPasswordForm({ token, next = null }: { token: string | null; next?: string | null }) {
+export function ResetPasswordForm({ token, email, next = null }: { token: string | null; email: string | null; next?: string | null }) {
   const t = useTranslations('auth.resetPassword')
-  const tForgot = useTranslations('auth.forgotPassword')
   const tRoot = useTranslations()
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  // Set when the link dies after the page opened (used in another tab, or expired meanwhile).
+  const [expired, setExpired] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
-  // The token is already in the component state; drop it from the address bar, browser history
-  // and error reports. Keeping the server-rendered prop means no useSearchParams/Suspense needed.
-  useEffect(() => {
-    if (token) window.history.replaceState(null, '', window.location.pathname)
-  }, [token])
-
-  // Password managers can leave one field untouched or fill it with a different value. Comparing
-  // the controlled values and showing a live match state makes that visible before submission.
   const fieldsMatch = newPassword.length > 0 && passwordsMatch(newPassword, confirmPassword)
   const showMatch = fieldsMatch && newPassword.length >= 8
 
@@ -49,8 +46,8 @@ export function ResetPasswordForm({ token, next = null }: { token: string | null
       const { error: authError } = await authClient.resetPassword({ newPassword, token })
       if (authError) {
         const key = authErrorKey(authError.code, authError.status)
-        // A spent or expired link gets the actionable message; anything else is a translated error.
-        setError(key === 'auth.errors.invalidToken' ? t('invalidLink') : tRoot(key))
+        if (key === 'auth.errors.invalidToken') setExpired(true)
+        else setError(tRoot(key))
         return
       }
       router.push(next ? `/sign-in?passwordReset=1&next=${encodeURIComponent(next)}` : '/sign-in?passwordReset=1')
@@ -62,13 +59,15 @@ export function ResetPasswordForm({ token, next = null }: { token: string | null
     }
   }
 
+  const linkWorks = token !== null && email !== null && !expired
+
   return (
     <>
       <div className="flex flex-col gap-1">
         <h1 className="font-display text-5xl leading-[0.95] tracking-[0.01em]">{t('title')}</h1>
-        <p className="text-sm text-muted-foreground">{t('description')}</p>
+        {linkWorks ? <p className="text-sm text-muted-foreground wrap-anywhere">{t('forAccount', { email })}</p> : null}
       </div>
-      {!token ? (
+      {!linkWorks ? (
         <div className="flex flex-col gap-4">
           <p role="alert" className="text-sm text-destructive">
             {t('invalidLink')}
@@ -77,20 +76,20 @@ export function ResetPasswordForm({ token, next = null }: { token: string | null
             href={next ? `/forgot-password?next=${encodeURIComponent(next)}` : '/forgot-password'}
             className={buttonVariants({ variant: 'outline', size: 'lg' })}
           >
-            {tForgot('title')}
+            {t('newLink')}
           </Link>
         </div>
       ) : (
         <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
+          {/* Password managers save the new password under this account. */}
+          <input type="email" name="username" autoComplete="username" value={email} readOnly hidden />
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="newPassword">{t('newPassword')}</FieldLabel>
               <PasswordInput
                 id="newPassword"
                 name="newPassword"
-                autoComplete="off"
-                data-lpignore="true"
-                data-1p-ignore="true"
+                autoComplete="new-password"
                 minLength={8}
                 required
                 value={newPassword}
@@ -106,9 +105,7 @@ export function ResetPasswordForm({ token, next = null }: { token: string | null
               <PasswordInput
                 id="confirmPassword"
                 name="confirmPassword"
-                autoComplete="off"
-                data-lpignore="true"
-                data-1p-ignore="true"
+                autoComplete="new-password"
                 minLength={8}
                 required
                 value={confirmPassword}
