@@ -23,24 +23,10 @@ export function register() {
     beforeSendSpan: withoutResetTokenInSpan,
   })
   if (Sentry.isEnabled()) reportLoggedErrors()
+  // Heroku: background jobs run in this server process. The import sits inside the runtime check so the
+  // Edge bundle drops it (src/instrumentation-node.ts).
   if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.NEXT_PHASE !== 'phase-production-build') {
-    void startBackgroundJobs()
-  }
-}
-
-/**
- * Heroku: background jobs run in this server process (src/server/jobs/worker.ts). Started without
- * holding up the server; a failure is logged (and so reported) and the site keeps serving.
- */
-async function startBackgroundJobs() {
-  const { queueDriver } = await import('@/server/jobs/driver')
-  if (queueDriver() !== 'pgboss') return
-  try {
-    const { startJobWorkers } = await import('@/server/jobs/worker')
-    await startJobWorkers()
-    console.log('[jobs] background job workers started')
-  } catch (error) {
-    console.error('[jobs] background job workers failed to start', error)
+    void import('./instrumentation-node').then((m) => m.startBackgroundJobs())
   }
 }
 
