@@ -174,7 +174,7 @@ export async function requestUpload(
 
   const fileId = crypto.randomUUID()
   const storageKey = `${keyPrefix(data.purpose, asgId, ctx.user.id)}${fileId}-${safeName(name)}`
-  const target = await getStorage().uploadTarget(storageKey, mimeType)
+  const target = await getStorage().uploadTarget(storageKey, mimeType, data.size)
   await ctx.db.insert(file).values({
     id: fileId,
     createdAt,

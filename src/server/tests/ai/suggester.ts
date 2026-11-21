@@ -1,3 +1,4 @@
+import { isProductionDeploy } from '@/lib/deploy-env'
 import { config } from '@/server/core/config'
 import type { Locale } from '@/server/core/context'
 import { fakeSuggester } from './fake'
@@ -49,7 +50,7 @@ function hasGatewayCredentials(): boolean {
 export function getMarkSuggester(): MarkSuggester | null {
   if (testOverride !== undefined) return testOverride
   const model = config.aiMarkingModel
-  if (model === FAKE_MODEL) return process.env.VERCEL_ENV === 'production' ? null : fakeSuggester
+  if (model === FAKE_MODEL) return isProductionDeploy() ? null : fakeSuggester
   if (!model || !hasGatewayCredentials()) return null
   return createGatewaySuggester(model)
 }
