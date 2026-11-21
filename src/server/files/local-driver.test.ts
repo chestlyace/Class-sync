@@ -135,7 +135,7 @@ describe('blob driver (no network)', () => {
 describe('getStorage', () => {
   const saved = { ...process.env }
   afterEach(() => {
-    for (const k of ['STORAGE_DRIVER', 'BLOB_READ_WRITE_TOKEN', 'NODE_ENV', 'LOCAL_UPLOAD_DIR']) {
+    for (const k of ['STORAGE_DRIVER', 'BLOB_READ_WRITE_TOKEN', 'NODE_ENV', 'LOCAL_UPLOAD_DIR', 'S3_BUCKET']) {
       if (saved[k] === undefined) delete process.env[k]
       else process.env[k] = saved[k]
     }
@@ -162,7 +162,11 @@ describe('getStorage', () => {
     expect(getStorage().kind).toBe('local')
     setEnv({ STORAGE_DRIVER: 'blob', NODE_ENV: 'development' })
     expect(getStorage().kind).toBe('blob')
-    setEnv({ STORAGE_DRIVER: 's3' })
+    setEnv({ STORAGE_DRIVER: 's3', S3_BUCKET: 'clasync-files-test' })
+    expect(getStorage().kind).toBe('s3')
+    setEnv({ STORAGE_DRIVER: 's3', S3_BUCKET: undefined })
+    expect(() => getStorage()).toThrow(/S3_BUCKET/)
+    setEnv({ STORAGE_DRIVER: 'gcs' })
     expect(() => getStorage()).toThrow(/STORAGE_DRIVER/)
   })
 })
