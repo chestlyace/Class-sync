@@ -68,6 +68,15 @@ export function getBoss(): Promise<PgBoss> {
   return started
 }
 
+/** Stops this process's pg-boss instance, if any, and forgets it: the next getBoss() starts afresh. */
+export async function resetBoss(): Promise<void> {
+  const existing = globalForBoss.__clasyncBoss
+  globalForBoss.__clasyncBoss = undefined
+  if (!existing) return
+  const boss = await existing.catch(() => null)
+  await boss?.stop({ graceful: false, close: true }).catch(() => {})
+}
+
 /**
  * A job id fixed by `key` (a UUID built from its SHA-256), so sending the same job twice stores it once:
  * pg-boss skips an id it already holds, as Vercel Queues did with an idempotency key.

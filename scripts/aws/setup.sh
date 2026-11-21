@@ -15,7 +15,7 @@ REGION=eu-west-3
 ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
 BUCKET="clasync-files-${ACCOUNT}"
 USER_NAME=clasync-heroku
-ORIGINS='["https://clasync.online","https://www.clasync.online","https://clasync-b15cf4ab7af7.herokuapp.com","https://clasync-staging-c43087195bf3.herokuapp.com"]'
+ORIGINS='["https://clasync.online","https://www.clasync.online","https://staging.clasync.online","https://clasync-b15cf4ab7af7.herokuapp.com","https://clasync-staging-c43087195bf3.herokuapp.com"]'
 
 echo "Account ${ACCOUNT}, bucket ${BUCKET}"
 
@@ -58,9 +58,13 @@ fi
 POLICY=$(python3 - "$BUCKET" "$BEDROCK" <<'PY'
 import json, sys
 bucket, bedrock = sys.argv[1], json.loads(sys.argv[2])
-s3 = {"Effect": "Allow", "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
-      "Resource": f"arn:aws:s3:::{bucket}/*"}
-print(json.dumps({"Version": "2012-10-17", "Statement": [s3] + bedrock}))
+if isinstance(bedrock, dict):  # a policy with one statement comes back as an object
+    bedrock = [bedrock]
+objects = {"Effect": "Allow", "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+           "Resource": f"arn:aws:s3:::{bucket}/*"}
+# Without ListBucket, S3 answers 403 instead of 404 for a missing file, and the app can't tell them apart.
+listing = {"Effect": "Allow", "Action": "s3:ListBucket", "Resource": f"arn:aws:s3:::{bucket}"}
+print(json.dumps({"Version": "2012-10-17", "Statement": [objects, listing] + bedrock}))
 PY
 )
 aws iam put-user-policy --user-name "$USER_NAME" --policy-name clasync-app --policy-document "$POLICY"

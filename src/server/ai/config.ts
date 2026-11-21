@@ -30,6 +30,8 @@ function text(value: string | undefined): string | null {
 }
 
 function accessKeyOf(env: Env): AiConfig['accessKey'] {
+  // Vercel's own runtime may carry AWS variables of its own: there, only the OIDC role counts.
+  if (env.VERCEL) return null
   const accessKeyId = text(env.AWS_ACCESS_KEY_ID)
   const secretAccessKey = text(env.AWS_SECRET_ACCESS_KEY)
   return accessKeyId && secretAccessKey ? { accessKeyId, secretAccessKey } : null

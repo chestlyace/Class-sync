@@ -36,6 +36,7 @@ describe('readAiConfig', () => {
       secretAccessKey: 'secret',
     })
     expect(readAiConfig({ AWS_ACCESS_KEY_ID: 'AKIA1' }).accessKey).toBeNull()
+    expect(readAiConfig({ AWS_ACCESS_KEY_ID: 'AKIA1', AWS_SECRET_ACCESS_KEY: 'secret', VERCEL: '1' }).accessKey).toBeNull()
     expect(readAiConfig({ AWS_ACCESS_KEY_ID: ' ', AWS_SECRET_ACCESS_KEY: 'secret' }).accessKey).toBeNull()
   })
 
