@@ -9,6 +9,7 @@ import { APIError, createAuthMiddleware, getOAuthState, getSessionFromCtx } from
 import { nextCookies } from 'better-auth/next-js'
 import { jwt } from 'better-auth/plugins'
 import { waitUntil } from '@vercel/functions'
+import { CLIENT_IP_HEADER } from '@/lib/client-ip'
 import { isLocale } from '@/i18n/locale'
 import { safeNextPath } from '@/lib/next-path'
 import { RESET_RESEND_SECONDS } from '@/lib/password-reset'
@@ -152,6 +153,9 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
       // waitUntil keeps the send alive after the response on Vercel; elsewhere it is a no-op and
       // the promise still runs. Better Auth logs any rejection the handler's promise produces.
       backgroundTasks: { handler: waitUntil },
+      // Set by src/proxy.ts for the platform (Heroku's router keeps a client's own x-forwarded-for in
+      // front); x-forwarded-for alone is the fallback where the proxy did not run.
+      ipAddress: { ipAddressHeaders: [CLIENT_IP_HEADER, 'x-forwarded-for'] },
     },
     hooks: {
       // Only a verified lecturer can allow an assistant (denying stays open to everyone).

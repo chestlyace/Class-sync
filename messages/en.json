@@ -2824,8 +2824,8 @@
     "services": {
       "title": "Services Clasync relies on",
       "intro": "Clasync uses a few providers to run. Each one only gets what it needs for its job:",
-      "vercel": "Vercel hosts the app and stores uploaded files.",
-      "database": "Prisma Postgres stores the database.",
+      "hosting": "Heroku runs the app in the European Union.",
+      "database": "Heroku Postgres stores the database, and Amazon Web Services stores uploaded files, both in the European Union.",
       "email": "Resend sends emails such as verification links and assignment reminders.",
       "errors": "Sentry receives error reports so problems can be fixed, with IP addresses removed.",
       "push": "If you turn on notifications, the push service of your browser's maker (Google, Apple, Mozilla or Microsoft) delivers them to your device. It only sees an encrypted message.",
