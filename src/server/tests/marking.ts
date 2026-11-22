@@ -1,6 +1,8 @@
 import { and, asc, eq, isNull, sql } from 'drizzle-orm'
+import { recordAiUsage } from '@/server/ai/usage'
 import { isValidMark } from '@/server/assignments/rules'
 import { now } from '@/server/core/clock'
+import { config } from '@/server/core/config'
 import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
 import { requireRole } from '@/server/core/guards'
@@ -9,6 +11,7 @@ import { requireCourseOwner } from '@/server/courses/service'
 import type { Db } from '@/server/db'
 import { courseTest, testAnswer, testAttempt, testQuestion } from '@/server/db/schema'
 import { MAX_ANSWERS_PER_CALL, SuggesterError } from './ai/gateway'
+import { assertCanSuggestTestMarks } from './ai/limits'
 import { getMarkSuggester, type MarkSuggester, type Suggestion } from './ai/suggester'
 import { answersFinalAt } from './phase'
 import { requireOwnedTest, type TestRow } from './queries'
@@ -232,18 +235,42 @@ type PendingAnswer = { attemptId: string; text: string }
 async function suggestBatch(
   db: Db,
   suggester: MarkSuggester,
-  input: { questionId: string; prompt: string; guide: string; maxMark: number; locale: Ctx['user']['locale'] },
+  input: {
+    questionId: string
+    prompt: string
+    guide: string
+    maxMark: number
+    locale: Ctx['user']['locale']
+    lecturerId: string
+  },
   batch: PendingAnswer[],
   at: Date,
 ): Promise<number> {
   const byKey = new Map(batch.map((a, i) => [`a${i + 1}`, a.attemptId]))
-  const suggestions: Suggestion[] = await suggester({
-    prompt: input.prompt,
-    guide: input.guide,
-    maxMark: input.maxMark,
-    locale: input.locale,
-    answers: batch.map((a, i) => ({ key: `a${i + 1}`, text: a.text })),
-  })
+  // The gateway does not expose token counts yet: one row per call, with 0 tokens. A failed call
+  // is logged too, since it can still be billed, just like assignment marking.
+  const usage = {
+    purpose: 'test_correction' as const,
+    lecturerId: input.lecturerId,
+    submissionId: null,
+    model: config.aiMarkingModel,
+    inputTokens: 0,
+    outputTokens: 0,
+  }
+  let suggestions: Suggestion[]
+  try {
+    suggestions = await suggester({
+      prompt: input.prompt,
+      guide: input.guide,
+      maxMark: input.maxMark,
+      locale: input.locale,
+      answers: batch.map((a, i) => ({ key: `a${i + 1}`, text: a.text })),
+    })
+  } catch (error) {
+    await recordAiUsage(db, { ...usage, ok: false })
+    throw error
+  }
+  await recordAiUsage(db, { ...usage, ok: true })
 
   // The suggester cleans its output; check again here, since a wrong mark must never be stored.
   const seen = new Set<string>()
@@ -278,6 +305,8 @@ async function suggestBatch(
  * nothing and makes `failed` true (the page offers to try again); the other batches still count.
  * With suggestions off: `{ suggested: 0, failed: false }`. Owner only; final answers only.
  * Answers already tried with no suggestion are skipped, unless `retry` (Try again) asks afresh.
+ * The monthly AI cap and the lecturer's burst limit are checked before any provider call: a
+ * refusal is CONFLICT `{ reason: 'cap' }` or `{ reason: 'rate_limited', retryAfter }`.
  */
 export async function suggestMarks(
   ctx: Ctx,
@@ -312,6 +341,7 @@ export async function suggestMarks(
     .filter((r) => onRoster.has(r.studentId) && !isBlank(r.text))
     .map((r) => ({ attemptId: r.attemptId, text: r.text!.trim() }))
   if (pending.length === 0) return { suggested: 0, failed: false }
+  await assertCanSuggestTestMarks(ctx.db, ctx.user.id, at)
 
   const input = {
     questionId: question.id,
@@ -319,6 +349,7 @@ export async function suggestMarks(
     guide: question.guide ?? '',
     maxMark: questionMark(question, test.defaultMark),
     locale: ctx.user.locale,
+    lecturerId: ctx.user.id,
   }
   const batches: PendingAnswer[][] = []
   for (let i = 0; i < pending.length; i += SUGGEST_BATCH) batches.push(pending.slice(i, i + SUGGEST_BATCH))
