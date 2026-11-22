@@ -44,15 +44,15 @@ if ! aws iam get-user --user-name "$USER_NAME" >/dev/null 2>&1; then
   echo "User ${USER_NAME} created"
 fi
 
-# Bedrock statements: copied from the Vercel role's inline policy when it exists, else Haiku 4.5 in the EU.
+# Bedrock statements: copied from the Vercel role's inline policy when it exists, else Haiku 5.5 in the EU.
 ROLE_POLICY=$(aws iam list-role-policies --role-name clasync-bedrock --query 'PolicyNames[0]' --output text 2>/dev/null || true)
 if [ -n "$ROLE_POLICY" ] && [ "$ROLE_POLICY" != "None" ]; then
   BEDROCK=$(aws iam get-role-policy --role-name clasync-bedrock --policy-name "$ROLE_POLICY" \
     --query 'PolicyDocument.Statement' --output json)
   echo "Bedrock permissions copied from role clasync-bedrock (${ROLE_POLICY})"
 else
-  BEDROCK='[{"Effect":"Allow","Action":["bedrock:InvokeModel","bedrock:InvokeModelWithResponseStream"],"Resource":["arn:aws:bedrock:*:'"$ACCOUNT"':inference-profile/eu.anthropic.claude-haiku-4-5-20251001-v1:0","arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0"]}]'
-  echo "Role clasync-bedrock not found: Bedrock permissions for Haiku 4.5 (EU)"
+  BEDROCK='[{"Effect":"Allow","Action":["bedrock:InvokeModel","bedrock:InvokeModelWithResponseStream"],"Resource":["arn:aws:bedrock:*:'"$ACCOUNT"':inference-profile/eu.anthropic.claude-haiku-5-5","arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-5-5"]}]'
+  echo "Role clasync-bedrock not found: Bedrock permissions for Haiku 5.5 (EU)"
 fi
 
 POLICY=$(python3 - "$BUCKET" "$BEDROCK" <<'PY'
