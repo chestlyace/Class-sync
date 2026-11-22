@@ -32,7 +32,7 @@ vi.mock('next/cache', () => ({
   revalidatePath: (path: string, type?: string) => revalidatePath(path, type),
 }))
 
-import { suggestMarksAction } from './assignment-actions'
+import { suggestMarksAction } from '@/app/(app)/courses/assignment-actions'
 
 const NOW = new Date('2026-11-21T10:00:00Z')
 const SUBMITTED = new Date('2026-11-20T00:00:00Z')
