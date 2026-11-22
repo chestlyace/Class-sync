@@ -5,7 +5,17 @@ import { createClass, joinClassAsLecturer, joinClassAsStudent } from '@/server/c
 import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
 import { createCourse } from '@/server/courses/service'
-import { aiUsage, assignment, submission } from '@/server/db/schema'
+import {
+  aiUsage,
+  assignment,
+  class_,
+  classLecturer,
+  classStudent,
+  course,
+  school,
+  submission,
+  user,
+} from '@/server/db/schema'
 import { createSchool } from '@/server/schools/service'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
