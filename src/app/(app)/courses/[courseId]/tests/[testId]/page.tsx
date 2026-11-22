@@ -8,6 +8,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { config } from '@/server/core/config'
 import { AppError } from '@/server/core/errors'
 import { getCourse, type CourseSummary } from '@/server/courses/service'
+import { getCaSettings } from '@/server/performance/service'
 import { getTestForEdit, listCourseTests, type TestSummary } from '@/server/tests/authoring'
 import type { TestState } from '@/server/tests/phase'
 import { getLiveTest } from '@/server/tests/run'
@@ -15,6 +16,7 @@ import { absoluteLink, testLinkPath } from '@/app/share-links'
 import { loadPage } from '../../../../load-page'
 import type { LiveTestView } from '../../../test-actions'
 import { ReviewSwitch } from '../../../review-switch'
+import { TestCaControl } from '../../../test-ca-control'
 import { TestLive } from '../../../test-live'
 import { CatchUpAudience, TestStatePill } from '../../../test-state'
 
@@ -24,6 +26,10 @@ type LiveView = {
   state: TestState
   hasShort: boolean
   studentsCanReview: boolean
+  countsInCa: boolean
+  caGroupId: string | null
+  /** The course's named CAs, for the CA control. */
+  caGroups: { id: string; name: string }[]
   /** The test this one catches up on; null for an original. */
   catchUpOf: TestSummary['catchUpOf']
   /** An ended original's catch-ups, newest first; empty otherwise. */
@@ -45,9 +51,10 @@ export default async function TestLivePage({ params }: PageProps<'/courses/[cour
     if (live.courseId !== courseId) throw new AppError('NOT_FOUND', 'Test not in this course')
     // Catch-ups are given once a test has ended, so only an ended original can have any.
     const original = summary.catchUpOf === null && ENDED.includes(summary.state)
-    const [course, courseTests] = await Promise.all([
+    const [course, courseTests, ca] = await Promise.all([
       getCourse(ctx, courseId),
       original ? listCourseTests(ctx, courseId) : Promise.resolve([]),
+      getCaSettings(ctx.db, courseId),
     ])
     return {
       course,
@@ -55,12 +62,15 @@ export default async function TestLivePage({ params }: PageProps<'/courses/[cour
       state: summary.state,
       hasShort: summary.hasShort,
       studentsCanReview: summary.studentsCanReview,
+      countsInCa: summary.countsInCa,
+      caGroupId: summary.caGroupId,
+      caGroups: ca.groups.flatMap((g) => (g.id ? [{ id: g.id, name: g.name }] : [])),
       catchUpOf: summary.catchUpOf,
       catchUps: courseTests.filter((c) => c.catchUpOf?.id === summary.id),
     }
   })
   if (!view.ok) return <ErrorState code={view.code} />
-  const { course, live, state, hasShort, studentsCanReview, catchUpOf, catchUps } = view.data
+  const { course, live, state, hasShort, studentsCanReview, countsInCa, caGroupId, caGroups, catchUpOf, catchUps } = view.data
   const [tm, tReview, tCatchUp] = await Promise.all([
     getTranslations('tests.marking'),
     getTranslations('tests.review'),
@@ -117,6 +127,8 @@ export default async function TestLivePage({ params }: PageProps<'/courses/[cour
         }
       />
       <ReviewSwitch testId={live.testId} initial={studentsCanReview} />
+      {/* A catch-up counts like its original: the switch is on the original only. */}
+      {catchUpOf === null && <TestCaControl testId={live.testId} initial={{ countsInCa, caGroupId }} caGroups={caGroups} />}
       {/* A new phase (Start, End, deadline) remounts the live view with fresh state. */}
       <TestLive key={live.phase} initial={live} courseId={course.id} link={await absoluteLink(testLinkPath(live.code))} timeZone={config.timeZone} />
       {catchUps.length > 0 && (

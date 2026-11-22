@@ -1552,7 +1552,9 @@
         "assignments": "Assignments not applicable",
         "participation": "Participation not applicable",
         "tests": "Tests not applicable"
-      }
+      },
+      "group": "{name} (/{points})",
+      "notApplicableGroup": "{name} not applicable"
     },
     "lecturer": {
       "courseLink": "CA",
@@ -1619,7 +1621,24 @@
           "range": "The total must be between 1 and 100, each part between 0 and 100, the target a whole number from 1 to 100, and the best tests a whole number from 1 to 50 (or empty).",
           "decimals": "Use at most 2 decimals (for example {example}).",
           "shape": "The settings couldn't be read. Reload the page and try again.",
-          "fields": "Enter a number in each highlighted box."
+          "fields": "Enter a number in each highlighted box.",
+          "groupName": "Give each CA a different name, up to 40 characters.",
+          "groups": "A course has at most {max} CAs."
+        },
+        "testsFromGroups": "The sum of your CAs below.",
+        "groups": {
+          "legend": "CAs made of tests",
+          "hint": "Split the tests part into several CAs, such as CA 1 and CA 2, each with its own points. Each test then counts in one of them.",
+          "hintSplit": "Each CA is worked out from its own tests, weighted, or only its best ones. Choose a test's CA in its editor or on its page.",
+          "listLabel": "CAs made of tests",
+          "name": "Name",
+          "points": "Points",
+          "bestOf": "Best tests",
+          "bestOfAll": "All",
+          "remove": "Remove {name}",
+          "add": "Add a CA",
+          "split": "Split tests into CAs",
+          "removeHint": "Tests in a CA you remove count in the first one. Remove every CA to go back to one tests part."
         }
       },
       "board": {
@@ -1647,7 +1666,87 @@
         "attendance": "Attendance hasn't started, so it counts 0 for everyone. Set it to 0 points if you won't use it.",
         "assignments": "Assignments haven't started (no grades released yet), so they count 0 for everyone. Set them to 0 points if you won't use them.",
         "participation": "Participation hasn't started, so it counts 0 for everyone. Set it to 0 points if you won't use it.",
-        "tests": "Tests haven't started (no results released yet), so they count 0 for everyone. Set them to 0 points if you won't use them."
+        "tests": "Tests haven't started (no results released yet), so they count 0 for everyone. Set them to 0 points if you won't use them.",
+        "group": "{name} hasn't started (no test in it has released results yet), so it counts 0 for everyone."
+      },
+      "templates": {
+        "pickLabel": "Start from a template",
+        "pickHint": "Choose a card: the settings below are filled in from it. Nothing changes until you save.",
+        "filled": "Filled in from “{name}”. Check it, then save.",
+        "notSavedYet": "Not saved yet.",
+        "groupName": "CA {n}",
+        "builtIn": {
+          "balanced": {
+            "name": "Balanced",
+            "description": "A bit of everything: tests and assignments count the same.",
+            "details": "A good starting point when you use a bit of everything. Tests and assignments weigh the same, and attendance and participation reward students who come and take part."
+          },
+          "testBased": {
+            "name": "Test-based",
+            "description": "Mostly tests, best two count.",
+            "details": "For courses assessed mainly through tests in class. Only each student's two best tests count, so one bad day doesn't sink their CA. A little attendance and assignment work still counts."
+          },
+          "twoCas": {
+            "name": "Two CAs",
+            "description": "CA 1 and CA 2, each made of one or more tests.",
+            "details": "For schools with two official CAs per semester. CA 1 and CA 2 each get 10 points, and each can be made of one test or several. You choose each test's CA in the test editor."
+          },
+          "assignments": {
+            "name": "Assignments and projects",
+            "description": "Mostly work handed in.",
+            "details": "For project-based courses where the work handed in matters most. Tests count a little; attendance rewards regular presence."
+          },
+          "practical": {
+            "name": "Practical / lab",
+            "description": "Attendance and lab work matter most, no tests.",
+            "details": "For labs and practical sessions with no tests: attendance and lab reports carry the CA, with participation for students who get involved."
+          },
+          "testsOnly": {
+            "name": "Tests only",
+            "description": "The whole CA comes from tests.",
+            "details": "Everything comes from tests. Use it when attendance and assignments are graded elsewhere or not at all."
+          }
+        },
+        "saveAsLabel": "Save as a template",
+        "namePlaceholder": "e.g. My L3 courses",
+        "saveAs": "Save as template",
+        "saveAsHint": "Keeps the form as it is now, CAs included, to use on your other courses.",
+        "nameTaken": "You already have a template with this name.",
+        "nameInvalid": "Give the template a name, up to 60 characters.",
+        "savedAs": "Saved as “{name}”.",
+        "mineBadge": "Mine",
+        "applyToCourses": "Apply to courses",
+        "outOf": "/{total}",
+        "close": "Close",
+        "cancel": "Cancel",
+        "applyTitle": "Apply “{name}”",
+        "applyBody": "Each course you tick gets this split now, replacing its CA settings. A CA with the same name as one the course has keeps its tests.",
+        "applyCourses": "Courses",
+        "applied": "{count, plural, one {Applied to # course.} other {Applied to # courses.}}",
+        "applyPick": "Tick at least one course.",
+        "applyConfirm": "{count, plural, one {Apply to # course} other {Apply to # courses}}",
+        "searchPlaceholder": "Search templates",
+        "searchLabel": "Search the CA templates",
+        "noMatch": "No template matches “{query}”.",
+        "mineDescription": "Your own template.",
+        "defaultBadge": "Default",
+        "selected": "Selected",
+        "moreInfo": "More about {name}",
+        "points": "{points} pts",
+        "leftOut": "Parts not listed get 0 points: they are left out of the CA.",
+        "unsetDefault": "Stop using for new courses",
+        "makeDefault": "Use for new courses",
+        "deleteShort": "Delete",
+        "useHere": "Use for this course",
+        "how": {
+          "attendance": "From check-ins: present counts fully, partial counts half.",
+          "assignments": "Weighted average of released assignment grades; missing work counts 0.",
+          "participation": "+1 / −1 taps in class; {target} net taps give full points.",
+          "tests": "Weighted average of every released test.",
+          "testsBest": "Only each student's best {count, plural, one {test counts} other {# tests count}}.",
+          "group": "Weighted average of the tests you put in this CA.",
+          "groupBest": "Only each student's best {count, plural, one {test} other {# tests}} in this CA {count, plural, one {counts} other {count}}."
+        }
       }
     },
     "student": {
@@ -1672,7 +1771,9 @@
         "assignments": "Weighted average of released grades; missing work counts 0. Work still waiting for a grade, or due before you joined, isn't counted.",
         "participation": "Earned in class, full marks at {target, plural, one {# contribution} other {# contributions}}.",
         "tests": "Weighted average of your released test results; a test you didn't take counts 0. A test that ended before you joined isn't counted.",
-        "testsBest": "Your best {count, plural, one {test counts} other {# tests count}}, weighted, among the released results; a test you didn't take counts 0. A test that ended before you joined isn't counted."
+        "testsBest": "Your best {count, plural, one {test counts} other {# tests count}}, weighted, among the released results; a test you didn't take counts 0. A test that ended before you joined isn't counted.",
+        "group": "Weighted average of your released results in the tests of this CA; a test you didn't take counts 0.",
+        "groupBest": "{count, plural, one {Your best test in this CA counts} other {Your # best tests in this CA count}}, weighted; a test you didn't take counts 0."
       },
       "missingWork": "{count, plural, one {# piece of work missing} other {# pieces of work missing}}",
       "seeAssignments": "See my assignments"
@@ -1754,7 +1855,12 @@
         "mcqNote": "Multiple choice only: students see their total as soon as they hand in.",
         "save": "Save and get the link",
         "saving": "Saving…",
-        "locked": "Questions are locked once the test has started."
+        "locked": "Questions are locked once the test has started.",
+        "countsInCa": "Counts in the CA",
+        "countsInCaHint": "Its results count in the course's CA once released.",
+        "practiceHint": "A practice test: students take it as usual, but it never counts in the CA.",
+        "caGroup": "Counts in",
+        "weightHintGroup": "How much this test counts among the tests of its CA."
       },
       "copy": {
         "title": "Copy to another course",
@@ -1855,7 +1961,8 @@
           "prompt": "write the question (up to 2,000 characters).",
           "options": "give 2 to 6 options, none of them empty.",
           "correct": "tick exactly one correct answer.",
-          "guide": "write a marking guide (up to 4,000 characters)."
+          "guide": "write a marking guide (up to 4,000 characters).",
+          "caGroup": "choose one of the course's CAs."
         },
         "test": {
           "shape": "Part of this test couldn't be read. Reload the page and try again.",
@@ -1868,13 +1975,16 @@
           "prompt": "Write every question.",
           "options": "Give each multiple-choice question 2 to 6 options.",
           "correct": "Tick exactly one correct answer in each multiple-choice question.",
-          "guide": "Write a marking guide for each short answer."
+          "guide": "Write a marking guide for each short answer.",
+          "caGroup": "Choose one of the course's CAs. Reload the page if they just changed."
         },
         "started": "The test has started: it can no longer be changed or deleted.",
         "notStarted": "The test hasn't started yet.",
         "notEnded": "This student wasn't ended for leaving.",
-        "testOver": "The test is over: nobody can be let back in."
-      }
+        "testOver": "The test is over: nobody can be let back in.",
+        "isCatchUp": "A catch-up counts like the test it catches up on: change it there."
+      },
+      "practice": "Not in CA"
     },
     "student": {
       "metaTitle": "Test",
@@ -1993,7 +2103,8 @@
           "ended_left": "Ended for leaving",
           "handed_in": "Handed in"
         },
-        "score": "{score} / {outOf}"
+        "score": "{score} / {outOf}",
+        "practice": "Doesn't count for marks"
       }
     },
     "marking": {
@@ -2137,6 +2248,12 @@
         "nobodyMissed": "Everyone sat this test. Pick the students instead.",
         "studentIds": "Pick at least one student on the course."
       }
+    },
+    "ca": {
+      "switchLabel": "Counts in the CA",
+      "onHelp": "Its results count in the course's CA once released. Turn it off to make it a practice test.",
+      "offHelp": "A practice test: left out of the CA. You can turn it on at any time; the CA updates at once.",
+      "groupLabel": "Counts in"
     }
   },
   "notes": {

@@ -58,6 +58,8 @@ function editor(over: Partial<EditorValues> = {}): EditorValues {
     maxExits: '3',
     maxAbsenceSeconds: '10',
     weight: '1',
+    countsInCa: true,
+    caGroupId: '',
     questions: [
       {
         key: 'a',

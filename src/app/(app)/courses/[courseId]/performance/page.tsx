@@ -4,14 +4,22 @@ import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
 import { PageHeader, Panel, SectionHeading } from '@/components/page-header'
 import { buttonVariants } from '@/components/ui/button'
-import { getCourse, type CourseSummary } from '@/server/courses/service'
+import { getCourse, listLecturerCourses, type CourseSummary } from '@/server/courses/service'
 import type { CaSettings } from '@/server/performance/rules'
 import { getCourseCa, type StudentCa } from '@/server/performance/service'
+import { listCaTemplates, type CaTemplate, type DefaultTemplate } from '@/server/performance/templates'
 import { loadPage } from '../../../load-page'
 import { CaSettingsForm } from '../../ca-settings-form'
 import { CaTable } from '../../ca-table'
 
-type CaView = { course: CourseSummary; settings: CaSettings; rows: StudentCa[] }
+type CaView = {
+  course: CourseSummary
+  settings: CaSettings
+  rows: StudentCa[]
+  templates: CaTemplate[]
+  defaultTemplate: DefaultTemplate
+  courses: { id: string; label: string }[]
+}
 
 export async function generateMetadata() {
   const t = await getTranslations('performance.lecturer')
@@ -23,10 +31,17 @@ export default async function CoursePerformancePage({ params }: PageProps<'/cour
   const t = await getTranslations('performance.lecturer')
   const view = await loadPage<CaView>(async (ctx) => {
     const ca = await getCourseCa(ctx, courseId) // FORBIDDEN unless I teach this course
-    return { course: await getCourse(ctx, courseId), ...ca }
+    const [course, mine, courses] = await Promise.all([getCourse(ctx, courseId), listCaTemplates(ctx), listLecturerCourses(ctx)])
+    return {
+      course,
+      ...ca,
+      ...mine,
+      // Where a template can be applied: my own courses.
+      courses: courses.map((c) => ({ id: c.id, label: [c.code ? `${c.code} ${c.title}` : c.title, c.className, c.schoolName].join(' · ') })),
+    }
   })
   if (!view.ok) return <ErrorState code={view.code} />
-  const { course, settings, rows } = view.data
+  const { course, settings, rows, templates, defaultTemplate, courses } = view.data
   const courseHref = `/courses/${encodeURIComponent(course.id)}`
   const slipping = rows.filter((r) => r.slipping).length
   const missing = rows.filter((r) => r.missingWork > 0).length
@@ -72,9 +87,11 @@ export default async function CoursePerformancePage({ params }: PageProps<'/cour
             {notStarted.length > 0 && (
               <ul className="flex flex-col gap-2 rounded-3xl border bg-muted/40 px-4 py-3 text-sm sm:px-5">
                 {notStarted.map((c) => (
-                  <li key={c.key} className="flex gap-2">
+                  <li key={c.id} className="flex gap-2">
                     <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                    <span>{t(`notStartedNotice.${c.key}`)}</span>
+                    <span>
+                      {c.name === undefined ? t(`notStartedNotice.${c.key}`) : t('notStartedNotice.group', { name: c.name })}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -89,7 +106,13 @@ export default async function CoursePerformancePage({ params }: PageProps<'/cour
         <SectionHeading id="ca-settings">{t('settings.title')}</SectionHeading>
         <p className="text-sm text-muted-foreground">{t('settings.hint')}</p>
         <Panel>
-          <CaSettingsForm courseId={course.id} initial={settings} />
+          <CaSettingsForm
+            courseId={course.id}
+            initial={settings}
+            templates={templates}
+            defaultTemplate={defaultTemplate}
+            courses={courses}
+          />
         </Panel>
       </section>
     </>

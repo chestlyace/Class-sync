@@ -44,6 +44,13 @@ describe('CA settings', () => {
     return { lecturer, colleague, student, algo }
   }
 
+  /** The settings row's own columns: named CAs live in their own table. */
+  const columns = (settings: typeof DEFAULT_SETTINGS) => {
+    const rest: Partial<typeof DEFAULT_SETTINGS> = { ...settings }
+    delete rest.groups
+    return rest
+  }
+
   const stored = (courseId: string) =>
     db.select().from(courseCaSettings).where(eq(courseCaSettings.courseId, courseId))
 
@@ -54,7 +61,7 @@ describe('CA settings', () => {
     const input = { ...DEFAULT_SETTINGS, total: 20, attendancePoints: 5, assignmentPoints: 10, participationPoints: 5 }
     expect(await updateCaSettings(lecturer, algo.id, input)).toEqual(input)
     const [row] = await stored(algo.id)
-    expect(row).toMatchObject({ ...input, updatedBy: lecturer.user.id, updatedAt: at })
+    expect(row).toMatchObject({ ...columns(input), updatedBy: lecturer.user.id, updatedAt: at })
 
     // A second save replaces the row (upsert) and moves updatedAt.
     const later = new Date('2026-11-09T10:00:00Z')
@@ -63,7 +70,7 @@ describe('CA settings', () => {
     expect(await updateCaSettings(lecturer, algo.id, again)).toEqual(again)
     const rows = await stored(algo.id)
     expect(rows).toHaveLength(1)
-    expect(rows[0]).toMatchObject({ ...again, updatedAt: later })
+    expect(rows[0]).toMatchObject({ ...columns(again), updatedAt: later })
   })
 
   it('keeps two-decimal points exactly', async () => {

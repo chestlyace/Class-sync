@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, isNull, notInArray, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, isNull, notInArray, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { generateJoinCode } from '@/server/classes/join-code'
 import { now } from '@/server/core/clock'
@@ -9,6 +9,7 @@ import { requireCourseOwner } from '@/server/courses/service'
 import type { Db } from '@/server/db'
 import {
   CATCH_UP_FOR,
+  caTestGroup,
   courseTest,
   testAttempt,
   testCatchUpStudent,
@@ -43,6 +44,10 @@ export type TestSummary = {
   joined: number
   /** Students may review the paper and practise it once released (the lecturer's switch). */
   studentsCanReview: boolean
+  /** Off: a practice test, left out of the CA (a catch-up follows its original). */
+  countsInCa: boolean
+  /** The course's named CA it counts in, if any. */
+  caGroupId: string | null
   /** The test this one is a catch-up of; null for an ordinary test. */
   catchUpOf: { id: string; title: string } | null
   catchUpFor: CatchUpFor | null
@@ -108,7 +113,27 @@ function settingsOf(t: TestSettings): TestSettings {
     maxExits: t.maxExits,
     maxAbsenceSeconds: t.maxAbsenceSeconds,
     weight: t.weight,
+    countsInCa: t.countsInCa,
+    caGroupId: t.caGroupId,
   }
+}
+
+/**
+ * A test's named CA, checked: one of the course's, or null when it has none. With named CAs, a
+ * test that counts without one gets the first (as the CA would count it anyway).
+ */
+async function resolveCaGroup(db: Db, courseId: string, settings: TestSettings): Promise<string | null> {
+  const groups = await db
+    .select({ id: caTestGroup.id })
+    .from(caTestGroup)
+    .where(eq(caTestGroup.courseId, courseId))
+    .orderBy(asc(caTestGroup.position), asc(caTestGroup.createdAt))
+  if (groups.length === 0) return null
+  if (settings.caGroupId === null) return groups[0].id
+  if (!groups.some((g) => g.id === settings.caGroupId)) {
+    throw new AppError('VALIDATION', 'Invalid test', { reason: 'caGroup' })
+  }
+  return settings.caGroupId
 }
 
 /** Inserts the questions (positions 0, 1, 2…) and their options, in two statements. */
@@ -277,6 +302,8 @@ async function summarize(db: Db, tests: TestRow[]): Promise<TestSummary[]> {
       endsAt: endsAt(t),
       joined: joined.get(t.id) ?? 0,
       studentsCanReview: t.studentsCanReview,
+      countsInCa: t.countsInCa,
+      caGroupId: t.caGroupId,
       catchUpOf: t.catchUpOfId === null ? null : { id: t.catchUpOfId, title: titles.get(t.catchUpOfId) ?? '' },
       catchUpFor: t.catchUpFor,
       // Like `joined`, only students still on the roster count.
@@ -314,7 +341,9 @@ function toQuestionInput(q: StoredQuestion): QuestionInput {
 export async function createTest(ctx: Ctx, courseId: string, input: unknown): Promise<TestSummary> {
   await requireCourseOwner(ctx, courseId)
   const data = parseTestInput(input)
-  const created = await insertNewTest(ctx, courseId, settingsOf(data), data.questions, null)
+  const settings = settingsOf(data)
+  settings.caGroupId = await resolveCaGroup(ctx.db, courseId, settings)
+  const created = await insertNewTest(ctx, courseId, settings, data.questions, null)
   return summarizeTest(ctx.db, created)
 }
 
@@ -322,7 +351,8 @@ export async function createTest(ctx: Ctx, courseId: string, input: unknown): Pr
  * Replaces the settings and every question of a test that has not started. The first statement
  * of the transaction is the conditional update on `started_at is null`, so it cannot race Start:
  * once Start has committed, nothing is changed (CONFLICT { reason: 'started' }); a test deleted
- * in between is FORBIDDEN. A catch-up keeps its original's weight, whatever the input says.
+ * in between is FORBIDDEN. A catch-up keeps its original's weight and place in the CA, whatever
+ * the input says.
  */
 export async function updateTest(ctx: Ctx, testId: string, input: unknown): Promise<TestSummary> {
   const { test } = await requireOwnedTest(ctx, testId)
@@ -330,10 +360,12 @@ export async function updateTest(ctx: Ctx, testId: string, input: unknown): Prom
   const settings = settingsOf(data)
   if (test.catchUpOfId !== null) {
     const [original] = await ctx.db
-      .select({ weight: courseTest.weight })
+      .select({ weight: courseTest.weight, countsInCa: courseTest.countsInCa, caGroupId: courseTest.caGroupId })
       .from(courseTest)
       .where(eq(courseTest.id, test.catchUpOfId))
-    if (original) settings.weight = original.weight
+    if (original) Object.assign(settings, original)
+  } else {
+    settings.caGroupId = await resolveCaGroup(ctx.db, test.courseId, settings)
   }
   const updated = await ctx.db.transaction(async (tx) => {
     const [row] = await tx
@@ -383,7 +415,11 @@ export async function copyTest(ctx: Ctx, testId: string, targetCourseId: string)
   const questions = await loadStoredQuestions(ctx.db, test.id)
   // Checked like a new test, so a copy never carries a test the rules now refuse.
   const data = parseTestInput({ ...settingsOf(test), questions: questions.map(toQuestionInput) })
-  const created = await insertNewTest(ctx, targetCourseId, settingsOf(data), data.questions, test.id, test.studentsCanReview)
+  const settings = settingsOf(data)
+  // A named CA belongs to its course: in another course the copy goes in that course's first.
+  if (targetCourseId !== test.courseId) settings.caGroupId = null
+  settings.caGroupId = await resolveCaGroup(ctx.db, targetCourseId, settings)
+  const created = await insertNewTest(ctx, targetCourseId, settings, data.questions, test.id, test.studentsCanReview)
   return summarizeTest(ctx.db, created)
 }
 
@@ -395,6 +431,28 @@ export async function setStudentsCanReview(ctx: Ctx, testId: string, on: boolean
   await requireOwnedTest(ctx, testId)
   if (typeof on !== 'boolean') throw new AppError('VALIDATION', 'Invalid input', { fields: ['on'] })
   await ctx.db.update(courseTest).set({ studentsCanReview: on, updatedAt: now() }).where(eq(courseTest.id, testId))
+}
+
+/**
+ * Whether a test counts in the CA, and in which named CA. Owner only; changeable in any state,
+ * even after release (the CA recalculates). A catch-up follows its original: CONFLICT is_catch_up.
+ */
+export async function setTestCa(ctx: Ctx, testId: string, input: unknown): Promise<void> {
+  const { test } = await requireOwnedTest(ctx, testId)
+  if (test.catchUpOfId !== null) {
+    throw new AppError('CONFLICT', 'A catch-up counts like its original', { reason: 'is_catch_up' })
+  }
+  const o = (typeof input === 'object' && input !== null ? input : {}) as Record<string, unknown>
+  const caGroupId = o.caGroupId ?? null
+  if (typeof o.countsInCa !== 'boolean' || (caGroupId !== null && typeof caGroupId !== 'string')) {
+    throw new AppError('VALIDATION', 'Invalid input', { fields: ['countsInCa'] })
+  }
+  const group = await resolveCaGroup(ctx.db, test.courseId, { ...settingsOf(test), caGroupId: caGroupId as string | null })
+  // Its catch-ups follow (the CA reads the original's place; this keeps their own rows in step).
+  await ctx.db
+    .update(courseTest)
+    .set({ countsInCa: o.countsInCa, caGroupId: group, updatedAt: now() })
+    .where(or(eq(courseTest.id, testId), eq(courseTest.catchUpOfId, testId)))
 }
 
 /** Deletes a test that has not started (conditional, so it cannot race Start); already gone is FORBIDDEN. */

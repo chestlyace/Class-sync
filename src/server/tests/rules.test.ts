@@ -108,6 +108,8 @@ describe('validateTestInput', () => {
       maxExits: 3,
       maxAbsenceSeconds: 10,
       weight: 1,
+      countsInCa: true,
+      caGroupId: null,
       questions: [
         {
           kind: 'mcq',

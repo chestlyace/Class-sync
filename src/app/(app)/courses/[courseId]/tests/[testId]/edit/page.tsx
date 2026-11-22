@@ -9,6 +9,7 @@ import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
 import { formatDecimal } from '@/lib/number-format'
 import { AppError } from '@/server/core/errors'
 import { listLecturerCourses } from '@/server/courses/service'
+import { getCaSettings } from '@/server/performance/service'
 import {
   getCatchUpOptions,
   getCatchUpStudents,
@@ -34,6 +35,7 @@ type EditView = {
   courses: { id: string; label: string }[]
   userId: string
   catchUp: CatchUpEdit | null
+  caGroups: { id: string; name: string }[]
 }
 
 export async function generateMetadata() {
@@ -65,10 +67,12 @@ export default async function EditTestPage({
       ])
       catchUp = { options, for: catchUpFor, ...students }
     }
-    return { test, courses, userId: ctx.user.id, catchUp }
+    const ca = await getCaSettings(ctx.db, courseId)
+    const caGroups = ca.groups.flatMap((g) => (g.id ? [{ id: g.id, name: g.name }] : []))
+    return { test, courses, userId: ctx.user.id, catchUp, caGroups }
   })
   if (!view.ok) return <ErrorState code={view.code} />
-  const { test, courses, userId, catchUp } = view.data
+  const { test, courses, userId, catchUp, caGroups } = view.data
   const { summary, input } = test
   const testHref = `/courses/${encodeURIComponent(courseId)}/tests/${encodeURIComponent(summary.id)}`
   const locked = summary.state !== 'not_started'
@@ -105,7 +109,7 @@ export default async function EditTestPage({
       {locked ? (
         <LockedTest test={test} />
       ) : (
-        <TestEditor courseId={courseId} testId={summary.id} userId={userId} saved={input} isCatchUp={catchUp !== null} />
+        <TestEditor courseId={courseId} testId={summary.id} userId={userId} saved={input} isCatchUp={catchUp !== null} caGroups={caGroups} />
       )}
 
       {catchUp && (

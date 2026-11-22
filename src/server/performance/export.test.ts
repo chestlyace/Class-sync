@@ -130,6 +130,7 @@ describe('buildCaWorkbook', () => {
       testPoints: 0,
       participationTarget: 3,
       testsBestOf: null,
+      groups: [],
     }
     const result = computeCa(settings, {
       attendance: { present: 1, partial: 0, absent: 2 },
@@ -266,6 +267,44 @@ describe('buildCaWorkbook', () => {
     const fr = await sheet('fr')
     expect(fr.getRow(1).getCell(6).value).toBe('Tests (/10)')
     expect(fr.getRow(3).getCell(8).value).toBe("Mis à l'échelle : Tests non applicables")
+  })
+
+  it('writes one column per named CA, headed by its name, with its own score', async () => {
+    const settings: CaSettings = {
+      ...DEFAULT_SETTINGS,
+      assignmentPoints: 10,
+      testPoints: 10,
+      groups: [
+        { id: 'g1', name: 'CA 1', points: 4, bestOf: null },
+        { id: 'g2', name: 'CA 2', points: 6, bestOf: null },
+      ],
+    }
+    const result = computeCa(settings, {
+      attendance: { present: 1, partial: 0, absent: 0 },
+      assignments: [{ weight: 1, mark: 10, maxMark: 20 }],
+      participationNet: 5,
+      tests: [
+        { weight: 1, ratio: 0.5, groupId: 'g1' },
+        { weight: 1, ratio: 1, groupId: 'g2' },
+      ],
+      classStarted: ALL_STARTED,
+      groupsStarted: { g1: true, g2: true },
+    })
+    const row = { ...student({ name: 'Ada', matricule: 'UB1' }), result }
+    const ws = (await read(await buildCaWorkbook({ settings, rows: [row], locale: 'en', courseLabel: 'Algo' }))).getWorksheet('CA')!
+    expect(cellsOf(ws.getRow(1))).toEqual([
+      'Matricule',
+      'Name',
+      'Attendance (/5)',
+      'Assignments (/10)',
+      'Participation (/5)',
+      'CA 1 (/4)',
+      'CA 2 (/6)',
+      'CA (/30)',
+      'Note',
+    ])
+    // 5 + 5 + 5 + 2 + 6 = 23.
+    expect(cellsOf(ws.getRow(2)).slice(2, 8)).toEqual([5, 5, 5, 2, 6, 23])
   })
 
   it('does not turn a spreadsheet formula in a name into a formula', async () => {
