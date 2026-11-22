@@ -56,14 +56,14 @@ export default async function AttendanceGridPage({ params }: PageProps<'/courses
         }
       />
 
-      <section aria-labelledby="new-session" className="flex flex-col gap-4">
+      <section aria-labelledby="new-session" data-tour="new-session" className="flex flex-col gap-4">
         <SectionHeading id="new-session">{t('newSession')}</SectionHeading>
         <Panel>
           <NewSessionForm courseId={course.id} hasCampusLocation={hasCampusLocation} />
         </Panel>
       </section>
 
-      <section aria-labelledby="sessions" className="flex flex-col gap-4">
+      <section aria-labelledby="sessions" data-tour="sessions" className="flex flex-col gap-4">
         <SectionHeading id="sessions">
           {t('sessionsTitle')} · {t('sessionCount', { count: sessions.length })}
         </SectionHeading>

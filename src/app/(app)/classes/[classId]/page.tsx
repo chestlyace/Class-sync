@@ -97,7 +97,7 @@ async function LecturerClass({
   ])
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div data-tour="class-codes" className="grid gap-4 sm:grid-cols-2">
         <CodeCard
           classId={cls.id}
           kind="student"
@@ -134,6 +134,7 @@ async function LecturerClass({
         action={
           <Link
             href={`/courses/new?classId=${encodeURIComponent(cls.id)}`}
+            data-tour="add-course"
             className={buttonVariants({ variant: 'outline', className: 'self-start' })}
           >
             <Plus aria-hidden="true" data-icon="inline-start" />

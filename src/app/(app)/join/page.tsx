@@ -65,7 +65,7 @@ export default async function JoinPage({ searchParams }: PageProps<'/join'>) {
             title={t('confirmTitle', { className: p.className })}
             description={user.role === 'lecturer' ? t('confirmLecturer') : t('confirmStudent')}
           />
-          <Panel className="flex max-w-xl flex-col gap-5">
+          <Panel data-tour="join-form" className="flex max-w-xl flex-col gap-5">
             <JoinForm
               role={user.role}
               defaultCode={code}
@@ -87,7 +87,7 @@ export default async function JoinPage({ searchParams }: PageProps<'/join'>) {
         title={t('title')}
         description={user.role === 'lecturer' ? t('lecturerDescription') : t('studentDescription')}
       />
-      <Panel className="flex max-w-xl flex-col gap-5">
+      <Panel data-tour="join-form" className="flex max-w-xl flex-col gap-5">
         {code && (
           <p role="alert" className="text-sm text-destructive">
             {t('linkNotFound')}

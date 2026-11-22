@@ -61,12 +61,22 @@ export type Device = {
 export function userPages(browser: Browser, device: Device) {
   const contexts: BrowserContext[] = []
   return {
-    async newUserPage(extra: Parameters<Browser['newContext']>[0]): Promise<Page> {
+    async newUserPage(extra: Parameters<Browser['newContext']>[0], options: { guides?: boolean } = {}): Promise<Page> {
       const context = await browser.newContext({
         ...device,
         viewport: device.viewport ?? undefined,
         ...extra,
       })
+      // The first-visit guides would cover the pages the scenarios click through; guides.spec.ts turns them on.
+      if (!options.guides) {
+        await context.addInitScript(() => {
+          try {
+            window.localStorage.setItem('clasync:guides-off', '1')
+          } catch {
+            // about:blank and other opaque origins have no storage.
+          }
+        })
+      }
       contexts.push(context)
       return context.newPage()
     },
