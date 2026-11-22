@@ -2016,6 +2016,8 @@
       "aiOff": "Pas de suggestions d'IA — corrigez à la main.",
       "gettingSuggestions": "Suggestions en cours…",
       "suggestionsFailed": "Suggestions indisponibles — corrigez à la main.",
+      "suggestCap": "Limite mensuelle des suggestions d'IA atteinte — corrigez à la main pour l'instant.",
+      "suggestRateLimited": "Trop de demandes de suggestions — patientez un instant et réessayez.",
       "tryAgain": "Réessayer",
       "answers": "Réponses",
       "noAnswers": "Personne n'a répondu à cette question.",
