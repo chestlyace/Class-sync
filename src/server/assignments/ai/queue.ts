@@ -1,3 +1,5 @@
+import { queueDriver } from '@/server/jobs/driver'
+
 export const MARKING_TOPIC = 'assignment-marking'
 
 /**
@@ -26,6 +28,20 @@ const vercelQueue: MarkingQueue = {
 }
 
 /**
+ * pg-boss (Heroku): a job in the app's database, worked by the web process (src/server/jobs/worker.ts).
+ * Its id comes from the same key the Vercel queue de-duplicated on.
+ */
+const pgBossQueue: MarkingQueue = {
+  async send(message) {
+    const { getBoss, jobIdFor } = await import('@/server/jobs/boss')
+    const boss = await getBoss()
+    await boss.send(MARKING_TOPIC, message, {
+      id: jobIdFor(MARKING_TOPIC, `${message.submissionId}:${message.submittedAt}:${message.requestedAt}`),
+    })
+  },
+}
+
+/**
  * Local development: the job runs in this process on the next tick, on the app's own database. The
  * timer is unref'd so it never keeps a process alive; a restart forgets it.
  */
@@ -45,8 +61,9 @@ const memoryQueue: MarkingQueue = {
   },
 }
 
-/** The queue AI marking jobs go through: Vercel Queues on Vercel, an in-process timer elsewhere. */
+/** The queue AI marking jobs go through: Vercel Queues, pg-boss or an in-process timer (see queueDriver). */
 export function markingQueue(): MarkingQueue {
   if (testQueue) return testQueue
-  return process.env.VERCEL ? vercelQueue : memoryQueue
+  const driver = queueDriver()
+  return driver === 'vercel' ? vercelQueue : driver === 'pgboss' ? pgBossQueue : memoryQueue
 }

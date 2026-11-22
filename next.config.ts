@@ -11,16 +11,22 @@ const NO_FRAMING = [
 ];
 
 // Production answers on one host only: BETTER_AUTH_URL's. Every other host (www, the *.vercel.app
-// aliases) gets a permanent redirect there, so sessions, OAuth issuer and email links all agree.
-// Cron calls and queue deliveries are left alone: neither Vercel Cron nor Vercel Queues follows redirects.
+// aliases, the *.herokuapp.com name) gets a permanent redirect there, so sessions, OAuth issuer and email
+// links all agree. Cron calls and queue deliveries are left alone: neither Vercel Cron nor Vercel Queues
+// follows redirects. While BETTER_AUTH_URL is still a platform host (before the domain moves), nothing
+// redirects.
+const IS_PRODUCTION = process.env.APP_ENV?.trim() === "production" || process.env.VERCEL_ENV === "production";
 const CANONICAL_HOST =
-  process.env.VERCEL_ENV === "production" && process.env.BETTER_AUTH_URL
-    ? new URL(process.env.BETTER_AUTH_URL).host
-    : null;
+  IS_PRODUCTION && process.env.BETTER_AUTH_URL ? new URL(process.env.BETTER_AUTH_URL).host : null;
+const PLATFORM_HOSTS = [".vercel.app", ".herokuapp.com"];
 
 const nextConfig: NextConfig = {
+  // APP_ENV (Heroku) for the browser bundle, which only sees NEXT_PUBLIC_ variables (Sentry's environment tag).
+  env: { NEXT_PUBLIC_APP_ENV: process.env.APP_ENV?.trim() ?? "" },
+  // Loaded from node_modules at run time, like `pg`, rather than bundled (Heroku's background jobs).
+  serverExternalPackages: ["pg-boss"],
   async redirects() {
-    if (!CANONICAL_HOST || CANONICAL_HOST.endsWith(".vercel.app")) return [];
+    if (!CANONICAL_HOST || PLATFORM_HOSTS.some((h) => CANONICAL_HOST.endsWith(h))) return [];
     return [
       {
         source: "/:path((?!api/(?:cron|queues)/).*)",

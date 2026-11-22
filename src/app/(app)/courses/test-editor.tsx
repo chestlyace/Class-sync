@@ -59,12 +59,15 @@ export function TestEditor({
   testId,
   userId,
   saved,
+  isCatchUp = false,
 }: {
   courseId: string
   testId: string | null
   userId: string
   /** The saved test (edit), or null for a new one. */
   saved: SavedTestInput | null
+  /** A catch-up counts with its original's weight: the weight field is hidden (the service keeps it). */
+  isCatchUp?: boolean
 }) {
   const t = useTranslations('tests.lecturer.editor')
   const locale = useLocale()
@@ -239,24 +242,26 @@ export function TestEditor({
               </Field>
             </div>
 
-            <Field data-invalid={invalid('weight')}>
-              <FieldLabel htmlFor="test-weight">{t('weight')}</FieldLabel>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="test-weight"
-                  inputMode="decimal"
-                  value={values.weight}
-                  aria-invalid={invalid('weight')}
-                  aria-describedby="test-weight-hint"
-                  className="w-24 font-mono"
-                  onChange={(e) => update((v) => ({ ...v, weight: e.target.value }))}
-                />
-                <span aria-hidden="true" className="font-mono text-muted-foreground">
-                  {t('weightSuffix')}
-                </span>
-              </div>
-              <FieldDescription id="test-weight-hint">{t('weightHint')}</FieldDescription>
-            </Field>
+            {!isCatchUp && (
+              <Field data-invalid={invalid('weight')}>
+                <FieldLabel htmlFor="test-weight">{t('weight')}</FieldLabel>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="test-weight"
+                    inputMode="decimal"
+                    value={values.weight}
+                    aria-invalid={invalid('weight')}
+                    aria-describedby="test-weight-hint"
+                    className="w-24 font-mono"
+                    onChange={(e) => update((v) => ({ ...v, weight: e.target.value }))}
+                  />
+                  <span aria-hidden="true" className="font-mono text-muted-foreground">
+                    {t('weightSuffix')}
+                  </span>
+                </div>
+                <FieldDescription id="test-weight-hint">{t('weightHint')}</FieldDescription>
+              </Field>
+            )}
 
             <p aria-live="polite" className="text-lg font-semibold">
               {total === null ? t('totalUnknown') : t('total', { total: formatDecimal(total, locale), count: total })}

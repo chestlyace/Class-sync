@@ -84,7 +84,9 @@ export default async function TestResultsPage({ params }: PageProps<'/courses/[c
   }
 
   const { test, rows, pending, finalAt, releasedAt, at } = view.data
-  const tReview = await getTranslations('tests.review')
+  const [tReview, tCatchUp] = await Promise.all([getTranslations('tests.review'), getTranslations('tests.catchUp')])
+  const testsHref = `/courses/${encodeURIComponent(courseId)}/tests`
+  const resultsOf = (id: string) => `${testsHref}/${encodeURIComponent(id)}/results`
   const num = (value: number) => formatDecimal(value, locale)
   const average = rows.length === 0 ? null : rows.reduce((sum, r) => sum + r.score, 0) / rows.length
   const final = finalAt !== null && at.getTime() >= finalAt.getTime()
@@ -102,8 +104,15 @@ export default async function TestResultsPage({ params }: PageProps<'/courses/[c
         title={t('results.title')}
         description={
           <span className="inline-flex flex-wrap items-center gap-2">
+            {test.catchUpOf && <Badge variant="secondary">{tCatchUp('badge')}</Badge>}
             <TestStatePill state={test.state} />
             <span>{test.hasShort ? t('results.pendingNote', { count: pending }) : t('results.mcqOnly')}</span>
+            {test.catchUpOf && (
+              // A catch-up is only given once its original has ended, so the original has results.
+              <Link href={resultsOf(test.catchUpOf.id)} className="font-medium text-primary underline-offset-4 hover:underline">
+                {tCatchUp('original', { title: test.catchUpOf.title })}
+              </Link>
+            )}
           </span>
         }
         actions={
@@ -207,9 +216,28 @@ export default async function TestResultsPage({ params }: PageProps<'/courses/[c
                     </TableHead>
                     <TableCell className="font-mono tracking-[0.04em]">{row.matricule ?? '—'}</TableCell>
                     <TableCell>
-                      <Badge variant={row.status === 'ended' ? 'destructive' : row.status === 'not_joined' ? 'outline' : 'secondary'}>
-                        {t(`live.status.${row.status}`)}
-                      </Badge>
+                      <span className="flex flex-col items-start gap-1">
+                        <Badge variant={row.status === 'ended' ? 'destructive' : row.status === 'not_joined' ? 'outline' : 'secondary'}>
+                          {t(`live.status.${row.status}`)}
+                        </Badge>
+                        {row.catchUp && (
+                          // Their original status stays; the catch-up they sat counts in its place.
+                          <span className="text-sm whitespace-nowrap">
+                            <Link
+                              href={resultsOf(row.catchUp.testId)}
+                              className="font-medium text-primary underline-offset-4 hover:underline"
+                            >
+                              {tCatchUp('rowScore', { score: num(row.catchUp.score), outOf: num(row.catchUp.outOf) })}
+                            </Link>
+                            {row.catchUp.pendingShort > 0 && (
+                              <span className="text-muted-foreground">
+                                {' · '}
+                                {tCatchUp('rowPending', { count: row.catchUp.pendingShort })}
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </span>
                     </TableCell>
                     <TableCell className="text-right font-mono whitespace-nowrap">
                       {t('results.scoreValue', { score: num(row.score), outOf: num(row.outOf) })}

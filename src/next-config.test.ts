@@ -24,6 +24,17 @@ describe('next.config redirects', () => {
     expect(rules[0]!.destination.startsWith('https://clasync.online/')).toBe(true)
   })
 
+  it('does the same on Heroku (APP_ENV), and nothing while the canonical host is still a platform name', async () => {
+    vi.stubEnv('APP_ENV', 'production')
+    vi.stubEnv('BETTER_AUTH_URL', 'https://clasync.online')
+    expect(await loadRedirects()).toHaveLength(1)
+    vi.stubEnv('BETTER_AUTH_URL', 'https://clasync-0a1b2c3d4e5f.herokuapp.com')
+    expect(await loadRedirects()).toEqual([])
+    vi.stubEnv('APP_ENV', 'staging')
+    vi.stubEnv('BETTER_AUTH_URL', 'https://staging.clasync.online')
+    expect(await loadRedirects()).toEqual([])
+  })
+
   it('leaves cron calls and queue deliveries alone, and redirects everything else', async () => {
     vi.stubEnv('VERCEL_ENV', 'production')
     vi.stubEnv('BETTER_AUTH_URL', 'https://clasync.online')

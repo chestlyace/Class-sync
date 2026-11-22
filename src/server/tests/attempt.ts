@@ -12,6 +12,7 @@ import { course, courseTest, testAnswer, testAttempt, testExit, testLog, testOpt
 import { appLinkBuilder, queueNotifications, type Notification } from '@/server/email/notify'
 import { TestHandedInEmail } from '@/server/email/templates/test-handed-in'
 import { emailSubject } from '@/server/email/templates/verify-email'
+import { eligibleStudentsForTests, mayTakeCatchUp } from './catch-up'
 import { judgeExit, type LeavingRule } from './leaving'
 import { orderFor, scoreAttempt, type ScoringAnswer, type ScoringQuestion } from './paper'
 import { acceptsAnswers, answersFinalAt, canSeeResult, endsAt, testPhase, testState, type TestPhase, type TestState } from './phase'
@@ -92,6 +93,8 @@ export type MyTestItem = {
   result: QuickResult | null
   /** Whether I may review the paper and practise it now (or why not). */
   review: ReviewAccess
+  /** A catch-up sitting of an earlier test (only ever listed for students who may sit it). */
+  isCatchUp: boolean
 }
 
 type TestRow = typeof courseTest.$inferSelect
@@ -290,6 +293,7 @@ async function requireTestForStudent(ctx: Ctx, code: unknown): Promise<{ test: T
   if (ctx.user.role !== 'student') notYourCourse()
   const found = await findTestByCode(ctx.db, code)
   if (!found || !(await isOnCourseRoster(ctx.db, found.test.courseId, ctx.user.id))) notYourCourse()
+  if (found.test.catchUpOfId !== null && !(await mayTakeCatchUp(ctx.db, found.test, ctx.user.id))) notYourCourse()
   return { test: found.test, courseTitle: found.courseTitle }
 }
 
@@ -307,6 +311,15 @@ async function requireMyAttempt(
     .innerJoin(course, eq(course.id, courseTest.courseId))
     .where(and(eq(testAttempt.id, attemptId), eq(testAttempt.studentId, ctx.user.id)))
   if (!row || !(await isOnCourseRoster(ctx.db, row.test.courseId, ctx.user.id))) forbidden()
+  // Once a catch-up has started, an attempt on it always holds eligibility, so only a waiting
+  // attempt (before Start) needs the check: no extra queries on each sync or hand-in.
+  if (
+    row.test.catchUpOfId !== null &&
+    row.test.startedAt === null &&
+    !(await mayTakeCatchUp(ctx.db, row.test, ctx.user.id))
+  ) {
+    forbidden()
+  }
   return row
 }
 
@@ -662,6 +675,7 @@ export async function resolveTestLink(
     return { role: 'owner', courseId: found.test.courseId, testId: found.test.id }
   }
   if (!(await isOnCourseRoster(ctx.db, found.test.courseId, ctx.user.id))) notYourCourse()
+  if (found.test.catchUpOfId !== null && !(await mayTakeCatchUp(ctx.db, found.test, ctx.user.id))) notYourCourse()
   return { role: 'student', testId: found.test.id }
 }
 
@@ -811,11 +825,14 @@ export async function listMyTests(ctx: Ctx, courseId: string): Promise<MyTestIte
   if (!isId(courseId) || !(await isOnCourseRoster(ctx.db, courseId, ctx.user.id))) {
     throw new AppError('FORBIDDEN', 'You do not have access to this course')
   }
-  const tests = await ctx.db
+  const allTests = await ctx.db
     .select()
     .from(courseTest)
     .where(eq(courseTest.courseId, courseId))
     .orderBy(desc(courseTest.createdAt), desc(courseTest.id))
+  // One batched check; ordinary tests admit everyone and cost nothing. A catch-up I may not sit is not listed.
+  const eligible = await eligibleStudentsForTests(ctx.db, allTests, [ctx.user.id])
+  const tests = allTests.filter((t) => eligible.get(t.id)?.has(ctx.user.id) ?? false)
   if (tests.length === 0) return []
   const testIds = tests.map((t) => t.id)
 
@@ -879,6 +896,7 @@ export async function listMyTests(ctx: Ctx, courseId: string): Promise<MyTestIte
       myStatus,
       result: visible ? quickResult(questions, answersByAttempt.get(attempt.id) ?? new Map()) : null,
       review: reviews.get(t.id)!,
+      isCatchUp: t.catchUpOfId !== null,
     }
   })
 }

@@ -7,6 +7,7 @@ export const ADMIN_ACTIONS = [
   'unsuspend',
   'revoke_sessions',
   'resend_verification',
+  'send_password_reset',
   'school_update',
   'school_delete',
   'school_merge',
@@ -47,7 +48,7 @@ export const adminAction = pgTable(
   (t) => [
     check(
       'admin_action_action_check',
-      sql`${t.action} in ('suspend', 'unsuspend', 'revoke_sessions', 'resend_verification', 'school_update', 'school_delete', 'school_merge')`,
+      sql`${t.action} in ('suspend', 'unsuspend', 'revoke_sessions', 'resend_verification', 'send_password_reset', 'school_update', 'school_delete', 'school_merge')`,
     ),
     check('admin_action_one_target_check', sql`(${t.targetUserId} is null) <> (${t.targetSchoolId} is null)`),
     index('admin_action_at_idx').on(t.at),
