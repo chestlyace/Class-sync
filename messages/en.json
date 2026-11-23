@@ -2127,6 +2127,8 @@
       "aiOff": "No AI suggestions — mark by hand.",
       "gettingSuggestions": "Getting suggestions…",
       "suggestionsFailed": "Suggestions unavailable — mark by hand.",
+      "suggestCap": "Monthly AI suggestion limit reached — mark by hand for now.",
+      "suggestRateLimited": "Too many suggestion requests — wait a moment and try again.",
       "tryAgain": "Try again",
       "answers": "Answers",
       "noAnswers": "Nobody wrote an answer to this question.",
