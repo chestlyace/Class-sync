@@ -52,9 +52,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang={locale}
+      translate="no"
       className={`${inter.variable} ${bebasNeue.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <head>
+        {/* Clasync already ships en/fr. Browser translation rewrites text nodes into <font> tags,
+            which breaks React's DOM references (removeChild crashes on /join), so opt out. */}
+        <meta name="google" content="notranslate" />
         {/* Runs while the browser parses the HTML, so Chrome's install prompt is kept even when it
             fires before Next.js and React load. Next adds the metadata tags alongside. */}
         <InlineScript html={CAPTURE_INSTALL_PROMPT_SCRIPT} />
