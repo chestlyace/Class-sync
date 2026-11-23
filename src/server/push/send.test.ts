@@ -7,7 +7,8 @@ import { setAfterResponseForTests } from '@/server/lib/after-response'
 import { createTestDb } from '@/test/db'
 import { makeUser } from '@/test/factories'
 import type { PushPayload } from './payload'
-import { queuePush, sendPush, setPushClientForTests, type PushClient } from './send'
+import { generateVAPIDKeys } from 'web-push'
+import { createRealClient, queuePush, sendPush, setPushClientForTests, type PushClient } from './send'
 
 let db: Db
 beforeAll(async () => {
@@ -43,6 +44,17 @@ function fakeClient(impl?: (endpoint: string) => Promise<void>) {
   setPushClientForTests({ send })
   return send
 }
+
+describe('createRealClient', () => {
+  // web-push 4 has no default export; reading one made every real send fail with a TypeError
+  // ("reading 'setVapidDetails'") before any device was tried.
+  it('sets up web-push with VAPID keys, and refuses malformed ones with web-push’s own error', async () => {
+    await expect(createRealClient('not-a-key', 'not-a-key')).rejects.not.toBeInstanceOf(TypeError)
+    const { publicKey, privateKey } = generateVAPIDKeys()
+    const client = await createRealClient(publicKey, privateKey)
+    expect(typeof client.send).toBe('function')
+  })
+})
 
 describe('sendPush', () => {
   it('sends to every device of each user', async () => {

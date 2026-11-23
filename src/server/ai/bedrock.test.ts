@@ -34,6 +34,12 @@ describe('createBedrockModel', () => {
     expect(oidc.awsCredentialsProvider).not.toHaveBeenCalled()
   })
 
+  it('builds another model when one is named (test marking)', () => {
+    const cfg = readAiConfig({ AWS_ACCESS_KEY_ID: 'AKIA1', AWS_SECRET_ACCESS_KEY: 'secret' })
+    const model = createBedrockModel(cfg, 'eu.anthropic.claude-haiku-5-5')
+    expect((model as unknown as { modelId: string }).modelId).toBe('eu.anthropic.claude-haiku-5-5')
+  })
+
   it('refuses to build a model without a role or an access key', () => {
     expect(() => createBedrockModel(readAiConfig({}))).toThrow(/AI_AWS_ROLE_ARN/)
   })

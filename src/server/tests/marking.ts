@@ -1,8 +1,8 @@
 import { and, asc, eq, isNull, sql } from 'drizzle-orm'
+import { readAiConfig } from '@/server/ai/config'
 import { recordAiUsage } from '@/server/ai/usage'
 import { isValidMark } from '@/server/assignments/rules'
 import { now } from '@/server/core/clock'
-import { config } from '@/server/core/config'
 import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
 import { requireRole } from '@/server/core/guards'
@@ -10,7 +10,7 @@ import { courseRosterQuery, isOnCourseRoster } from '@/server/courses/roster'
 import { requireCourseOwner } from '@/server/courses/service'
 import type { Db } from '@/server/db'
 import { courseTest, testAnswer, testAttempt, testQuestion } from '@/server/db/schema'
-import { MAX_ANSWERS_PER_CALL, SuggesterError } from './ai/gateway'
+import { MAX_ANSWERS_PER_CALL, SuggesterError } from './ai/model'
 import { assertCanSuggestTestMarks } from './ai/limits'
 import { getMarkSuggester, type MarkSuggester, type Suggestion } from './ai/suggester'
 import { answersFinalAt } from './phase'
@@ -247,13 +247,13 @@ async function suggestBatch(
   at: Date,
 ): Promise<number> {
   const byKey = new Map(batch.map((a, i) => [`a${i + 1}`, a.attemptId]))
-  // The gateway does not expose token counts yet: one row per call, with 0 tokens. A failed call
+  // The suggester does not pass token counts back yet: one row per call, with 0 tokens. A failed call
   // is logged too, since it can still be billed, just like assignment marking.
   const usage = {
     purpose: 'test_correction' as const,
     lecturerId: input.lecturerId,
     submissionId: null,
-    model: config.aiMarkingModel,
+    model: readAiConfig().testModel,
     inputTokens: 0,
     outputTokens: 0,
   }

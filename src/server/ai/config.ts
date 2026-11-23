@@ -19,6 +19,8 @@ export type AiConfig = {
   accessKey: { accessKeyId: string; secretAccessKey: string } | null
   region: string
   assignmentModel: string
+  /** Model for test short-answer suggestions (`AI_MARKING_MODEL`); "fake" for the deterministic stand-in. */
+  testModel: string
   monthlyCap: number
 }
 
@@ -37,6 +39,15 @@ function accessKeyOf(env: Env): AiConfig['accessKey'] {
   return accessKeyId && secretAccessKey ? { accessKeyId, secretAccessKey } : null
 }
 
+/**
+ * `AI_MARKING_MODEL` used to name an AI Gateway "provider/model" (openai/gpt-5-mini): Bedrock can't run that,
+ * so such a value falls back to the default. Bedrock ids and ARNs never start with "word/".
+ */
+function testModelOf(env: Env): string {
+  const model = text(env.AI_MARKING_MODEL)
+  return model && !/^[\w-]+\//.test(model) ? model : DEFAULT_ASSIGNMENT_MODEL
+}
+
 export function readAiConfig(env: Env = process.env): AiConfig {
   const cap = text(env.AI_MONTHLY_CAP)
   const parsedCap = cap && /^\d+$/.test(cap) ? Number(cap) : 0
@@ -45,13 +56,25 @@ export function readAiConfig(env: Env = process.env): AiConfig {
     accessKey: accessKeyOf(env),
     region: text(env.AI_AWS_REGION) ?? DEFAULT_REGION,
     assignmentModel: text(env.AI_ASSIGNMENT_MODEL) ?? DEFAULT_ASSIGNMENT_MODEL,
+    testModel: testModelOf(env),
     monthlyCap: parsedCap > 0 ? parsedCap : DEFAULT_MONTHLY_CAP,
   }
+}
+
+/** A model is usable when it is the fake (never in production) or Bedrock credentials are set. */
+function isModelOn(model: string, cfg: AiConfig, env: Env): boolean {
+  if (model === FAKE_MODEL) return !isProductionDeploy(env)
+  return cfg.roleArn !== null || cfg.accessKey !== null
 }
 
 /** Whether AI mark suggestions for assignments are available in this environment. */
 export function isAssignmentMarkingOn(env: Env = process.env): boolean {
   const cfg = readAiConfig(env)
-  if (cfg.assignmentModel === FAKE_MODEL) return !isProductionDeploy(env)
-  return cfg.roleArn !== null || cfg.accessKey !== null
+  return isModelOn(cfg.assignmentModel, cfg, env)
+}
+
+/** Whether AI mark suggestions for test short answers are available in this environment. */
+export function isTestMarkingOn(env: Env = process.env): boolean {
+  const cfg = readAiConfig(env)
+  return isModelOn(cfg.testModel, cfg, env)
 }

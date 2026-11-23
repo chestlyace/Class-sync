@@ -33,12 +33,6 @@ export class SuggesterError extends Error {
   }
 }
 
-/** Reasoning models reject (or warn about) a temperature; others get 0 for steady marks. */
-function isReasoningModel(model: LanguageModel): boolean {
-  const id = typeof model === 'string' ? model : model.modelId
-  return /^openai\/(gpt-5|o)/.test(id)
-}
-
 function statusOf(error: unknown): number | null {
   if (typeof error !== 'object' || error === null) return null
   const status = (error as { statusCode?: unknown }).statusCode ?? (error as { status?: unknown }).status
@@ -54,23 +48,21 @@ function describeFailure(error: unknown): SuggesterError {
   const status = statusOf(last) ?? statusOf(error)
   let category: SuggesterFailure = 'other'
   if (/timeout|abort/i.test(`${name} ${lastName}`) || status === 408 || status === 504) category = 'timeout'
-  else if (/authentication|forbidden/i.test(lastName) || status === 401 || status === 403) category = 'auth'
-  else if (/ratelimit/i.test(lastName) || status === 429) category = 'rate_limit'
+  else if (/authentication|forbidden|accessdenied/i.test(lastName) || status === 401 || status === 403) category = 'auth'
+  else if (/ratelimit|throttl/i.test(lastName) || status === 429) category = 'rate_limit'
   return new SuggesterError(name, category, status)
 }
 
 /**
- * A suggester backed by the Vercel AI Gateway. `model` is a Gateway "provider/model" string from
- * config (tests pass a mock model). Sends at most MAX_ANSWERS_PER_CALL answers per call (in
- * parallel when there are more). Rejects with a SuggesterError when a call fails or times out, or
- * when the output does not parse as the expected shape; within parsed output, bad items are dropped.
+ * A suggester backed by `model` (Claude on Bedrock in production, a mock in tests). Sends at most
+ * MAX_ANSWERS_PER_CALL answers per call (in parallel when there are more). Rejects with a
+ * SuggesterError when a call fails or times out, or when the output does not parse as the expected
+ * shape; within parsed output, bad items are dropped.
  */
-export function createGatewaySuggester(
+export function createModelSuggester(
   model: LanguageModel,
   { timeoutMs = TIMEOUT_MS }: { timeoutMs?: number } = {},
 ): MarkSuggester {
-  const temperature = isReasoningModel(model) ? undefined : 0
-
   async function suggestChunk(input: SuggestInput): Promise<Suggestion[]> {
     const { system, prompt } = buildMarkingPrompt(input)
     let output: unknown
@@ -80,7 +72,9 @@ export function createGatewaySuggester(
         output: Output.object({ schema }),
         system,
         prompt,
-        ...(temperature === undefined ? {} : { temperature }),
+        temperature: 0,
+        // The forced JSON tool, as for assignment marking (checked live on Bedrock with Claude Haiku 4.5).
+        providerOptions: { amazonBedrock: { structuredOutputMode: 'jsonTool' } },
         abortSignal: AbortSignal.timeout(timeoutMs),
       })
       output = result.output
