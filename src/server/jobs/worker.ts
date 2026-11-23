@@ -1,5 +1,7 @@
 import { runMarkingJobDefault } from '@/server/assignments/ai/default-db'
 import { MARKING_TOPIC, type MarkingMessage } from '@/server/assignments/ai/queue'
+import { runBroadcastJobDefault } from '@/server/broadcasts/job'
+import { BROADCAST_TOPIC, enqueueBroadcast, type BroadcastMessage } from '@/server/broadcasts/queue'
 import { handleNoticeDefault } from '@/server/schedule/default-db'
 import { CLASS_NOTICES_TOPIC, type NoticeMessage } from '@/server/schedule/queue'
 import { DAILY_REMINDERS_QUEUE, DAILY_SCHEDULE_QUEUE, getBoss, resetBoss } from './boss'
@@ -31,6 +33,13 @@ async function registerWorkers(): Promise<void> {
   // retryCount is 0 on the first delivery: the job counts deliveries from 1, as Vercel Queues did.
   await boss.work<MarkingMessage>(MARKING_TOPIC, { localConcurrency: 2 }, async ([job]) => {
     await runMarkingJobDefault(job.data, job.retryCount + 1)
+  })
+
+  // One broadcast run at a time keeps the pace at 10 emails a second. A run that stops at its time budget
+  // queues a fresh run (a new job id) and ends normally.
+  await boss.work<BroadcastMessage>(BROADCAST_TOPIC, { localConcurrency: 1 }, async ([job]) => {
+    const { done } = await runBroadcastJobDefault(job.data.broadcastId)
+    if (!done) await enqueueBroadcast(job.data.broadcastId)
   })
 
   await boss.work(DAILY_REMINDERS_QUEUE, async () => {
