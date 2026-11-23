@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronRight, Pencil } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Pencil, Sparkles } from 'lucide-react'
 import { getLocale, getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
@@ -17,10 +17,17 @@ import { config } from '@/server/core/config'
 import { AppError } from '@/server/core/errors'
 import { getCourse, type CourseSummary } from '@/server/courses/service'
 import { loadPage } from '../../../../load-page'
+import { AutoRefresh, SuggestMarksButton } from '../../../ai-marking-controls'
 import { DeleteDraftButton, PublishButton, ReleaseGradesButton } from '../../../assignment-controls'
 import { formatSessionDate } from '../../../attendance-format'
 
-type DetailView = { course: CourseSummary; assignment: AssignmentDetail; rows: SubmissionRow[]; now: Date }
+type DetailView = {
+  course: CourseSummary
+  assignment: AssignmentDetail
+  rows: SubmissionRow[]
+  aiAvailable: boolean
+  now: Date
+}
 
 export async function generateMetadata() {
   const t = await getTranslations('assignments.lecturer')
@@ -35,12 +42,12 @@ export default async function AssignmentDetailPage({
   const rawLocale = await getLocale()
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
   const view = await loadPage<DetailView>(async (ctx) => {
-    const { assignment, rows } = await listSubmissions(ctx, assignmentId) // FORBIDDEN unless mine
+    const { assignment, rows, aiAvailable } = await listSubmissions(ctx, assignmentId) // FORBIDDEN unless mine
     if (assignment.courseId !== courseId) throw new AppError('NOT_FOUND', 'Assignment not in this course')
-    return { course: await getCourse(ctx, courseId), assignment, rows, now: new Date() }
+    return { course: await getCourse(ctx, courseId), assignment, rows, aiAvailable, now: new Date() }
   })
   if (!view.ok) return <ErrorState code={view.code} />
-  const { course, assignment, rows, now } = view.data
+  const { course, assignment, rows, aiAvailable, now } = view.data
   const courseHref = `/courses/${encodeURIComponent(course.id)}`
   const href = `${courseHref}/assignments/${encodeURIComponent(assignment.id)}`
   const date = (d: Date) => formatSessionDate(d, locale, config.timeZone)
@@ -54,6 +61,11 @@ export default async function AssignmentDetailPage({
     late: rows.filter((r) => r.state === 'late').length,
     missing: rows.filter((r) => r.state === 'missing').length,
   }
+  // Clasync AI: work with no mark and no suggestion, not already being looked at (failed is retried).
+  const suggestable = aiAvailable
+    ? submitted.filter((r) => !r.graded && (r.ai === null || r.ai === 'failed')).length
+    : 0
+  const suggesting = aiAvailable && rows.some((r) => r.ai === 'queued')
 
   return (
     <>
@@ -102,9 +114,12 @@ export default async function AssignmentDetailPage({
               <DeleteDraftButton assignmentId={assignment.id} courseId={course.id} />
             </>
           ) : assignment.gradesReleasedAt ? (
-            <p className="text-sm text-muted-foreground">
-              {t('detail.releasedOn', { date: date(assignment.gradesReleasedAt) })}
-            </p>
+            <>
+              <p className="w-full text-sm text-muted-foreground">
+                {t('detail.releasedOn', { date: date(assignment.gradesReleasedAt) })}
+              </p>
+              {aiAvailable && <SuggestMarksButton assignmentId={assignment.id} eligible={suggestable} />}
+            </>
           ) : (
             <>
               <p className="w-full text-sm text-muted-foreground">
@@ -116,6 +131,7 @@ export default async function AssignmentDetailPage({
                 ungraded={submitted.length - graded}
                 beforeDeadline={assignment.dueAt.getTime() > now.getTime()}
               />
+              {aiAvailable && <SuggestMarksButton assignmentId={assignment.id} eligible={suggestable} />}
             </>
           )}
         </div>
@@ -150,6 +166,7 @@ export default async function AssignmentDetailPage({
           <p className="text-muted-foreground">{t('detail.noStudents')}</p>
         ) : (
           <div className="overflow-hidden rounded-3xl border">
+            {suggesting && <AutoRefresh />}
             <Table>
               <TableCaption className="sr-only">{t('detail.tableCaption')}</TableCaption>
               <TableHeader>
@@ -159,6 +176,7 @@ export default async function AssignmentDetailPage({
                   </TableHead>
                   <TableHead scope="col">{t('detail.state')}</TableHead>
                   <TableHead scope="col">{t('detail.submittedAt')}</TableHead>
+                  {aiAvailable && <TableHead scope="col">{t('ai.column')}</TableHead>}
                   <TableHead scope="col" className="text-right">
                     {t('detail.mark')}
                   </TableHead>
@@ -186,6 +204,20 @@ export default async function AssignmentDetailPage({
                       </Badge>
                     </TableCell>
                     <TableCell className="whitespace-nowrap">{row.submittedAt ? date(row.submittedAt) : '—'}</TableCell>
+                    {aiAvailable && (
+                      <TableCell>
+                        {row.ai === 'suggested' ? (
+                          <Badge variant="secondary">
+                            <Sparkles aria-hidden="true" />
+                            {t('ai.badge.suggested')}
+                          </Badge>
+                        ) : row.ai === 'queued' ? (
+                          <Badge variant="outline">{t('ai.badge.queued')}</Badge>
+                        ) : row.ai === 'failed' ? (
+                          <Badge variant="destructive">{t('ai.badge.failed')}</Badge>
+                        ) : null}
+                      </TableCell>
+                    )}
                     <TableCell className="text-right font-mono whitespace-nowrap">
                       {row.mark !== null ? `${num(row.mark)} / ${num(assignment.maxMark)}` : '—'}
                     </TableCell>

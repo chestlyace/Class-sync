@@ -1,3 +1,5 @@
+import { isHostedTestDeploy } from '@/lib/deploy-env'
+
 export type Config = {
   requireEmailVerification: boolean
   /** IANA time zone in which class sessions are scheduled. */
@@ -17,7 +19,7 @@ export function setConfigForTests(overrides: Partial<Config>): void {
   Object.assign(config, overrides)
 }
 
-/** True on a Vercel preview deployment: staging (branch Development) and other preview branches. */
+/** True on a hosted test build: staging (branch Development) and other previews. */
 export function isPreviewDeployment(env: Record<string, string | undefined> = process.env): boolean {
-  return env.VERCEL_ENV === 'preview'
+  return isHostedTestDeploy(env)
 }

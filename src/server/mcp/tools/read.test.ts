@@ -11,6 +11,7 @@ import { createFileItem, createLink, createNote } from '@/server/notes/items'
 import { insertResourceFile, setupNotes } from '@/server/notes/test-support'
 import { createTopic, setTopicHidden } from '@/server/notes/topics'
 import { addPracticeQuestion } from '@/server/revision/authoring'
+import { giveCatchUp } from '@/server/tests/authoring'
 import { createTestDb } from '@/test/db'
 import { at, insertStartedTest, joinTest, putAnswer, setClock } from '@/test/marking-fixture'
 import type { McpTool } from '../tool'
@@ -102,6 +103,7 @@ describe('MCP read tools', () => {
       submissionMode: 'both',
       latePolicy: 'accept',
       attachmentIds: [],
+      markingGuide: 'Full marks for naming osmosis.',
     })
     await db.update(assignment).set({ status: 'published', publishedAt: new Date() }).where(eq(assignment.id, created.id))
     await submitAssignment(alice, created.id, { text: [block('paragraph', 'The potato lost water.')], fileIds: [] })
@@ -285,6 +287,7 @@ describe('MCP read tools', () => {
       maxMark: 20,
       gradesReleased: false,
       instructions: '## Lab\n- Measure the potato',
+      markingGuide: 'Full marks for naming osmosis.',
       attachments: [],
       counts: { roster: 4, submitted: 1, late: 0, missing: 3, graded: 0 },
     })
@@ -303,10 +306,16 @@ describe('MCP read tools', () => {
       text: 'The potato lost water.',
       files: [{ name: 'report.pdf', type: 'application/pdf', sizeBytes: 2048 }],
       mark: null,
-      suggestion: { mark: 15, feedback: 'Clear method.' },
+      suggestion: { mark: 15, feedback: 'Clear method.', by: 'assistant' },
     })
     expect(one.assignment.instructions).toBe('## Lab\n- Measure the potato')
+    expect(one.assignment.markingGuide).toBe('Full marks for naming osmosis.')
     expect(one.files[0].id).toBeUndefined()
+
+    // A suggestion made by Clasync's own AI says so.
+    await db.update(submission).set({ suggestedBy: 'clasync' }).where(eq(submission.id, ids.submission))
+    const byClasync = await call(fx.lecturer, 'get_submission', { submissionId: ids.submission })
+    expect(byClasync.suggestion).toMatchObject({ mark: 15, by: 'clasync' })
   })
 
   it('list_tests and get_test: state, questions with correct option and guide', async () => {
@@ -417,6 +426,25 @@ describe('MCP read tools', () => {
   it('rejects missing ids at the input schema', () => {
     expect(() => tool('get_course').input.parse({})).toThrow()
     expect(() => tool('get_course').input.parse({ courseId: '' })).toThrow()
+  })
+
+  it('list_tests marks a catch-up with its original', async () => {
+    // The original (ids.test) has ended; a picked catch-up for Bob is given to it.
+    setClock(at(40))
+    const catchUp = await giveCatchUp(fx.lecturer, ids.test, { for: 'picked', studentIds: [fx.bob.user.id] }, 'catch-up')
+
+    const { tests } = await call(fx.lecturer, 'list_tests', { courseId: ids.course })
+    const found = tests.find((t: Json) => t.id === catchUp.id)
+    expect(found).toMatchObject({
+      id: catchUp.id,
+      catchUpOf: { id: ids.test, title: 'CA 1' },
+      catchUpFor: 'picked',
+    })
+    const original = tests.find((t: Json) => t.id === ids.test)
+    expect(original).toMatchObject({ catchUpOf: null, catchUpFor: null })
+
+    const single = await call(fx.lecturer, 'get_test', { testId: catchUp.id })
+    expect(single).toMatchObject({ catchUpOf: { id: ids.test, title: 'CA 1' }, catchUpFor: 'picked' })
   })
 })
 

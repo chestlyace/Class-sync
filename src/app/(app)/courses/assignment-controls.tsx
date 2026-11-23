@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, Save, Send, Sparkles, Trash2, Unlock } from 'lucide-react'
+import { Check, FileWarning, LoaderCircle, Save, Send, Sparkles, Trash2, Unlock } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useActionState, useRef } from 'react'
 import { isInvalidField } from '@/components/action-error'
@@ -12,6 +12,8 @@ import type { ActionResult } from '@/lib/action-result'
 import { submitWith } from '@/lib/form-submit'
 import { formatDecimal } from '@/lib/number-format'
 import { FEEDBACK_MAX, MARK_STEP } from '@/server/assignments/rules'
+import type { LecturerSubmissionView } from '@/server/assignments/lecturer'
+import { AutoRefresh, SuggestOneButton } from './ai-marking-controls'
 import {
   deleteDraftAssignmentAction,
   gradeSubmissionAction,
@@ -19,6 +21,8 @@ import {
   releaseGradesAction,
 } from './assignment-actions'
 import { AssignmentError } from './assignment-error'
+
+const NO_AI: LecturerSubmissionView['ai'] = { available: false, status: null, error: null }
 
 const renderError = (state: ActionResult<unknown> | null) => <AssignmentError state={state} />
 
@@ -101,16 +105,20 @@ export function GradeForm({
   mark,
   feedback,
   suggestion = null,
+  ai = NO_AI,
 }: {
   submissionId: string
   submittedAt: string
   maxMark: number
   mark: number | null
   feedback: string | null
-  /** The lecturer's AI assistant's suggestion; shown only while the work has no grade. */
-  suggestion?: { mark: number; feedback: string | null } | null
+  /** A suggested grade (the lecturer's AI assistant's or Clasync AI's); shown only while the work has no grade. */
+  suggestion?: Omit<NonNullable<LecturerSubmissionView['suggestion']>, 'at'> | null
+  /** Clasync AI marking for this submission: offered at all, and the state of a requested suggestion. */
+  ai?: LecturerSubmissionView['ai']
 }) {
   const t = useTranslations('assignments.lecturer.grade')
+  const tAi = useTranslations('assignments.lecturer.ai')
   const markRef = useRef<HTMLInputElement>(null)
   const feedbackRef = useRef<HTMLTextAreaElement>(null)
   /** Fills the form with the suggestion; nothing is saved until the lecturer saves. */
@@ -136,7 +144,7 @@ export function GradeForm({
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <Sparkles aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
             <p id="grade-suggestion-title" className="text-sm text-muted-foreground">
-              {t('suggestionTitle')}
+              {suggestion.by === 'clasync' ? tAi('byClasync') : tAi('byAssistant')}
             </p>
             <p className="font-mono text-sm font-medium">
               {formatDecimal(suggestion.mark, locale)} / {max}
@@ -149,7 +157,44 @@ export function GradeForm({
             </Button>
             <span className="text-xs text-muted-foreground">{t('suggestionHint')}</span>
           </div>
+          {suggestion.by === 'clasync' && ai.available && <SuggestOneButton submissionId={submissionId} retry />}
+          {suggestion.unread.length > 0 && (
+            <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
+              {suggestion.unread.map((f) => (
+                <li key={f.position} className="flex items-center gap-2">
+                  <FileWarning aria-hidden="true" className="size-4 shrink-0" />
+                  {tAi('notRead', { n: f.position, reason: tAi(`unreadReason.${f.reason}`) })}
+                </li>
+              ))}
+            </ul>
+          )}
+          {suggestion.transcript && (
+            <details className="text-sm">
+              <summary className="cursor-pointer font-medium text-muted-foreground select-none hover:text-foreground">
+                {tAi('whatAiRead')}
+              </summary>
+              <p className="mt-2 max-h-80 overflow-y-auto rounded-xl border bg-background p-3 break-words whitespace-pre-line">
+                {suggestion.transcript}
+              </p>
+            </details>
+          )}
         </div>
+      )}
+      {!suggestion && mark === null && ai.status === 'queued' && (
+        <div role="status" className="flex items-center gap-2 rounded-2xl border bg-muted/50 p-4 text-sm text-muted-foreground">
+          <LoaderCircle aria-hidden="true" className="size-4 shrink-0 animate-spin motion-reduce:animate-none" />
+          {tAi('suggestingOne')}
+          <AutoRefresh />
+        </div>
+      )}
+      {!suggestion && mark === null && ai.status === 'failed' && (
+        <div className="flex flex-col gap-3 rounded-2xl border bg-muted/50 p-4">
+          <p className="text-sm">{tAi(`failed.${ai.error ?? 'provider'}`)}</p>
+          {ai.available && <SuggestOneButton submissionId={submissionId} retry />}
+        </div>
+      )}
+      {!suggestion && mark === null && ai.status === null && ai.available && (
+        <SuggestOneButton submissionId={submissionId} />
       )}
       <FieldGroup>
         <Field data-invalid={invalid('mark')}>

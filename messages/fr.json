@@ -44,10 +44,39 @@
       "description": "Connectez-vous pour accéder à Clasync.",
       "email": "Adresse e-mail",
       "password": "Mot de passe",
+      "forgotPassword": "Mot de passe oublié ?",
+      "passwordReset": "Votre mot de passe a été modifié. Connectez-vous avec votre nouveau mot de passe.",
       "submit": "Se connecter",
       "submitting": "Connexion…",
       "noAccount": "Nouveau sur Clasync ?",
       "createAccount": "Créer un compte"
+    },
+    "forgotPassword": {
+      "title": "Réinitialiser votre mot de passe",
+      "description": "Saisissez l'adresse e-mail de votre compte Clasync. Nous vous enverrons un lien pour choisir un nouveau mot de passe.",
+      "email": "Adresse e-mail",
+      "submit": "Envoyer le lien",
+      "submitting": "Envoi du lien…",
+      "sentTitle": "Vérifiez votre boîte mail",
+      "sentDescription": "Si un compte existe pour {email}, nous avons envoyé un lien pour réinitialiser son mot de passe. Ce lien est valable 24 heures.",
+      "hint": "Vous ne le trouvez pas ? Regardez dans vos courriers indésirables.",
+      "google": "Inscrit avec Google ? Vous n'avez pas besoin de mot de passe : utilisez Continuer avec Google sur la page de connexion.",
+      "resend": "Renvoyer",
+      "resendIn": "Renvoyer dans {time}",
+      "resent": "Nous avons envoyé un autre lien. Seul le plus récent est utile.",
+      "backToSignIn": "Retour à la connexion"
+    },
+    "resetPassword": {
+      "title": "Choisissez un nouveau mot de passe",
+      "forAccount": "Pour le compte Clasync {email}.",
+      "newPassword": "Nouveau mot de passe",
+      "passwordHint": "Au moins 8 caractères.",
+      "invalidLink": "Ce lien a expiré ou a déjà servi. Demandez-en un nouveau : cela prend une minute.",
+      "newLink": "M'envoyer un nouveau lien",
+      "revokeNote": "Cette action vous déconnecte de vos autres appareils et vous connecte ici.",
+      "submit": "Modifier le mot de passe",
+      "submitting": "Modification du mot de passe…",
+      "backToSignIn": "Retour à la connexion"
     },
     "verify": {
       "title": "Vérifiez votre boîte mail",
@@ -67,7 +96,8 @@
       "accountSuspended": "Ce compte est suspendu.",
       "accountSuspendedContact": "Contactez {email}.",
       "signInAgain": "Par sécurité, déconnectez-vous puis reconnectez-vous, et réessayez.",
-      "invalidName": "Indiquez seulement votre nom : 80 caractères au plus, sans lien, adresse e-mail ni caractères < > / \\."
+      "invalidName": "Indiquez seulement votre nom : 80 caractères au plus, sans lien, adresse e-mail ni caractères < > / \\.",
+      "invalidToken": "Ce lien n'est pas valide ou a expiré. Demandez-en un nouveau."
     },
     "google": {
       "continue": "Continuer avec Google",
@@ -285,6 +315,14 @@
       "cta": "Confirmer mon e-mail",
       "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :",
       "ignore": "Si vous n'avez pas créé de compte Clasync, vous pouvez ignorer cet e-mail."
+    },
+    "resetPassword": {
+      "subject": "Réinitialisez votre mot de passe Clasync",
+      "greeting": "Bonjour,",
+      "body": "Nous avons reçu une demande de réinitialisation du mot de passe de votre compte Clasync. Ouvrez le lien ci-dessous pour en choisir un nouveau. Il est valable 24 heures.",
+      "cta": "Choisir un nouveau mot de passe",
+      "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :",
+      "ignore": "Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet e-mail. Votre mot de passe n'a pas changé."
     },
     "assignmentPublished": {
       "subject": "Nouveau devoir dans {course} : {assignment}",
@@ -1244,6 +1282,9 @@
         "titlePlaceholder": "ex. Compte rendu de TP 2 : loi d'Ohm",
         "instructions": "Consignes",
         "instructionsHint": "Tapez / pour les titres, listes et tableaux. Ajoutez des fichiers ci-dessous en pièces jointes.",
+        "markingGuide": "Barème de correction",
+        "markingGuidePlaceholder": "p. ex. 2 points pour le schéma, 3 pour la méthode, 1 pour l'unité",
+        "markingGuideHint": "Vous seul le voyez. L'IA de Clasync s'en sert pour suggérer des notes.",
         "attachments": "Pièces jointes",
         "attachmentsAfterSave": "Enregistrez d'abord le brouillon : vous pourrez ajouter des pièces jointes à la page suivante.",
         "dueAt": "Date et heure limites",
@@ -1334,7 +1375,6 @@
         "saving": "Enregistrement…",
         "save": "Enregistrer la note",
         "saved": "Enregistré",
-        "suggestionTitle": "Suggéré par votre assistant",
         "useSuggestion": "Utiliser la suggestion",
         "suggestionHint": "Remplit le formulaire. Rien n'est enregistré avant que vous enregistriez la note."
       },
@@ -1361,6 +1401,40 @@
         "fileMismatch": "Un des envois n'est pas arrivé en entier. Retirez-le et envoyez-le de nouveau.",
         "fileCount": "Joignez {max} fichiers au plus.",
         "files": "Certaines pièces jointes ne sont plus disponibles. Retirez-les et envoyez-les de nouveau."
+      },
+      "ai": {
+        "column": "IA",
+        "suggestMarks": "Suggérer des notes",
+        "suggestingCount": "{count, plural, one {Suggestion de la note pour # copie.} other {Suggestion des notes pour # copies.}} Vous pouvez quitter cette page.",
+        "badge": {
+          "suggested": "Suggérée",
+          "queued": "En cours…",
+          "failed": "Échec"
+        },
+        "byClasync": "Suggérée par l'IA de Clasync",
+        "byAssistant": "Suggérée par votre assistant IA",
+        "whatAiRead": "Ce que l'IA a lu",
+        "notRead": "Non lu : fichier {n} ({reason})",
+        "unreadReason": {
+          "heic": "photo HEIC d'iPhone",
+          "too_large": "trop volumineux",
+          "unsupported": "type de fichier non pris en charge",
+          "limit": "au-delà de la limite de fichiers"
+        },
+        "suggestingOne": "Suggestion en cours…",
+        "failed": {
+          "provider": "L'IA n'a pas pu suggérer de note.",
+          "cap": "La limite mensuelle d'IA est atteinte.",
+          "unreadable": "Rien dans ce travail n'a pu être lu."
+        },
+        "tryAgain": "Réessayer",
+        "suggestOne": "Suggérer une note",
+        "errors": {
+          "cap": "La limite mensuelle d'IA est atteinte.",
+          "aiOff": "Les suggestions de notes par l'IA ne sont pas disponibles ici.",
+          "graded": "Cette copie a déjà une note.",
+          "notPublished": "Publiez d'abord le devoir."
+        }
       }
     },
     "files": {
@@ -2025,6 +2099,44 @@
       "switchLabel": "Permettre aux étudiants de revoir ce test",
       "switchHelp": "Une fois les résultats publiés et le test passé par toutes les classes, les étudiants voient les questions, leurs réponses et le corrigé, et peuvent s'entraîner dessus. Désactivez si vous comptez réutiliser ces questions.",
       "questions": "Questions"
+    },
+    "catchUp": {
+      "badge": "Rattrapage",
+      "titleSuffix": "rattrapage",
+      "give": "Donner un rattrapage",
+      "whoCanSit": "Qui peut le passer",
+      "missed": "Tous ceux qui l'ont manqué ({count})",
+      "picked": "Seulement ces étudiants",
+      "everyoneSat": "Tout le monde a passé ce test",
+      "answersNote": "Ceux qui l'ont passé connaissent peut-être déjà les réponses. Vous pourrez modifier les questions à l'étape suivante.",
+      "status": {
+        "not_joined": "Pas venu",
+        "left_early": "Sorti avant la fin",
+        "not_handed_in": "N'a pas remis",
+        "handed_in": "A remis"
+      },
+      "pickedCount": "{count, plural, =0 {Aucun étudiant choisi} one {# étudiant choisi} other {# étudiants choisis}}",
+      "forMissed": "Tous ceux qui l'ont manqué",
+      "missedCount": "{count, plural, =0 {Personne qui l'a manqué} one {# qui l'a manqué} other {# qui l'ont manqué}}",
+      "listHeading": "Rattrapages",
+      "original": "Test d'origine : {title}",
+      "rowScore": "Rattrapage : {score} / {outOf}",
+      "rowPending": "{count, plural, one {# à corriger} other {# à corriger}}",
+      "noStudents": "Aucun étudiant dans ce cours pour l'instant.",
+      "giving": "Création du rattrapage…",
+      "save": "Enregistrer qui peut le passer",
+      "saving": "Enregistrement…",
+      "saved": "Enregistré.",
+      "startedPicked": "Le rattrapage a commencé : vous pouvez ajouter des étudiants, et ne retirer que ceux qui ne l'ont pas ouvert.",
+      "startedMissed": "Le rattrapage a commencé : qui peut le passer ne peut plus changer.",
+      "errors": {
+        "notEnded": "Ce test n'est pas encore terminé. Donnez un rattrapage une fois qu'il l'est.",
+        "isCatchUp": "Ce test est un rattrapage. Donnez un autre rattrapage depuis le test d'origine.",
+        "notCatchUp": "Ce test n'est pas un rattrapage.",
+        "started": "Le rattrapage a commencé : vous ne pouvez plus retirer un étudiant qui l'a ouvert, ni changer pour qui il est.",
+        "nobodyMissed": "Tout le monde a passé ce test. Choisissez plutôt les étudiants.",
+        "studentIds": "Choisissez au moins un étudiant du cours."
+      }
     }
   },
   "notes": {
@@ -2577,6 +2689,12 @@
         "title": "Renvoyer l'e-mail de vérification ?",
         "body": "Un nouveau lien de vérification sera envoyé à {email}.",
         "confirm": "Envoyer"
+      },
+      "reset": {
+        "trigger": "Envoyer un lien de réinitialisation",
+        "title": "Envoyer un lien de réinitialisation ?",
+        "body": "Un lien pour choisir un nouveau mot de passe sera envoyé à {email}. Il reste valable 24 heures, et vous ne le verrez pas.",
+        "confirm": "Envoyer le lien"
       }
     },
     "usage": {
@@ -2681,6 +2799,7 @@
         "unsuspend": "Suspension levée",
         "revoke_sessions": "Déconnexion partout",
         "resend_verification": "E-mail de vérification renvoyé",
+        "send_password_reset": "Lien de réinitialisation du mot de passe envoyé",
         "school_update": "École modifiée",
         "school_delete": "École supprimée",
         "school_merge": "Écoles fusionnées"
@@ -2716,12 +2835,13 @@
     "services": {
       "title": "Les services utilisés par Clasync",
       "intro": "Clasync s'appuie sur quelques prestataires. Chacun ne reçoit que ce dont il a besoin :",
-      "vercel": "Vercel héberge l'application et stocke les fichiers envoyés.",
-      "database": "Prisma Postgres héberge la base de données.",
+      "hosting": "Heroku fait tourner l'application dans l'Union européenne.",
+      "database": "Heroku Postgres héberge la base de données et Amazon Web Services stocke les fichiers envoyés, tous deux dans l'Union européenne.",
       "email": "Resend envoie les e-mails, comme les liens de vérification et les rappels de devoirs.",
       "errors": "Sentry reçoit les rapports d'erreurs pour corriger les problèmes, sans les adresses IP.",
       "push": "Si vous activez les notifications, le service de notifications du fabricant de votre navigateur (Google, Apple, Mozilla ou Microsoft) les livre à votre appareil. Il ne voit qu'un message chiffré.",
       "ai": "Vercel AI Gateway envoie une réponse rédigée et sa question à un modèle d'IA quand un enseignant demande une note suggérée, sans votre nom, matricule ni e-mail. L'enseignant décide de la note.",
+      "aiAssignments": "Quand un enseignant demande à Clasync de suggérer des notes pour un devoir, la réponse et les fichiers de l'étudiant sont envoyés à Amazon Bedrock, dans l'Union européenne, pour produire une suggestion. Clasync n'ajoute ni le nom, ni le matricule, ni l'e-mail de l'étudiant ; tout ce qui est écrit dans le travail lui-même est envoyé tel quel. Le travail ne sert pas à entraîner des modèles d'IA. L'enseignant décide de chaque note.",
       "google": "Google, uniquement si vous choisissez Continuer avec Google."
     },
     "assistants": {
@@ -2855,6 +2975,10 @@
       "app": {
         "title": "Installez Clasync comme une application",
         "body": "Ajoutez Clasync à votre téléphone ou à votre ordinateur et ouvrez-le comme n'importe quelle application."
+      },
+      "aiMarking": {
+        "title": "Notes suggérées pour les devoirs",
+        "body": "Enseignants : Clasync peut suggérer des notes pour les devoirs, y compris à partir de photos de travaux manuscrits. Vous vérifiez chaque suggestion avant d'enregistrer une note."
       },
       "notifications": {
         "title": "Notifications",

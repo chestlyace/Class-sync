@@ -4,6 +4,7 @@ import { createTestDb } from '@/test/db'
 import { makeUser } from '@/test/factories'
 import {
   adminAction,
+  aiUsage,
   assignment,
   assignmentAttachment,
   assignmentReminder,
@@ -39,6 +40,7 @@ import {
   submissionFile,
   testAnswer,
   testAttempt,
+  testCatchUpStudent,
   testExit,
   testLog,
   testOption,
@@ -765,6 +767,49 @@ describe('schema', () => {
     expect(after.copiedFromId).toBeNull()
   })
 
+  it('course_test refuses catch_up_of_id without catch_up_for', async () => {
+    const db = await createTestDb()
+    const { owner, course: c, test: t } = await seedTest(db)
+    const row = { courseId: c.id, title: 'Catch-up', durationMinutes: 30, defaultMark: 2, createdBy: owner.id }
+    expect(await sqlState(db.insert(courseTest).values({ ...row, code: 'CUP001', catchUpOfId: t.id }))).toBe('23514')
+  })
+
+  it('course_test refuses catch_up_for without catch_up_of_id', async () => {
+    const db = await createTestDb()
+    const { owner, course: c } = await seedTest(db)
+    const row = { courseId: c.id, title: 'Catch-up', durationMinutes: 30, defaultMark: 2, createdBy: owner.id }
+    expect(await sqlState(db.insert(courseTest).values({ ...row, code: 'CUP002', catchUpFor: 'missed' }))).toBe('23514')
+    expect(
+      await sqlState(db.insert(courseTest).values({ ...row, code: 'CUP003', catchUpFor: 'bogus' as never })),
+    ).toBe('23514')
+  })
+
+  it('deleting the original deletes its catch-ups and their picked students', async () => {
+    const db = await createTestDb()
+    const { owner, course: c, test: t } = await seedTest(db)
+    const st = await makeUser(db, { role: 'student' })
+    const [catchUp] = await db
+      .insert(courseTest)
+      .values({
+        courseId: c.id,
+        code: 'CUP004',
+        title: 'Catch-up',
+        durationMinutes: 30,
+        defaultMark: 2,
+        createdBy: owner.id,
+        catchUpOfId: t.id,
+        catchUpFor: 'picked',
+      })
+      .returning()
+    await db.insert(testCatchUpStudent).values({ testId: catchUp.id, studentId: st.id, addedBy: owner.id })
+    const [picked] = await db.select().from(testCatchUpStudent)
+    expect(picked.addedAt).toBeInstanceOf(Date)
+    expect(await sqlState(db.insert(testCatchUpStudent).values({ testId: catchUp.id, studentId: st.id, addedBy: owner.id }))).toBe('23505')
+    await db.delete(courseTest).where(sql`${courseTest.id} = ${t.id}`)
+    expect(await db.select().from(courseTest)).toHaveLength(0)
+    expect(await db.select().from(testCatchUpStudent)).toHaveLength(0)
+  })
+
   it('deleting a course removes its tests, questions, options, attempts, answers, exits and log', async () => {
     const db = await createTestDb()
     const { owner, test: t, question: q } = await seedTest(db)
@@ -1085,5 +1130,69 @@ describe('schedule', () => {
     await db.insert(classNotice).values(notice)
     expect(await sqlState(db.insert(classNotice).values(notice))).toBe('23505')
     await db.insert(classNotice).values({ ...notice, kind: 'missed' })
+  })
+})
+
+describe('AI assignment marking schema', () => {
+  async function seedSubmission(db: Awaited<ReturnType<typeof createTestDb>>) {
+    const { owner, assignment: a } = await seedAssignment(db)
+    const st = await makeUser(db, { role: 'student' })
+    const [sub] = await db
+      .insert(submission)
+      .values({ assignmentId: a.id, studentId: st.id, submittedAt: new Date() })
+      .returning()
+    return { owner, assignment: a, submission: sub }
+  }
+
+  it('has the marking guide, suggestion and AI status columns, null by default', async () => {
+    const db = await createTestDb()
+    const { assignment: a, submission: sub } = await seedSubmission(db)
+    expect(a.markingGuide).toBeNull()
+    expect(sub).toMatchObject({
+      suggestedBy: null,
+      suggestedTranscript: null,
+      suggestedUnread: null,
+      aiStatus: null,
+      aiStatusAt: null,
+      aiError: null,
+    })
+  })
+
+  it('rejects a suggested_by, ai_status or ai_error outside their lists', async () => {
+    const db = await createTestDb()
+    const { submission: sub } = await seedSubmission(db)
+    for (const col of ['suggested_by', 'ai_status', 'ai_error']) {
+      expect(await sqlState(db.execute(sql.raw(`update submission set ${col} = 'robot' where id = '${sub.id}'`)))).toBe('23514')
+    }
+    await db.execute(
+      sql.raw(`update submission set suggested_by = 'clasync', ai_status = 'failed', ai_error = 'cap' where id = '${sub.id}'`),
+    )
+  })
+
+  it('stores AI usage, keeps it when the submission goes, and refuses an unknown purpose', async () => {
+    const db = await createTestDb()
+    const { submission: sub } = await seedSubmission(db)
+    const lecturer = await makeUser(db)
+    const row = { purpose: 'assignment_marking' as const, lecturerId: lecturer.id, submissionId: sub.id, model: 'm', ok: true }
+    const [u] = await db.insert(aiUsage).values(row).returning()
+    expect(u).toMatchObject({ inputTokens: 0, outputTokens: 0 })
+    expect(await sqlState(db.insert(aiUsage).values({ ...row, purpose: 'chat' as never }))).toBe('23514')
+    await db.delete(submission).where(sql`${submission.id} = ${sub.id}`)
+    const [after] = await db.select().from(aiUsage)
+    expect(after.submissionId).toBeNull()
+    await db.delete(user).where(sql`${user.id} = ${lecturer.id}`)
+    expect(await db.select().from(aiUsage)).toHaveLength(0)
+  })
+
+  it('has the ai_usage created_at index', async () => {
+    const db = await createTestDb()
+    const res = await db.execute(sql`select 1 from pg_indexes where indexname = 'ai_usage_created_at_idx'`)
+    expect(res.rows).toHaveLength(1)
+  })
+
+  it('has the ai_usage submission_id index', async () => {
+    const db = await createTestDb()
+    const res = await db.execute(sql`select 1 from pg_indexes where indexname = 'ai_usage_submission_id_idx'`)
+    expect(res.rows).toHaveLength(1)
   })
 })

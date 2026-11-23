@@ -77,6 +77,27 @@ describe('assignment draft tools', () => {
     expect(await listMyAssignments(fx.alice)).toEqual([])
   })
 
+  it('create_assignment_draft stores the marking guide, update keeps or replaces it, and students never see it', async () => {
+    const fx = await setupCourse(db)
+    const out = (await draft(fx, { markingGuide: '  2 marks for the diagram  ' })) as Record<string, unknown>
+    expect(out.markingGuide).toBe('2 marks for the diagram')
+    const id = out.id as string
+    expect((await getAssignmentForEdit(fx.lecturer, id)).markingGuide).toBe('2 marks for the diagram')
+
+    const kept = (await callTool('update_assignment_draft', fx.lecturer, { assignmentId: id, title: 'Osmosis lab v2' })) as Record<string, unknown>
+    expect(kept.markingGuide).toBe('2 marks for the diagram')
+    const replaced = (await callTool('update_assignment_draft', fx.lecturer, { assignmentId: id, markingGuide: '3 marks for the method' })) as Record<string, unknown>
+    expect(replaced.markingGuide).toBe('3 marks for the method')
+
+    expect(parseToolInput('create_assignment_draft', { courseId: 'c', title: 'Ok', instructions: 'x', dueAt: inAWeek(), markingGuide: 'x'.repeat(5001) }).success).toBe(false)
+    // The limit applies to the trimmed text, as in the service.
+    const padded = `  ${'x'.repeat(5000)}  `
+    expect(parseToolInput('create_assignment_draft', { courseId: 'c', title: 'Ok', instructions: 'x', dueAt: inAWeek(), markingGuide: padded }).success).toBe(true)
+
+    await publishAssignment(fx.lecturer, id)
+    expect(JSON.stringify(await getAssignmentForStudent(fx.alice, id))).not.toContain('method')
+  })
+
   it('create_assignment_draft: another lecturer is FORBIDDEN; bad input fails the schema', async () => {
     const fx = await setupCourse(db)
     await expect(draft(fx, {})).resolves.toBeDefined()
@@ -127,10 +148,37 @@ describe('assignment draft tools', () => {
     expect(out).toMatchObject({ suggestedMark: 14.5, suggestedFeedback: 'Clear method; weigh before and after.' })
 
     const [row] = await db.select().from(submission).where(eq(submission.id, sub.id))
-    expect(row).toMatchObject({ mark: null, feedback: null, gradedAt: null, suggestedMark: 14.5 })
+    expect(row).toMatchObject({ mark: null, feedback: null, gradedAt: null, suggestedMark: 14.5, suggestedBy: 'assistant' })
     const view = await getSubmissionForLecturer(fx.lecturer, sub.id)
     expect(view.mark).toBeNull()
     expect(view.suggestion).toMatchObject({ mark: 14.5, feedback: 'Clear method; weigh before and after.' })
+  })
+
+  it("suggest_assignment_grade replaces Clasync's AI suggestion state", async () => {
+    const fx = await setupCourse(db)
+    const { sub } = await withSubmission(fx)
+    await db
+      .update(submission)
+      .set({
+        suggestedBy: 'clasync',
+        suggestedTranscript: 'what the AI read',
+        suggestedUnread: [{ position: 0, reason: 'heic' }],
+        aiStatus: 'failed',
+        aiStatusAt: new Date(),
+        aiError: 'provider',
+      })
+      .where(eq(submission.id, sub.id))
+    await callTool('suggest_assignment_grade', fx.lecturer, { submissionId: sub.id, mark: 12 })
+    const [row] = await db.select().from(submission).where(eq(submission.id, sub.id))
+    expect(row).toMatchObject({
+      suggestedBy: 'assistant',
+      suggestedMark: 12,
+      suggestedTranscript: null,
+      suggestedUnread: null,
+      aiStatus: null,
+      aiStatusAt: null,
+      aiError: null,
+    })
   })
 
   it('suggest_assignment_grade: graded → CONFLICT, other lecturer → FORBIDDEN, bad mark → VALIDATION', async () => {

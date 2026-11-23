@@ -179,6 +179,12 @@ export function FileUploader(props: FileUploaderProps) {
       if (!response.ok) throw new UploadFailed('upload')
       return
     }
+    if (target.kind === 's3') {
+      await putWithProgress(target.url, file, target.headers, signal, (percentage) =>
+        update(key, { progress: Math.round(percentage) }),
+      )
+      return
+    }
     try {
       const { upload } = await import('@vercel/blob/client')
       await upload(target.pathname, file, {
@@ -211,7 +217,7 @@ export function FileUploader(props: FileUploaderProps) {
       )
       if (!requested.ok) throw new UploadFailed(errorKeyOf(requested))
       const { fileId, target } = requested.data
-      update(key, { progress: target.kind === 'blob' ? 0 : null })
+      update(key, { progress: target.kind === 'local' ? null : 0 })
       await sendBytes(file, mimeType, target, key, controller.signal)
 
       update(key, { progress: null })
@@ -375,4 +381,31 @@ export function FileUploader(props: FileUploaderProps) {
       </div>
     </div>
   )
+}
+
+/**
+ * PUT to a presigned S3 URL. XMLHttpRequest rather than fetch, for upload progress. A refusal (expired
+ * URL, wrong size or type, an object already there) is an upload failure; a dropped network too.
+ */
+function putWithProgress(
+  url: string,
+  file: File,
+  headers: Record<string, string>,
+  signal: AbortSignal,
+  onProgress: (percentage: number) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('PUT', url)
+    for (const [name, value] of Object.entries(headers)) xhr.setRequestHeader(name, value)
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && event.total > 0) onProgress((event.loaded / event.total) * 100)
+    }
+    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new UploadFailed('upload')))
+    xhr.onerror = () => reject(new UploadFailed('upload'))
+    xhr.onabort = () => reject(new UploadFailed('upload'))
+    if (signal.aborted) return xhr.abort()
+    signal.addEventListener('abort', () => xhr.abort(), { once: true })
+    xhr.send(file)
+  })
 }

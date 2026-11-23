@@ -8,6 +8,7 @@ import type { Db } from '@/server/db'
 import { course, testAnswer, testAttempt, testPracticeOutcome } from '@/server/db/schema'
 import type { PracticeQuestionView } from '@/server/revision/authoring'
 import { familyHolds } from '@/server/revision/hold'
+import { mayTakeCatchUp } from './catch-up'
 import { scoreAttempt, type ScoringAnswer } from './paper'
 import { testState } from './phase'
 import { loadStoredQuestions, loadTestRow, type StoredQuestion, type TestRow } from './queries'
@@ -86,6 +87,7 @@ export async function loadForStudent(
   requireRole(ctx, 'student')
   const test = await loadTestRow(ctx.db, testId)
   if (!test || !(await isOnCourseRoster(ctx.db, test.courseId, ctx.user.id))) throw noAccess()
+  if (test.catchUpOfId !== null && !(await mayTakeCatchUp(ctx.db, test, ctx.user.id))) throw noAccess()
   const questions = await loadStoredQuestions(ctx.db, test.id)
   const access = await reviewAccess(ctx.db, test, questions.some((q) => q.kind === 'short'), now())
   return { test, questions, access }

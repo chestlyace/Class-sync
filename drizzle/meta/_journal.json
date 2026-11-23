@@ -141,6 +141,27 @@
       "when": 1794772580131,
       "tag": "0019_admin_school_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795093256638,
+      "tag": "0020_ai_assignment_marking",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1795203699546,
+      "tag": "0021_admin_password_reset",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1795208999262,
+      "tag": "0022_test_catch_up",
+      "breakpoints": true
     }
   ]
 }

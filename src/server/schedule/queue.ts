@@ -1,4 +1,5 @@
 import { now } from '@/server/core/clock'
+import { queueDriver } from '@/server/jobs/driver'
 
 export type NoticeKind = 'reminder' | 'missed-check'
 
@@ -37,6 +38,21 @@ const vercelQueue: ScheduleQueue = {
 }
 
 /**
+ * pg-boss (Heroku): a job in the app's database, started at the delivery time by the worker in the web
+ * process (src/server/jobs/worker.ts). Its id comes from the same key the Vercel queue de-duplicated on.
+ */
+const pgBossQueue: ScheduleQueue = {
+  async send(message, deliverAt) {
+    const { getBoss, jobIdFor } = await import('@/server/jobs/boss')
+    const boss = await getBoss()
+    await boss.send(CLASS_NOTICES_TOPIC, message, {
+      id: jobIdFor(CLASS_NOTICES_TOPIC, `${message.sittingKey}:${message.kind}:${message.expectedAt}`),
+      startAfter: deliverAt,
+    })
+  },
+}
+
+/**
  * Local development: a timer in this process, then the same consumer the queue would call. Timers are unref'd so
  * they never keep a process alive, and a restart forgets them (the next enqueue sets them again).
  */
@@ -56,8 +72,9 @@ const memoryQueue: ScheduleQueue = {
   },
 }
 
-/** The queue class notices go through: Vercel Queues on Vercel, an in-process timer elsewhere. */
+/** The queue class notices go through: Vercel Queues, pg-boss or an in-process timer (see queueDriver). */
 export function scheduleQueue(): ScheduleQueue {
   if (testQueue) return testQueue
-  return process.env.VERCEL ? vercelQueue : memoryQueue
+  const driver = queueDriver()
+  return driver === 'vercel' ? vercelQueue : driver === 'pgboss' ? pgBossQueue : memoryQueue
 }

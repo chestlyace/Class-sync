@@ -1,7 +1,5 @@
-import { now } from '@/server/core/clock'
+import { runScheduleDaily } from '@/server/jobs/daily'
 import { isCronAuthorized } from '@/server/lib/cron-auth'
-import { recordOpsEventDefault } from '@/server/ops/events'
-import { enqueueTodayDefault } from '@/server/schedule/default-db'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -12,17 +10,12 @@ async function handle(request: Request): Promise<Response> {
   if (!isCronAuthorized(request.headers.get('authorization'), secret)) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  try {
-    const { sittings } = await enqueueTodayDefault(now())
-    await recordOpsEventDefault({ kind: 'cron_schedule', ok: true, detail: { sittings } })
-    return Response.json({ sittings })
-  } catch (error) {
-    console.error('[cron/schedule] run failed', error)
-    await recordOpsEventDefault({ kind: 'cron_schedule', ok: false, detail: { error: 'run failed' } })
-    return Response.json({ error: 'Schedule run failed' }, { status: 500 })
-  }
+  const run = await runScheduleDaily()
+  if (!run.ok) return Response.json({ error: 'Schedule run failed' }, { status: 500 })
+  return Response.json({ sittings: run.sittings })
 }
 
 // Vercel Cron calls GET and sends `Authorization: Bearer ${CRON_SECRET}` itself; POST is for manual runs.
+// On Heroku the same run is a pg-boss schedule (src/server/jobs/worker.ts).
 export const GET = handle
 export const POST = handle

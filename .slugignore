@@ -1,0 +1,8 @@
+# Left out of the Heroku slug (the app never reads them at run time).
+e2e
+playwright-report
+test-results
+docs
+brand
+*.test.ts
+*.test.tsx

@@ -3,18 +3,23 @@ import { cimd } from '@better-auth/cimd'
 import { fetchClientMetadataResource } from '@better-auth/cimd/node'
 import { mcp } from '@better-auth/mcp'
 import { betterAuth } from 'better-auth'
-import { eq } from 'drizzle-orm'
+import { and, eq, gte, like, ne } from 'drizzle-orm'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { APIError, createAuthMiddleware, getOAuthState, getSessionFromCtx } from 'better-auth/api'
 import { nextCookies } from 'better-auth/next-js'
 import { jwt } from 'better-auth/plugins'
+import { waitUntil } from '@vercel/functions'
+import { CLIENT_IP_HEADER } from '@/lib/client-ip'
 import { isLocale } from '@/i18n/locale'
+import { safeNextPath } from '@/lib/next-path'
+import { RESET_RESEND_SECONDS } from '@/lib/password-reset'
 import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import { AppError } from '@/server/core/errors'
 import { db, type Db } from '@/server/db'
 import * as schema from '@/server/db/schema'
 import { sendEmail } from '@/server/email/send'
+import { ResetPasswordEmail } from '@/server/email/templates/reset-password'
 import { emailSubject, VerifyEmail } from '@/server/email/templates/verify-email'
 import { googleCredentials, signupFieldsFromOAuthState } from './google'
 import { assertValidSignup, assertValidUserUpdate, cleanName } from './signup-rules'
@@ -39,7 +44,14 @@ type CreateAuthOptions = {
  */
 const SIGN_IN_RULE = { window: 60, max: 100 }
 const SIGN_UP_RULE = { window: 60, max: 30 }
+// A class shares one public IP, so this limit must be as generous as sign-in's; flooding a single
+// inbox is stopped by the per-address cooldown below instead.
+const RESET_REQUEST_RULE = { window: 60, max: 100 }
+const RESET_COOLDOWN_MS = RESET_RESEND_SECONDS * 1000
 const VERIFY_LINK_TTL_SECONDS = 7 * 24 * 60 * 60
+// Students read mail days later and may be on a patchy connection; a day is still short enough
+// that a stolen link has little time to be used.
+const RESET_LINK_TTL_SECONDS = 24 * 60 * 60
 
 
 /** The OAuth provider's client CRUD routes, closed over HTTP (see `disabledPaths`). */
@@ -83,6 +95,36 @@ function toApiError(err: unknown): unknown {
   return new APIError('BAD_REQUEST', { message: err.message, code })
 }
 
+/**
+ * Better Auth has just created the current request's `reset-password:<token>` row. If the same
+ * account was given another link inside the cooldown, its inbox has enough already: skip the send
+ * while still answering the normal generic success (and leaving the new link usable).
+ */
+async function resetRequestedRecently(database: Db, userId: string, token: string): Promise<boolean> {
+  const since = new Date(now().getTime() - RESET_COOLDOWN_MS)
+  const rows = await database
+    .select({ identifier: schema.verification.identifier })
+    .from(schema.verification)
+    .where(
+      and(
+        eq(schema.verification.value, userId),
+        like(schema.verification.identifier, 'reset-password:%'),
+        ne(schema.verification.identifier, `reset-password:${token}`),
+        gte(schema.verification.createdAt, since),
+      ),
+    )
+    .limit(1)
+  return rows.length > 0
+}
+
+/**
+ * Deletes a reset link nobody was emailed (skipped by the cooldown, or the send failed). Only links
+ * that went out then count toward the cooldown, so asking again after a failed send gets a link.
+ */
+async function withdrawResetLink(database: Db, token: string): Promise<void> {
+  await database.delete(schema.verification).where(eq(schema.verification.identifier, `reset-password:${token}`))
+}
+
 export function createAuth(database: Db, options: CreateAuthOptions = {}) {
   const origin = resolveAppOrigin(options.baseURL)
   const google = options.google === undefined ? googleCredentials() : options.google
@@ -105,6 +147,16 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
       '/api-key/get',
       ...OAUTH_CLIENT_MANAGEMENT_PATHS,
     ],
+    advanced: {
+      // Sending mail must not hold the response open: otherwise a real address takes measurably
+      // longer than an unknown one (which Better Auth answers without sending) and leaks accounts.
+      // waitUntil keeps the send alive after the response on Vercel; elsewhere it is a no-op and
+      // the promise still runs. Better Auth logs any rejection the handler's promise produces.
+      backgroundTasks: { handler: waitUntil },
+      // Set by src/proxy.ts for the platform (Heroku's router keeps a client's own x-forwarded-for in
+      // front); x-forwarded-for alone is the fallback where the proxy did not run.
+      ipAddress: { ipAddressHeaders: [CLIENT_IP_HEADER, 'x-forwarded-for'] },
+    },
     hooks: {
       // Only a verified lecturer can allow an assistant (denying stays open to everyone).
       before: createAuthMiddleware(async (ctx) => {
@@ -120,6 +172,52 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: config.requireEmailVerification,
+      resetPasswordTokenExpiresIn: RESET_LINK_TTL_SECONDS,
+      // A changed password must end every session, including one an attacker may already hold.
+      revokeSessionsOnPasswordReset: true,
+      sendResetPassword: async ({ user, token, url }) => {
+        // additionalFields are not reflected in this callback's user type.
+        const rawLocale = (user as { locale?: unknown }).locale
+        const locale = isLocale(rawLocale) ? rawLocale : 'en'
+        // Better Auth puts the requested destination (if any) on its own callback URL; our page
+        // takes the token directly, so carry the validated path on our link instead.
+        const next = safeNextPath(new URL(url).searchParams.get('callbackURL'))
+        const params = new URLSearchParams({ token })
+        if (next) params.set('next', next)
+        const link = `${origin}/reset-password?${params.toString()}`
+        if (process.env.NODE_ENV !== 'production' && !process.env.RESEND_API_KEY) {
+          // Local testing only: lets a developer finish a reset without an email provider.
+          console.info('[email] dev password reset link:', link)
+        }
+        try {
+          if (await resetRequestedRecently(database, user.id, token)) {
+            console.info('[auth] password reset email skipped: another link was sent recently')
+            await withdrawResetLink(database, token)
+            return
+          }
+          await sendEmail({
+            to: user.email,
+            subject: emailSubject('resetPassword', locale),
+            kind: 'resetPassword',
+            react: ResetPasswordEmail({ url: link, locale }),
+          })
+        } catch (error) {
+          // A Resend failure (or a missing API key) must not change the public response: that
+          // would tell the requester that this address really has an account.
+          console.error('[auth] password reset email failed', error)
+          await withdrawResetLink(database, token).catch((cleanupError) =>
+            console.error('[auth] could not withdraw an unsent reset link', cleanupError),
+          )
+        }
+      },
+      // The link reached this inbox, which proves the address: an account that never finished
+      // verification (a lost or bounced verification email) can sign in straight away. Safe against
+      // someone who registered another person's address: the reset replaced their password and
+      // ended their sessions.
+      onPasswordReset: async ({ user }) => {
+        if (user.emailVerified) return
+        await database.update(schema.user).set({ emailVerified: true, updatedAt: now() }).where(eq(schema.user.id, user.id))
+      },
     },
     socialProviders: google
       ? {
@@ -176,6 +274,7 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
         '/sign-in/email': SIGN_IN_RULE,
         '/sign-in/social': SIGN_IN_RULE,
         '/sign-up/email': SIGN_UP_RULE,
+        '/request-password-reset': RESET_REQUEST_RULE,
       },
     },
     user: {

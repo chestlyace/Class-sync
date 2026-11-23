@@ -1,3 +1,4 @@
+import { forwardedClientIp } from '@/lib/client-ip'
 import { eq } from 'drizzle-orm'
 import { verifyJwsAccessToken } from 'better-auth/oauth2'
 import { isLocale } from '@/i18n/locale'
@@ -53,14 +54,9 @@ function tooManyRequests(retryAfter: number): Response {
   return jsonRpcError(429, 'Too many requests; try again shortly', { 'retry-after': String(retryAfter) })
 }
 
-/**
- * The client's IP: the first `x-forwarded-for` entry, which Vercel sets (and overwrites when a
- * client sends its own), else `x-real-ip`.
- */
+/** The client's IP as the platform's router saw it (see forwardedClientIp), or "unknown". */
 export function clientIp(req: Request): string {
-  const forwarded = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-  // An IPv6 address is at most 45 characters; cut anything longer a non-Vercel proxy let through.
-  return (forwarded || req.headers.get('x-real-ip')?.trim() || 'unknown').slice(0, 64)
+  return forwardedClientIp(req.headers) ?? 'unknown'
 }
 
 /**
