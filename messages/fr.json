@@ -1073,7 +1073,27 @@
         "emptyTitle": "Aucun assistant connecté pour l'instant",
         "emptyBody": "Ajoutez l'URL du connecteur ci-dessus dans Claude ou ChatGPT, connectez-vous avec Clasync et autorisez l'accès. L'assistant apparaît alors ici, et vous pouvez le déconnecter à tout moment."
       }
+    },
+    "announcements": {
+      "title": "Annonces de Clasync par e-mail",
+      "hint": "Les nouveautés et changements envoyés par l'équipe Clasync. Les e-mails sur votre compte, comme la connexion et la réinitialisation du mot de passe, arrivent toujours."
     }
+  },
+  "unsubscribe": {
+    "title": "Se désabonner",
+    "question": "Ne plus recevoir les annonces de Clasync par e-mail ? Rien ne change tant que vous n'appuyez pas sur le bouton.",
+    "submit": "Me désabonner",
+    "submitting": "Désabonnement…",
+    "failed": "Cela n'a pas marché. Réessayez.",
+    "done": {
+      "title": "Vous ne recevrez plus d'annonces.",
+      "body": "Les e-mails sur votre compte, comme la connexion et la réinitialisation du mot de passe, vous parviendront toujours. Vous pouvez réactiver les annonces dans les Paramètres."
+    },
+    "unknown": {
+      "title": "Ce lien ne fonctionne plus.",
+      "body": "Vous pouvez activer ou désactiver les annonces dans les Paramètres, après vous être connecté."
+    },
+    "settingsLink": "Ouvrir les Paramètres"
   },
   "join": {
     "title": "Rejoindre une classe",

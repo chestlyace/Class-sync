@@ -1073,7 +1073,27 @@
         "emptyTitle": "No assistant connected yet",
         "emptyBody": "Add the connector URL above in Claude or ChatGPT, sign in with Clasync and allow access. The assistant then appears here, and you can disconnect it at any time."
       }
+    },
+    "announcements": {
+      "title": "Email announcements from Clasync",
+      "hint": "News and changes sent by the Clasync team. Emails about your account, like sign-in and password reset, always come through."
     }
+  },
+  "unsubscribe": {
+    "title": "Unsubscribe",
+    "question": "Stop getting announcements from Clasync by email? Nothing changes until you press the button.",
+    "submit": "Unsubscribe",
+    "submitting": "Unsubscribing…",
+    "failed": "That didn't work. Try again.",
+    "done": {
+      "title": "You won't get announcements any more.",
+      "body": "Emails about your account, like sign-in and password reset, will still reach you. You can turn announcements back on in Settings."
+    },
+    "unknown": {
+      "title": "This link no longer works.",
+      "body": "You can turn announcements on or off in Settings, after signing in."
+    },
+    "settingsLink": "Open Settings"
   },
   "join": {
     "title": "Join a class",
