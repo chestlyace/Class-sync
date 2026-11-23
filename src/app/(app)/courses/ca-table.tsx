@@ -98,7 +98,7 @@ export function CaTable({ courseId, rows }: { courseId: string; rows: StudentCa[
   const fmt = (n: number) => formatDecimal(n, locale)
 
   // Every row carries the same configured components (0-point ones already omitted).
-  const components: { key: ComponentKey; points: number }[] = rows[0]?.result.components ?? []
+  const components: { key: ComponentKey; id: string; name?: string; points: number }[] = rows[0]?.result.components ?? []
   const total = rows[0]?.result.total ?? 0
   const sorted = useMemo(
     () =>
@@ -124,8 +124,8 @@ export function CaTable({ courseId, rows }: { courseId: string; rows: StudentCa[
               className="sticky left-0 z-10 bg-card"
             />
             {components.map((c) => (
-              <TableHead key={c.key} scope="col" className="text-right">
-                {tComponent(c.key)}
+              <TableHead key={c.id} scope="col" className="text-right">
+                {c.name ?? tComponent(c.key)}
                 <span className="block font-mono text-xs font-normal text-muted-foreground">
                   {t('outOf', { points: fmt(c.points) })}
                 </span>
@@ -161,7 +161,7 @@ export function CaTable({ courseId, rows }: { courseId: string; rows: StudentCa[
                 </span>
               </TableHead>
               {row.result.components.map((c) => (
-                <TableCell key={c.key} data-testid={`ca-part-${c.key}-${row.studentId}`} className="text-right font-mono">
+                <TableCell key={c.id} data-testid={`ca-part-${c.id}-${row.studentId}`} className="text-right font-mono">
                   <PartCell part={c} fmt={fmt} />
                 </TableCell>
               ))}

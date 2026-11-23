@@ -34,6 +34,10 @@ export type EditorValues = {
   maxAbsenceSeconds: string
   /** Weight in CA, shown as "1×". */
   weight: string
+  /** Off: a practice test, left out of the CA. */
+  countsInCa: boolean
+  /** The named CA it counts in; '' when the course has none (or the first applies). */
+  caGroupId: string
   questions: EditorQuestion[]
 }
 
@@ -71,6 +75,8 @@ export function emptyEditorValues(): EditorValues {
     maxExits: String(DEFAULT_MAX_EXITS),
     maxAbsenceSeconds: String(DEFAULT_MAX_ABSENCE_SECONDS),
     weight: String(DEFAULT_TEST_WEIGHT),
+    countsInCa: true,
+    caGroupId: '',
     questions: [blankQuestion('mcq')],
   }
 }
@@ -90,6 +96,8 @@ export function toEditorValues(input: SavedTestInput, locale: string): EditorVal
     maxExits: String(input.maxExits),
     maxAbsenceSeconds: String(input.maxAbsenceSeconds),
     weight: numberText(input.weight, locale),
+    countsInCa: input.countsInCa,
+    caGroupId: input.caGroupId ?? '',
     questions: input.questions.map((q) => ({
       key: newKey(),
       kind: q.kind,
@@ -151,6 +159,8 @@ export function parseTestForm(value: unknown): unknown {
     maxExits: toNumber(value.maxExits),
     maxAbsenceSeconds: toNumber(value.maxAbsenceSeconds),
     weight: toNumber(value.weight),
+    countsInCa: value.countsInCa,
+    caGroupId: value.caGroupId === '' ? null : value.caGroupId,
     questions: Array.isArray(value.questions) ? value.questions.map(toQuestion) : value.questions,
   }
 }
@@ -186,7 +196,8 @@ function isEditorQuestion(value: unknown): value is EditorQuestion {
 
 /**
  * A stored draft read back (it may be stale or edited by hand): null unless it has the editor
- * shape. A draft from before tests had a weight gets the default one.
+ * shape. A draft from before tests had a weight gets the default one; one from before the CA
+ * switch counts in the CA, in the course's first named CA.
  */
 export function toEditorDraft(value: unknown): EditorValues | null {
   if (!isRecord(value)) return null
@@ -194,6 +205,8 @@ export function toEditorDraft(value: unknown): EditorValues | null {
   const texts = [value.title, value.durationMinutes, value.defaultMark, value.maxExits, value.maxAbsenceSeconds, weight]
   if (!texts.every((t) => typeof t === 'string') || typeof value.shuffle !== 'boolean') return null
   if (!Array.isArray(value.questions) || !value.questions.every(isEditorQuestion)) return null
+  const countsInCa = typeof value.countsInCa === 'boolean' ? value.countsInCa : true
+  const caGroupId = typeof value.caGroupId === 'string' ? value.caGroupId : ''
   return {
     title: value.title as string,
     durationMinutes: value.durationMinutes as string,
@@ -202,6 +215,8 @@ export function toEditorDraft(value: unknown): EditorValues | null {
     maxExits: value.maxExits as string,
     maxAbsenceSeconds: value.maxAbsenceSeconds as string,
     weight: weight as string,
+    countsInCa,
+    caGroupId,
     questions: value.questions,
   }
 }

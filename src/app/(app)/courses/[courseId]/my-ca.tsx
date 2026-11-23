@@ -19,6 +19,12 @@ export async function MyCa({ courseId }: { courseId: string }) {
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
   const result = await loadPage((ctx) => getMyCa(ctx, courseId));
   const num = (value: number) => formatDecimal(value, locale);
+  /** A named CA: "the tests of this CA", or its best N. */
+  const groupHow = (partId: string) => {
+    if (!result.ok) return "";
+    const group = result.data.settings.groups.find((g) => `tests:${g.id}` === partId);
+    return group?.bestOf ? t("how.groupBest", { count: group.bestOf }) : t("how.group");
+  };
 
   return (
     <section aria-labelledby="my-ca" data-tour="my-ca" className="flex flex-col gap-4">
@@ -73,9 +79,9 @@ export async function MyCa({ courseId }: { courseId: string }) {
             className="flex flex-col divide-y rounded-3xl border"
           >
             {result.data.result.components.map((c) => (
-              <li key={c.key} className="flex flex-col gap-1 px-4 py-3 sm:px-5">
+              <li key={c.id} className="flex flex-col gap-1 px-4 py-3 sm:px-5">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                  <span className="font-medium">{t(`name.${c.key}`)}</span>
+                  <span className="font-medium">{c.name ?? t(`name.${c.key}`)}</span>
                   {c.score === null ? (
                     <span className="text-sm text-muted-foreground">
                       {c.status === "not_applicable"
@@ -96,6 +102,8 @@ export async function MyCa({ courseId }: { courseId: string }) {
                     ? t("how.participation", {
                         target: result.data.settings.participationTarget,
                       })
+                    : c.name !== undefined
+                      ? groupHow(c.id)
                     : c.key === "tests" && result.data.settings.testsBestOf !== null
                       ? t("how.testsBest", {
                           count: result.data.settings.testsBestOf,

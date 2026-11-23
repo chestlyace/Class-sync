@@ -46,11 +46,16 @@ export async function MyTests({ courseId }: { courseId: string }) {
                 className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 outline-none hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50 sm:px-5"
               >
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="truncate font-medium">{test.title}</span>
+                  <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="max-w-full min-w-0 truncate font-medium">{test.title}</span>
                     {test.isCatchUp && (
                       <Badge variant="secondary" className="shrink-0">
                         {tCatchUp('badge')}
+                      </Badge>
+                    )}
+                    {test.practice && (
+                      <Badge variant="outline" className="shrink-0">
+                        {t('practice')}
                       </Badge>
                     )}
                   </span>

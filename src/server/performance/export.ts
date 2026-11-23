@@ -15,12 +15,21 @@ export const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsh
 const NUMBER_FORMAT = '0.00'
 const LABEL_MAX = 60
 
-const COMPONENTS: { key: ComponentKey; points: (s: CaSettings) => number }[] = [
-  { key: 'attendance', points: (s) => s.attendancePoints },
-  { key: 'assignments', points: (s) => s.assignmentPoints },
-  { key: 'participation', points: (s) => s.participationPoints },
-  { key: 'tests', points: (s) => s.testPoints },
-]
+type Column = { id: string; key: ComponentKey; name?: string; points: number }
+
+/** The sheet's part columns: the four parts, the tests part split into its named CAs if any. */
+function columnsOf(s: CaSettings): Column[] {
+  const tests: Column[] =
+    s.groups.length === 0
+      ? [{ id: 'tests', key: 'tests', points: s.testPoints }]
+      : s.groups.map((g) => ({ id: `tests:${g.id}`, key: 'tests', name: g.name, points: g.points }))
+  return [
+    { id: 'attendance', key: 'attendance', points: s.attendancePoints },
+    { id: 'assignments', key: 'assignments', points: s.assignmentPoints },
+    { id: 'participation', key: 'participation', points: s.participationPoints },
+    ...tests,
+  ]
+}
 
 /**
  * The lecturer's CA sheet as an .xlsx: Matricule, Name, one column per component that has points,
@@ -43,11 +52,13 @@ export async function buildCaWorkbook(input: {
   const noteOf = (result: StudentCa['result']): string | null => {
     if (result.notAssessed) return t('notAssessedNote')
     if (!result.scaled) return null
-    const parts = result.components.filter((c) => c.status === 'not_applicable').map((c) => t(`notApplicable.${c.key}`))
+    const parts = result.components
+      .filter((c) => c.status === 'not_applicable')
+      .map((c) => (c.name === undefined ? t(`notApplicable.${c.key}`) : t('notApplicableGroup', { name: c.name })))
     return t('scaledNote', { parts: list.format(parts) })
   }
 
-  const components = COMPONENTS.filter((c) => c.points(settings) > 0)
+  const components = columnsOf(settings).filter((c) => c.points > 0)
   const collator = new Intl.Collator(locale, { numeric: true })
   // Students still without a matricule go last, by name.
   const sorted = [...rows].sort(
@@ -64,8 +75,8 @@ export async function buildCaWorkbook(input: {
     { header: t('matricule'), key: 'matricule', width: 16 },
     { header: t('name'), key: 'name', width: 32 },
     ...components.map((c) => ({
-      header: label(c.key, c.points(settings)),
-      key: c.key,
+      header: c.name === undefined ? label(c.key, c.points) : t('group', { name: c.name, points: formatDecimal(c.points, locale) }),
+      key: c.id,
       width: 20,
       style: { numFmt: NUMBER_FORMAT },
     })),
@@ -77,8 +88,8 @@ export async function buildCaWorkbook(input: {
   for (const row of sorted) {
     const values: Record<string, string | number | null> = { matricule: row.matricule, name: row.name }
     for (const c of components) {
-      const part = row.result.components.find((s) => s.key === c.key)
-      values[c.key] = part?.status === 'not_applicable' ? null : (part?.score ?? 0)
+      const part = row.result.components.find((s) => s.id === c.id)
+      values[c.id] = part?.status === 'not_applicable' ? null : (part?.score ?? 0)
     }
     values.total = row.result.final
     values.note = noteOf(row.result)

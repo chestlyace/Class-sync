@@ -18,9 +18,9 @@ describe('computeCa', () => {
   it('shows every component as not started, 0 so far and 0 / 30 final for empty input', () => {
     const r = computeCa(DEFAULT_SETTINGS, EMPTY)
     expect(r.components).toEqual([
-      { key: 'attendance', points: 5, ratio: null, score: null, status: 'not_started' },
-      { key: 'assignments', points: 20, ratio: null, score: null, status: 'not_started' },
-      { key: 'participation', points: 5, ratio: null, score: null, status: 'not_started' },
+      { key: 'attendance', id: 'attendance', points: 5, ratio: null, score: null, status: 'not_started' },
+      { key: 'assignments', id: 'assignments', points: 20, ratio: null, score: null, status: 'not_started' },
+      { key: 'participation', id: 'participation', points: 5, ratio: null, score: null, status: 'not_started' },
     ])
     expect(r.soFar).toBe(0)
     expect(r.soFarOutOf).toBe(0)
@@ -123,7 +123,7 @@ describe('computeCa', () => {
       participationNet: 5,
       classStarted: { attendance: true, assignments: false, participation: true, tests: false },
     })
-    expect(part(r, 'assignments')).toEqual({ key: 'assignments', points: 20, ratio: null, score: null, status: 'not_started' })
+    expect(part(r, 'assignments')).toEqual({ key: 'assignments', id: 'assignments', points: 20, ratio: null, score: null, status: 'not_started' })
     expect(r.soFar).toBe(10)
     expect(r.soFarOutOf).toBe(10)
     expect(r.final).toBe(10)
@@ -141,6 +141,7 @@ describe('computeCa', () => {
     })
     expect(part(r, 'assignments')).toEqual({
       key: 'assignments',
+      id: 'assignments',
       points: 20,
       ratio: null,
       score: null,
@@ -196,7 +197,7 @@ describe('computeCa', () => {
   it('parts add up: the final is the sum of the rounded parts', () => {
     // Each third of 5 is 1.67, so the CA is 1.67 x 3 = 5.01.
     const thirds = computeCa(
-      { total: 15, attendancePoints: 5, assignmentPoints: 5, participationPoints: 5, testPoints: 0, participationTarget: 3, testsBestOf: null },
+      { total: 15, attendancePoints: 5, assignmentPoints: 5, participationPoints: 5, testPoints: 0, participationTarget: 3, testsBestOf: null, groups: [] },
       {
         attendance: { present: 1, partial: 0, absent: 2 },
         assignments: [{ weight: 1, mark: 1, maxMark: 3 }],
@@ -211,7 +212,7 @@ describe('computeCa', () => {
     expect(thirds.scaled).toBe(false)
     // Each half point is 0.505, shown 0.51: the CA is 0.51 x 3 = 1.53.
     const halves = computeCa(
-      { total: 3.03, attendancePoints: 1.01, assignmentPoints: 1.01, participationPoints: 1.01, testPoints: 0, participationTarget: 2, testsBestOf: null },
+      { total: 3.03, attendancePoints: 1.01, assignmentPoints: 1.01, participationPoints: 1.01, testPoints: 0, participationTarget: 2, testsBestOf: null, groups: [] },
       {
         attendance: { present: 1, partial: 0, absent: 1 },
         assignments: [{ weight: 1, mark: 1, maxMark: 2 }],
@@ -246,7 +247,7 @@ describe('computeCa: tests', () => {
 
   it('lists tests after the other parts when they have points', () => {
     expect(computeCa(s, EMPTY).components.map((c) => c.key)).toEqual(['attendance', 'assignments', 'participation', 'tests'])
-    expect(part(computeCa(s, EMPTY), 'tests')).toEqual({ key: 'tests', points: 10, ratio: null, score: null, status: 'not_started' })
+    expect(part(computeCa(s, EMPTY), 'tests')).toEqual({ key: 'tests', id: 'tests', points: 10, ratio: null, score: null, status: 'not_started' })
   })
 
   it('combines tests by weight, keeping the best N when the course says so', () => {
@@ -274,7 +275,7 @@ describe('computeCa: tests', () => {
 
   it('a student who never joined scores 0 on the test (ratio 0), not a missing part', () => {
     const r = computeCa({ ...s, testsBestOf: 2 }, { ...testsStarted, tests: [t(1, 0)] })
-    expect(part(r, 'tests')).toEqual({ key: 'tests', points: 10, ratio: 0, score: 0, status: 'scored' })
+    expect(part(r, 'tests')).toEqual({ key: 'tests', id: 'tests', points: 10, ratio: 0, score: 0, status: 'scored' })
     expect(r.scaled).toBe(false)
   })
 

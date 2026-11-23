@@ -1552,7 +1552,9 @@
         "assignments": "Devoirs non applicables",
         "participation": "Participation non applicable",
         "tests": "Tests non applicables"
-      }
+      },
+      "group": "{name} (/{points})",
+      "notApplicableGroup": "{name} non applicable"
     },
     "lecturer": {
       "courseLink": "CC",
@@ -1619,7 +1621,24 @@
           "range": "Le total doit être entre 1 et 100, chaque partie entre 0 et 100, l'objectif un nombre entier de 1 à 100, et les meilleurs tests un nombre entier de 1 à 50 (ou vide).",
           "decimals": "Utilisez au plus 2 décimales (par exemple {example}).",
           "shape": "Les réglages sont illisibles. Rechargez la page et réessayez.",
-          "fields": "Saisissez un nombre dans chaque case signalée."
+          "fields": "Saisissez un nombre dans chaque case signalée.",
+          "groupName": "Donnez à chaque CC un nom différent, de 40 caractères au plus.",
+          "groups": "Un cours a au plus {max} CC."
+        },
+        "testsFromGroups": "La somme de vos CC ci-dessous.",
+        "groups": {
+          "legend": "CC composés de tests",
+          "hint": "Répartissez la partie tests en plusieurs CC, comme CC 1 et CC 2, chacun avec ses points. Chaque test compte alors dans l'un d'eux.",
+          "hintSplit": "Chaque CC se calcule à partir de ses propres tests, pondérés, ou seulement des meilleurs. Choisissez le CC d'un test dans son éditeur ou sur sa page.",
+          "listLabel": "CC composés de tests",
+          "name": "Nom",
+          "points": "Points",
+          "bestOf": "Meilleurs tests",
+          "bestOfAll": "Tous",
+          "remove": "Retirer {name}",
+          "add": "Ajouter un CC",
+          "split": "Répartir les tests en CC",
+          "removeHint": "Les tests d'un CC retiré comptent dans le premier. Retirez tous les CC pour revenir à une seule partie tests."
         }
       },
       "board": {
@@ -1647,7 +1666,87 @@
         "attendance": "La présence n'a pas commencé : elle compte 0 pour tout le monde. Mettez-la à 0 point si vous ne l'utilisez pas.",
         "assignments": "Les devoirs n'ont pas commencé (aucune note publiée) : ils comptent 0 pour tout le monde. Mettez-les à 0 point si vous ne les utilisez pas.",
         "participation": "La participation n'a pas commencé : elle compte 0 pour tout le monde. Mettez-la à 0 point si vous ne l'utilisez pas.",
-        "tests": "Les tests n'ont pas commencé (aucun résultat publié) : ils comptent 0 pour tout le monde. Mettez-les à 0 point si vous ne les utilisez pas."
+        "tests": "Les tests n'ont pas commencé (aucun résultat publié) : ils comptent 0 pour tout le monde. Mettez-les à 0 point si vous ne les utilisez pas.",
+        "group": "{name} n'a pas commencé (aucun test publié dedans) : il compte 0 pour tout le monde."
+      },
+      "templates": {
+        "pickLabel": "Partir d'un modèle",
+        "pickHint": "Choisissez une carte : les réglages ci-dessous sont remplis à partir d'elle. Rien ne change tant que vous n'enregistrez pas.",
+        "filled": "Rempli à partir de « {name} ». Vérifiez, puis enregistrez.",
+        "notSavedYet": "Pas encore enregistré.",
+        "groupName": "CC {n}",
+        "builtIn": {
+          "balanced": {
+            "name": "Équilibré",
+            "description": "Un peu de tout : tests et devoirs comptent autant.",
+            "details": "Un bon point de départ quand vous utilisez un peu de tout. Tests et devoirs pèsent autant, et la présence et la participation récompensent ceux qui viennent et participent."
+          },
+          "testBased": {
+            "name": "Basé sur les tests",
+            "description": "Surtout des tests, les deux meilleurs comptent.",
+            "details": "Pour les cours évalués surtout par des tests en classe. Seuls les deux meilleurs tests de chaque étudiant comptent : un mauvais jour ne ruine pas son CC. Un peu de présence et de devoirs compte encore."
+          },
+          "twoCas": {
+            "name": "Deux CC",
+            "description": "CC 1 et CC 2, chacun composé d'un ou plusieurs tests.",
+            "details": "Pour les établissements avec deux CC officiels par semestre. CC 1 et CC 2 ont 10 points chacun, et chacun peut être fait d'un ou plusieurs tests. Vous choisissez le CC de chaque test dans son éditeur."
+          },
+          "assignments": {
+            "name": "Devoirs et projets",
+            "description": "Surtout du travail rendu.",
+            "details": "Pour les cours par projets où le travail rendu compte le plus. Les tests comptent un peu ; la présence récompense l'assiduité."
+          },
+          "practical": {
+            "name": "Travaux pratiques",
+            "description": "La présence et les TP comptent le plus, sans tests.",
+            "details": "Pour les TP sans tests : la présence et les comptes rendus portent le CC, avec la participation pour les étudiants impliqués."
+          },
+          "testsOnly": {
+            "name": "Tests seulement",
+            "description": "Tout le CC vient des tests.",
+            "details": "Tout vient des tests. Utilisez-le quand la présence et les devoirs sont notés ailleurs, ou pas du tout."
+          }
+        },
+        "saveAsLabel": "Enregistrer comme modèle",
+        "namePlaceholder": "ex. Mes cours de L3",
+        "saveAs": "Enregistrer le modèle",
+        "saveAsHint": "Garde le formulaire tel qu'il est, CC compris, pour vos autres cours.",
+        "nameTaken": "Vous avez déjà un modèle de ce nom.",
+        "nameInvalid": "Donnez un nom au modèle, de 60 caractères au plus.",
+        "savedAs": "Enregistré sous « {name} ».",
+        "mineBadge": "À moi",
+        "applyToCourses": "Appliquer à des cours",
+        "outOf": "/{total}",
+        "close": "Fermer",
+        "cancel": "Annuler",
+        "applyTitle": "Appliquer « {name} »",
+        "applyBody": "Chaque cours coché reçoit cette répartition tout de suite, à la place de ses réglages de CC. Un CC qui porte le même nom qu'un CC du cours garde ses tests.",
+        "applyCourses": "Cours",
+        "applied": "{count, plural, one {Appliqué à # cours.} other {Appliqué à # cours.}}",
+        "applyPick": "Cochez au moins un cours.",
+        "applyConfirm": "{count, plural, one {Appliquer à # cours} other {Appliquer à # cours}}",
+        "searchPlaceholder": "Rechercher un modèle",
+        "searchLabel": "Rechercher parmi les modèles de CC",
+        "noMatch": "Aucun modèle ne correspond à « {query} ».",
+        "mineDescription": "Votre propre modèle.",
+        "defaultBadge": "Par défaut",
+        "selected": "Choisi",
+        "moreInfo": "En savoir plus sur {name}",
+        "points": "{points} pts",
+        "leftOut": "Les parties absentes ont 0 point : elles sont hors du CC.",
+        "unsetDefault": "Ne plus utiliser pour les nouveaux cours",
+        "makeDefault": "Utiliser pour les nouveaux cours",
+        "deleteShort": "Supprimer",
+        "useHere": "Utiliser pour ce cours",
+        "how": {
+          "attendance": "D'après l'appel : une présence compte en entier, une présence partielle pour moitié.",
+          "assignments": "Moyenne pondérée des notes de devoirs publiées ; un travail manquant compte 0.",
+          "participation": "Touches +1 / −1 en classe ; {target} touches nettes donnent tous les points.",
+          "tests": "Moyenne pondérée de tous les tests publiés.",
+          "testsBest": "Seul{count, plural, one { le meilleur test} other {s les # meilleurs tests}} de chaque étudiant compte{count, plural, one {} other {nt}}.",
+          "group": "Moyenne pondérée des tests que vous mettez dans ce CC.",
+          "groupBest": "Seul{count, plural, one { le meilleur test} other {s les # meilleurs tests}} de chaque étudiant dans ce CC compte{count, plural, one {} other {nt}}."
+        }
       }
     },
     "student": {
@@ -1672,7 +1771,9 @@
         "assignments": "Moyenne pondérée des notes publiées ; un travail manquant compte 0. Un travail en attente de note, ou dû avant votre arrivée, n'est pas compté.",
         "participation": "Gagnée en classe, note maximale à {target, plural, one {# intervention} other {# interventions}}.",
         "tests": "Moyenne pondérée de vos résultats de tests publiés ; un test que vous n'avez pas passé compte 0. Un test terminé avant votre arrivée n'est pas compté.",
-        "testsBest": "{count, plural, one {Votre meilleur test compte} other {Vos # meilleurs tests comptent}}, pondérés, parmi les résultats publiés ; un test que vous n'avez pas passé compte 0. Un test terminé avant votre arrivée n'est pas compté."
+        "testsBest": "{count, plural, one {Votre meilleur test compte} other {Vos # meilleurs tests comptent}}, pondérés, parmi les résultats publiés ; un test que vous n'avez pas passé compte 0. Un test terminé avant votre arrivée n'est pas compté.",
+        "group": "Moyenne pondérée de vos résultats publiés aux tests de ce CC ; un test que vous n'avez pas passé compte 0.",
+        "groupBest": "{count, plural, one {Votre meilleur test de ce CC compte} other {Vos # meilleurs tests de ce CC comptent}}, pondérés ; un test que vous n'avez pas passé compte 0."
       },
       "missingWork": "{count, plural, one {# travail manquant} other {# travaux manquants}}",
       "seeAssignments": "Voir mes devoirs"
@@ -1754,7 +1855,12 @@
         "mcqNote": "Choix multiples uniquement : les étudiants voient leur total dès qu'ils rendent leur copie.",
         "save": "Enregistrer et obtenir le lien",
         "saving": "Enregistrement…",
-        "locked": "Les questions sont verrouillées une fois le test lancé."
+        "locked": "Les questions sont verrouillées une fois le test lancé.",
+        "countsInCa": "Compte dans le CC",
+        "countsInCaHint": "Ses résultats comptent dans le CC du cours une fois publiés.",
+        "practiceHint": "Un test d'entraînement : les étudiants le passent normalement, mais il ne compte jamais dans le CC.",
+        "caGroup": "Compte dans",
+        "weightHintGroup": "Son poids parmi les tests de son CC."
       },
       "copy": {
         "title": "Copier dans un autre cours",
@@ -1855,7 +1961,8 @@
           "prompt": "rédigez la question (2 000 caractères au plus).",
           "options": "donnez de 2 à 6 choix, aucun vide.",
           "correct": "cochez exactement une bonne réponse.",
-          "guide": "rédigez un guide de correction (4 000 caractères au plus)."
+          "guide": "rédigez un guide de correction (4 000 caractères au plus).",
+          "caGroup": "choisissez un des CC du cours."
         },
         "test": {
           "shape": "Une partie de ce test n'a pas pu être lue. Rechargez la page et réessayez.",
@@ -1868,13 +1975,16 @@
           "prompt": "Rédigez chaque question.",
           "options": "Donnez de 2 à 6 choix à chaque question à choix multiple.",
           "correct": "Cochez exactement une bonne réponse dans chaque question à choix multiple.",
-          "guide": "Rédigez un guide de correction pour chaque réponse courte."
+          "guide": "Rédigez un guide de correction pour chaque réponse courte.",
+          "caGroup": "Choisissez un des CC du cours. Rechargez la page s'ils viennent de changer."
         },
         "started": "Le test a commencé : il ne peut plus être modifié ni supprimé.",
         "notStarted": "Le test n'a pas encore commencé.",
         "notEnded": "Cet étudiant n'a pas été arrêté pour sortie.",
-        "testOver": "Le test est terminé : personne ne peut plus revenir."
-      }
+        "testOver": "Le test est terminé : personne ne peut plus revenir.",
+        "isCatchUp": "Un rattrapage compte comme le test qu'il rattrape : changez-le sur ce test."
+      },
+      "practice": "Hors CC"
     },
     "student": {
       "metaTitle": "Test",
@@ -1993,7 +2103,8 @@
           "ended_left": "Terminé pour sortie",
           "handed_in": "Remis"
         },
-        "score": "{score} / {outOf}"
+        "score": "{score} / {outOf}",
+        "practice": "Ne compte pas pour les notes"
       }
     },
     "marking": {
@@ -2137,6 +2248,12 @@
         "nobodyMissed": "Tout le monde a passé ce test. Choisissez plutôt les étudiants.",
         "studentIds": "Choisissez au moins un étudiant du cours."
       }
+    },
+    "ca": {
+      "switchLabel": "Compte dans le CC",
+      "onHelp": "Ses résultats comptent dans le CC du cours une fois publiés. Désactivez pour en faire un test d'entraînement.",
+      "offHelp": "Un test d'entraînement : hors du CC. Vous pouvez l'activer à tout moment ; le CC se met à jour aussitôt.",
+      "groupLabel": "Compte dans"
     }
   },
   "notes": {

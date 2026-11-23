@@ -60,6 +60,7 @@ export function TestEditor({
   userId,
   saved,
   isCatchUp = false,
+  caGroups = [],
 }: {
   courseId: string
   testId: string | null
@@ -68,6 +69,8 @@ export function TestEditor({
   saved: SavedTestInput | null
   /** A catch-up counts with its original's weight: the weight field is hidden (the service keeps it). */
   isCatchUp?: boolean
+  /** The course's named CAs, in order; empty when its tests make one part. */
+  caGroups?: { id: string; name: string }[]
 }) {
   const t = useTranslations('tests.lecturer.editor')
   const locale = useLocale()
@@ -243,6 +246,34 @@ export function TestEditor({
             </div>
 
             {!isCatchUp && (
+              <ShuffleSwitch
+                checked={values.countsInCa}
+                label={t('countsInCa')}
+                hint={values.countsInCa ? t('countsInCaHint') : t('practiceHint')}
+                hintId="test-counts-in-ca-hint"
+                onChange={(countsInCa) => update((v) => ({ ...v, countsInCa }))}
+              />
+            )}
+
+            {!isCatchUp && values.countsInCa && caGroups.length > 0 && (
+              <Field data-invalid={invalid('caGroup')}>
+                <FieldLabel htmlFor="test-ca-group">{t('caGroup')}</FieldLabel>
+                <NativeSelect
+                  id="test-ca-group"
+                  value={values.caGroupId || caGroups[0].id}
+                  aria-invalid={invalid('caGroup')}
+                  onChange={(e) => update((v) => ({ ...v, caGroupId: e.target.value }))}
+                >
+                  {caGroups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
+            )}
+
+            {!isCatchUp && values.countsInCa && (
               <Field data-invalid={invalid('weight')}>
                 <FieldLabel htmlFor="test-weight">{t('weight')}</FieldLabel>
                 <div className="flex items-center gap-2">
@@ -259,7 +290,7 @@ export function TestEditor({
                     {t('weightSuffix')}
                   </span>
                 </div>
-                <FieldDescription id="test-weight-hint">{t('weightHint')}</FieldDescription>
+                <FieldDescription id="test-weight-hint">{caGroups.length > 0 ? t('weightHintGroup') : t('weightHint')}</FieldDescription>
               </Field>
             )}
 
@@ -319,11 +350,13 @@ function ShuffleSwitch({
   checked,
   label,
   hint,
+  hintId = 'test-shuffle-hint',
   onChange,
 }: {
   checked: boolean
   label: string
   hint: string
+  hintId?: string
   onChange: (checked: boolean) => void
 }) {
   return (
@@ -331,7 +364,7 @@ function ShuffleSwitch({
       type="button"
       role="switch"
       aria-checked={checked}
-      aria-describedby="test-shuffle-hint"
+      aria-describedby={hintId}
       onClick={() => onChange(!checked)}
       className="flex min-h-11 items-start gap-3 rounded-xl text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
     >
@@ -351,7 +384,7 @@ function ShuffleSwitch({
       </span>
       <span className="flex flex-col gap-0.5">
         <span className="text-sm font-medium">{label}</span>
-        <span id="test-shuffle-hint" className="text-sm text-muted-foreground">
+        <span id={hintId} className="text-sm text-muted-foreground">
           {hint}
         </span>
       </span>
