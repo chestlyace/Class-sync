@@ -82,7 +82,8 @@ function notification(entry: string, over: Partial<SnsMessage> = {}): string {
 beforeEach(() => {
   handled.length = 0
   vi.stubEnv('WHATSAPP_AWS_REGION', 'eu-west-1')
-  vi.stubEnv('WHATSAPP_AWS_ROLE_ARN', 'arn:aws:iam::1:role/x')
+  vi.stubEnv('AWS_ACCESS_KEY_ID', 'AKIAEXAMPLE')
+  vi.stubEnv('AWS_SECRET_ACCESS_KEY', 'secret-example')
   vi.stubEnv('WHATSAPP_PHONE_NUMBER_ID', 'phone-number-id-1')
   vi.stubEnv('WHATSAPP_DISPLAY_NUMBER', '+1 555 010 0000')
   vi.stubEnv('WHATSAPP_SNS_TOPIC_ARN', TOPIC)

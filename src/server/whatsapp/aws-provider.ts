@@ -23,7 +23,21 @@ function buildTextPayload(to: string, body: string): object {
   return { messaging_product: 'whatsapp', to, type: 'text', text: { body } }
 }
 
-/** Sends through AWS End User Messaging Social, signing in with the Vercel OIDC token (no stored AWS keys). The SDK loads on the first send. */
+/**
+ * How the AWS client signs in: on Heroku with the IAM user's access key; on Vercel, when a role is set, through
+ * Vercel's OIDC token (no stored keys), whose helper is imported only then.
+ */
+async function credentialsFor(config: WhatsAppConfig) {
+  const { roleArn, accessKey } = config
+  if (roleArn) {
+    const { awsCredentialsProvider } = await import('@vercel/functions/oidc')
+    return awsCredentialsProvider({ roleArn })
+  }
+  if (!accessKey) throw new Error('Neither WHATSAPP_AWS_ROLE_ARN nor AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY is set')
+  return accessKey
+}
+
+/** Sends through AWS End User Messaging Social. The SDK loads on the first send. */
 export function createAwsProvider(config: WhatsAppConfig): WhatsAppProvider {
   let clientPromise: Promise<{
     send: (payload: object) => Promise<{ messageId: string }>
@@ -31,16 +45,16 @@ export function createAwsProvider(config: WhatsAppConfig): WhatsAppProvider {
 
   function client() {
     clientPromise ??= (async () => {
-      const [{ SocialMessagingClient, SendWhatsAppMessageCommand }, { awsCredentialsProvider }] = await Promise.all([
+      const [{ SocialMessagingClient, SendWhatsAppMessageCommand }, credentials] = await Promise.all([
         import('@aws-sdk/client-socialmessaging'),
-        import('@vercel/functions/oidc'),
+        credentialsFor(config),
       ])
       const sdk = new SocialMessagingClient({
         region: config.region,
         // A hung call must not eat the dispatcher's 60 s: fail fast and let the queue retry the event.
         requestHandler: { requestTimeout: 8000 },
         maxAttempts: 2,
-        credentials: awsCredentialsProvider({ roleArn: config.roleArn }),
+        credentials,
       })
       return {
         async send(payload: object) {

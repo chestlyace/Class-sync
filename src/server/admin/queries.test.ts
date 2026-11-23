@@ -333,7 +333,8 @@ describe('admin read models', () => {
     expect(await getWhatsAppUsage(adminCtx, at, {})).toBeNull()
     const env = {
       WHATSAPP_AWS_REGION: 'eu-west-1',
-      WHATSAPP_AWS_ROLE_ARN: 'arn:aws:iam::123456789012:role/test',
+      AWS_ACCESS_KEY_ID: 'AKIAEXAMPLE',
+      AWS_SECRET_ACCESS_KEY: 'secret-example',
       WHATSAPP_PHONE_NUMBER_ID: 'phone-number-id-1',
       WHATSAPP_DISPLAY_NUMBER: '+237600000000',
       WHATSAPP_SNS_TOPIC_ARN: 'arn:aws:sns:eu-west-1:123456789012:test',

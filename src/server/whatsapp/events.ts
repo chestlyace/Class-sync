@@ -1,4 +1,5 @@
 import { now } from '@/server/core/clock'
+import { queueDriver } from '@/server/jobs/driver'
 import { whatsAppConfig } from './config'
 
 /** Something that may deserve a WhatsApp message, queued with the data needed to work out who still needs one. */
@@ -57,6 +58,18 @@ const vercelQueue: WhatsAppQueue = {
 }
 
 /**
+ * pg-boss (Heroku): a job in the app's database, started at the delivery time by the worker in the web
+ * process (src/server/jobs/worker.ts). Its id comes from the event key, so the same event is queued once.
+ */
+const pgBossQueue: WhatsAppQueue = {
+  async send(event, deliverAt) {
+    const { getBoss, jobIdFor } = await import('@/server/jobs/boss')
+    const boss = await getBoss()
+    await boss.send(WHATSAPP_TOPIC, event, { id: jobIdFor(WHATSAPP_TOPIC, eventKey(event)), startAfter: deliverAt })
+  },
+}
+
+/**
  * Local development: a timer in this process, then the same dispatcher the queue would call. Timers are
  * unref'd so they never keep a process alive, and a restart forgets them.
  */
@@ -76,12 +89,18 @@ const memoryQueue: WhatsAppQueue = {
   },
 }
 
+/** The queue WhatsApp events go through: Vercel Queues, pg-boss or an in-process timer (see queueDriver). */
+function whatsAppQueue(): WhatsAppQueue {
+  if (testQueue) return testQueue
+  const driver = queueDriver()
+  return driver === 'vercel' ? vercelQueue : driver === 'pgboss' ? pgBossQueue : memoryQueue
+}
+
 /**
  * Queues an event for delivery at `deliverAt` (default: now). Does nothing when WhatsApp is not set up. The
  * dispatcher decides at delivery time who still needs a message, so a delay lets Web Push go first.
  */
 export async function enqueueWhatsApp(event: WhatsAppEvent, deliverAt: Date = now()): Promise<void> {
   if (!whatsAppConfig()) return
-  const queue = testQueue ?? (process.env.VERCEL ? vercelQueue : memoryQueue)
-  await queue.send(event, deliverAt)
+  await whatsAppQueue().send(event, deliverAt)
 }

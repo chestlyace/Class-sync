@@ -9,6 +9,7 @@ import {
   attendanceSession,
   attendanceWindow,
   submission,
+  testCatchUpStudent,
   whatsappLink,
   whatsappMessage,
   whatsappMonthUsage,
@@ -73,7 +74,8 @@ const messages = () => db.select().from(whatsappMessage)
 
 beforeEach(async () => {
   vi.stubEnv('WHATSAPP_AWS_REGION', 'eu-west-1')
-  vi.stubEnv('WHATSAPP_AWS_ROLE_ARN', 'arn:aws:iam::1:role/x')
+  vi.stubEnv('AWS_ACCESS_KEY_ID', 'AKIAEXAMPLE')
+  vi.stubEnv('AWS_SECRET_ACCESS_KEY', 'secret-example')
   vi.stubEnv('WHATSAPP_PHONE_NUMBER_ID', 'phone-number-id-1')
   vi.stubEnv('WHATSAPP_DISPLAY_NUMBER', '+1 555 010 0000')
   vi.stubEnv('WHATSAPP_SNS_TOPIC_ARN', 'arn:aws:sns:eu-west-1:1:t')
@@ -147,6 +149,27 @@ describe('handleWhatsAppEvent', () => {
     expect(result).toEqual({ sent: 1, skipped: 0 })
     expect(sent.map((s) => s.to)).toEqual([phoneOf(fx.carol.user.id)])
     expect(sent[0].msg).toMatchObject({ name: 'test_started', bodyParams: ['CA 1', 'Cell biology'], buttonPath: `t/${test.code}` })
+  })
+
+  it('a catch-up for those who missed the test goes only to students with no attempt on the original', async () => {
+    await connect(fx.alice, fx.carol)
+    const { test: original } = await insertStartedTest(db, fx.lecturer, fx.bio.id)
+    await joinTest(db, original.id, fx.alice)
+    const { test } = await insertStartedTest(db, fx.lecturer, fx.bio.id)
+    await db.update(courseTest).set({ catchUpOfId: original.id, catchUpFor: 'missed' }).where(eq(courseTest.id, test.id))
+    const result = await handleWhatsAppEvent(db, { kind: 'testStarted', testId: test.id }, at(5))
+    expect(result).toEqual({ sent: 1, skipped: 0 })
+    expect(sent.map((s) => s.to)).toEqual([phoneOf(fx.carol.user.id)])
+  })
+
+  it('a catch-up for picked students goes only to them', async () => {
+    await connect(fx.alice, fx.carol)
+    const { test: original } = await insertStartedTest(db, fx.lecturer, fx.bio.id)
+    const { test } = await insertStartedTest(db, fx.lecturer, fx.bio.id)
+    await db.update(courseTest).set({ catchUpOfId: original.id, catchUpFor: 'picked' }).where(eq(courseTest.id, test.id))
+    await db.insert(testCatchUpStudent).values({ testId: test.id, studentId: fx.alice.user.id, addedBy: fx.lecturer.user.id })
+    await handleWhatsAppEvent(db, { kind: 'testStarted', testId: test.id }, at(5))
+    expect(sent.map((s) => s.to)).toEqual([phoneOf(fx.alice.user.id)])
   })
 
   it('test fallback sends nothing once the test has ended', async () => {

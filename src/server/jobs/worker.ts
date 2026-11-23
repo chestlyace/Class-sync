@@ -1,7 +1,10 @@
 import { runMarkingJobDefault } from '@/server/assignments/ai/default-db'
 import { MARKING_TOPIC, type MarkingMessage } from '@/server/assignments/ai/queue'
+import { now } from '@/server/core/clock'
 import { handleNoticeDefault } from '@/server/schedule/default-db'
 import { CLASS_NOTICES_TOPIC, type NoticeMessage } from '@/server/schedule/queue'
+import { handleWhatsAppEventDefault } from '@/server/whatsapp/default-db'
+import { WHATSAPP_TOPIC, type WhatsAppEvent } from '@/server/whatsapp/events'
 import { DAILY_REMINDERS_QUEUE, DAILY_SCHEDULE_QUEUE, getBoss, resetBoss } from './boss'
 import { runRemindersDaily, runScheduleDaily } from './daily'
 
@@ -31,6 +34,11 @@ async function registerWorkers(): Promise<void> {
   // retryCount is 0 on the first delivery: the job counts deliveries from 1, as Vercel Queues did.
   await boss.work<MarkingMessage>(MARKING_TOPIC, { localConcurrency: 2 }, async ([job]) => {
     await runMarkingJobDefault(job.data, job.retryCount + 1)
+  })
+
+  // Who still needs a message is worked out at delivery time; a throw (a database error) retries the event.
+  await boss.work<WhatsAppEvent>(WHATSAPP_TOPIC, { localConcurrency: 2 }, async ([job]) => {
+    await handleWhatsAppEventDefault(job.data, now())
   })
 
   await boss.work(DAILY_REMINDERS_QUEUE, async () => {

@@ -24,6 +24,7 @@ import {
 } from '@/server/db/schema'
 import { sendEmail } from '@/server/email/send'
 import { scrubError } from '@/server/ops/events'
+import { eligibleStudents } from '@/server/tests/catch-up'
 import { testPhase } from '@/server/tests/phase'
 import { claimSend, noteCapReached, releaseClaim } from './cap'
 import { isAllowedWhatsAppNumber, whatsAppConfig } from './config'
@@ -89,10 +90,12 @@ async function planFor(db: Db, event: WhatsAppEvent, at: Date): Promise<Plan | n
         db.select({ id: testAttempt.studentId }).from(testAttempt).where(eq(testAttempt.testId, row.test.id)),
       ])
       const joined = new Set(attempts.map((a) => a.id))
+      // A catch-up concerns only the students who may sit it (the same rule as its push and /t/<code>).
+      const eligible = await eligibleStudents(db, row.test, ids.filter((id) => !joined.has(id)))
       return {
         kind: 'testStarted',
         preference: 'tests',
-        userIds: ids.filter((id) => !joined.has(id)),
+        userIds: [...eligible],
         template: (locale) =>
           buildTemplate('testStarted', { testTitle: row.test.title, courseTitle: row.courseTitle, code: row.test.code }, locale),
       }
