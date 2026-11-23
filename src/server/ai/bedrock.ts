@@ -10,12 +10,12 @@ type Credentials = { accessKeyId: string; secretAccessKey: string; sessionToken?
  * and the model must be returned synchronously); the OIDC helper is imported on first use, so nothing loads
  * unless a call is made.
  */
-export function createBedrockModel(cfg: AiConfig): LanguageModel {
+export function createBedrockModel(cfg: AiConfig, modelId: string = cfg.assignmentModel): LanguageModel {
   const roleArn = cfg.roleArn
   if (!roleArn) {
     if (!cfg.accessKey) throw new Error('Neither AI_AWS_ROLE_ARN nor AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY is set')
     const { accessKeyId, secretAccessKey } = cfg.accessKey
-    return createAmazonBedrock({ region: cfg.region, accessKeyId, secretAccessKey })(cfg.assignmentModel)
+    return createAmazonBedrock({ region: cfg.region, accessKeyId, secretAccessKey })(modelId)
   }
   let provider: Promise<() => Promise<Credentials>> | undefined
   const credentialProvider = async () => {
@@ -34,5 +34,5 @@ export function createBedrockModel(cfg: AiConfig): LanguageModel {
       throw err
     }
   }
-  return createAmazonBedrock({ region: cfg.region, credentialProvider })(cfg.assignmentModel)
+  return createAmazonBedrock({ region: cfg.region, credentialProvider })(modelId)
 }
