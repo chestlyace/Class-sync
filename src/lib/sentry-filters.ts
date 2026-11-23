@@ -12,12 +12,15 @@ export function isNextRequestErrorLog(args: unknown[]): boolean {
   return typeof first === 'string' && first.replace(ANSI_COLOUR, '') === '⨯' && second instanceof Error
 }
 
-const NODE_WARNING = /^\(node:\d+\) (?:\[[A-Z]+\d+\] )?\w*Warning: /
+// Node codes are usually numeric (DEP0040), but libraries emit their own, e.g. the AI SDK's
+// AISDK_DEP_IMAGE_CONTENT_PART. Allow letters, digits, underscores and dashes in the code.
+const NODE_WARNING = /^\(node:\d+\) (?:\[[A-Z][A-Z0-9_-]*\] )?\w*Warning: /
 
 /**
  * True for a runtime warning Node prints by itself, such as "(node:8) ExperimentalWarning: …" at
  * every cold start on Vercel. It goes through console.error but isn't a failure in the app, so the
- * server leaves it out of Sentry (it filled CLASYNC-5 with thousands of events).
+ * server leaves it out of Sentry (it filled CLASYNC-5 with thousands of events). Library codes
+ * without a digit were missed, which brought it back as CLASYNC-13.
  */
 export function isNodeWarningLog(args: unknown[]): boolean {
   return args.length === 1 && typeof args[0] === 'string' && NODE_WARNING.test(args[0])
