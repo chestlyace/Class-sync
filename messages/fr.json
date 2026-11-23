@@ -3060,6 +3060,7 @@
       "hosting": "Heroku fait tourner l'application dans l'Union européenne.",
       "database": "Heroku Postgres héberge la base de données et Amazon Web Services stocke les fichiers envoyés, tous deux dans l'Union européenne.",
       "email": "Resend envoie les e-mails, comme les liens de vérification et les rappels de devoirs.",
+      "announcements": "Les annonces de l'équipe Clasync sont envoyées par Amazon SES, dans l'Union européenne (Paris). Resend continue d'envoyer tout le reste.",
       "errors": "Sentry reçoit les rapports d'erreurs pour corriger les problèmes, sans les adresses IP.",
       "push": "Si vous activez les notifications, le service de notifications du fabricant de votre navigateur (Google, Apple, Mozilla ou Microsoft) les livre à votre appareil. Il ne voit qu'un message chiffré.",
       "ai": "Quand un enseignant demande des notes suggérées pour un test, les réponses rédigées et leur question sont envoyées à Amazon Bedrock dans l'Union européenne, sans le nom, le matricule ni l'e-mail de l'étudiant. Les réponses ne servent pas à entraîner des modèles d'IA. L'enseignant décide de chaque note.",
@@ -3078,6 +3079,7 @@
       "title": "Vos choix",
       "edit": "Vous pouvez modifier votre nom et votre langue dans les Paramètres, et ajouter votre matricule à une classe.",
       "google": "Vous pouvez associer ou dissocier Google dans les Paramètres.",
+      "announcements": "Vous pouvez ne plus recevoir les annonces par e-mail grâce au lien en bas de chacune ou au bouton dans les Paramètres. Les e-mails concernant votre compte, comme la vérification et la réinitialisation du mot de passe, continuent.",
       "delete": "Pour obtenir une copie de vos données ou faire supprimer votre compte, écrivez à <email>{address}</email>. La suppression d'un compte supprime aussi ses données.",
       "keep": "Clasync conserve vos données tant que votre compte existe."
     },
