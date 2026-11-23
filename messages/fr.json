@@ -362,6 +362,10 @@
       "cta": "Ouvrir mon tableau de bord",
       "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :"
     },
+    "broadcast": {
+      "why": "Vous recevez cette annonce parce que vous avez un compte Clasync.",
+      "stop": "Ne plus recevoir ces annonces"
+    },
     "lecturerJoinedClass": {
       "subject": "Vous enseignez maintenant en {class} ({school})",
       "greeting": "Bonjour {name},",

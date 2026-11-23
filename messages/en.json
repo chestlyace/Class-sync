@@ -362,6 +362,10 @@
       "cta": "Go to my dashboard",
       "fallback": "If the button doesn't work, copy and paste this link into your browser:"
     },
+    "broadcast": {
+      "why": "You received this announcement because you have a Clasync account.",
+      "stop": "Stop these announcements"
+    },
     "lecturerJoinedClass": {
       "subject": "You're now a lecturer of {class} at {school}",
       "greeting": "Hello {name},",
