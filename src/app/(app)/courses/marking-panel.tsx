@@ -68,6 +68,7 @@ function useHideNames(): [boolean, (value: boolean) => void] {
 // ---------------------------------------------------------------------------------------------
 
 type SuggestStatus = 'idle' | 'loading' | 'failed'
+type SuggestFailure = 'cap' | 'rate_limited' | null
 type SuggestResult = ActionResult<{ suggested: number; failed: boolean }>
 
 /**
@@ -101,6 +102,7 @@ export function MarkingPanel({ question }: { question: MarkingQuestion }) {
   const [status, setStatus] = useState<SuggestStatus>(() =>
     needsSuggestions(question.aiAvailable, question.answers) ? 'loading' : 'idle',
   )
+  const [failure, setFailure] = useState<SuggestFailure>(null)
   const started = useRef(false)
   /** The request in flight, aborted when the panel goes (another question, another page). */
   const inFlight = useRef<AbortController | null>(null)
@@ -118,15 +120,22 @@ export function MarkingPanel({ question }: { question: MarkingQuestion }) {
     fetchSuggestions(question.questionId, retry, controller.signal)
       .then((result) => {
         if (controller.signal.aborted) return
+        // Cap and burst limits are conflicts with a reason; show them instead of a generic failure.
+        const reason = result && !result.ok ? result.details?.reason : undefined
+        setFailure(reason === 'cap' || reason === 'rate_limited' ? reason : null)
         setStatus(!result?.ok || result.data.failed ? 'failed' : 'idle')
         if (result?.ok && result.data.suggested > 0) startRefresh(() => router.refresh())
       })
       .catch(() => {
-        if (!controller.signal.aborted) setStatus('failed')
+        if (!controller.signal.aborted) {
+          setFailure(null)
+          setStatus('failed')
+        }
       })
   }
 
   function retry() {
+    setFailure(null)
     setStatus('loading')
     requestSuggestions(true)
   }
@@ -177,7 +186,7 @@ export function MarkingPanel({ question }: { question: MarkingQuestion }) {
             )}
           </div>
           <NamesSwitch checked={hideNames} onChange={setHideNames} label={t('hideNames')} hint={t('hideNamesHint')} />
-          <SuggestionStatus status={shownStatus} aiAvailable={question.aiAvailable} onRetry={retry} />
+          <SuggestionStatus status={shownStatus} aiAvailable={question.aiAvailable} failure={failure} onRetry={retry} />
         </aside>
 
         <section aria-labelledby="marking-answers" className="flex flex-col gap-3">
@@ -208,10 +217,12 @@ export function MarkingPanel({ question }: { question: MarkingQuestion }) {
 function SuggestionStatus({
   status,
   aiAvailable,
+  failure,
   onRetry,
 }: {
   status: SuggestStatus
   aiAvailable: boolean
+  failure: SuggestFailure
   onRetry: () => void
 }) {
   const t = useTranslations('tests.marking')
@@ -228,7 +239,9 @@ function SuggestionStatus({
       )}
       {status === 'failed' && (
         <>
-          <p className="font-medium">{t('suggestionsFailed')}</p>
+          <p className="font-medium">
+            {failure === 'cap' ? t('suggestCap') : failure === 'rate_limited' ? t('suggestRateLimited') : t('suggestionsFailed')}
+          </p>
           <Button type="button" variant="outline" onClick={onRetry}>
             <RotateCw aria-hidden="true" data-icon="inline-start" />
             {t('tryAgain')}

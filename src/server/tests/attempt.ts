@@ -95,6 +95,8 @@ export type MyTestItem = {
   review: ReviewAccess
   /** A catch-up sitting of an earlier test (only ever listed for students who may sit it). */
   isCatchUp: boolean
+  /** Left out of the CA: a practice test (a catch-up follows its original). */
+  practice: boolean
 }
 
 type TestRow = typeof courseTest.$inferSelect
@@ -897,6 +899,7 @@ export async function listMyTests(ctx: Ctx, courseId: string): Promise<MyTestIte
       result: visible ? quickResult(questions, answersByAttempt.get(attempt.id) ?? new Map()) : null,
       review: reviews.get(t.id)!,
       isCatchUp: t.catchUpOfId !== null,
+      practice: !t.countsInCa,
     }
   })
 }

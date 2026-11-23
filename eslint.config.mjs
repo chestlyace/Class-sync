@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local-only folders (gitignored, so CI never sees them): agent worktrees and scratch files.
+    // Each worktree is a full checkout with its own .next build, which local lint would scan.
+    ".worktrees/**",
+    ".claude/**",
+    ".superpowers/**",
   ]),
   // UI code never talks to the database directly: go through services / auth helpers.
   {

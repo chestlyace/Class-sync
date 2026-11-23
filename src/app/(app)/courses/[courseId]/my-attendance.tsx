@@ -22,7 +22,7 @@ export async function MyAttendance({ courseId }: { courseId: string }) {
   const result = await loadPage((ctx) => getMyAttendance(ctx, courseId))
 
   return (
-    <section aria-labelledby="my-attendance" className="flex flex-col gap-4">
+    <section aria-labelledby="my-attendance" data-tour="my-attendance" className="flex flex-col gap-4">
       <SectionHeading id="my-attendance">{t('myAttendance')}</SectionHeading>
       {!result.ok ? (
         <p role="alert" className="text-sm text-destructive">

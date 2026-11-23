@@ -30,7 +30,7 @@ export function TopNavLinks({ role }: { role: Role }) {
   const pathname = usePathname()
   const items = useItems(role)
   return (
-    <ul className="hidden items-center gap-1 font-mono text-xs font-medium tracking-[0.08em] uppercase md:flex">
+    <ul data-tour="nav" className="hidden items-center gap-1 font-mono text-xs font-medium tracking-[0.08em] uppercase md:flex">
       {items.map(({ href, label }) => {
         const current = isCurrent(pathname, href)
         return (
@@ -59,6 +59,7 @@ export function BottomNav({ role, label }: { role: Role; label: string }) {
   return (
     <nav
       aria-label={label}
+      data-tour="nav"
       className="fixed inset-x-4 bottom-4 z-40 mx-auto max-w-sm rounded-full border bg-background/90 p-1.5 shadow-sm backdrop-blur md:hidden"
     >
       <ul className="flex items-stretch justify-around gap-1">

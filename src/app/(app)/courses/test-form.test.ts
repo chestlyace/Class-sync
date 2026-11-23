@@ -19,6 +19,8 @@ function values(over: Partial<EditorValues> = {}): EditorValues {
     maxExits: '3',
     maxAbsenceSeconds: '10',
     weight: '1',
+    countsInCa: true,
+    caGroupId: '',
     questions: [
       {
         key: 'a',
@@ -58,6 +60,8 @@ describe('parseTestForm', () => {
       maxExits: 3,
       maxAbsenceSeconds: 10,
       weight: 1.5,
+      countsInCa: true,
+      caGroupId: null,
       questions: [
         {
           kind: 'mcq',
@@ -153,6 +157,8 @@ describe('editor values', () => {
         maxExits: 2,
         maxAbsenceSeconds: 20,
         weight: 2.5,
+        countsInCa: true,
+        caGroupId: null,
         questions: [
           { kind: 'mcq', prompt: 'P', mark: null, options: [{ text: 'A', correct: true }, { text: 'B', correct: false }] },
           { kind: 'short', prompt: 'S', mark: 2.5, guide: 'G' },

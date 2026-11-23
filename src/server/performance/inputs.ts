@@ -3,6 +3,7 @@ import { now } from '@/server/core/clock'
 import type { Db } from '@/server/db'
 import {
   assignment,
+  caTestGroup,
   courseCaSettings,
   courseTest,
   participationEvent,
@@ -35,27 +36,46 @@ export type StudentCaInputs = {
   missingWork: number
 }
 
-/** A course's CA settings, or the defaults when the lecturer hasn't saved any. */
+/** A course's CA settings with its named CAs (in order), or the defaults when the lecturer hasn't saved any. */
 export async function getCaSettings(db: Db, courseId: string): Promise<CaSettings> {
-  const [row] = await db
-    .select({
-      total: courseCaSettings.total,
-      attendancePoints: courseCaSettings.attendancePoints,
-      assignmentPoints: courseCaSettings.assignmentPoints,
-      participationPoints: courseCaSettings.participationPoints,
-      testPoints: courseCaSettings.testPoints,
-      participationTarget: courseCaSettings.participationTarget,
-      testsBestOf: courseCaSettings.testsBestOf,
-    })
-    .from(courseCaSettings)
-    .where(eq(courseCaSettings.courseId, courseId))
-  return row ?? { ...DEFAULT_SETTINGS }
+  const [[row], groups] = await Promise.all([
+    db
+      .select({
+        total: courseCaSettings.total,
+        attendancePoints: courseCaSettings.attendancePoints,
+        assignmentPoints: courseCaSettings.assignmentPoints,
+        participationPoints: courseCaSettings.participationPoints,
+        testPoints: courseCaSettings.testPoints,
+        participationTarget: courseCaSettings.participationTarget,
+        testsBestOf: courseCaSettings.testsBestOf,
+      })
+      .from(courseCaSettings)
+      .where(eq(courseCaSettings.courseId, courseId)),
+    db
+      .select({ id: caTestGroup.id, name: caTestGroup.name, points: caTestGroup.points, bestOf: caTestGroup.bestOf })
+      .from(caTestGroup)
+      .where(eq(caTestGroup.courseId, courseId))
+      .orderBy(asc(caTestGroup.position), asc(caTestGroup.createdAt)),
+  ])
+  if (!row) return { ...DEFAULT_SETTINGS, groups: [] }
+  return { ...row, groups }
+}
+
+/**
+ * The named CA a test counts in: its own when the course still has it, else the first (a test
+ * from before the split, or whose CA was deleted). Null when the course has none.
+ */
+export function groupOfTest(groups: CaSettings['groups'], caGroupId: string | null): string | null {
+  if (groups.length === 0) return null
+  return groups.find((g) => g.id === caGroupId)?.id ?? groups[0].id
 }
 
 type TestForCa = TestTiming & {
   id: string
   courseId: string
   weight: number
+  countsInCa: boolean
+  caGroupId: string | null
   hasShort: boolean
   resultsReleasedAt: Date | null
   catchUpOfId: string | null
@@ -87,6 +107,10 @@ function countsInCa(t: TestForCa, at: Date): boolean {
  * pending and left out; no hand-in counts 0 and is missing work. An assignment due before the
  * student joined the course (class `joined_at` or include date, as attendance uses) is left out
  * and never missing, unless they handed it in and it was graded: work done counts.
+ *
+ * A test switched out of the CA (a practice test) never counts, nor do its catch-ups. With named
+ * CAs, each test counts in its own (see `groupOfTest`), and a named CA has started once a test in
+ * it counts.
  *
  * A test counts once released (see `countsInCa`): its score / out of, 0 for a student who never
  * joined it. A test that ended before the student joined the course is left out unless they took
@@ -153,6 +177,8 @@ export async function loadCaInputs(
         id: courseTest.id,
         courseId: courseTest.courseId,
         weight: courseTest.weight,
+        countsInCa: courseTest.countsInCa,
+        caGroupId: courseTest.caGroupId,
         catchUpOfId: courseTest.catchUpOfId,
         catchUpFor: courseTest.catchUpFor,
         createdAt: courseTest.createdAt,
@@ -182,7 +208,8 @@ export async function loadCaInputs(
           .where(and(eq(courseTest.courseId, courseId), inArray(testAttempt.studentId, studentIds))),
   ])
   // Each line of the CA is an original test; its catch-ups (oldest first) only supply marks.
-  const originals = tests.filter((t) => t.catchUpOfId === null)
+  // A practice test (switched out of the CA) and its catch-ups are left out altogether.
+  const originals = tests.filter((t) => t.catchUpOfId === null && t.countsInCa)
   const catchUpsOf = new Map<string, TestForCa[]>(originals.map((t) => [t.id, []]))
   for (const t of tests) if (t.catchUpOfId !== null) catchUpsOf.get(t.catchUpOfId)?.push(t)
   for (const list of catchUpsOf.values()) {
@@ -223,6 +250,12 @@ export async function loadCaInputs(
       return [studentId, summarize(statuses)] as const
     }),
   )
+  const groupOf = new Map(originals.map((t) => [t.id, groupOfTest(settings.groups, t.caGroupId)]))
+  const groupsStarted: Record<string, boolean> = {}
+  for (const t of countingTests) {
+    const group = groupOf.get(t.catchUpOfId ?? t.id)
+    if (group) groupsStarted[group] = true
+  }
   const classStarted: CaInput['classStarted'] = {
     attendance: [...summaries.values()].some((a) => a.present + a.partial + a.absent > 0),
     assignments: released.length > 0,
@@ -284,7 +317,8 @@ export async function loadCaInputs(
       // No attempt scores like an empty one: 0. The ratio is the source's; the weight is the test's.
       const score = testScores.get(source.id)?.get(studentId)
       if (!score || score.pendingShort > 0 || score.outOf <= 0) continue
-      testInputs.push({ weight: t.weight, ratio: score.score / score.outOf })
+      const groupId = groupOf.get(t.id) ?? null
+      testInputs.push(groupId === null ? { weight: t.weight, ratio: score.score / score.outOf } : { weight: t.weight, ratio: score.score / score.outOf, groupId })
     }
 
     students.set(studentId, {
@@ -294,6 +328,7 @@ export async function loadCaInputs(
         participationNet: netOf.get(studentId) ?? 0,
         tests: testInputs,
         classStarted,
+        groupsStarted,
       },
       attendanceRatio: attendanceRatio(attendance),
       countedSessions,

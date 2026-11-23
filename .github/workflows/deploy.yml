@@ -1,0 +1,46 @@
+name: Deploy
+
+# Production deploys itself when a release PR lands on main. main only takes release PRs from
+# Development that passed `ci` and `source-branch` (ruleset), so this job doesn't re-run the tests.
+# Heroku builds the app, then the Procfile `release` phase migrates the database before the new
+# version goes live; a failed migration stops the release and the old version keeps serving.
+on:
+  push:
+    branches: [main]
+  # Redeploy main by hand (Actions → Deploy → Run workflow), e.g. after changing a build-time variable.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deploy at a time; a newer push waits for the running one instead of cancelling it mid-release.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  heroku:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://clasync.online
+    env:
+      HEROKU_APP: clasync
+    steps:
+      # Full history: Heroku's git refuses pushes from a shallow clone.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to Heroku
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        run: |
+          if [ -z "$HEROKU_API_KEY" ]; then
+            echo "::error::HEROKU_API_KEY is not set. Create one with 'heroku authorizations:create -d \"GitHub Actions deploy\"' and add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          # --force: Heroku's git is only a deploy target, and its history may hold commits that
+          # aren't on GitHub (manual rebuilds). GitHub's main is the source of truth.
+          git push --force "https://heroku:${HEROKU_API_KEY}@git.heroku.com/${HEROKU_APP}.git" "${GITHUB_SHA}:refs/heads/main"

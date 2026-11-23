@@ -1552,7 +1552,9 @@
         "assignments": "Devoirs non applicables",
         "participation": "Participation non applicable",
         "tests": "Tests non applicables"
-      }
+      },
+      "group": "{name} (/{points})",
+      "notApplicableGroup": "{name} non applicable"
     },
     "lecturer": {
       "courseLink": "CC",
@@ -1619,7 +1621,24 @@
           "range": "Le total doit être entre 1 et 100, chaque partie entre 0 et 100, l'objectif un nombre entier de 1 à 100, et les meilleurs tests un nombre entier de 1 à 50 (ou vide).",
           "decimals": "Utilisez au plus 2 décimales (par exemple {example}).",
           "shape": "Les réglages sont illisibles. Rechargez la page et réessayez.",
-          "fields": "Saisissez un nombre dans chaque case signalée."
+          "fields": "Saisissez un nombre dans chaque case signalée.",
+          "groupName": "Donnez à chaque CC un nom différent, de 40 caractères au plus.",
+          "groups": "Un cours a au plus {max} CC."
+        },
+        "testsFromGroups": "La somme de vos CC ci-dessous.",
+        "groups": {
+          "legend": "CC composés de tests",
+          "hint": "Répartissez la partie tests en plusieurs CC, comme CC 1 et CC 2, chacun avec ses points. Chaque test compte alors dans l'un d'eux.",
+          "hintSplit": "Chaque CC se calcule à partir de ses propres tests, pondérés, ou seulement des meilleurs. Choisissez le CC d'un test dans son éditeur ou sur sa page.",
+          "listLabel": "CC composés de tests",
+          "name": "Nom",
+          "points": "Points",
+          "bestOf": "Meilleurs tests",
+          "bestOfAll": "Tous",
+          "remove": "Retirer {name}",
+          "add": "Ajouter un CC",
+          "split": "Répartir les tests en CC",
+          "removeHint": "Les tests d'un CC retiré comptent dans le premier. Retirez tous les CC pour revenir à une seule partie tests."
         }
       },
       "board": {
@@ -1647,7 +1666,87 @@
         "attendance": "La présence n'a pas commencé : elle compte 0 pour tout le monde. Mettez-la à 0 point si vous ne l'utilisez pas.",
         "assignments": "Les devoirs n'ont pas commencé (aucune note publiée) : ils comptent 0 pour tout le monde. Mettez-les à 0 point si vous ne les utilisez pas.",
         "participation": "La participation n'a pas commencé : elle compte 0 pour tout le monde. Mettez-la à 0 point si vous ne l'utilisez pas.",
-        "tests": "Les tests n'ont pas commencé (aucun résultat publié) : ils comptent 0 pour tout le monde. Mettez-les à 0 point si vous ne les utilisez pas."
+        "tests": "Les tests n'ont pas commencé (aucun résultat publié) : ils comptent 0 pour tout le monde. Mettez-les à 0 point si vous ne les utilisez pas.",
+        "group": "{name} n'a pas commencé (aucun test publié dedans) : il compte 0 pour tout le monde."
+      },
+      "templates": {
+        "pickLabel": "Partir d'un modèle",
+        "pickHint": "Choisissez une carte : les réglages ci-dessous sont remplis à partir d'elle. Rien ne change tant que vous n'enregistrez pas.",
+        "filled": "Rempli à partir de « {name} ». Vérifiez, puis enregistrez.",
+        "notSavedYet": "Pas encore enregistré.",
+        "groupName": "CC {n}",
+        "builtIn": {
+          "balanced": {
+            "name": "Équilibré",
+            "description": "Un peu de tout : tests et devoirs comptent autant.",
+            "details": "Un bon point de départ quand vous utilisez un peu de tout. Tests et devoirs pèsent autant, et la présence et la participation récompensent ceux qui viennent et participent."
+          },
+          "testBased": {
+            "name": "Basé sur les tests",
+            "description": "Surtout des tests, les deux meilleurs comptent.",
+            "details": "Pour les cours évalués surtout par des tests en classe. Seuls les deux meilleurs tests de chaque étudiant comptent : un mauvais jour ne ruine pas son CC. Un peu de présence et de devoirs compte encore."
+          },
+          "twoCas": {
+            "name": "Deux CC",
+            "description": "CC 1 et CC 2, chacun composé d'un ou plusieurs tests.",
+            "details": "Pour les établissements avec deux CC officiels par semestre. CC 1 et CC 2 ont 10 points chacun, et chacun peut être fait d'un ou plusieurs tests. Vous choisissez le CC de chaque test dans son éditeur."
+          },
+          "assignments": {
+            "name": "Devoirs et projets",
+            "description": "Surtout du travail rendu.",
+            "details": "Pour les cours par projets où le travail rendu compte le plus. Les tests comptent un peu ; la présence récompense l'assiduité."
+          },
+          "practical": {
+            "name": "Travaux pratiques",
+            "description": "La présence et les TP comptent le plus, sans tests.",
+            "details": "Pour les TP sans tests : la présence et les comptes rendus portent le CC, avec la participation pour les étudiants impliqués."
+          },
+          "testsOnly": {
+            "name": "Tests seulement",
+            "description": "Tout le CC vient des tests.",
+            "details": "Tout vient des tests. Utilisez-le quand la présence et les devoirs sont notés ailleurs, ou pas du tout."
+          }
+        },
+        "saveAsLabel": "Enregistrer comme modèle",
+        "namePlaceholder": "ex. Mes cours de L3",
+        "saveAs": "Enregistrer le modèle",
+        "saveAsHint": "Garde le formulaire tel qu'il est, CC compris, pour vos autres cours.",
+        "nameTaken": "Vous avez déjà un modèle de ce nom.",
+        "nameInvalid": "Donnez un nom au modèle, de 60 caractères au plus.",
+        "savedAs": "Enregistré sous « {name} ».",
+        "mineBadge": "À moi",
+        "applyToCourses": "Appliquer à des cours",
+        "outOf": "/{total}",
+        "close": "Fermer",
+        "cancel": "Annuler",
+        "applyTitle": "Appliquer « {name} »",
+        "applyBody": "Chaque cours coché reçoit cette répartition tout de suite, à la place de ses réglages de CC. Un CC qui porte le même nom qu'un CC du cours garde ses tests.",
+        "applyCourses": "Cours",
+        "applied": "{count, plural, one {Appliqué à # cours.} other {Appliqué à # cours.}}",
+        "applyPick": "Cochez au moins un cours.",
+        "applyConfirm": "{count, plural, one {Appliquer à # cours} other {Appliquer à # cours}}",
+        "searchPlaceholder": "Rechercher un modèle",
+        "searchLabel": "Rechercher parmi les modèles de CC",
+        "noMatch": "Aucun modèle ne correspond à « {query} ».",
+        "mineDescription": "Votre propre modèle.",
+        "defaultBadge": "Par défaut",
+        "selected": "Choisi",
+        "moreInfo": "En savoir plus sur {name}",
+        "points": "{points} pts",
+        "leftOut": "Les parties absentes ont 0 point : elles sont hors du CC.",
+        "unsetDefault": "Ne plus utiliser pour les nouveaux cours",
+        "makeDefault": "Utiliser pour les nouveaux cours",
+        "deleteShort": "Supprimer",
+        "useHere": "Utiliser pour ce cours",
+        "how": {
+          "attendance": "D'après l'appel : une présence compte en entier, une présence partielle pour moitié.",
+          "assignments": "Moyenne pondérée des notes de devoirs publiées ; un travail manquant compte 0.",
+          "participation": "Touches +1 / −1 en classe ; {target} touches nettes donnent tous les points.",
+          "tests": "Moyenne pondérée de tous les tests publiés.",
+          "testsBest": "Seul{count, plural, one { le meilleur test} other {s les # meilleurs tests}} de chaque étudiant compte{count, plural, one {} other {nt}}.",
+          "group": "Moyenne pondérée des tests que vous mettez dans ce CC.",
+          "groupBest": "Seul{count, plural, one { le meilleur test} other {s les # meilleurs tests}} de chaque étudiant dans ce CC compte{count, plural, one {} other {nt}}."
+        }
       }
     },
     "student": {
@@ -1672,7 +1771,9 @@
         "assignments": "Moyenne pondérée des notes publiées ; un travail manquant compte 0. Un travail en attente de note, ou dû avant votre arrivée, n'est pas compté.",
         "participation": "Gagnée en classe, note maximale à {target, plural, one {# intervention} other {# interventions}}.",
         "tests": "Moyenne pondérée de vos résultats de tests publiés ; un test que vous n'avez pas passé compte 0. Un test terminé avant votre arrivée n'est pas compté.",
-        "testsBest": "{count, plural, one {Votre meilleur test compte} other {Vos # meilleurs tests comptent}}, pondérés, parmi les résultats publiés ; un test que vous n'avez pas passé compte 0. Un test terminé avant votre arrivée n'est pas compté."
+        "testsBest": "{count, plural, one {Votre meilleur test compte} other {Vos # meilleurs tests comptent}}, pondérés, parmi les résultats publiés ; un test que vous n'avez pas passé compte 0. Un test terminé avant votre arrivée n'est pas compté.",
+        "group": "Moyenne pondérée de vos résultats publiés aux tests de ce CC ; un test que vous n'avez pas passé compte 0.",
+        "groupBest": "{count, plural, one {Votre meilleur test de ce CC compte} other {Vos # meilleurs tests de ce CC comptent}}, pondérés ; un test que vous n'avez pas passé compte 0."
       },
       "missingWork": "{count, plural, one {# travail manquant} other {# travaux manquants}}",
       "seeAssignments": "Voir mes devoirs"
@@ -1754,7 +1855,12 @@
         "mcqNote": "Choix multiples uniquement : les étudiants voient leur total dès qu'ils rendent leur copie.",
         "save": "Enregistrer et obtenir le lien",
         "saving": "Enregistrement…",
-        "locked": "Les questions sont verrouillées une fois le test lancé."
+        "locked": "Les questions sont verrouillées une fois le test lancé.",
+        "countsInCa": "Compte dans le CC",
+        "countsInCaHint": "Ses résultats comptent dans le CC du cours une fois publiés.",
+        "practiceHint": "Un test d'entraînement : les étudiants le passent normalement, mais il ne compte jamais dans le CC.",
+        "caGroup": "Compte dans",
+        "weightHintGroup": "Son poids parmi les tests de son CC."
       },
       "copy": {
         "title": "Copier dans un autre cours",
@@ -1855,7 +1961,8 @@
           "prompt": "rédigez la question (2 000 caractères au plus).",
           "options": "donnez de 2 à 6 choix, aucun vide.",
           "correct": "cochez exactement une bonne réponse.",
-          "guide": "rédigez un guide de correction (4 000 caractères au plus)."
+          "guide": "rédigez un guide de correction (4 000 caractères au plus).",
+          "caGroup": "choisissez un des CC du cours."
         },
         "test": {
           "shape": "Une partie de ce test n'a pas pu être lue. Rechargez la page et réessayez.",
@@ -1868,13 +1975,16 @@
           "prompt": "Rédigez chaque question.",
           "options": "Donnez de 2 à 6 choix à chaque question à choix multiple.",
           "correct": "Cochez exactement une bonne réponse dans chaque question à choix multiple.",
-          "guide": "Rédigez un guide de correction pour chaque réponse courte."
+          "guide": "Rédigez un guide de correction pour chaque réponse courte.",
+          "caGroup": "Choisissez un des CC du cours. Rechargez la page s'ils viennent de changer."
         },
         "started": "Le test a commencé : il ne peut plus être modifié ni supprimé.",
         "notStarted": "Le test n'a pas encore commencé.",
         "notEnded": "Cet étudiant n'a pas été arrêté pour sortie.",
-        "testOver": "Le test est terminé : personne ne peut plus revenir."
-      }
+        "testOver": "Le test est terminé : personne ne peut plus revenir.",
+        "isCatchUp": "Un rattrapage compte comme le test qu'il rattrape : changez-le sur ce test."
+      },
+      "practice": "Hors CC"
     },
     "student": {
       "metaTitle": "Test",
@@ -1993,7 +2103,8 @@
           "ended_left": "Terminé pour sortie",
           "handed_in": "Remis"
         },
-        "score": "{score} / {outOf}"
+        "score": "{score} / {outOf}",
+        "practice": "Ne compte pas pour les notes"
       }
     },
     "marking": {
@@ -2016,6 +2127,8 @@
       "aiOff": "Pas de suggestions d'IA — corrigez à la main.",
       "gettingSuggestions": "Suggestions en cours…",
       "suggestionsFailed": "Suggestions indisponibles — corrigez à la main.",
+      "suggestCap": "Limite mensuelle des suggestions d'IA atteinte — corrigez à la main pour l'instant.",
+      "suggestRateLimited": "Trop de demandes de suggestions — patientez un instant et réessayez.",
       "tryAgain": "Réessayer",
       "answers": "Réponses",
       "noAnswers": "Personne n'a répondu à cette question.",
@@ -2137,6 +2250,12 @@
         "nobodyMissed": "Tout le monde a passé ce test. Choisissez plutôt les étudiants.",
         "studentIds": "Choisissez au moins un étudiant du cours."
       }
+    },
+    "ca": {
+      "switchLabel": "Compte dans le CC",
+      "onHelp": "Ses résultats comptent dans le CC du cours une fois publiés. Désactivez pour en faire un test d'entraînement.",
+      "offHelp": "Un test d'entraînement : hors du CC. Vous pouvez l'activer à tout moment ; le CC se met à jour aussitôt.",
+      "groupLabel": "Compte dans"
     }
   },
   "notes": {
@@ -2170,6 +2289,15 @@
         "note": "Écrire une note",
         "file": "Téléverser un fichier",
         "link": "Ajouter un lien"
+      },
+      "bulk": {
+        "open": "Téléverser des fichiers",
+        "title": "Téléverser des fichiers",
+        "body": "Choisissez plusieurs fichiers à la fois. Chacun devient sa propre note dans ce thème, nommée d'après son fichier.",
+        "files": "Fichiers",
+        "hint": "PDF, Word, PowerPoint ou images, jusqu'à {maxMb} Mo chacun. Au plus {max} fichiers à la fois.",
+        "submit": "Téléverser les fichiers",
+        "submitMany": "Téléverser {count} fichiers"
       },
       "newTopic": {
         "open": "Nouveau thème",
@@ -2243,6 +2371,8 @@
         "inTopic": "Dans le thème « {topic} »",
         "sharedNote": "Cet élément est aussi dans : {courses}. Vos modifications s'appliquent dans chacun de ces cours.",
         "title": "Titre",
+        "titleHint": "Facultatif. Laissez vide pour utiliser le nom du fichier, la première ligne de la note ou l'adresse du lien.",
+        "untitled": "Note sans titre",
         "titlePlaceholder": {
           "note": "Semaine 3 · Algorithmes de tri",
           "file": "Diapositives du cours 3",
@@ -2260,7 +2390,7 @@
       }
     },
     "errors": {
-      "title": "Donnez-lui un titre de 1 à 200 caractères.",
+      "title": "Donnez-lui un titre d'au plus 200 caractères.",
       "body": "La note ne peut pas être enregistrée. Elle est peut-être trop longue : raccourcissez-la et réessayez.",
       "file": "Téléversez d'abord un fichier. Un fichier déjà utilisé par un autre élément ne peut pas servir de nouveau.",
       "url": "Saisissez une adresse web qui commence par http:// ou https://.",
@@ -3270,5 +3400,360 @@
     "timetableSlots": "{count, plural, one {# créneau de l'emploi du temps} other {# créneaux de l'emploi du temps}}",
     "notes": "{count, plural, one {# note de cours ou fichier} other {# notes de cours et fichiers}}",
     "confirmLabel": "Tapez « {name} » pour confirmer"
+  },
+  "guides": {
+    "common": {
+      "help": "Aide et guides",
+      "helpTitle": "Guides",
+      "helpDescription": "De courtes visites qui vous montrent les boutons utiles. Lancez-en une à tout moment : elle vous accompagne dans les vraies pages.",
+      "close": "Fermer",
+      "seen": "Déjà vu",
+      "progress": "{n} sur {total}",
+      "next": "Suivant",
+      "back": "Retour",
+      "open": "Ouvrir",
+      "done": "Terminé",
+      "end": "Fermer le guide",
+      "endGuide": "Fermer le guide",
+      "awayTitle": "Le guide est sur une autre page",
+      "awayBody": "Vous avez quitté la page de cette étape. Revenez-y pour continuer, ou fermez le guide.",
+      "awayNoLink": "Vous avez quitté la page de cette étape. Rouvrez-la pour continuer, ou fermez le guide.",
+      "goBack": "Y revenir"
+    },
+    "items": {
+      "lecturerWelcome": {
+        "title": "Visite de bienvenue",
+        "description": "Où se trouvent les choses, et par où commencer.",
+        "steps": {
+          "hello": {
+            "title": "Bienvenue sur Clasync",
+            "body": "Cette courte visite vous fait faire le tour. Fermez-la quand vous voulez : tous les guides restent dans l'Aide, le ? en haut."
+          },
+          "menu": {
+            "title": "Votre menu",
+            "body": "Tableau de bord vous ramène ici. Planning montre votre semaine de cours. Rejoindre vous permet d'enseigner dans la classe d'un collègue avec son code enseignant. Nouvelle classe en crée une."
+          },
+          "create": {
+            "title": "Commencez ici",
+            "body": "Dans cet ordre : votre établissement, une classe (un groupe d'étudiants pour une année), puis un cours. Présences, tests, devoirs, notes et CC se trouvent dans un cours."
+          },
+          "checklist": {
+            "title": "Votre liste de départ",
+            "body": "Ces étapes se cochent d'elles-mêmes au fur et à mesure, et la carte disparaît une fois tout en place."
+          },
+          "help": {
+            "title": "Des guides, à tout moment",
+            "body": "Ouvrez l'Aide pour des guides pas à pas : créer une classe et un cours, faire l'appel, régler le CC, préparer un test pour le CC et donner un devoir."
+          }
+        }
+      },
+      "classAndCourse": {
+        "title": "Créer une classe et un cours",
+        "description": "Votre établissement, votre classe, son premier cours, et le code pour la rejoindre.",
+        "steps": {
+          "openNewClass": {
+            "title": "Ouvrez Nouvelle classe",
+            "body": "Une classe est un groupe d'étudiants pour une année universitaire, par exemple Info L3."
+          },
+          "schoolForm": {
+            "title": "Trouvez ou ajoutez votre établissement",
+            "body": "Cherchez d'abord : un collègue l'a peut-être déjà ajouté. Sinon, ajoutez-le ci-dessous avec sa ville, et la position du campus si vous voulez que l'appel vérifie que les étudiants y sont."
+          },
+          "classForm": {
+            "title": "Choisissez l'établissement, puis nommez la classe",
+            "body": "Cherchez d'abord votre établissement : un collègue l'a peut-être déjà ajouté. Sinon, ajoutez-le avec sa ville. Donnez ensuite son nom et son année à la classe, puis enregistrez."
+          },
+          "shareCode": {
+            "title": "Partagez le code étudiant",
+            "body": "Les étudiants rejoignent la classe avec ce code ou ce lien, et leur matricule. Le code enseignant est pour les collègues qui enseignent dans la même classe."
+          },
+          "addCourse": {
+            "title": "Ajoutez un cours",
+            "body": "Créez maintenant le cours que vous donnez à cette classe."
+          },
+          "courseForm": {
+            "title": "Nommez le cours",
+            "body": "Donnez-lui un titre, et un code s'il en a un. Tous les étudiants de la classe y sont inscrits d'office. Enregistrez, et le cours s'ouvre."
+          },
+          "courseReady": {
+            "title": "Votre cours est prêt",
+            "body": "D'ici, vous faites l'appel, réglez l'emploi du temps, donnez des tests et des devoirs, partagez vos notes et suivez le CC. L'Aide a un guide pour chacun."
+          }
+        }
+      },
+      "attendance": {
+        "title": "Faire l'appel",
+        "description": "Démarrer une séance, afficher le code d'appel et suivre les présences.",
+        "steps": {
+          "pickCourse": {
+            "title": "Ouvrez un cours",
+            "body": "Ouvrez le cours que vous donnez : le guide continue là-bas. Pas encore de cours ? Créez-en un avec le guide « Créer une classe et un cours »."
+          },
+          "openAttendance": {
+            "title": "Ouvrez Présences",
+            "body": "Chaque cours a ses propres présences."
+          },
+          "startSession": {
+            "title": "Démarrez une séance",
+            "body": "Au début du cours, démarrez une séance. Cochez « Exiger la présence sur le campus » pour vérifier que les étudiants sont à l'établissement quand ils pointent."
+          },
+          "checkInCode": {
+            "title": "Affichez le code d'appel",
+            "body": "Ouvrez l'appel de début : un code s'affiche, à montrer à l'écran. Il change chaque minute. Les étudiants le saisissent sur leur page Pointer. Ouvrez l'appel de fin en fin de cours pour distinguer présence complète et partielle."
+          },
+          "sessions": {
+            "title": "Suivez les présences",
+            "body": "Chaque séance est listée, avec chaque étudiant présent, partiel ou absent. Ouvrez une séance pour corriger un statut à la main. Les présences peuvent compter dans le CC."
+          }
+        }
+      },
+      "ca": {
+        "title": "Régler le CC",
+        "description": "Répartir le CC entre présences, devoirs, participation et tests.",
+        "steps": {
+          "pickCourse": {
+            "title": "Ouvrez un cours",
+            "body": "Ouvrez le cours dont vous voulez régler le CC : le guide continue là-bas. Pas encore de cours ? Créez-en un avec le guide « Créer une classe et un cours »."
+          },
+          "openCa": {
+            "title": "Ouvrez le CC",
+            "body": "Le contrôle continu du cours se calcule ici, à partir de tout ce que font les étudiants."
+          },
+          "settings": {
+            "title": "Répartissez les points",
+            "body": "Choisissez le total du CC et donnez ses points à chaque partie : présences, devoirs, participation et tests. Une partie à 0 point est ignorée. Vous pouvez aussi ne compter que les meilleurs tests de chacun."
+          },
+          "table": {
+            "title": "La classe, classée",
+            "body": "Les parties de chaque étudiant, son CC actuel et final, le travail manquant, et qui décroche. Le tableau se met à jour avec les notes."
+          },
+          "participation": {
+            "title": "Participation",
+            "body": "En cours, touchez +1 ou −1 pour un étudiant qui participe. Le solde de ses touches donne ses points de participation."
+          },
+          "export": {
+            "title": "Exporter",
+            "body": "Téléchargez les notes en fichier Excel quand vous devez les remettre."
+          }
+        }
+      },
+      "tests": {
+        "title": "Préparer un test pour le CC",
+        "description": "Rédiger un test, partager son lien, le lancer en cours, puis publier les résultats.",
+        "steps": {
+          "pickCourse": {
+            "title": "Ouvrez un cours",
+            "body": "Ouvrez le cours concerné : le guide continue là-bas. Pas encore de cours ? Créez-en un avec le guide « Créer une classe et un cours »."
+          },
+          "openTests": {
+            "title": "Ouvrez Tests",
+            "body": "Tous les tests du cours sont ici."
+          },
+          "newTest": {
+            "title": "Créez un test",
+            "body": "Ouvrez Nouveau test pour en rédiger un."
+          },
+          "questions": {
+            "title": "Titre et questions",
+            "body": "Donnez un titre au test, par exemple CC 1. Ajoutez ensuite des questions à choix multiple (corrigées d'elles-mêmes) ou à réponse courte (vous les notez, avec un barème)."
+          },
+          "weight": {
+            "title": "Durée et coefficient",
+            "body": "Réglez la durée du test et son coefficient : son poids parmi les tests du cours dans le CC."
+          },
+          "save": {
+            "title": "Enregistrez et obtenez le lien",
+            "body": "Enregistrez quand les questions sont prêtes. La page du test s'ouvre avec le lien à partager ; rien ne démarre encore.",
+            "button": "Enregistrer le test"
+          },
+          "share": {
+            "title": "Partagez le lien, puis lancez",
+            "body": "Envoyez ce lien à la classe. Les étudiants qui l'ouvrent attendent que vous appuyiez sur Lancer le test : le chrono démarre alors pour tous en même temps."
+          },
+          "release": {
+            "title": "Corrigez et publiez",
+            "body": "Une fois le test fini, consultez les résultats et confirmez les notes des réponses courtes. Publiez ensuite les résultats : les étudiants voient leur note, et le test compte dans le CC."
+          }
+        }
+      },
+      "assignments": {
+        "title": "Donner un devoir",
+        "description": "Le rédiger, le publier, puis noter les rendus.",
+        "steps": {
+          "pickCourse": {
+            "title": "Ouvrez un cours",
+            "body": "Ouvrez le cours concerné : le guide continue là-bas. Pas encore de cours ? Créez-en un avec le guide « Créer une classe et un cours »."
+          },
+          "openAssignments": {
+            "title": "Ouvrez Devoirs",
+            "body": "Tous les devoirs du cours sont ici."
+          },
+          "newAssignment": {
+            "title": "Créez un devoir",
+            "body": "Ouvrez Nouveau devoir pour en rédiger un."
+          },
+          "form": {
+            "title": "Rédigez-le",
+            "body": "Donnez-lui un titre, des consignes et une date limite. L'enregistrement le garde en brouillon, invisible pour les étudiants."
+          },
+          "publish": {
+            "title": "Joignez les fichiers, puis publiez",
+            "body": "Ajoutez les fichiers utiles, puis publiez : les étudiants reçoivent un e-mail et rendent leur travail avant la date limite. Vous le notez, puis publiez les notes, qui comptent dans le CC."
+          }
+        }
+      },
+      "lecturerCourse": {
+        "title": "Visite d'un cours",
+        "description": "À quoi sert chaque bouton de la page d'un cours.",
+        "steps": {
+          "hello": {
+            "title": "Votre cours",
+            "body": "Tout ce que vous faites avec cette classe pour ce cours part de cette page. Voici à quoi sert chaque bouton."
+          },
+          "attendance": {
+            "title": "Présences",
+            "body": "Démarrez une séance au début du cours et affichez le code d'appel."
+          },
+          "timetable": {
+            "title": "Emploi du temps",
+            "body": "Réglez les horaires hebdomadaires du cours. Ils apparaissent dans votre Planning et sur le tableau de bord des étudiants."
+          },
+          "work": {
+            "title": "Tests et devoirs",
+            "body": "Les tests se font en classe sur le téléphone des étudiants ; les devoirs se rendent avant une date limite. Les deux comptent dans le CC."
+          },
+          "notes": {
+            "title": "Notes",
+            "body": "Partagez vos notes et fichiers de cours par thème. Les étudiants peuvent aussi réviser chaque thème."
+          },
+          "ca": {
+            "title": "CC",
+            "body": "Le contrôle continu, calculé à partir des présences, des devoirs, de la participation et des tests."
+          },
+          "roster": {
+            "title": "Étudiants",
+            "body": "Tous les étudiants de la classe suivent le cours. Excluez-en un qui ne le suit pas, ou incluez un étudiant d'ailleurs."
+          }
+        }
+      },
+      "studentWelcome": {
+        "title": "Visite de bienvenue",
+        "description": "Où se trouvent les choses, et par où commencer.",
+        "steps": {
+          "hello": {
+            "title": "Bienvenue sur Clasync",
+            "body": "Cette courte visite vous fait faire le tour. Fermez-la quand vous voulez : tous les guides restent dans l'Aide, le ? en haut."
+          },
+          "menu": {
+            "title": "Votre menu",
+            "body": "Tableau de bord vous ramène ici. Rejoindre vous ajoute à une classe. Pointer sert à confirmer que vous êtes en cours."
+          },
+          "join": {
+            "title": "Commencez ici",
+            "body": "Rejoignez votre classe avec le code donné par votre enseignant. Ses cours apparaissent alors sur votre tableau de bord."
+          },
+          "checklist": {
+            "title": "Votre liste de départ",
+            "body": "Elle se coche d'elle-même une fois que vous avez rejoint une classe."
+          },
+          "help": {
+            "title": "Des guides, à tout moment",
+            "body": "Ouvrez l'Aide pour des guides pas à pas : rejoindre une classe, pointer et passer un test."
+          }
+        }
+      },
+      "joinClass": {
+        "title": "Rejoindre une classe",
+        "description": "Avec le code ou le lien de votre enseignant.",
+        "steps": {
+          "openJoin": {
+            "title": "Ouvrez Rejoindre une classe",
+            "body": "Il vous faut le code de la classe, donné par votre enseignant ou votre délégué. Vous avez reçu un lien ? Ouvrez-le, tout simplement."
+          },
+          "form": {
+            "title": "Saisissez le code",
+            "body": "Tapez le code de 6 caractères, et votre matricule tel qu'il figure sur votre carte d'étudiant. Pas encore de matricule ? Laissez vide et ajoutez-le plus tard depuis votre profil."
+          },
+          "after": {
+            "title": "Vous y êtes",
+            "body": "Les cours de la classe apparaissent maintenant sur votre tableau de bord, avec leurs tests, notes, devoirs et vos présences."
+          }
+        }
+      },
+      "checkIn": {
+        "title": "Pointer en cours",
+        "description": "Confirmer votre présence avec le code affiché à l'écran.",
+        "steps": {
+          "openCheckIn": {
+            "title": "Ouvrez Pointer",
+            "body": "Quand votre enseignant fait l'appel, vous pointez ici."
+          },
+          "code": {
+            "title": "Tapez le code",
+            "body": "Un appel ouvert apparaît ici et sur votre tableau de bord. Tapez le code que votre enseignant affiche à l'écran : il change chaque minute. Certaines classes demandent aussi votre position pour vérifier que vous êtes sur le campus."
+          },
+          "after": {
+            "title": "Pointez aussi à la fin",
+            "body": "Votre enseignant peut ouvrir un second appel en fin de cours : pointez de nouveau pour compter comme présent tout du long. Vos présences sont sur la page de chaque cours."
+          }
+        }
+      },
+      "takeTest": {
+        "title": "Passer un test",
+        "description": "Comment un test s'ouvre, les règles pendant l'épreuve, et où voir vos notes.",
+        "steps": {
+          "pickCourse": {
+            "title": "Ouvrez un cours",
+            "body": "Ouvrez un de vos cours : le guide continue là-bas. Pas encore de cours ? Rejoignez d'abord votre classe."
+          },
+          "myTests": {
+            "title": "Vos tests",
+            "body": "Les tests apparaissent ici. Votre enseignant peut aussi envoyer le lien du test à la classe : ouvrez-le sur l'appareil où vous répondrez."
+          },
+          "waiting": {
+            "title": "Attendez le départ",
+            "body": "Ouvrez le test avant qu'il commence et patientez : votre enseignant le lance pour tous, et la première question s'ouvre d'elle-même. Appuyez alors sur Commencer pour répondre en plein écran."
+          },
+          "leaving": {
+            "title": "Restez sur le test",
+            "body": "Passer à un autre onglet ou une autre application, ou quitter le plein écran, compte comme une sortie. Trop de sorties, ou une longue absence, mettent fin au test pour vous. Gardez l'écran allumé. Vos réponses sont enregistrées au fur et à mesure : remettez quand vous avez fini."
+          },
+          "results": {
+            "title": "Vos notes",
+            "body": "Dès que votre enseignant publie les résultats, votre note apparaît sur la page du cours et compte dans votre CC."
+          }
+        }
+      },
+      "studentCourse": {
+        "title": "Visite d'un cours",
+        "description": "Où trouver tests, notes, devoirs, présences et votre CC.",
+        "steps": {
+          "hello": {
+            "title": "Votre cours",
+            "body": "Tout ce qui concerne ce cours est sur cette page."
+          },
+          "tests": {
+            "title": "Tests",
+            "body": "Les tests à passer, et vos notes une fois publiées."
+          },
+          "notes": {
+            "title": "Notes",
+            "body": "Les notes et fichiers de votre enseignant, par thème. Révisez un thème pour vous entraîner : cela ne compte pas pour les notes."
+          },
+          "assignments": {
+            "title": "Devoirs",
+            "body": "Le travail à rendre, avec sa date limite. Rendez-le depuis la page du devoir."
+          },
+          "attendance": {
+            "title": "Présences",
+            "body": "Les séances du cours, et si vous étiez présent."
+          },
+          "ca": {
+            "title": "Votre CC",
+            "body": "Votre contrôle continu à ce jour, partie par partie."
+          }
+        }
+      }
+    }
   }
 }

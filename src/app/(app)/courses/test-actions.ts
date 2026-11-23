@@ -13,6 +13,7 @@ import {
   giveCatchUp,
   setCatchUpStudents,
   setStudentsCanReview,
+  setTestCa,
   updateTest,
   type CatchUpFor,
 } from '@/server/tests/authoring'
@@ -142,6 +143,20 @@ export async function setStudentsCanReviewAction(testId: string, on: boolean): P
     if (typeof on !== 'boolean') invalid('on')
     await setStudentsCanReview(await getCtx(), id, on)
     revalidateTests()
+    return null
+  })
+}
+
+/** Whether a test counts in the CA, and in which named CA (`caGroupId` null: the first, or none). */
+export async function setTestCaAction(
+  testId: string,
+  input: { countsInCa: boolean; caGroupId: string | null },
+): Promise<ActionResult<null>> {
+  return toActionResult(async () => {
+    const id = requireId(testId, 'testId')
+    await setTestCa(await getCtx(), id, input)
+    revalidateTests()
+    revalidatePath('/courses/[courseId]/performance', 'page')
     return null
   })
 }

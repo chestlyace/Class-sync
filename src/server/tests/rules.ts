@@ -51,6 +51,10 @@ export type TestInput = {
   maxAbsenceSeconds: number
   /** How much the test counts among the course's tests in the CA. */
   weight: number
+  /** Off: a practice test, left out of the CA. Left out of the input: on. */
+  countsInCa: boolean
+  /** The named CA it counts in, when the course has some; the service checks it is the course's. */
+  caGroupId: string | null
   questions: QuestionInput[]
 }
 
@@ -122,9 +126,12 @@ function parseShape(input: unknown): TestInput | null {
   if (!isRecord(input)) return null
   const { title, durationMinutes, defaultMark, shuffle, maxExits, maxAbsenceSeconds, questions } =
     input
-  // Left out: the default weight.
+  // Left out: the default weight, counting in the CA, no named CA.
   const weight = input.weight === undefined ? DEFAULT_TEST_WEIGHT : input.weight
-  if (typeof title !== 'string' || typeof shuffle !== 'boolean') return null
+  const countsInCa = input.countsInCa === undefined ? true : input.countsInCa
+  const caGroupId = input.caGroupId ?? null
+  if (typeof title !== 'string' || typeof shuffle !== 'boolean' || typeof countsInCa !== 'boolean') return null
+  if (caGroupId !== null && (typeof caGroupId !== 'string' || caGroupId === '' || caGroupId.length > 100)) return null
   for (const n of [durationMinutes, defaultMark, maxExits, maxAbsenceSeconds, weight]) {
     if (typeof n !== 'number') return null
   }
@@ -143,6 +150,8 @@ function parseShape(input: unknown): TestInput | null {
     maxExits: maxExits as number,
     maxAbsenceSeconds: maxAbsenceSeconds as number,
     weight: weight as number,
+    countsInCa,
+    caGroupId: caGroupId as string | null,
     questions: parsed,
   }
 }
@@ -167,7 +176,8 @@ function questionError(q: QuestionInput, index: number): TestInputError | null {
 
 /**
  * Validates a whole test as the editor saves it. Strings are trimmed and unknown fields dropped;
- * numbers must already be numbers (the actions convert form strings). A missing weight is 1.
+ * numbers must already be numbers (the actions convert form strings). A missing weight is 1; a
+ * missing `countsInCa` is true and a missing `caGroupId` null.
  */
 export function validateTestInput(input: unknown): TestInput | TestInputError {
   const test = parseShape(input)
