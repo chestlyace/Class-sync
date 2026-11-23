@@ -2608,6 +2608,7 @@
       "usage": "Usage",
       "ai": "AI & MCP",
       "health": "Health",
+      "broadcasts": "Broadcasts",
       "audit": "Audit"
     },
     "chart": {
@@ -2929,6 +2930,77 @@
         "title": "Server errors",
         "hint": "Errors aren't tracked in the app. They're in the Vercel project's logs.",
         "link": "Open the Vercel logs"
+      }
+    },
+    "broadcasts": {
+      "title": "Broadcasts",
+      "description": "Send an announcement by email to lecturers, students or everyone. Each person gets it in their own language.",
+      "notReady": "Email sending isn't set up on this deployment, so announcements can't go out. Set SES_REGION to turn it on.",
+      "form": {
+        "audienceLegend": "Who receives it",
+        "audienceHint": "Only verified, active accounts that haven't turned announcements off.",
+        "audiences": {
+          "lecturers": "Lecturers",
+          "students": "Students",
+          "everyone": "Everyone"
+        },
+        "audienceCount": "{count, plural, one {# person} other {# people}}",
+        "versionEn": "English version",
+        "versionFr": "French version",
+        "subject": "Subject",
+        "message": "Message",
+        "messageHint": "Plain text. A blank line starts a new paragraph, and web addresses become links.",
+        "counter": "{count} / {max}",
+        "incomplete": "Fill in the subject and message in both languages to send.",
+        "testButton": "Send me a test",
+        "testSent": "Test sent to your address, in English and French.",
+        "testFailed": "The test couldn't be sent. Check the email setup and try again.",
+        "sendButton": "Send to {count, plural, one {# person} other {# people}}…",
+        "sendFailed": "Email sending isn't set up, so nothing was sent.",
+        "sentNotice": "Sending to {count, plural, one {# person} other {# people}}. Follow it in the history below.",
+        "confirm": {
+          "title": "Send this announcement?",
+          "description": "This sends it now to {audience}: {count, plural, one {# person} other {# people}}. It can't be recalled once it is sent.",
+          "wordLabel": "Type SEND to confirm",
+          "submit": "Send now"
+        }
+      },
+      "history": {
+        "title": "History",
+        "empty": "Nothing has been sent yet.",
+        "sending": "Sending… {done} of {total}",
+        "done": "{sent, number} sent{failed, plural, =0 {} other {, # failed}}{skipped, plural, =0 {} other {, # skipped}}",
+        "meta": "{admin} · {audience}"
+      },
+      "detail": {
+        "back": "All broadcasts",
+        "eyebrow": "Broadcast",
+        "factsTitle": "Details",
+        "sentOn": "Sent",
+        "sentBy": "Sent by",
+        "audience": "Audience",
+        "status": "Status",
+        "statusSending": "Sending",
+        "statusDone": "Done",
+        "recipients": "Recipients",
+        "sent": "Sent",
+        "failed": "Failed",
+        "skipped": "Skipped",
+        "versionsTitle": "What was sent",
+        "subject": "Subject",
+        "problemsTitle": "Failed and skipped",
+        "noProblems": "No email failed and none was skipped.",
+        "problemsCapped": "Showing the first {count}. The counts above are complete.",
+        "problemFailed": "Failed",
+        "problemSkipped": "Skipped",
+        "noReason": "No details",
+        "reasons": {
+          "deleted": "Account deleted",
+          "suspended": "Account suspended",
+          "opted_out": "Turned announcements off",
+          "not_allowed": "Not an allowed address outside production",
+          "interrupted": "Interrupted before it was sent"
+        }
       }
     },
     "audit": {

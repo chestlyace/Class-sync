@@ -2608,6 +2608,7 @@
       "usage": "Utilisation",
       "ai": "IA et MCP",
       "health": "État",
+      "broadcasts": "Annonces",
       "audit": "Journal"
     },
     "chart": {
@@ -2929,6 +2930,77 @@
         "title": "Erreurs serveur",
         "hint": "Les erreurs ne sont pas suivies dans l'application. Elles se trouvent dans les journaux du projet Vercel.",
         "link": "Ouvrir les journaux Vercel"
+      }
+    },
+    "broadcasts": {
+      "title": "Annonces",
+      "description": "Envoyez une annonce par e-mail aux enseignants, aux étudiants ou à tout le monde. Chacun la reçoit dans sa langue.",
+      "notReady": "L'envoi d'e-mails n'est pas configuré sur ce déploiement : les annonces ne peuvent pas partir. Renseignez SES_REGION pour l'activer.",
+      "form": {
+        "audienceLegend": "Qui la reçoit",
+        "audienceHint": "Uniquement les comptes vérifiés et actifs qui n'ont pas désactivé les annonces.",
+        "audiences": {
+          "lecturers": "Enseignants",
+          "students": "Étudiants",
+          "everyone": "Tout le monde"
+        },
+        "audienceCount": "{count, plural, one {# personne} other {# personnes}}",
+        "versionEn": "Version anglaise",
+        "versionFr": "Version française",
+        "subject": "Objet",
+        "message": "Message",
+        "messageHint": "Texte simple. Une ligne vide commence un nouveau paragraphe, et les adresses web deviennent des liens.",
+        "counter": "{count} / {max}",
+        "incomplete": "Renseignez l'objet et le message dans les deux langues pour envoyer.",
+        "testButton": "M'envoyer un test",
+        "testSent": "Test envoyé à votre adresse, en anglais et en français.",
+        "testFailed": "Le test n'a pas pu être envoyé. Vérifiez la configuration e-mail et réessayez.",
+        "sendButton": "Envoyer à {count, plural, one {# personne} other {# personnes}}…",
+        "sendFailed": "L'envoi d'e-mails n'est pas configuré : rien n'a été envoyé.",
+        "sentNotice": "Envoi en cours à {count, plural, one {# personne} other {# personnes}}. Suivez-le dans l'historique ci-dessous.",
+        "confirm": {
+          "title": "Envoyer cette annonce ?",
+          "description": "Elle part maintenant à {audience} : {count, plural, one {# personne} other {# personnes}}. Impossible de la rappeler une fois envoyée.",
+          "wordLabel": "Tapez ENVOYER pour confirmer",
+          "submit": "Envoyer maintenant"
+        }
+      },
+      "history": {
+        "title": "Historique",
+        "empty": "Rien n'a encore été envoyé.",
+        "sending": "Envoi en cours… {done} sur {total}",
+        "done": "{sent, number} {sent, plural, one {envoyé} other {envoyés}}{failed, plural, =0 {} one {, # échec} other {, # échecs}}{skipped, plural, =0 {} one {, # ignoré} other {, # ignorés}}",
+        "meta": "{admin} · {audience}"
+      },
+      "detail": {
+        "back": "Toutes les annonces",
+        "eyebrow": "Annonce",
+        "factsTitle": "Détails",
+        "sentOn": "Envoyée",
+        "sentBy": "Envoyée par",
+        "audience": "Destinataires",
+        "status": "État",
+        "statusSending": "Envoi en cours",
+        "statusDone": "Terminé",
+        "recipients": "Personnes visées",
+        "sent": "Envoyés",
+        "failed": "Échecs",
+        "skipped": "Ignorés",
+        "versionsTitle": "Ce qui a été envoyé",
+        "subject": "Objet",
+        "problemsTitle": "Échecs et ignorés",
+        "noProblems": "Aucun e-mail n'a échoué et aucun n'a été ignoré.",
+        "problemsCapped": "Les {count} premiers sont affichés. Les totaux ci-dessus sont complets.",
+        "problemFailed": "Échec",
+        "problemSkipped": "Ignoré",
+        "noReason": "Aucun détail",
+        "reasons": {
+          "deleted": "Compte supprimé",
+          "suspended": "Compte suspendu",
+          "opted_out": "A désactivé les annonces",
+          "not_allowed": "Adresse non autorisée hors production",
+          "interrupted": "Interrompu avant l'envoi"
+        }
       }
     },
     "audit": {
