@@ -89,9 +89,25 @@ async function recipientCount(ctx: Ctx, id: string): Promise<number> {
 }
 
 /**
+ * A broadcast that was saved earlier: returns it as it stands. If it is still sending and has rows
+ * nobody has picked up (the first request saved it but failed to queue the job), queues the job
+ * again. That is harmless when a job is already running, because a run only claims pending rows.
+ */
+async function savedBroadcast(ctx: Ctx, id: string): Promise<{ id: string; recipients: number }> {
+  const [row] = await ctx.db.select({ status: broadcast.status }).from(broadcast).where(eq(broadcast.id, id))
+  const [pending] = await ctx.db
+    .select({ n: count() })
+    .from(broadcastRecipient)
+    .where(and(eq(broadcastRecipient.broadcastId, id), eq(broadcastRecipient.status, 'pending')))
+  if (row?.status === 'sending' && (pending?.n ?? 0) > 0) await enqueueBroadcast(id)
+  return { id, recipients: await recipientCount(ctx, id) }
+}
+
+/**
  * Saves a broadcast with its recipients and the audit row in one transaction, then queues the
- * sending job. Sending the same id again returns the saved broadcast and queues nothing, so a
- * double click or a retried request cannot send twice. The recipient list is a snapshot: people
+ * sending job. Sending the same id again returns the saved broadcast and never sends twice (a
+ * double click or a retried request is safe); it only queues the job again if the first request
+ * failed to queue it and rows are still pending. The recipient list is a snapshot: people
  * who sign up or opt out later are not added or removed here (the job still skips opted-out,
  * suspended and deleted accounts when it reaches them).
  */
@@ -107,7 +123,7 @@ export async function createBroadcast(
   }
 
   const [existing] = await ctx.db.select({ id: broadcast.id }).from(broadcast).where(eq(broadcast.id, data.id))
-  if (existing) return { id: existing.id, recipients: await recipientCount(ctx, existing.id) }
+  if (existing) return savedBroadcast(ctx, existing.id)
 
   if (!broadcastSender()) throw new AppError('CONFLICT', 'Email sending is not set up (SES_REGION)')
 
@@ -158,7 +174,7 @@ export async function createBroadcast(
     return people.length
   })
 
-  if (created === null) return { id: data.id, recipients: await recipientCount(ctx, data.id) }
+  if (created === null) return savedBroadcast(ctx, data.id)
   await enqueueBroadcast(data.id)
   return { id: data.id, recipients: created }
 }

@@ -176,7 +176,7 @@ describe('broadcast service', () => {
     expect(queued).toEqual([])
   })
 
-  it('returns the same broadcast for a repeated id and queues once', async () => {
+  it('returns the same broadcast for a repeated id without a second send', async () => {
     await makeUser(db, { role: 'student' })
     await makeUser(db, { role: 'student' })
     const data = input({ audience: 'students' })
@@ -187,10 +187,48 @@ describe('broadcast service', () => {
 
     expect(second).toEqual(first)
     expect(second.recipients).toBe(2)
-    expect(queued).toEqual([data.id])
+    // The stub queue processes nothing, so the rows are still pending and the repeat queues again (harmless).
+    expect(queued).toEqual([data.id, data.id])
     expect(await db.select().from(broadcast)).toHaveLength(1)
     expect(await db.select().from(adminAction)).toHaveLength(1)
     expect(await recipientsOf(data.id)).toHaveLength(2)
+  })
+
+  it('does not queue a repeated id again once no rows are pending', async () => {
+    await makeUser(db, { role: 'student' })
+    const data = input({ audience: 'students' })
+    await createBroadcast(ctxFor(db, admin), data, 'SEND')
+    await db.update(broadcastRecipient).set({ status: 'sent' }).where(eq(broadcastRecipient.broadcastId, data.id))
+
+    await expect(createBroadcast(ctxFor(db, admin), data, 'SEND')).resolves.toEqual({ id: data.id, recipients: 1 })
+    expect(queued).toEqual([data.id])
+  })
+
+  it('does not queue a finished broadcast again', async () => {
+    await makeUser(db, { role: 'student' })
+    const data = input({ audience: 'students' })
+    await createBroadcast(ctxFor(db, admin), data, 'SEND')
+    await db.update(broadcast).set({ status: 'done' }).where(eq(broadcast.id, data.id))
+
+    await createBroadcast(ctxFor(db, admin), data, 'SEND')
+    expect(queued).toEqual([data.id])
+  })
+
+  it('can retry a first send whose queueing failed, and the retry queues it', async () => {
+    await makeUser(db, { role: 'student' })
+    const data = input({ audience: 'students' })
+    setBroadcastQueueForTests(async () => {
+      throw new Error('queue down')
+    })
+    await expect(createBroadcast(ctxFor(db, admin), data, 'SEND')).rejects.toThrow('queue down')
+    expect(await recipientsOf(data.id)).toHaveLength(1)
+
+    setBroadcastQueueForTests(async (id) => {
+      queued.push(id)
+    })
+    await expect(createBroadcast(ctxFor(db, admin), data, 'SEND')).resolves.toEqual({ id: data.id, recipients: 1 })
+    expect(queued).toEqual([data.id])
+    expect(await db.select().from(adminAction)).toHaveLength(1)
   })
 
   it('refuses when SES is not set up', async () => {
