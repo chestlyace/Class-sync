@@ -1,2 +1,0 @@
-ALTER TABLE "ai_usage" DROP CONSTRAINT "ai_usage_purpose_check";--> statement-breakpoint
-ALTER TABLE "ai_usage" ADD CONSTRAINT "ai_usage_purpose_check" CHECK ("ai_usage"."purpose" in ('assignment_marking', 'test_correction'));

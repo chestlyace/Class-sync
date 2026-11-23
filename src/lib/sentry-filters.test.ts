@@ -17,6 +17,12 @@ describe('isNodeWarningLog', () => {
       ]),
     ).toBe(true)
     expect(isNodeWarningLog(['(node:4120) [DEP0040] DeprecationWarning: The `punycode` module is deprecated.'])).toBe(true)
+    // Library codes need not contain a digit: the AI SDK's warning regressed CLASYNC-5 into CLASYNC-13.
+    expect(
+      isNodeWarningLog([
+        '(node:2) [AISDK_DEP_IMAGE_CONTENT_PART] DeprecationWarning: AI SDK Warning: Deprecated: ""image"" content part". The "image" content part type is deprecated.',
+      ]),
+    ).toBe(true)
   })
 
   it('keeps our own logged failures and anything that merely mentions a warning', () => {

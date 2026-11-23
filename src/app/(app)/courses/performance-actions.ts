@@ -8,7 +8,22 @@ import { AppError } from '@/server/core/errors'
 import { tapParticipation, undoLastTap, type UndoneTap } from '@/server/performance/participation'
 import type { CaSettings } from '@/server/performance/rules'
 import { updateCaSettings } from '@/server/performance/settings'
-import { parseBestOfInput, parseDecimalInput, parseWholeInput, POINT_FIELDS, type SettingsField } from './performance-form'
+import {
+  applyCaTemplate,
+  createCaTemplate,
+  deleteCaTemplate,
+  setDefaultCaTemplate,
+  type CaTemplate,
+  type DefaultTemplate,
+} from '@/server/performance/templates'
+import {
+  parseBestOfInput,
+  parseDecimalInput,
+  parseGroupsInput,
+  parseWholeInput,
+  POINT_FIELDS,
+  type SettingsField,
+} from './performance-form'
 
 function invalid(fields: string[]): never {
   throw new AppError('VALIDATION', 'Invalid input', { fields })
@@ -21,8 +36,9 @@ function requireId(value: unknown, field: string): string {
 
 /**
  * Reads the settings form: every box must hold a number (all bad ones reported together), except
- * the best tests, where blank means every test. The service then checks ranges, decimals and
- * that the parts add up to the total.
+ * the best tests, where blank means every test. The named CAs come as one JSON field (`groups`),
+ * their numbers as typed. The service then checks ranges, decimals and that the parts add up to
+ * the total.
  */
 function parseSettingsForm(data: FormData): CaSettings {
   const bad: SettingsField[] = []
@@ -37,8 +53,24 @@ function parseSettingsForm(data: FormData): CaSettings {
   )
   const participationTarget = read('participationTarget', parseWholeInput)
   const testsBestOf = read('testsBestOf', parseBestOfInput)
+  const groups = parseGroupsInput(formString(data, 'groups'))
+  if (groups === null) bad.push('groups')
+  // With named CAs, the test points box is their sum: the service works it out.
+  if (groups && groups.length > 0) {
+    const i = bad.indexOf('testPoints')
+    if (i !== -1) bad.splice(i, 1)
+  }
   if (bad.length > 0) invalid(bad)
-  return { total, attendancePoints, assignmentPoints, participationPoints, testPoints, participationTarget, testsBestOf }
+  return {
+    total,
+    attendancePoints,
+    assignmentPoints,
+    participationPoints,
+    testPoints: Number.isFinite(testPoints) ? testPoints : 0,
+    participationTarget,
+    testsBestOf,
+    groups: groups ?? [],
+  }
 }
 
 export async function updateCaSettingsAction(
@@ -53,6 +85,48 @@ export async function updateCaSettingsAction(
     // dynamic, so any other visit reads fresh data anyway.)
     revalidatePath('/courses/[courseId]/performance', 'page')
     return saved
+  })
+}
+
+/** Saves the settings form, as typed, as a new template of mine called `name`. */
+export async function createCaTemplateAction(
+  _prev: ActionResult<CaTemplate> | null,
+  data: FormData,
+): Promise<ActionResult<CaTemplate>> {
+  return toActionResult(async () => {
+    const created = await createCaTemplate(await getCtx(), {
+      name: formString(data, 'templateName'),
+      settings: parseSettingsForm(data),
+    })
+    revalidatePath('/courses/[courseId]/performance', 'page')
+    return created
+  })
+}
+
+export async function deleteCaTemplateAction(templateId: string): Promise<ActionResult<null>> {
+  return toActionResult(async () => {
+    await deleteCaTemplate(await getCtx(), templateId)
+    revalidatePath('/courses/[courseId]/performance', 'page')
+    return null
+  })
+}
+
+/** `ref`: `{ templateId }`, `{ builtInId }`, or null for the app's defaults. */
+export async function setDefaultCaTemplateAction(ref: unknown): Promise<ActionResult<DefaultTemplate>> {
+  return toActionResult(async () => {
+    const saved = await setDefaultCaTemplate(await getCtx(), ref)
+    revalidatePath('/courses/[courseId]/performance', 'page')
+    return saved
+  })
+}
+
+/** Applies a template to courses I own; returns how many were set. */
+export async function applyCaTemplateAction(ref: unknown, courseIds: unknown): Promise<ActionResult<number>> {
+  return toActionResult(async () => {
+    const count = await applyCaTemplate(await getCtx(), ref, courseIds)
+    revalidatePath('/courses/[courseId]/performance', 'page')
+    revalidatePath('/courses/[courseId]', 'page')
+    return count
   })
 }
 

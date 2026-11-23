@@ -7,6 +7,7 @@ import type { Db } from '@/server/db'
 import { class_, classStudent, course, courseRosterAdjustment, school, user } from '@/server/db/schema'
 import { isClassLecturer, type RosterEntry } from '@/server/classes/service'
 import { containsPattern } from '@/server/lib/like'
+import { applyDefaultCaTemplate } from '@/server/performance/template-settings'
 import { courseRosterQuery, isOnCourseRoster as isOnRoster, rosteredCourseIds } from './roster'
 
 export type CourseSummary = {
@@ -124,6 +125,8 @@ export async function createCourse(
       semester: data.semester,
     })
     .returning({ id: course.id })
+  // My default CA template, if I chose one; otherwise the course keeps the app's defaults.
+  await applyDefaultCaTemplate(ctx.db, ctx.user, created.id)
   const row = await loadSummary(ctx.db, created.id)
   if (!row) throw new Error('Course vanished after creation')
   return toSummary(row)

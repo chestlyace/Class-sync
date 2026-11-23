@@ -13,6 +13,7 @@ const INPUT_REASONS = {
   mark: 'mark',
   leaving: 'leaving',
   weight: 'weight',
+  caGroup: 'caGroup',
   questions: 'questions',
   prompt: 'prompt',
   options: 'options',
@@ -26,6 +27,7 @@ const CONFLICT_REASONS = {
   not_started: 'notStarted',
   not_ended: 'notEnded',
   test_over: 'testOver',
+  is_catch_up: 'isCatchUp',
 } as const
 
 function lookup<T extends Record<string, string>>(table: T, key: unknown): T[keyof T] | undefined {

@@ -43,7 +43,7 @@ export default async function TestListPage({ params }: PageProps<'/courses/[cour
         description={`${course.title} · ${course.className}`}
         actions={
           <>
-            <Link href={`${courseHref}/tests/new`} className={buttonVariants({ variant: 'default' })}>
+            <Link href={`${courseHref}/tests/new`} data-tour="new-test" className={buttonVariants({ variant: 'default' })}>
               <Plus aria-hidden="true" data-icon="inline-start" />
               {t('new')}
             </Link>
@@ -139,6 +139,7 @@ async function TestRow({
         <span className="flex flex-wrap items-center gap-2">
           <span className="min-w-0 truncate font-medium">{test.title}</span>
           {test.catchUpOf && <Badge variant="secondary">{tCatchUp('badge')}</Badge>}
+          {!test.countsInCa && <Badge variant="outline">{t('practice')}</Badge>}
           <TestStatePill state={test.state} />
           {test.state === 'not_started' && test.joined > 0 && (
             <span className="text-sm text-muted-foreground">{t('waiting', { count: test.joined })}</span>

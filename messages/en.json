@@ -1552,7 +1552,9 @@
         "assignments": "Assignments not applicable",
         "participation": "Participation not applicable",
         "tests": "Tests not applicable"
-      }
+      },
+      "group": "{name} (/{points})",
+      "notApplicableGroup": "{name} not applicable"
     },
     "lecturer": {
       "courseLink": "CA",
@@ -1619,7 +1621,24 @@
           "range": "The total must be between 1 and 100, each part between 0 and 100, the target a whole number from 1 to 100, and the best tests a whole number from 1 to 50 (or empty).",
           "decimals": "Use at most 2 decimals (for example {example}).",
           "shape": "The settings couldn't be read. Reload the page and try again.",
-          "fields": "Enter a number in each highlighted box."
+          "fields": "Enter a number in each highlighted box.",
+          "groupName": "Give each CA a different name, up to 40 characters.",
+          "groups": "A course has at most {max} CAs."
+        },
+        "testsFromGroups": "The sum of your CAs below.",
+        "groups": {
+          "legend": "CAs made of tests",
+          "hint": "Split the tests part into several CAs, such as CA 1 and CA 2, each with its own points. Each test then counts in one of them.",
+          "hintSplit": "Each CA is worked out from its own tests, weighted, or only its best ones. Choose a test's CA in its editor or on its page.",
+          "listLabel": "CAs made of tests",
+          "name": "Name",
+          "points": "Points",
+          "bestOf": "Best tests",
+          "bestOfAll": "All",
+          "remove": "Remove {name}",
+          "add": "Add a CA",
+          "split": "Split tests into CAs",
+          "removeHint": "Tests in a CA you remove count in the first one. Remove every CA to go back to one tests part."
         }
       },
       "board": {
@@ -1647,7 +1666,87 @@
         "attendance": "Attendance hasn't started, so it counts 0 for everyone. Set it to 0 points if you won't use it.",
         "assignments": "Assignments haven't started (no grades released yet), so they count 0 for everyone. Set them to 0 points if you won't use them.",
         "participation": "Participation hasn't started, so it counts 0 for everyone. Set it to 0 points if you won't use it.",
-        "tests": "Tests haven't started (no results released yet), so they count 0 for everyone. Set them to 0 points if you won't use them."
+        "tests": "Tests haven't started (no results released yet), so they count 0 for everyone. Set them to 0 points if you won't use them.",
+        "group": "{name} hasn't started (no test in it has released results yet), so it counts 0 for everyone."
+      },
+      "templates": {
+        "pickLabel": "Start from a template",
+        "pickHint": "Choose a card: the settings below are filled in from it. Nothing changes until you save.",
+        "filled": "Filled in from “{name}”. Check it, then save.",
+        "notSavedYet": "Not saved yet.",
+        "groupName": "CA {n}",
+        "builtIn": {
+          "balanced": {
+            "name": "Balanced",
+            "description": "A bit of everything: tests and assignments count the same.",
+            "details": "A good starting point when you use a bit of everything. Tests and assignments weigh the same, and attendance and participation reward students who come and take part."
+          },
+          "testBased": {
+            "name": "Test-based",
+            "description": "Mostly tests, best two count.",
+            "details": "For courses assessed mainly through tests in class. Only each student's two best tests count, so one bad day doesn't sink their CA. A little attendance and assignment work still counts."
+          },
+          "twoCas": {
+            "name": "Two CAs",
+            "description": "CA 1 and CA 2, each made of one or more tests.",
+            "details": "For schools with two official CAs per semester. CA 1 and CA 2 each get 10 points, and each can be made of one test or several. You choose each test's CA in the test editor."
+          },
+          "assignments": {
+            "name": "Assignments and projects",
+            "description": "Mostly work handed in.",
+            "details": "For project-based courses where the work handed in matters most. Tests count a little; attendance rewards regular presence."
+          },
+          "practical": {
+            "name": "Practical / lab",
+            "description": "Attendance and lab work matter most, no tests.",
+            "details": "For labs and practical sessions with no tests: attendance and lab reports carry the CA, with participation for students who get involved."
+          },
+          "testsOnly": {
+            "name": "Tests only",
+            "description": "The whole CA comes from tests.",
+            "details": "Everything comes from tests. Use it when attendance and assignments are graded elsewhere or not at all."
+          }
+        },
+        "saveAsLabel": "Save as a template",
+        "namePlaceholder": "e.g. My L3 courses",
+        "saveAs": "Save as template",
+        "saveAsHint": "Keeps the form as it is now, CAs included, to use on your other courses.",
+        "nameTaken": "You already have a template with this name.",
+        "nameInvalid": "Give the template a name, up to 60 characters.",
+        "savedAs": "Saved as “{name}”.",
+        "mineBadge": "Mine",
+        "applyToCourses": "Apply to courses",
+        "outOf": "/{total}",
+        "close": "Close",
+        "cancel": "Cancel",
+        "applyTitle": "Apply “{name}”",
+        "applyBody": "Each course you tick gets this split now, replacing its CA settings. A CA with the same name as one the course has keeps its tests.",
+        "applyCourses": "Courses",
+        "applied": "{count, plural, one {Applied to # course.} other {Applied to # courses.}}",
+        "applyPick": "Tick at least one course.",
+        "applyConfirm": "{count, plural, one {Apply to # course} other {Apply to # courses}}",
+        "searchPlaceholder": "Search templates",
+        "searchLabel": "Search the CA templates",
+        "noMatch": "No template matches “{query}”.",
+        "mineDescription": "Your own template.",
+        "defaultBadge": "Default",
+        "selected": "Selected",
+        "moreInfo": "More about {name}",
+        "points": "{points} pts",
+        "leftOut": "Parts not listed get 0 points: they are left out of the CA.",
+        "unsetDefault": "Stop using for new courses",
+        "makeDefault": "Use for new courses",
+        "deleteShort": "Delete",
+        "useHere": "Use for this course",
+        "how": {
+          "attendance": "From check-ins: present counts fully, partial counts half.",
+          "assignments": "Weighted average of released assignment grades; missing work counts 0.",
+          "participation": "+1 / −1 taps in class; {target} net taps give full points.",
+          "tests": "Weighted average of every released test.",
+          "testsBest": "Only each student's best {count, plural, one {test counts} other {# tests count}}.",
+          "group": "Weighted average of the tests you put in this CA.",
+          "groupBest": "Only each student's best {count, plural, one {test} other {# tests}} in this CA {count, plural, one {counts} other {count}}."
+        }
       }
     },
     "student": {
@@ -1672,7 +1771,9 @@
         "assignments": "Weighted average of released grades; missing work counts 0. Work still waiting for a grade, or due before you joined, isn't counted.",
         "participation": "Earned in class, full marks at {target, plural, one {# contribution} other {# contributions}}.",
         "tests": "Weighted average of your released test results; a test you didn't take counts 0. A test that ended before you joined isn't counted.",
-        "testsBest": "Your best {count, plural, one {test counts} other {# tests count}}, weighted, among the released results; a test you didn't take counts 0. A test that ended before you joined isn't counted."
+        "testsBest": "Your best {count, plural, one {test counts} other {# tests count}}, weighted, among the released results; a test you didn't take counts 0. A test that ended before you joined isn't counted.",
+        "group": "Weighted average of your released results in the tests of this CA; a test you didn't take counts 0.",
+        "groupBest": "{count, plural, one {Your best test in this CA counts} other {Your # best tests in this CA count}}, weighted; a test you didn't take counts 0."
       },
       "missingWork": "{count, plural, one {# piece of work missing} other {# pieces of work missing}}",
       "seeAssignments": "See my assignments"
@@ -1754,7 +1855,12 @@
         "mcqNote": "Multiple choice only: students see their total as soon as they hand in.",
         "save": "Save and get the link",
         "saving": "Saving…",
-        "locked": "Questions are locked once the test has started."
+        "locked": "Questions are locked once the test has started.",
+        "countsInCa": "Counts in the CA",
+        "countsInCaHint": "Its results count in the course's CA once released.",
+        "practiceHint": "A practice test: students take it as usual, but it never counts in the CA.",
+        "caGroup": "Counts in",
+        "weightHintGroup": "How much this test counts among the tests of its CA."
       },
       "copy": {
         "title": "Copy to another course",
@@ -1855,7 +1961,8 @@
           "prompt": "write the question (up to 2,000 characters).",
           "options": "give 2 to 6 options, none of them empty.",
           "correct": "tick exactly one correct answer.",
-          "guide": "write a marking guide (up to 4,000 characters)."
+          "guide": "write a marking guide (up to 4,000 characters).",
+          "caGroup": "choose one of the course's CAs."
         },
         "test": {
           "shape": "Part of this test couldn't be read. Reload the page and try again.",
@@ -1868,13 +1975,16 @@
           "prompt": "Write every question.",
           "options": "Give each multiple-choice question 2 to 6 options.",
           "correct": "Tick exactly one correct answer in each multiple-choice question.",
-          "guide": "Write a marking guide for each short answer."
+          "guide": "Write a marking guide for each short answer.",
+          "caGroup": "Choose one of the course's CAs. Reload the page if they just changed."
         },
         "started": "The test has started: it can no longer be changed or deleted.",
         "notStarted": "The test hasn't started yet.",
         "notEnded": "This student wasn't ended for leaving.",
-        "testOver": "The test is over: nobody can be let back in."
-      }
+        "testOver": "The test is over: nobody can be let back in.",
+        "isCatchUp": "A catch-up counts like the test it catches up on: change it there."
+      },
+      "practice": "Not in CA"
     },
     "student": {
       "metaTitle": "Test",
@@ -1993,7 +2103,8 @@
           "ended_left": "Ended for leaving",
           "handed_in": "Handed in"
         },
-        "score": "{score} / {outOf}"
+        "score": "{score} / {outOf}",
+        "practice": "Doesn't count for marks"
       }
     },
     "marking": {
@@ -2139,6 +2250,12 @@
         "nobodyMissed": "Everyone sat this test. Pick the students instead.",
         "studentIds": "Pick at least one student on the course."
       }
+    },
+    "ca": {
+      "switchLabel": "Counts in the CA",
+      "onHelp": "Its results count in the course's CA once released. Turn it off to make it a practice test.",
+      "offHelp": "A practice test: left out of the CA. You can turn it on at any time; the CA updates at once.",
+      "groupLabel": "Counts in"
     }
   },
   "notes": {
@@ -3272,5 +3389,360 @@
     "timetableSlots": "{count, plural, one {# timetable slot} other {# timetable slots}}",
     "notes": "{count, plural, one {# note or file} other {# notes and files}}",
     "confirmLabel": "Type “{name}” to confirm"
+  },
+  "guides": {
+    "common": {
+      "help": "Help and guides",
+      "helpTitle": "Guides",
+      "helpDescription": "Short tours that point at the buttons you need. Start one at any time: it walks you through the real pages.",
+      "close": "Close",
+      "seen": "Already seen",
+      "progress": "{n} of {total}",
+      "next": "Next",
+      "back": "Back",
+      "open": "Open it",
+      "done": "Done",
+      "end": "End the guide",
+      "endGuide": "End the guide",
+      "awayTitle": "The guide is on another page",
+      "awayBody": "You left the page this step is about. Go back to carry on, or end the guide.",
+      "awayNoLink": "You left the page this step is about. Open it again to carry on, or end the guide.",
+      "goBack": "Go back"
+    },
+    "items": {
+      "lecturerWelcome": {
+        "title": "Welcome tour",
+        "description": "Where things are, and how to start.",
+        "steps": {
+          "hello": {
+            "title": "Welcome to Clasync",
+            "body": "This short tour shows you around. Close it at any time: every guide stays under Help, the ? at the top."
+          },
+          "menu": {
+            "title": "Your menu",
+            "body": "Dashboard brings you back here. Schedule shows your week of classes. Join lets you teach in a colleague's class with their lecturer code. New class creates one."
+          },
+          "create": {
+            "title": "Start here",
+            "body": "Set up in this order: your school, a class (one group of students for one year), then a course. Attendance, tests, assignments, notes and the CA all live in a course."
+          },
+          "checklist": {
+            "title": "Your checklist",
+            "body": "These steps tick themselves off as you go, and the card goes away once you are set up."
+          },
+          "help": {
+            "title": "Guides, any time",
+            "body": "Open Help for step-by-step guides: creating a class and a course, taking attendance, setting up the CA, making a test for the CA and giving an assignment."
+          }
+        }
+      },
+      "classAndCourse": {
+        "title": "Create a class and a course",
+        "description": "Your school, your class, its first course, and the code students join with.",
+        "steps": {
+          "openNewClass": {
+            "title": "Open New class",
+            "body": "A class is one group of students for one academic year, such as CS L3."
+          },
+          "schoolForm": {
+            "title": "Find or add your school",
+            "body": "Search first: a colleague may already have added it. If not, add it below with its town, and its campus location if you want attendance to check that students are on campus."
+          },
+          "classForm": {
+            "title": "Pick the school, then name the class",
+            "body": "Search for your school first: a colleague may already have added it. If not, add it with its town. Then give the class its name and year, and save."
+          },
+          "shareCode": {
+            "title": "Share the student code",
+            "body": "Students join with this code or link, plus their matricule. The lecturer code is for colleagues who teach in the same class."
+          },
+          "addCourse": {
+            "title": "Add a course",
+            "body": "Now create the course you teach to this class."
+          },
+          "courseForm": {
+            "title": "Name the course",
+            "body": "Give it a title, and a code if it has one. Every student in the class is enrolled automatically. Save, and the course opens."
+          },
+          "courseReady": {
+            "title": "Your course is ready",
+            "body": "From here you take attendance, set the timetable, give tests and assignments, share notes and follow the CA. Help has a guide for each."
+          }
+        }
+      },
+      "attendance": {
+        "title": "Take attendance",
+        "description": "Start a session, show the check-in code, and follow who came.",
+        "steps": {
+          "pickCourse": {
+            "title": "Open a course",
+            "body": "Open the course you are teaching: the guide carries on there. No course yet? Create one first with the guide “Create a class and a course”."
+          },
+          "openAttendance": {
+            "title": "Open Attendance",
+            "body": "Each course has its own attendance."
+          },
+          "startSession": {
+            "title": "Start a session",
+            "body": "When class begins, start a session. Tick “Require students on campus” to check that students are at school when they check in."
+          },
+          "checkInCode": {
+            "title": "Show the check-in code",
+            "body": "Open the start check-in: a code appears for you to show on screen. It changes every minute. Students type it on their Check in page. Open the end check-in at the end of class to tell full from partial attendance."
+          },
+          "sessions": {
+            "title": "Follow attendance",
+            "body": "Every session is listed with each student present, partial or absent. Open a session to change a status by hand. Attendance can count in the CA."
+          }
+        }
+      },
+      "ca": {
+        "title": "Set up the CA",
+        "description": "Split the CA across attendance, assignments, participation and tests.",
+        "steps": {
+          "pickCourse": {
+            "title": "Open a course",
+            "body": "Open the course whose CA you want to set up: the guide carries on there. No course yet? Create one first with the guide “Create a class and a course”."
+          },
+          "openCa": {
+            "title": "Open the CA",
+            "body": "The continuous assessment of this course is worked out here, from everything students do in it."
+          },
+          "settings": {
+            "title": "Split the points",
+            "body": "Choose the CA total and give each part its points: attendance, assignments, participation and tests. A part with 0 points is left out. You can also count only a student's best tests."
+          },
+          "table": {
+            "title": "The class, ranked",
+            "body": "Each student's parts, their CA so far and final, missing work, and who is slipping. It updates by itself as marks come in."
+          },
+          "participation": {
+            "title": "Participation",
+            "body": "During class, tap +1 or −1 for a student who takes part. Their net taps give the participation points."
+          },
+          "export": {
+            "title": "Export",
+            "body": "Download the marks as an Excel file when you need to hand them in."
+          }
+        }
+      },
+      "tests": {
+        "title": "Make a test for the CA",
+        "description": "Write a test, share its link, start it in class, then release the results.",
+        "steps": {
+          "pickCourse": {
+            "title": "Open a course",
+            "body": "Open the course the test is for: the guide carries on there. No course yet? Create one first with the guide “Create a class and a course”."
+          },
+          "openTests": {
+            "title": "Open Tests",
+            "body": "A course's tests are all here."
+          },
+          "newTest": {
+            "title": "Create a test",
+            "body": "Open New test to write one."
+          },
+          "questions": {
+            "title": "Title and questions",
+            "body": "Give the test a title, such as CA 1. Then add multiple-choice questions (marked by themselves) or short-answer questions (you mark them, with a marking guide)."
+          },
+          "weight": {
+            "title": "Duration and weight",
+            "body": "Set how long the test lasts, and its weight: how much it counts among the course's tests in the CA."
+          },
+          "save": {
+            "title": "Save and get the link",
+            "body": "Save when the questions are ready. The test's page opens with the link to share; nothing starts yet.",
+            "button": "Save the test"
+          },
+          "share": {
+            "title": "Share the link, then start",
+            "body": "Send this link to the class. Students who open it wait until you press Start test: the timer then starts for everyone at once."
+          },
+          "release": {
+            "title": "Mark and release",
+            "body": "When it ends, see the results and confirm the short-answer marks. Then release the results: students see their marks, and the test counts in the CA."
+          }
+        }
+      },
+      "assignments": {
+        "title": "Give an assignment",
+        "description": "Write it, publish it, then grade what students hand in.",
+        "steps": {
+          "pickCourse": {
+            "title": "Open a course",
+            "body": "Open the course the assignment is for: the guide carries on there. No course yet? Create one first with the guide “Create a class and a course”."
+          },
+          "openAssignments": {
+            "title": "Open Assignments",
+            "body": "A course's assignments are all here."
+          },
+          "newAssignment": {
+            "title": "Create an assignment",
+            "body": "Open New assignment to write one."
+          },
+          "form": {
+            "title": "Write it",
+            "body": "Give it a title, instructions and a due date. Saving keeps it as a draft that students can't see yet."
+          },
+          "publish": {
+            "title": "Attach files, then publish",
+            "body": "Add any files students need, then publish: they get an email and hand in their work before the due date. You grade it, then release the grades, which count in the CA."
+          }
+        }
+      },
+      "lecturerCourse": {
+        "title": "Tour of a course",
+        "description": "What each button on a course page does.",
+        "steps": {
+          "hello": {
+            "title": "Your course",
+            "body": "Everything you do with this class for this course starts from this page. Here is what each button does."
+          },
+          "attendance": {
+            "title": "Attendance",
+            "body": "Start a session when class begins and show the check-in code."
+          },
+          "timetable": {
+            "title": "Timetable",
+            "body": "Set the weekly times of this course. They appear in your Schedule and on your students' dashboards."
+          },
+          "work": {
+            "title": "Tests and assignments",
+            "body": "Tests are taken in class on the students' phones; assignments are handed in by a due date. Both count in the CA."
+          },
+          "notes": {
+            "title": "Notes",
+            "body": "Share course notes and files by topic. Students can also practise each topic."
+          },
+          "ca": {
+            "title": "CA",
+            "body": "The continuous assessment, worked out from attendance, assignments, participation and tests."
+          },
+          "roster": {
+            "title": "Students",
+            "body": "Every student in the class follows the course. Exclude one who doesn't, or include a student from elsewhere."
+          }
+        }
+      },
+      "studentWelcome": {
+        "title": "Welcome tour",
+        "description": "Where things are, and how to start.",
+        "steps": {
+          "hello": {
+            "title": "Welcome to Clasync",
+            "body": "This short tour shows you around. Close it at any time: every guide stays under Help, the ? at the top."
+          },
+          "menu": {
+            "title": "Your menu",
+            "body": "Dashboard brings you back here. Join adds you to a class. Check in is where you confirm you're in class."
+          },
+          "join": {
+            "title": "Start here",
+            "body": "Join your class with the code your lecturer gave you. Its courses then appear on your dashboard."
+          },
+          "checklist": {
+            "title": "Your checklist",
+            "body": "It ticks itself off once you have joined a class."
+          },
+          "help": {
+            "title": "Guides, any time",
+            "body": "Open Help for step-by-step guides: joining a class, checking in and taking a test."
+          }
+        }
+      },
+      "joinClass": {
+        "title": "Join a class",
+        "description": "With the code or link from your lecturer.",
+        "steps": {
+          "openJoin": {
+            "title": "Open Join a class",
+            "body": "You need the class code from your lecturer or class rep. Got a link instead? Just open it."
+          },
+          "form": {
+            "title": "Enter the code",
+            "body": "Type the 6-letter code, and your matricule as written on your student card. No matricule yet? Leave it blank and add it later from your profile."
+          },
+          "after": {
+            "title": "You're in",
+            "body": "The class's courses now appear on your dashboard, with their tests, notes, assignments and your attendance."
+          }
+        }
+      },
+      "checkIn": {
+        "title": "Check in to class",
+        "description": "Confirm you're in class with the code on the screen.",
+        "steps": {
+          "openCheckIn": {
+            "title": "Open Check in",
+            "body": "When your lecturer takes attendance, you check in here."
+          },
+          "code": {
+            "title": "Type the code",
+            "body": "An open check-in appears here and on your dashboard. Type the code your lecturer shows on the screen: it changes every minute. Some classes also ask for your location to check you're on campus."
+          },
+          "after": {
+            "title": "Check in at the end too",
+            "body": "Your lecturer may open a second check-in at the end of class: check in again to count as fully present. Your attendance is on each course page."
+          }
+        }
+      },
+      "takeTest": {
+        "title": "Take a test",
+        "description": "How a test opens, the rules while it runs, and where your marks appear.",
+        "steps": {
+          "pickCourse": {
+            "title": "Open a course",
+            "body": "Open one of your courses: the guide carries on there. No course yet? Join your class first."
+          },
+          "myTests": {
+            "title": "Your tests",
+            "body": "Tests appear here. Your lecturer may also send the test link to the class: open it on the device you'll answer on."
+          },
+          "waiting": {
+            "title": "Wait for the start",
+            "body": "Open the test before it starts and wait: your lecturer starts it for everyone, and the first question opens by itself. Then press Begin to answer in full screen."
+          },
+          "leaving": {
+            "title": "Stay on the test",
+            "body": "Switching to another tab or app, or leaving full screen, counts as leaving. Too many exits, or one long absence, end the test for you. Keep your screen on. Your answers are saved as you go: hand in when you're done."
+          },
+          "results": {
+            "title": "Your marks",
+            "body": "Once your lecturer releases the results, your mark appears on the course page and counts in your CA."
+          }
+        }
+      },
+      "studentCourse": {
+        "title": "Tour of a course",
+        "description": "Where to find tests, notes, assignments, attendance and your CA.",
+        "steps": {
+          "hello": {
+            "title": "Your course",
+            "body": "Everything for this course is on this page."
+          },
+          "tests": {
+            "title": "Tests",
+            "body": "Tests to take, and your marks once they are released."
+          },
+          "notes": {
+            "title": "Notes",
+            "body": "Your lecturer's notes and files, by topic. Practise a topic to revise: it doesn't count for marks."
+          },
+          "assignments": {
+            "title": "Assignments",
+            "body": "Work to hand in, with its due date. Hand it in from the assignment's page."
+          },
+          "attendance": {
+            "title": "Attendance",
+            "body": "The sessions of this course, and whether you were present."
+          },
+          "ca": {
+            "title": "Your CA",
+            "body": "Your continuous assessment so far, part by part."
+          }
+        }
+      }
+    }
   }
 }

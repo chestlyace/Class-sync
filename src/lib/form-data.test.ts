@@ -18,12 +18,20 @@ describe('formString', () => {
     expect(formString(data, 'name')).toBe('')
     expect(formString(data, 'upload')).toBe('')
   })
+
+  it('returns an empty string when a malformed action request supplies no FormData', () => {
+    expect(formString(undefined, 'name')).toBe('')
+    expect(formString(null, 'name')).toBe('')
+    expect(formString({} as FormData, 'name')).toBe('')
+  })
 })
 
 describe('optionalCoordinate', () => {
-  it('is undefined for a missing or blank field', () => {
+  it('is undefined for a missing or blank field, or when the payload is absent', () => {
     expect(optionalCoordinate(fd({}), 'latitude')).toBeUndefined()
     expect(optionalCoordinate(fd({ latitude: '  ' }), 'latitude')).toBeUndefined()
+    expect(optionalCoordinate(undefined, 'latitude')).toBeUndefined()
+    expect(optionalCoordinate(null, 'latitude')).toBeUndefined()
   })
 
   it('parses a number', () => {

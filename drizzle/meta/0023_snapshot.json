@@ -1,5 +1,5 @@
 {
-  "id": "78c013c0-2077-4d0d-bb7f-a00d2c85c310",
+  "id": "b207acc0-4082-4e6c-b9a3-e7c4681e9416",
   "prevId": "9dd7ea8d-b119-49f5-995c-21c17c377262",
   "version": "7",
   "dialect": "postgresql",
@@ -318,7 +318,7 @@
       "checkConstraints": {
         "ai_usage_purpose_check": {
           "name": "ai_usage_purpose_check",
-          "value": "\"ai_usage\".\"purpose\" in ('assignment_marking', 'test_correction')"
+          "value": "\"ai_usage\".\"purpose\" in ('assignment_marking')"
         }
       },
       "isRLSEnabled": false
@@ -2601,6 +2601,264 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.ca_template": {
+      "name": "ca_template",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "settings": {
+          "name": "settings",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "ca_template_owner_name_idx": {
+          "name": "ca_template_owner_name_idx",
+          "columns": [
+            {
+              "expression": "owner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "lower(\"name\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "ca_template_owner_id_user_id_fk": {
+          "name": "ca_template_owner_id_user_id_fk",
+          "tableFrom": "ca_template",
+          "tableTo": "user",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ca_template_default": {
+      "name": "ca_template_default",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "template_id": {
+          "name": "template_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "built_in_id": {
+          "name": "built_in_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "ca_template_default_user_id_user_id_fk": {
+          "name": "ca_template_default_user_id_user_id_fk",
+          "tableFrom": "ca_template_default",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ca_template_default_template_id_ca_template_id_fk": {
+          "name": "ca_template_default_template_id_ca_template_id_fk",
+          "tableFrom": "ca_template_default",
+          "tableTo": "ca_template",
+          "columnsFrom": [
+            "template_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "ca_template_default_one_check": {
+          "name": "ca_template_default_one_check",
+          "value": "(\"ca_template_default\".\"template_id\" is null) <> (\"ca_template_default\".\"built_in_id\" is null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.ca_test_group": {
+      "name": "ca_test_group",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "course_id": {
+          "name": "course_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "points": {
+          "name": "points",
+          "type": "numeric(6, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "best_of": {
+          "name": "best_of",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "position": {
+          "name": "position",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "ca_test_group_course_name_idx": {
+          "name": "ca_test_group_course_name_idx",
+          "columns": [
+            {
+              "expression": "course_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "lower(\"name\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "ca_test_group_course_id_course_id_fk": {
+          "name": "ca_test_group_course_id_course_id_fk",
+          "tableFrom": "ca_test_group",
+          "tableTo": "course",
+          "columnsFrom": [
+            "course_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "ca_test_group_points_check": {
+          "name": "ca_test_group_points_check",
+          "value": "\"ca_test_group\".\"points\" >= 0"
+        },
+        "ca_test_group_best_of_check": {
+          "name": "ca_test_group_best_of_check",
+          "value": "\"ca_test_group\".\"best_of\" between 1 and 50"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.course_ca_settings": {
       "name": "course_ca_settings",
       "schema": "",
@@ -2930,6 +3188,19 @@
           "notNull": true,
           "default": 1
         },
+        "counts_in_ca": {
+          "name": "counts_in_ca",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "ca_group_id": {
+          "name": "ca_group_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "max_exits": {
           "name": "max_exits",
           "type": "smallint",
@@ -3079,6 +3350,19 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "course_test_ca_group_id_ca_test_group_id_fk": {
+          "name": "course_test_ca_group_id_ca_test_group_id_fk",
+          "tableFrom": "course_test",
+          "tableTo": "ca_test_group",
+          "columnsFrom": [
+            "ca_group_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "course_test_copied_from_id_course_test_id_fk": {

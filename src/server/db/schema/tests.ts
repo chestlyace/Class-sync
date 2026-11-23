@@ -16,6 +16,7 @@ import {
 } from 'drizzle-orm/pg-core'
 import { user } from './auth'
 import { course } from './course'
+import { caTestGroup } from './performance'
 
 export const QUESTION_KINDS = ['mcq', 'short'] as const
 export type QuestionKindDb = (typeof QUESTION_KINDS)[number]
@@ -49,6 +50,10 @@ export const courseTest = pgTable(
     shuffle: boolean('shuffle').notNull().default(true),
     // How much the test counts among the course's tests in the CA (like an assignment's weight).
     weight: numeric('weight', { precision: 6, scale: 2, mode: 'number' }).notNull().default(1),
+    // Off: a practice test, left out of the CA. A catch-up follows its original.
+    countsInCa: boolean('counts_in_ca').notNull().default(true),
+    // Which named CA of the course it counts in; null when the course has none (or it was deleted).
+    caGroupId: text('ca_group_id').references(() => caTestGroup.id, { onDelete: 'set null' }),
     maxExits: smallint('max_exits').notNull().default(3),
     maxAbsenceSeconds: smallint('max_absence_seconds').notNull().default(10),
     startedAt: timestamp('started_at', { withTimezone: true }),

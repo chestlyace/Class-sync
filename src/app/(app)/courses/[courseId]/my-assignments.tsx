@@ -29,7 +29,7 @@ export async function MyAssignments({ courseId }: { courseId: string }) {
   }))
 
   return (
-    <section aria-labelledby="my-assignments" className="flex flex-col gap-4">
+    <section aria-labelledby="my-assignments" data-tour="my-assignments" className="flex flex-col gap-4">
       <SectionHeading id="my-assignments">{t('myAssignments')}</SectionHeading>
       {!result.ok ? (
         <p role="alert" className="text-sm text-destructive">
