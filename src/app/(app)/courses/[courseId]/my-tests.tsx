@@ -29,7 +29,7 @@ export async function MyTests({ courseId }: { courseId: string }) {
   const result = await loadPage((ctx) => listMyTests(ctx, courseId))
 
   return (
-    <section aria-labelledby="my-tests" className="flex flex-col gap-4">
+    <section aria-labelledby="my-tests" data-tour="my-tests" className="flex flex-col gap-4">
       <SectionHeading id="my-tests">{t('title')}</SectionHeading>
       {!result.ok ? (
         <p role="alert" className="text-sm text-destructive">

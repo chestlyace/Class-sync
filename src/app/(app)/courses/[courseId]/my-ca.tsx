@@ -21,7 +21,7 @@ export async function MyCa({ courseId }: { courseId: string }) {
   const num = (value: number) => formatDecimal(value, locale);
 
   return (
-    <section aria-labelledby="my-ca" className="flex flex-col gap-4">
+    <section aria-labelledby="my-ca" data-tour="my-ca" className="flex flex-col gap-4">
       <SectionHeading id="my-ca">{t("title")}</SectionHeading>
       {!result.ok ? (
         <p role="alert" className="text-sm text-destructive">

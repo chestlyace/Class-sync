@@ -66,6 +66,7 @@ export default async function CoursePage({ params }: PageProps<'/courses/[course
             <>
               <Link
                 href={`/courses/${encodeURIComponent(course.id)}/attendance`}
+                data-tour="course-attendance"
                 className={buttonVariants({ variant: 'default' })}
               >
                 <ClipboardCheck aria-hidden="true" data-icon="inline-start" />
@@ -73,6 +74,7 @@ export default async function CoursePage({ params }: PageProps<'/courses/[course
               </Link>
               <Link
                 href={`/courses/${encodeURIComponent(course.id)}/timetable`}
+                data-tour="course-timetable"
                 className={buttonVariants({ variant: 'outline' })}
               >
                 <CalendarClock aria-hidden="true" data-icon="inline-start" />
@@ -80,6 +82,7 @@ export default async function CoursePage({ params }: PageProps<'/courses/[course
               </Link>
               <Link
                 href={`/courses/${encodeURIComponent(course.id)}/assignments`}
+                data-tour="course-assignments"
                 className={buttonVariants({ variant: 'outline' })}
               >
                 <NotebookPen aria-hidden="true" data-icon="inline-start" />
@@ -87,6 +90,7 @@ export default async function CoursePage({ params }: PageProps<'/courses/[course
               </Link>
               <Link
                 href={`/courses/${encodeURIComponent(course.id)}/tests`}
+                data-tour="course-tests"
                 className={buttonVariants({ variant: 'outline' })}
               >
                 <ListChecks aria-hidden="true" data-icon="inline-start" />
@@ -94,6 +98,7 @@ export default async function CoursePage({ params }: PageProps<'/courses/[course
               </Link>
               <Link
                 href={`/courses/${encodeURIComponent(course.id)}/notes`}
+                data-tour="course-notes"
                 className={buttonVariants({ variant: 'outline' })}
               >
                 <BookOpen aria-hidden="true" data-icon="inline-start" />
@@ -101,6 +106,7 @@ export default async function CoursePage({ params }: PageProps<'/courses/[course
               </Link>
               <Link
                 href={`/courses/${encodeURIComponent(course.id)}/performance`}
+                data-tour="course-ca"
                 className={buttonVariants({ variant: 'outline' })}
               >
                 <ChartColumn aria-hidden="true" data-icon="inline-start" />
@@ -182,7 +188,7 @@ async function LecturerRoster({
   const t = await getTranslations('courses.page')
   return (
     <>
-      <section aria-labelledby="course-roster" className="flex flex-col gap-4">
+      <section aria-labelledby="course-roster" data-tour="course-roster" className="flex flex-col gap-4">
         <SectionHeading id="course-roster">
           {t('roster')} · {t('rosterCount', { count: roster.length })}
         </SectionHeading>

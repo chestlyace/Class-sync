@@ -43,7 +43,7 @@ export default async function TestListPage({ params }: PageProps<'/courses/[cour
         description={`${course.title} · ${course.className}`}
         actions={
           <>
-            <Link href={`${courseHref}/tests/new`} className={buttonVariants({ variant: 'default' })}>
+            <Link href={`${courseHref}/tests/new`} data-tour="new-test" className={buttonVariants({ variant: 'default' })}>
               <Plus aria-hidden="true" data-icon="inline-start" />
               {t('new')}
             </Link>

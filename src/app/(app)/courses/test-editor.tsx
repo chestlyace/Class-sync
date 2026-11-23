@@ -304,7 +304,7 @@ export function TestEditor({
           </FieldGroup>
 
           <TestError state={state} />
-          <Button type="submit" size="lg" pending={pending}>
+          <Button type="submit" size="lg" pending={pending} data-tour="test-save">
             <Save aria-hidden="true" data-icon="inline-start" />
             {pending ? t('saving') : t('save')}
           </Button>

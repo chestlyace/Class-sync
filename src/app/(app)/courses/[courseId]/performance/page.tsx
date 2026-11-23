@@ -41,12 +41,12 @@ export default async function CoursePerformancePage({ params }: PageProps<'/cour
         description={`${course.title} · ${course.className}`}
         actions={
           <>
-            <Link href={`${courseHref}/performance/participation`} className={buttonVariants({ variant: 'default' })}>
+            <Link href={`${courseHref}/performance/participation`} data-tour="ca-participation" className={buttonVariants({ variant: 'default' })}>
               <Hand aria-hidden="true" data-icon="inline-start" />
               {t('participationLink')}
             </Link>
             {/* A file download, not a page: a plain link, so the router doesn't prefetch it. */}
-            <a href={`${courseHref}/performance/export`} download className={buttonVariants({ variant: 'outline' })}>
+            <a href={`${courseHref}/performance/export`} download data-tour="ca-export" className={buttonVariants({ variant: 'outline' })}>
               <Download aria-hidden="true" data-icon="inline-start" />
               {t('export')}
             </a>
@@ -58,7 +58,7 @@ export default async function CoursePerformancePage({ params }: PageProps<'/cour
         }
       />
 
-      <section aria-labelledby="ca-class" className="flex flex-col gap-4">
+      <section aria-labelledby="ca-class" data-tour="ca-table" className="flex flex-col gap-4">
         <SectionHeading id="ca-class">
           {t('classTitle')} · {t('studentCount', { count: rows.length })}
         </SectionHeading>
@@ -85,7 +85,7 @@ export default async function CoursePerformancePage({ params }: PageProps<'/cour
         )}
       </section>
 
-      <section aria-labelledby="ca-settings" className="flex flex-col gap-4">
+      <section aria-labelledby="ca-settings" data-tour="ca-settings" className="flex flex-col gap-4">
         <SectionHeading id="ca-settings">{t('settings.title')}</SectionHeading>
         <p className="text-sm text-muted-foreground">{t('settings.hint')}</p>
         <Panel>

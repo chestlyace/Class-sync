@@ -8,7 +8,7 @@ import { buttonVariants } from '@/components/ui/button'
 export async function MyNotes({ courseId }: { courseId: string }) {
   const t = await getTranslations('notes.student.section')
   return (
-    <section aria-labelledby="my-notes" className="flex flex-col gap-4">
+    <section aria-labelledby="my-notes" data-tour="my-notes" className="flex flex-col gap-4">
       <SectionHeading id="my-notes">{t('title')}</SectionHeading>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="min-w-0 flex-1 text-muted-foreground">{t('body')}</p>

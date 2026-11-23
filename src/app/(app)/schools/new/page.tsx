@@ -19,7 +19,7 @@ export default async function NewSchoolPage() {
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
       <PageHeader eyebrow={t('step')} title={t('title')} description={t('description')} />
-      <Panel>
+      <Panel data-tour="school-form">
         <SchoolSearch />
       </Panel>
       <section aria-labelledby="new-school" className="flex flex-col gap-5">

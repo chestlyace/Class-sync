@@ -39,12 +39,12 @@ export default async function CheckInPage({ searchParams }: PageProps<'/check-in
       <PageHeader title={t('title')} description={t('description')} />
       <AutoRefresh intervalMs={STUDENT_POLL_MS} />
       {open.data.length === 0 ? (
-        <Panel className="flex flex-col items-start gap-2">
+        <Panel data-tour="check-in" className="flex flex-col items-start gap-2">
           <h2 className="text-lg font-semibold">{t('emptyTitle')}</h2>
           <p className="text-muted-foreground">{t('emptyBody')}</p>
         </Panel>
       ) : (
-        <ul className="flex flex-col gap-4">
+        <ul data-tour="check-in" className="flex flex-col gap-4">
           {open.data.map((c) => (
             <li key={c.windowId}>
               <Panel className="flex max-w-xl flex-col gap-5">
