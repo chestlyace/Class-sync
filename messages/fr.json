@@ -2921,8 +2921,15 @@
         "send_password_reset": "Lien de réinitialisation du mot de passe envoyé",
         "school_update": "École modifiée",
         "school_delete": "École supprimée",
-        "school_merge": "Écoles fusionnées"
+        "school_merge": "Écoles fusionnées",
+        "broadcast_send": "Message envoyé à un groupe"
       },
+      "audiences": {
+        "lecturers": "les enseignants",
+        "students": "les étudiants",
+        "everyone": "tout le monde"
+      },
+      "broadcast": "Message à {audience} : {subject} ({count, plural, one {# personne} other {# personnes}})",
       "school": {
         "update": "{before}, {beforeTown} → {after}, {town}",
         "delete": "{name}, {town} · {classes, plural, one {# classe} other {# classes}}",

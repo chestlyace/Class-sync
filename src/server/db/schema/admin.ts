@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { boolean, check, index, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
 import { user } from './auth'
+import type { BroadcastAudience } from './broadcast'
 
 export const ADMIN_ACTIONS = [
   'suspend',
@@ -11,6 +12,7 @@ export const ADMIN_ACTIONS = [
   'school_update',
   'school_delete',
   'school_merge',
+  'broadcast_send',
 ] as const
 export type AdminActionKind = (typeof ADMIN_ACTIONS)[number]
 
@@ -21,13 +23,15 @@ export type AdminActionDetails =
   | { kind: 'school_update'; before: { name: string; town: string }; after: { name: string; town: string } }
   | { kind: 'school_delete'; school: SchoolRef; classes: number; courses: number; students: number }
   | { kind: 'school_merge'; from: SchoolRef; into: SchoolRef; classesMoved: number }
+  | { kind: 'broadcast_send'; broadcastId: string; audience: BroadcastAudience; recipients: number; subjectEn: string }
 
 export const OPS_EVENT_KINDS = ['cron_reminders', 'cron_schedule', 'email_sent', 'email_failed', 'mcp_request', 'push_sent', 'push_failed'] as const
 export type OpsEventKind = (typeof OPS_EVENT_KINDS)[number]
 
 /**
  * Audit trail of what an admin did to which account or school. Rows are never deleted with their
- * users; a school row has no foreign key, since a deleted or merged school is gone afterwards.
+ * users; a school row has no foreign key, since a deleted or merged school is gone afterwards. A broadcast
+ * row has no target at all.
  */
 export const adminAction = pgTable(
   'admin_action',
@@ -48,9 +52,12 @@ export const adminAction = pgTable(
   (t) => [
     check(
       'admin_action_action_check',
-      sql`${t.action} in ('suspend', 'unsuspend', 'revoke_sessions', 'resend_verification', 'send_password_reset', 'school_update', 'school_delete', 'school_merge')`,
+      sql`${t.action} in ('suspend', 'unsuspend', 'revoke_sessions', 'resend_verification', 'send_password_reset', 'school_update', 'school_delete', 'school_merge', 'broadcast_send')`,
     ),
-    check('admin_action_one_target_check', sql`(${t.targetUserId} is null) <> (${t.targetSchoolId} is null)`),
+    check(
+      'admin_action_one_target_check',
+      sql`(${t.action} = 'broadcast_send' and ${t.targetUserId} is null and ${t.targetSchoolId} is null) or ((${t.targetUserId} is null) <> (${t.targetSchoolId} is null))`,
+    ),
     index('admin_action_at_idx').on(t.at),
   ],
 )
