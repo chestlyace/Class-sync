@@ -6,6 +6,7 @@ import { sendPush } from '@/server/push/send'
 import { createTestDb } from '@/test/db'
 import {
   createFileItem,
+  createFileItems,
   createLink,
   createNote,
   moveItem,
@@ -83,13 +84,13 @@ describe('creating items', () => {
     expect(JSON.stringify(note.body)).toContain('click')
   })
 
-  it('rejects a bad link url, title, body and file', async () => {
+  it('rejects a bad link url, an overlong title, a bad body and a bad file', async () => {
     const base = { courseId: fx.courseA, topicId: fx.topicA }
     await expect(createLink(fx.lecturer, { ...base, title: 'L', url: 'ftp://x' })).rejects.toMatchObject({
       code: 'VALIDATION',
       details: { fields: ['url'] },
     })
-    await expect(createLink(fx.lecturer, { ...base, title: '', url: 'https://x.org' })).rejects.toMatchObject({
+    await expect(createLink(fx.lecturer, { ...base, title: 'a'.repeat(201), url: 'https://x.org' })).rejects.toMatchObject({
       details: { fields: ['title'] },
     })
     await expect(createNote(fx.lecturer, { ...base, title: 'N', body: 'not blocks' })).rejects.toMatchObject({
@@ -157,6 +158,61 @@ describe('creating items', () => {
     await createLink(fx.lecturer, { ...base, title: 'One', url: 'https://one.org' })
     await createLink(fx.lecturer, { ...base, title: 'Two', url: 'https://two.org' })
     expect(await itemTitles(fx.courseA, fx.topicA)).toEqual(['One', 'Two'])
+  })
+
+  it('derives a missing title from the note body, the link host and the file name', async () => {
+    const base = { courseId: fx.courseA, topicId: fx.topicA }
+    await createNote(fx.lecturer, { ...base, title: '', body: doc('Cell membranes') })
+    await createLink(fx.lecturer, { ...base, title: ' ', url: 'https://www.example.com/path' })
+    const fileId = await insertResourceFile(db, fx.lecturer, 'lecture-3.pdf')
+    await createFileItem(fx.lecturer, { ...base, title: '', fileId })
+    expect(await itemTitles(fx.courseA, fx.topicA)).toEqual(['Cell membranes', 'example.com', 'lecture-3.pdf'])
+  })
+
+  it('uses the fallback when a blank note has no text, and keeps the title on a blank edit', async () => {
+    const base = { courseId: fx.courseA, topicId: fx.topicA }
+    const { id } = await createNote(fx.lecturer, { ...base, title: '', body: [], fallbackTitle: 'Untitled note' })
+    expect(await itemTitles(fx.courseA, fx.topicA)).toEqual(['Untitled note'])
+    await updateNote(fx.lecturer, id, { title: '  ', body: doc('New body') })
+    expect((await getNote(fx.lecturer, fx.courseA, id)).title).toBe('Untitled note')
+  })
+})
+
+describe('bulk file upload', () => {
+  const base = () => ({ courseId: fx.courseA, topicId: fx.topicA })
+
+  it('creates one titled note per file, in order', async () => {
+    const a = await insertResourceFile(db, fx.lecturer, 'a.pdf')
+    const b = await insertResourceFile(db, fx.lecturer, 'b.pdf')
+    const result = await createFileItems(fx.lecturer, { ...base(), fileIds: [a, b] })
+    expect(result.ids).toHaveLength(2)
+    expect(await itemTitles(fx.courseA, fx.topicA)).toEqual(['a.pdf', 'b.pdf'])
+  })
+
+  it('rolls the whole batch back when one file is unavailable', async () => {
+    const a = await insertResourceFile(db, fx.lecturer, 'a.pdf')
+    const theirs = await insertResourceFile(db, fx.colleague, 'c.pdf')
+    await expect(createFileItems(fx.lecturer, { ...base(), fileIds: [a, theirs] })).rejects.toMatchObject({
+      code: 'VALIDATION',
+      details: { fields: ['file'] },
+    })
+    expect(await itemTitles(fx.courseA, fx.topicA)).toEqual([])
+    // The good file was not claimed by the rolled-back batch, so it can still be used afterwards.
+    await expect(createFileItem(fx.lecturer, { ...base(), title: 'Later', fileId: a })).resolves.toBeDefined()
+  })
+
+  it('rejects an empty batch, duplicates and more than ten files', async () => {
+    await expect(createFileItems(fx.lecturer, { ...base(), fileIds: [] })).rejects.toMatchObject({
+      details: { fields: ['file'] },
+    })
+    const a = await insertResourceFile(db, fx.lecturer, 'a.pdf')
+    await expect(createFileItems(fx.lecturer, { ...base(), fileIds: [a, a] })).rejects.toMatchObject({
+      details: { fields: ['file'] },
+    })
+    const many = await Promise.all(Array.from({ length: 11 }, (_, i) => insertResourceFile(db, fx.lecturer, `${i}.pdf`)))
+    await expect(createFileItems(fx.lecturer, { ...base(), fileIds: many })).rejects.toMatchObject({
+      details: { fields: ['file'] },
+    })
   })
 })
 

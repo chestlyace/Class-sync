@@ -2290,6 +2290,15 @@
         "file": "Upload a file",
         "link": "Add a link"
       },
+      "bulk": {
+        "open": "Upload files",
+        "title": "Upload files",
+        "body": "Choose several files at once. Each one becomes its own note in this topic, named after its file.",
+        "files": "Files",
+        "hint": "PDF, Word, PowerPoint or images, up to {maxMb} MB each. At most {max} files at a time.",
+        "submit": "Upload files",
+        "submitMany": "Upload {count} files"
+      },
       "newTopic": {
         "open": "New topic",
         "title": "New topic",
@@ -2362,6 +2371,8 @@
         "inTopic": "In the topic \"{topic}\"",
         "sharedNote": "This item is also in: {courses}. Your changes apply in every one of these courses.",
         "title": "Title",
+        "titleHint": "Optional. Leave it empty to use the file name, the first line of the note, or the link's address.",
+        "untitled": "Untitled note",
         "titlePlaceholder": {
           "note": "Week 3 · Sorting algorithms",
           "file": "Lecture 3 slides",
@@ -2379,7 +2390,7 @@
       }
     },
     "errors": {
-      "title": "Give it a title of 1 to 200 characters.",
+      "title": "Give it a title of at most 200 characters.",
       "body": "The note can't be saved. It may be too long: shorten it and try again.",
       "file": "Upload a file first. A file already used by another item can't be used again.",
       "url": "Enter a web address that starts with http:// or https://.",

@@ -14,7 +14,8 @@ import {
 /**
  * Notes, sharing and practice, end to end. A lecturer with two classes and a "Database Systems"
  * course in each makes the topics "Normalisation" and "SQL joins" (hiding the second), writes a note
- * (a heading, a bullet and a 300-character line of code), adds a link and uploads slides, shares the
+ * (a heading, a bullet and a 300-character line of code), adds a link, uploads slides, then uploads two
+ * files at once into the same topic (each titled after its file), shares the
  * note to the other course and renames it there. Practice for "Normalisation": one multiple choice
  * and one short answer with a guide. A student of the first class sees only "Normalisation", with
  * NEW pills; reads the note (no sideways scroll), which clears its NEW; searches; practises and
@@ -25,6 +26,8 @@ import {
  */
 
 const SLIDES = path.join(__dirname, 'fixtures', 'slides.pptx')
+const PDF = path.join(__dirname, 'fixtures', 'answer.pdf')
+const PHOTO = path.join(__dirname, 'fixtures', 'photo.jpg')
 
 const COURSE = 'Database Systems'
 const LINK_URL = 'https://www.geeksforgeeks.org/dbms/'
@@ -194,6 +197,19 @@ test('notes, sharing and practice', async ({
       await expectNoHorizontalScroll(lecturer)
     })
 
+    await test.step('lecturer uploads two files at once; each is named after its file', async () => {
+      await topicCard(lecturer, 'Normalisation').getByRole('button', { name: 'Upload files', exact: true }).click()
+      const dialog = lecturer.getByRole('dialog')
+      await dialog.locator('input[type="file"]').setInputFiles([PDF, PHOTO])
+      await expect(dialog.getByRole('link', { name: 'answer.pdf', exact: true })).toBeVisible()
+      await expect(dialog.getByRole('link', { name: 'photo.jpg', exact: true })).toBeVisible()
+      await dialog.getByRole('button', { name: 'Upload 2 files', exact: true }).click()
+      await expect(lecturer).toHaveURL(/\/courses\/[^/]+\/notes$/)
+      await expect(topicCard(lecturer, 'Normalisation').getByText('answer.pdf', { exact: true })).toBeVisible()
+      await expect(topicCard(lecturer, 'Normalisation').getByText('photo.jpg', { exact: true })).toBeVisible()
+      await expectNoHorizontalScroll(lecturer)
+    })
+
     // ---- 3. Share to course 2; an edit shows up there -------------------------------------------
     await test.step('the note is shared to the second course; renaming it in course 1 renames it in course 2', async () => {
       await lecturer.getByRole('button', { name: `Options for ${noteTitle}`, exact: true }).click()
@@ -260,7 +276,7 @@ test('notes, sharing and practice', async ({
       await expect(student.getByRole('heading', { level: 2, name: '1 · Normalisation', exact: true })).toBeVisible()
       await expect(student.getByText('SQL joins')).toHaveCount(0)
       expect(await student.content()).not.toContain('SQL joins')
-      await expect(student.getByText('New', { exact: true })).toHaveCount(3)
+      await expect(student.getByText('New', { exact: true })).toHaveCount(5)
       await expect(student.getByText('Practise this topic', { exact: true })).toBeVisible()
       await expectNoHorizontalScroll(student)
 
@@ -279,7 +295,7 @@ test('notes, sharing and practice', async ({
 
       await student.getByRole('link', { name: 'All notes', exact: true }).first().click()
       await expect(student).toHaveURL(/\/courses\/[^/]+\/notes$/)
-      await expect(student.getByText('New', { exact: true })).toHaveCount(2)
+      await expect(student.getByText('New', { exact: true })).toHaveCount(4)
       await expect(
         student.getByRole('listitem').filter({ hasText: noteTitle }).getByText('New', { exact: true }),
       ).toHaveCount(0)

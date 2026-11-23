@@ -2290,6 +2290,15 @@
         "file": "Téléverser un fichier",
         "link": "Ajouter un lien"
       },
+      "bulk": {
+        "open": "Téléverser des fichiers",
+        "title": "Téléverser des fichiers",
+        "body": "Choisissez plusieurs fichiers à la fois. Chacun devient sa propre note dans ce thème, nommée d'après son fichier.",
+        "files": "Fichiers",
+        "hint": "PDF, Word, PowerPoint ou images, jusqu'à {maxMb} Mo chacun. Au plus {max} fichiers à la fois.",
+        "submit": "Téléverser les fichiers",
+        "submitMany": "Téléverser {count} fichiers"
+      },
       "newTopic": {
         "open": "Nouveau thème",
         "title": "Nouveau thème",
@@ -2362,6 +2371,8 @@
         "inTopic": "Dans le thème « {topic} »",
         "sharedNote": "Cet élément est aussi dans : {courses}. Vos modifications s'appliquent dans chacun de ces cours.",
         "title": "Titre",
+        "titleHint": "Facultatif. Laissez vide pour utiliser le nom du fichier, la première ligne de la note ou l'adresse du lien.",
+        "untitled": "Note sans titre",
         "titlePlaceholder": {
           "note": "Semaine 3 · Algorithmes de tri",
           "file": "Diapositives du cours 3",
@@ -2379,7 +2390,7 @@
       }
     },
     "errors": {
-      "title": "Donnez-lui un titre de 1 à 200 caractères.",
+      "title": "Donnez-lui un titre d'au plus 200 caractères.",
       "body": "La note ne peut pas être enregistrée. Elle est peut-être trop longue : raccourcissez-la et réessayez.",
       "file": "Téléversez d'abord un fichier. Un fichier déjà utilisé par un autre élément ne peut pas servir de nouveau.",
       "url": "Saisissez une adresse web qui commence par http:// ou https://.",
