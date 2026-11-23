@@ -1,13 +1,13 @@
 'use client'
 
-import { Ban, LogOut, MailCheck, RotateCcw } from 'lucide-react'
+import { Ban, KeyRound, LogOut, MailCheck, RotateCcw } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useId } from 'react'
 import { ConfirmAction } from '@/components/confirm-action'
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import type { ActionResult } from '@/lib/action-result'
-import { resendVerificationAction, revokeSessionsAction, suspendAction, unsuspendAction } from './actions'
+import { resendVerificationAction, revokeSessionsAction, sendPasswordResetAction, suspendAction, unsuspendAction } from './actions'
 
 const REASON_MAX = 500
 
@@ -45,6 +45,7 @@ export function PersonActions({
   canUnsuspend,
   canRevoke,
   canResend,
+  canSendReset,
 }: {
   targetId: string
   name: string
@@ -53,6 +54,7 @@ export function PersonActions({
   canUnsuspend: boolean
   canRevoke: boolean
   canResend: boolean
+  canSendReset: boolean
 }) {
   const t = useTranslations('admin.actions')
   const submit = submitFor(targetId)
@@ -68,6 +70,19 @@ export function PersonActions({
           title={t('resend.title')}
           body={t('resend.body', { email })}
           confirmLabel={t('resend.confirm')}
+        >
+          <ReasonField />
+        </ConfirmAction>
+      )}
+      {canSendReset && (
+        <ConfirmAction
+          action={submit(sendPasswordResetAction)}
+          fields={fields}
+          triggerLabel={t('reset.trigger')}
+          triggerIcon={<KeyRound aria-hidden="true" data-icon="inline-start" />}
+          title={t('reset.title')}
+          body={t('reset.body', { email })}
+          confirmLabel={t('reset.confirm')}
         >
           <ReasonField />
         </ConfirmAction>

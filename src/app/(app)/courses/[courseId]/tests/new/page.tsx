@@ -5,6 +5,7 @@ import { ErrorState } from '@/components/error-state'
 import { PageHeader } from '@/components/page-header'
 import { buttonVariants } from '@/components/ui/button'
 import { requireCourseOwner, type CourseSummary } from '@/server/courses/service'
+import { getCaSettings } from '@/server/performance/service'
 import { loadPage } from '../../../../load-page'
 import { TestEditor } from '../../../test-editor'
 
@@ -16,12 +17,15 @@ export async function generateMetadata() {
 export default async function NewTestPage({ params }: PageProps<'/courses/[courseId]/tests/new'>) {
   const { courseId } = await params
   const t = await getTranslations('tests.lecturer')
-  const view = await loadPage<{ course: CourseSummary; userId: string }>(async (ctx) => ({
-    course: await requireCourseOwner(ctx, courseId), // lecturer of this course only
-    userId: ctx.user.id,
-  }))
+  const view = await loadPage<{ course: CourseSummary; userId: string; caGroups: { id: string; name: string }[] }>(
+    async (ctx) => {
+      const course = await requireCourseOwner(ctx, courseId) // lecturer of this course only
+      const ca = await getCaSettings(ctx.db, courseId)
+      return { course, userId: ctx.user.id, caGroups: ca.groups.flatMap((g) => (g.id ? [{ id: g.id, name: g.name }] : [])) }
+    },
+  )
   if (!view.ok) return <ErrorState code={view.code} />
-  const { course, userId } = view.data
+  const { course, userId, caGroups } = view.data
 
   return (
     <>
@@ -36,7 +40,7 @@ export default async function NewTestPage({ params }: PageProps<'/courses/[cours
           </Link>
         }
       />
-      <TestEditor courseId={course.id} testId={null} userId={userId} saved={null} />
+      <TestEditor courseId={course.id} testId={null} userId={userId} saved={null} caGroups={caGroups} />
     </>
   )
 }

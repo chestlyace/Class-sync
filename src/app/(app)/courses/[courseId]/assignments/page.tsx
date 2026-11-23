@@ -40,7 +40,7 @@ export default async function AssignmentListPage({ params }: PageProps<'/courses
         description={`${course.title} · ${course.className}`}
         actions={
           <>
-            <Link href={`${courseHref}/assignments/new`} className={buttonVariants({ variant: 'default' })}>
+            <Link href={`${courseHref}/assignments/new`} data-tour="new-assignment" className={buttonVariants({ variant: 'default' })}>
               <Plus aria-hidden="true" data-icon="inline-start" />
               {t('new')}
             </Link>

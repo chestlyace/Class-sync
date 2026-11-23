@@ -181,10 +181,10 @@ async function LecturerActions() {
       <Link href="/schools/new" className={buttonVariants({ variant: 'outline' })}>
         {t('newSchool')}
       </Link>
-      <Link href="/classes/new" className={buttonVariants({ variant: 'outline' })}>
+      <Link href="/classes/new" data-tour="new-class" className={buttonVariants({ variant: 'outline' })}>
         {t('newClass')}
       </Link>
-      <Link href="/courses/new" className={buttonVariants({ variant: 'contrast' })}>
+      <Link href="/courses/new" data-tour="new-course" className={buttonVariants({ variant: 'contrast' })}>
         <Plus aria-hidden="true" data-icon="inline-start" />
         {t('newCourse')}
       </Link>
@@ -195,7 +195,7 @@ async function LecturerActions() {
 async function StudentActions() {
   const t = await getTranslations('dashboard')
   return (
-    <Link href="/join" className={buttonVariants()}>
+    <Link href="/join" data-tour="join-class" className={buttonVariants()}>
       <KeyRound aria-hidden="true" data-icon="inline-start" />
       {t('joinClass')}
     </Link>
@@ -320,6 +320,7 @@ async function CourseCard({
   return (
     <Link
       href={`/courses/${encodeURIComponent(course.id)}`}
+      data-tour="course-card"
       className="group flex h-full min-h-36 flex-col gap-1 rounded-2xl border bg-card px-5 py-4 outline-none transition-colors duration-150 hover:border-input focus-visible:ring-3 focus-visible:ring-ring/50"
     >
       <span className="font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase">{meta}</span>

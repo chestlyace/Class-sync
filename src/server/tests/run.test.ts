@@ -690,11 +690,11 @@ describe('running a test (lecturer)', () => {
     expect(results.test).toMatchObject({ id: q.test.id, state: 'ended', totalMarks: 9, hasShort: true, joined: 4 })
     expect(results.pending).toBe(1)
     expect(results.rows).toEqual([
-      { studentId: alice.user.id, name: 'Alice', matricule: 'UB1', status: 'handed_in', score: 2, outOf: 9, pendingShort: 1 },
-      { studentId: bob.user.id, name: 'Bob', matricule: 'UB2', status: 'handed_in', score: 5, outOf: 9, pendingShort: 0 },
-      { studentId: carol.user.id, name: 'Carol', matricule: 'UB3', status: 'not_joined', score: 0, outOf: 9, pendingShort: 0 },
-      { studentId: dave.user.id, name: 'Dave', matricule: 'UB4', status: 'ended', score: 6.5, outOf: 9, pendingShort: 0 },
-      { studentId: erin.user.id, name: 'Erin', matricule: 'UB5', status: 'handed_in', score: 0, outOf: 9, pendingShort: 0 },
+      { studentId: alice.user.id, name: 'Alice', matricule: 'UB1', status: 'handed_in', score: 2, outOf: 9, pendingShort: 1, catchUp: null },
+      { studentId: bob.user.id, name: 'Bob', matricule: 'UB2', status: 'handed_in', score: 5, outOf: 9, pendingShort: 0, catchUp: null },
+      { studentId: carol.user.id, name: 'Carol', matricule: 'UB3', status: 'not_joined', score: 0, outOf: 9, pendingShort: 0, catchUp: null },
+      { studentId: dave.user.id, name: 'Dave', matricule: 'UB4', status: 'ended', score: 6.5, outOf: 9, pendingShort: 0, catchUp: null },
+      { studentId: erin.user.id, name: 'Erin', matricule: 'UB5', status: 'handed_in', score: 0, outOf: 9, pendingShort: 0, catchUp: null },
     ])
   })
 

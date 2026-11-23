@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_SETTINGS, SLIP_ATTENDANCE, SLIP_MIN_SESSIONS, SLIP_RATIO, validateSettings } from './rules'
+import {
+  BUILT_IN_TEMPLATE_IDS,
+  builtInSettings,
+  DEFAULT_SETTINGS,
+  GROUP_NAME_MAX,
+  isBuiltInTemplateId,
+  MAX_GROUPS,
+  SLIP_ATTENDANCE,
+  SLIP_MIN_SESSIONS,
+  SLIP_RATIO,
+  validateSettings,
+} from './rules'
 
 describe('constants', () => {
   it('has the agreed defaults and slip thresholds', () => {
@@ -11,6 +22,7 @@ describe('constants', () => {
       testPoints: 0,
       participationTarget: 5,
       testsBestOf: null,
+      groups: [],
     })
     expect(SLIP_RATIO).toBe(0.5)
     expect(SLIP_ATTENDANCE).toBe(0.75)
@@ -100,5 +112,72 @@ describe('validateSettings', () => {
     expect(tiny).toEqual(DEFAULT_SETTINGS)
     expect(Object.is((tiny as { testPoints: number }).testPoints, 0)).toBe(true)
     expect(validateSettings({ ...DEFAULT_SETTINGS, testPoints: -0 })).toEqual(DEFAULT_SETTINGS)
+  })
+})
+
+describe('named CAs', () => {
+  const split = (groups: unknown) => validateSettings({ ...DEFAULT_SETTINGS, assignmentPoints: 10, groups })
+
+  it('takes the test points from their sum, trims names and drops the course-wide best N', () => {
+    const r = validateSettings({
+      ...DEFAULT_SETTINGS,
+      assignmentPoints: 10,
+      testPoints: 0,
+      testsBestOf: 3,
+      groups: [
+        { id: null, name: ' CA 1 ', points: 4.5, bestOf: 2 },
+        { id: 'g2', name: 'CA 2', points: 5.5, bestOf: null },
+      ],
+    })
+    expect(r).toEqual({
+      ...DEFAULT_SETTINGS,
+      assignmentPoints: 10,
+      testPoints: 10,
+      testsBestOf: null,
+      groups: [
+        { id: null, name: 'CA 1', points: 4.5, bestOf: 2 },
+        { id: 'g2', name: 'CA 2', points: 5.5, bestOf: null },
+      ],
+    })
+  })
+
+  it('still needs the parts to add up to the total', () => {
+    expect(split([{ name: 'CA 1', points: 9, bestOf: null }])).toEqual({ error: 'sum' })
+  })
+
+  it('refuses blank, too long and repeated names (case ignored)', () => {
+    expect(split([{ name: '  ', points: 10, bestOf: null }])).toEqual({ error: 'groupName' })
+    expect(split([{ name: 'x'.repeat(GROUP_NAME_MAX + 1), points: 10, bestOf: null }])).toEqual({ error: 'groupName' })
+    expect(
+      split([
+        { name: 'CA', points: 5, bestOf: null },
+        { name: 'ca', points: 5, bestOf: null },
+      ]),
+    ).toEqual({ error: 'groupName' })
+  })
+
+  it('refuses unreadable or out-of-range points and best N, too many CAs, and the wrong shape', () => {
+    expect(split([{ name: 'CA 1', points: Number.NaN, bestOf: null }])).toEqual({ error: 'range' })
+    expect(split([{ name: 'CA 1', points: 10, bestOf: 0 }])).toEqual({ error: 'range' })
+    expect(split([{ name: 'CA 1', points: 10.001, bestOf: null }])).toEqual({ error: 'decimals' })
+    const many = Array.from({ length: MAX_GROUPS + 1 }, (_, i) => ({ name: `CA ${i}`, points: 0, bestOf: null }))
+    expect(split(many)).toEqual({ error: 'groups' })
+    expect(split('CA 1')).toEqual({ error: 'shape' })
+    expect(split([{ name: 'CA 1', points: '10', bestOf: null }])).toEqual({ error: 'shape' })
+  })
+})
+
+describe('built-in templates', () => {
+  it('each one is valid settings', () => {
+    for (const id of BUILT_IN_TEMPLATE_IDS) {
+      const settings = builtInSettings(id, (n) => `CA ${n}`)
+      expect(validateSettings(settings), id).toEqual(settings)
+    }
+  })
+
+  it('names the named CAs as asked, in order', () => {
+    expect(builtInSettings('twoCas', (n) => `CC ${n}`).groups.map((g) => g.name)).toEqual(['CC 1', 'CC 2'])
+    expect(isBuiltInTemplateId('twoCas')).toBe(true)
+    expect(isBuiltInTemplateId('constructor')).toBe(false)
   })
 })

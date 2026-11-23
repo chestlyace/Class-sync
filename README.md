@@ -155,6 +155,24 @@ How it behaves:
 
 ## Deploying
 
+### Heroku (from November 2026)
+
+Clasync is moving from Vercel + Prisma Postgres to Heroku. Until the domain is switched, the Vercel setup below stays live, and the code runs on both.
+
+| | Production | Staging |
+|---|---|---|
+| Heroku app | `clasync` (Europe) | `clasync-staging` (Europe), switched off between uses |
+| Dyno | 1 Basic web dyno: the site, the background jobs and the daily runs | same |
+| Database | Heroku Postgres Essential-0 | its own Essential-0 while in use |
+| Files | private S3 bucket in eu-west-3 (`STORAGE_DRIVER=s3`) | `STORAGE_DRIVER=local` (lost on restart) |
+
+- `Procfile`: `web` runs `next start`; `release` runs `scripts/migrate.mjs` before each new version goes live, and a failed migration stops the release.
+- Background jobs (class notices, AI marking) and the two daily runs (03:00 and 06:00 UTC) are pg-boss jobs in the app's own database (schema `pgboss`), worked inside the web process (`src/server/jobs/`). `QUEUE_DRIVER` overrides the choice.
+- `APP_ENV=production` or `staging` tells the app where it runs (Vercel's `VERCEL_ENV` is still read when it is unset).
+- AWS (S3 and Bedrock) signs in with the access key of the IAM user `clasync-heroku`, made by `scripts/aws/setup.sh` in AWS CloudShell.
+- Deploys: every push to `main` (a merged release PR) runs `.github/workflows/deploy.yml`, which pushes that commit to the `clasync` app's Heroku git. It needs the repository secret `HEROKU_API_KEY`, a long-lived token from `heroku authorizations:create -d "GitHub Actions deploy"` (not `heroku auth:token`, which expires). To redeploy without a new commit, run the Deploy workflow by hand from the Actions tab.
+- The Vercel GitHub app should be removed from the repository: on a blocked account it posts a failing "Vercel" status on every push.
+
 Clasync runs in three places, each with its own database and file store:
 
 | | Production | Staging | Local |

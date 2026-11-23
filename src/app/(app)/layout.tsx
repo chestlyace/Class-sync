@@ -1,5 +1,6 @@
 import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
+import { GuideRunner } from '@/components/guides/guide-runner'
 import { SiteNav } from '@/components/site-nav'
 import { VerifyBanner } from '@/components/verify-banner'
 import { isAdminPath, REQUEST_PATH_HEADER, safeNextPath } from '@/lib/next-path'
@@ -7,7 +8,7 @@ import { getSessionUser } from '@/server/auth/session'
 import { isAdmin } from '@/server/core/admin'
 import { isVerificationPending } from '@/server/core/guards'
 
-/** Signed-in area: pill nav, phone bottom nav, and the verification banner when needed. */
+/** Signed-in area: pill nav, phone bottom nav, the verification banner when needed, and the in-app guides. */
 export default async function AppLayout({ children }: LayoutProps<'/'>) {
   const user = await getSessionUser()
   const requested = (await headers()).get(REQUEST_PATH_HEADER)
@@ -19,13 +20,16 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
     const next = safeNextPath(requested)
     redirect(next && next !== '/dashboard' ? `/sign-in?next=${encodeURIComponent(next)}` : '/sign-in')
   }
+  const pending = isVerificationPending(user)
   return (
     <>
-      <SiteNav user={user} />
+      <SiteNav user={user} guides />
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-10 px-4 pt-8 pb-32 sm:pt-12 md:pb-20">
-        {isVerificationPending(user) && <VerifyBanner email={user.email} />}
+        {pending && <VerifyBanner email={user.email} />}
         {children}
       </main>
+      {/* Next to the page, not around it. Guides start by themselves only once the email is verified. */}
+      <GuideRunner role={user.role} userId={user.id} autoStart={!pending} />
     </>
   )
 }

@@ -3,18 +3,40 @@ import { getLocale, getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
 import { Eyebrow, PageHeader, Panel, SectionHeading } from '@/components/page-header'
+import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
 import { formatDecimal } from '@/lib/number-format'
 import { AppError } from '@/server/core/errors'
 import { listLecturerCourses } from '@/server/courses/service'
-import { getTestForEdit, type TestForEdit } from '@/server/tests/authoring'
+import { getCaSettings } from '@/server/performance/service'
+import {
+  getCatchUpOptions,
+  getCatchUpStudents,
+  getTestForEdit,
+  type CatchUpFor,
+  type CatchUpOptions,
+  type TestForEdit,
+} from '@/server/tests/authoring'
 import { questionMark } from '@/server/tests/rules'
 import { loadPage } from '../../../../../load-page'
+import { CatchUpForm } from '../../../../catch-up-form'
 import { CopyTestForm, TestEditor } from '../../../../test-editor'
 import { TestStatePill } from '../../../../test-state'
 
-type EditView = { test: TestForEdit; courses: { id: string; label: string }[]; userId: string }
+/**
+ * A catch-up's "who can sit it": the original's roster with statuses, who is picked now, and
+ * which picked students have an attempt on it (after Start they stay ticked).
+ */
+type CatchUpEdit = { options: CatchUpOptions; for: CatchUpFor; studentIds: string[]; withAttempt: string[] }
+
+type EditView = {
+  test: TestForEdit
+  courses: { id: string; label: string }[]
+  userId: string
+  catchUp: CatchUpEdit | null
+  caGroups: { id: string; name: string }[]
+}
 
 export async function generateMetadata() {
   const t = await getTranslations('tests.lecturer')
@@ -27,7 +49,7 @@ export default async function EditTestPage({
 }: PageProps<'/courses/[courseId]/tests/[testId]/edit'>) {
   const { courseId, testId } = await params
   const { copied } = await searchParams
-  const t = await getTranslations('tests.lecturer')
+  const [t, tCatchUp] = await Promise.all([getTranslations('tests.lecturer'), getTranslations('tests.catchUp')])
   const view = await loadPage<EditView>(async (ctx) => {
     const test = await getTestForEdit(ctx, testId) // FORBIDDEN unless mine
     if (test.summary.courseId !== courseId) throw new AppError('NOT_FOUND', 'Test not in this course')
@@ -35,10 +57,22 @@ export default async function EditTestPage({
     const courses = (await listLecturerCourses(ctx))
       .filter((c) => c.id !== courseId)
       .map((c) => ({ id: c.id, label: [c.code ? `${c.code} ${c.title}` : c.title, c.className, c.schoolName].join(' · ') }))
-    return { test, courses, userId: ctx.user.id }
+    const { catchUpOf, catchUpFor } = test.summary
+    let catchUp: CatchUpEdit | null = null
+    if (catchUpOf && catchUpFor) {
+      // This catch-up's own attempts do not count against "everyone who missed it".
+      const [options, students] = await Promise.all([
+        getCatchUpOptions(ctx, catchUpOf.id, test.summary.id),
+        getCatchUpStudents(ctx, test.summary.id),
+      ])
+      catchUp = { options, for: catchUpFor, ...students }
+    }
+    const ca = await getCaSettings(ctx.db, courseId)
+    const caGroups = ca.groups.flatMap((g) => (g.id ? [{ id: g.id, name: g.name }] : []))
+    return { test, courses, userId: ctx.user.id, catchUp, caGroups }
   })
   if (!view.ok) return <ErrorState code={view.code} />
-  const { test, courses, userId } = view.data
+  const { test, courses, userId, catchUp, caGroups } = view.data
   const { summary, input } = test
   const testHref = `/courses/${encodeURIComponent(courseId)}/tests/${encodeURIComponent(summary.id)}`
   const locked = summary.state !== 'not_started'
@@ -48,7 +82,16 @@ export default async function EditTestPage({
       <PageHeader
         eyebrow={t('eyebrow')}
         title={locked ? (await getTranslations('tests.review'))('questions') : t('editTitle')}
-        description={summary.title}
+        description={
+          catchUp ? (
+            <span className="inline-flex flex-wrap items-center gap-2">
+              <Badge variant="secondary">{tCatchUp('badge')}</Badge>
+              <span>{summary.title}</span>
+            </span>
+          ) : (
+            summary.title
+          )
+        }
         actions={
           <Link href={testHref} className={buttonVariants({ variant: 'outline' })}>
             <ArrowLeft aria-hidden="true" data-icon="inline-start" />
@@ -66,7 +109,23 @@ export default async function EditTestPage({
       {locked ? (
         <LockedTest test={test} />
       ) : (
-        <TestEditor courseId={courseId} testId={summary.id} userId={userId} saved={input} />
+        <TestEditor courseId={courseId} testId={summary.id} userId={userId} saved={input} isCatchUp={catchUp !== null} caGroups={caGroups} />
+      )}
+
+      {catchUp && (
+        <Panel>
+          <CatchUpForm
+            mode="edit"
+            testId={summary.id}
+            courseId={courseId}
+            students={catchUp.options.students}
+            missedCount={catchUp.options.missedCount}
+            answersMayBeOut={catchUp.options.answersMayBeOut}
+            initial={{ for: catchUp.for, studentIds: catchUp.studentIds }}
+            withAttempt={catchUp.withAttempt}
+            started={locked}
+          />
+        </Panel>
       )}
 
       <section aria-labelledby="test-copy" className="flex flex-col gap-4">

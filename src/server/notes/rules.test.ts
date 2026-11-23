@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { MAX_FILE_BYTES } from '@/server/assignments/rules'
-import { hostOf, isAllowedResourceFile, parseLinkUrl, parseTitle, swapPositions } from './rules'
+import {
+  hostOf,
+  isAllowedResourceFile,
+  parseLinkUrl,
+  parseOptionalTitle,
+  parseTitle,
+  swapPositions,
+  titleFromContent,
+} from './rules'
 
 const PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
 const PPT = 'application/vnd.ms-powerpoint'
@@ -13,6 +21,23 @@ describe('parseTitle', () => {
     expect(parseTitle('a'.repeat(201))).toBeNull()
     expect(parseTitle(42)).toBeNull()
     expect(parseTitle(undefined)).toBeNull()
+  })
+})
+
+describe('parseOptionalTitle', () => {
+  it('trims a title and keeps a blank one for the caller to derive', () => {
+    expect(parseOptionalTitle('  Cell membranes ')).toBe('Cell membranes')
+    expect(parseOptionalTitle('   ')).toBe('')
+    expect(parseOptionalTitle(undefined)).toBeNull()
+    expect(parseOptionalTitle('a'.repeat(201))).toBeNull()
+  })
+})
+
+describe('titleFromContent', () => {
+  it('uses the first non-empty line, capped at 200 characters', () => {
+    expect(titleFromContent('\n  Lecture 3 slides.pdf \nother')).toBe('Lecture 3 slides.pdf')
+    expect(titleFromContent('a'.repeat(250))).toBe('a'.repeat(200))
+    expect(titleFromContent('  ')).toBe('')
   })
 })
 

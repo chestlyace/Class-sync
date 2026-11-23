@@ -1,6 +1,13 @@
 import type { Event } from '@sentry/nextjs'
 import { describe, expect, it } from 'vitest'
-import { isNextRequestErrorLog, isNodeWarningLog, withoutVisitorIp } from './sentry-filters'
+import {
+  isNextRequestErrorLog,
+  isNodeWarningLog,
+  withoutResetToken,
+  withoutResetTokenInBreadcrumb,
+  withoutResetTokenInSpan,
+  withoutVisitorIp,
+} from './sentry-filters'
 
 describe('isNodeWarningLog', () => {
   it("spots Node's own runtime warnings, which it prints at every cold start", () => {
@@ -10,6 +17,12 @@ describe('isNodeWarningLog', () => {
       ]),
     ).toBe(true)
     expect(isNodeWarningLog(['(node:4120) [DEP0040] DeprecationWarning: The `punycode` module is deprecated.'])).toBe(true)
+    // Library codes need not contain a digit: the AI SDK's warning regressed CLASYNC-5 into CLASYNC-13.
+    expect(
+      isNodeWarningLog([
+        '(node:2) [AISDK_DEP_IMAGE_CONTENT_PART] DeprecationWarning: AI SDK Warning: Deprecated: ""image"" content part". The "image" content part type is deprecated.',
+      ]),
+    ).toBe(true)
   })
 
   it('keeps our own logged failures and anything that merely mentions a warning', () => {
@@ -39,6 +52,39 @@ describe('withoutVisitorIp', () => {
   it('leaves events without a request or user alone', () => {
     expect(withoutVisitorIp({ message: 'hi' })).toEqual({ message: 'hi' })
     expect(withoutVisitorIp({ request: { headers: { 'x-forwarded-for': '1.1.1.1' } } })).toEqual({ request: { headers: {} } })
+  })
+})
+
+describe('withoutResetToken', () => {
+  it('removes the token query parameter from event, breadcrumb and span URLs', () => {
+    const event: Event = {
+      request: { url: 'https://clasync.test/reset-password?token=secret123&next=%2Fdashboard' },
+      breadcrumbs: [
+        { message: '/reset-password?token=secret123', data: { url: '/reset-password?token=secret123&x=1' } },
+        { message: '/sign-in', data: { url: '/sign-in?next=%2Fdashboard' } },
+      ],
+      spans: [{ data: { 'url.full': '/reset-password?token=secret123' } }] as unknown as NonNullable<Event['spans']>,
+    }
+    expect(withoutResetToken(event)).toEqual({
+      request: { url: 'https://clasync.test/reset-password?next=%2Fdashboard' },
+      breadcrumbs: [
+        { message: '/reset-password', data: { url: '/reset-password?x=1' } },
+        { message: '/sign-in', data: { url: '/sign-in?next=%2Fdashboard' } },
+      ],
+      spans: [{ data: { 'url.full': '/reset-password' } }],
+    })
+  })
+
+  it('leaves events without a token alone', () => {
+    const crumb = { message: '/dashboard?tab=1', data: { url: '/dashboard?tab=1' } }
+    expect(withoutResetToken({ request: { url: '/dashboard?tab=1' }, breadcrumbs: [crumb] })).toEqual({
+      request: { url: '/dashboard?tab=1' },
+      breadcrumbs: [crumb],
+    })
+    expect(withoutResetTokenInBreadcrumb(crumb)).toBe(crumb)
+    const span = { attributes: { 'url.full': '/dashboard?tab=1' } }
+    expect(withoutResetTokenInSpan(span)).toBe(span)
+    expect(span.attributes['url.full']).toBe('/dashboard?tab=1')
   })
 })
 

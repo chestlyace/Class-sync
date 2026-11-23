@@ -41,7 +41,7 @@ export default async function NewClassPage({ searchParams }: PageProps<'/classes
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
         {header}
-        <Panel className="flex flex-col gap-5">
+        <Panel data-tour="class-form" className="flex flex-col gap-5">
           <p className="font-medium">{t('classes.new.pickSchool')}</p>
           <SchoolSearch />
           <Link href="/schools/new" className={buttonVariants({ variant: 'outline', className: 'self-start' })}>
@@ -60,7 +60,7 @@ export default async function NewClassPage({ searchParams }: PageProps<'/classes
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
       {header}
-      <Panel className="flex flex-col gap-6">
+      <Panel data-tour="class-form" className="flex flex-col gap-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 flex-col gap-1">
             <Eyebrow>{t('classes.new.school')}</Eyebrow>

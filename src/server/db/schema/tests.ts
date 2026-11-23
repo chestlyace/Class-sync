@@ -16,6 +16,7 @@ import {
 } from 'drizzle-orm/pg-core'
 import { user } from './auth'
 import { course } from './course'
+import { caTestGroup } from './performance'
 
 export const QUESTION_KINDS = ['mcq', 'short'] as const
 export type QuestionKindDb = (typeof QUESTION_KINDS)[number]
@@ -25,6 +26,9 @@ export type CloseReason = (typeof CLOSE_REASONS)[number]
 
 export const TEST_LOG_KINDS = ['ended_left', 'reopened', 'handed_in'] as const
 export type TestLogKind = (typeof TEST_LOG_KINDS)[number]
+
+export const CATCH_UP_FOR = ['missed', 'picked'] as const
+export type CatchUpFor = (typeof CATCH_UP_FOR)[number]
 
 export const courseTest = pgTable(
   'course_test',
@@ -46,6 +50,10 @@ export const courseTest = pgTable(
     shuffle: boolean('shuffle').notNull().default(true),
     // How much the test counts among the course's tests in the CA (like an assignment's weight).
     weight: numeric('weight', { precision: 6, scale: 2, mode: 'number' }).notNull().default(1),
+    // Off: a practice test, left out of the CA. A catch-up follows its original.
+    countsInCa: boolean('counts_in_ca').notNull().default(true),
+    // Which named CA of the course it counts in; null when the course has none (or it was deleted).
+    caGroupId: text('ca_group_id').references(() => caTestGroup.id, { onDelete: 'set null' }),
     maxExits: smallint('max_exits').notNull().default(3),
     maxAbsenceSeconds: smallint('max_absence_seconds').notNull().default(10),
     startedAt: timestamp('started_at', { withTimezone: true }),
@@ -59,6 +67,9 @@ export const courseTest = pgTable(
       .notNull()
       .$defaultFn(() => crypto.randomUUID()),
     copiedFromId: text('copied_from_id').references((): AnyPgColumn => courseTest.id, { onDelete: 'set null' }),
+    // A catch-up sits for students who missed the original (or were picked by the lecturer). Null on ordinary tests.
+    catchUpOfId: text('catch_up_of_id').references((): AnyPgColumn => courseTest.id, { onDelete: 'cascade' }),
+    catchUpFor: text('catch_up_for', { enum: CATCH_UP_FOR }),
     createdBy: text('created_by')
       .notNull()
       .references(() => user.id),
@@ -75,7 +86,28 @@ export const courseTest = pgTable(
     check('course_test_started_deadline_check', sql`(${t.startedAt} is null) = (${t.deadlineAt} is null)`),
     index('course_test_course_id_idx').on(t.courseId),
     index('course_test_family_id_idx').on(t.familyId),
+    // A catch-up names its original and who it is for, together or not at all.
+    check('course_test_catch_up_check', sql`(${t.catchUpOfId} is null) = (${t.catchUpFor} is null)`),
+    index('course_test_catch_up_of_id_idx').on(t.catchUpOfId),
   ],
+)
+
+// The students a "picked" catch-up is for.
+export const testCatchUpStudent = pgTable(
+  'test_catch_up_student',
+  {
+    testId: text('test_id')
+      .notNull()
+      .references(() => courseTest.id, { onDelete: 'cascade' }),
+    studentId: text('student_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
+    addedBy: text('added_by')
+      .notNull()
+      .references(() => user.id),
+  },
+  (t) => [primaryKey({ columns: [t.testId, t.studentId] })],
 )
 
 export const testQuestion = pgTable(

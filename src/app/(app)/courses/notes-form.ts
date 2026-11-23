@@ -1,6 +1,6 @@
 import { formString } from '@/lib/form-data'
 import { MAX_RICH_TEXT_BYTES } from '@/server/assignments/rules'
-import { parseLinkUrl, parseTitle } from '@/server/notes/rules'
+import { parseLinkUrl, parseOptionalTitle } from '@/server/notes/rules'
 
 export type ItemKind = 'note' | 'file' | 'link'
 export const ITEM_KINDS: readonly ItemKind[] = ['note', 'file', 'link']
@@ -30,7 +30,7 @@ function parseBody(raw: string): unknown[] | null {
  */
 export function parseItemForm(kind: ItemKind, data: FormData): ParsedItemForm {
   const fields: string[] = []
-  const title = parseTitle(formString(data, 'title'))
+  const title = parseOptionalTitle(formString(data, 'title'))
   if (title === null) fields.push('title')
 
   if (kind === 'note') {

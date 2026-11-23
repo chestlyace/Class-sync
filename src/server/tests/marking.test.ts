@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { Db } from '@/server/db'
-import { classStudent, courseTest, testAnswer } from '@/server/db/schema'
+import { aiUsage, classStudent, courseTest, rateLimit, testAnswer } from '@/server/db/schema'
 import { createTestDb } from '@/test/db'
 import {
   answerRow,
@@ -14,7 +14,7 @@ import {
   setupCourse,
 } from '@/test/marking-fixture'
 import { fakeSuggester } from './ai/fake'
-import { SuggesterError } from './ai/gateway'
+import { SuggesterError } from './ai/model'
 import { setMarkSuggesterForTests, type MarkSuggester, type SuggestInput } from './ai/suggester'
 import { confirmMark, getMarkingQuestion, suggestMarks } from './marking'
 import { releaseResults } from './results'
@@ -33,6 +33,9 @@ describe('marking short answers', () => {
   afterEach(async () => {
     setMarkSuggesterForTests(undefined)
     vi.restoreAllMocks()
+    vi.unstubAllEnvs()
+    await db.delete(aiUsage)
+    await db.delete(rateLimit)
     await clearMarkingData(db)
   })
 
@@ -282,6 +285,36 @@ describe('marking short answers', () => {
     })
   })
 
+  it('suggestMarks logs test corrections and refuses with reason cap before calling the provider', async () => {
+    const s = await scenario()
+    const seen: SuggestInput[] = []
+    setMarkSuggesterForTests(async (input) => {
+      seen.push(input)
+      return fakeSuggester(input)
+    })
+    setClock(at(40))
+    expect(await suggestMarks(s.lecturer, s.q2.id)).toEqual({ suggested: 2, failed: false })
+    expect(seen).toHaveLength(1)
+    expect(await db.select().from(aiUsage)).toMatchObject([
+      { purpose: 'test_correction', lecturerId: s.lecturer.user.id, submissionId: null, ok: true },
+    ])
+
+    // A call already logged this month uses the shared cap: q3 is refused without another call.
+    await db.insert(aiUsage).values({
+      purpose: 'test_correction',
+      lecturerId: s.lecturer.user.id,
+      model: 'm',
+      ok: true,
+      createdAt: new Date('2026-11-01T00:00:00Z'),
+    })
+    vi.stubEnv('AI_MONTHLY_CAP', '1')
+    await expect(suggestMarks(s.lecturer, s.q3.id)).rejects.toMatchObject({
+      code: 'CONFLICT',
+      details: { reason: 'cap' },
+    })
+    expect(seen).toHaveLength(1)
+  })
+
   it('an answer the model said nothing about is not sent again on reopening, only on Try again', async () => {
     const s = await scenario()
     const sent: string[][] = []
@@ -379,7 +412,7 @@ describe('marking short answers', () => {
     expect(await suggestMarks(s.lecturer, s.q2.id)).toEqual({ suggested: 22 - newlySuggested.length, failed: false })
   })
 
-  it('suggestMarks logs a gateway failure as name, category and status only', async () => {
+  it('suggestMarks logs a provider failure as name, category and status only', async () => {
     const s = await scenario()
     setMarkSuggesterForTests(async () => {
       throw new SuggesterError('GatewayRateLimitError', 'rate_limit', 429)

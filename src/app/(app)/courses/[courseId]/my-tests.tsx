@@ -19,16 +19,17 @@ const BADGE: Record<MyTestItem['state'], 'default' | 'secondary' | 'outline'> = 
 
 /** The signed-in student's tests on a course: state, where they stand, the link, and the quick result when visible. */
 export async function MyTests({ courseId }: { courseId: string }) {
-  const [t, tReview, rawLocale] = await Promise.all([
+  const [t, tReview, tCatchUp, rawLocale] = await Promise.all([
     getTranslations('tests.student.myTests'),
     getTranslations('tests.review'),
+    getTranslations('tests.catchUp'),
     getLocale(),
   ])
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
   const result = await loadPage((ctx) => listMyTests(ctx, courseId))
 
   return (
-    <section aria-labelledby="my-tests" className="flex flex-col gap-4">
+    <section aria-labelledby="my-tests" data-tour="my-tests" className="flex flex-col gap-4">
       <SectionHeading id="my-tests">{t('title')}</SectionHeading>
       {!result.ok ? (
         <p role="alert" className="text-sm text-destructive">
@@ -45,7 +46,19 @@ export async function MyTests({ courseId }: { courseId: string }) {
                 className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 outline-none hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50 sm:px-5"
               >
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="truncate font-medium">{test.title}</span>
+                  <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="max-w-full min-w-0 truncate font-medium">{test.title}</span>
+                    {test.isCatchUp && (
+                      <Badge variant="secondary" className="shrink-0">
+                        {tCatchUp('badge')}
+                      </Badge>
+                    )}
+                    {test.practice && (
+                      <Badge variant="outline" className="shrink-0">
+                        {t('practice')}
+                      </Badge>
+                    )}
+                  </span>
                   <span className="text-sm text-muted-foreground">
                     {t(`status.${test.myStatus}`)} · <span className="font-mono text-xs tracking-[0.04em]">{test.code}</span>
                   </span>

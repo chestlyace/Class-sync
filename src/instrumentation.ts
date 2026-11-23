@@ -1,6 +1,13 @@
 import * as Sentry from '@sentry/nextjs'
-import { sentryEnvironment } from '@/lib/sentry-environment'
-import { isNextRequestErrorLog, isNodeWarningLog, withoutVisitorIp } from '@/lib/sentry-filters'
+import { deployEnv } from '@/lib/deploy-env'
+import {
+  isNextRequestErrorLog,
+  isNodeWarningLog,
+  withoutResetToken,
+  withoutResetTokenInBreadcrumb,
+  withoutResetTokenInSpan,
+  withoutVisitorIp,
+} from '@/lib/sentry-filters'
 
 /**
  * Server error tracking (Sentry). Off while NEXT_PUBLIC_SENTRY_DSN is unset, so locally and in
@@ -9,11 +16,18 @@ import { isNextRequestErrorLog, isNodeWarningLog, withoutVisitorIp } from '@/lib
 export function register() {
   Sentry.init({
     dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-    environment: sentryEnvironment(process.env.VERCEL_ENV, process.env.VERCEL_GIT_COMMIT_REF),
+    environment: deployEnv(),
     tracesSampleRate: 0.1,
-    beforeSend: withoutVisitorIp,
+    beforeSend: (event) => withoutVisitorIp(withoutResetToken(event)),
+    beforeBreadcrumb: withoutResetTokenInBreadcrumb,
+    beforeSendSpan: withoutResetTokenInSpan,
   })
   if (Sentry.isEnabled()) reportLoggedErrors()
+  // Heroku: background jobs run in this server process. The import sits inside the runtime check so the
+  // Edge bundle drops it (src/instrumentation-node.ts).
+  if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.NEXT_PHASE !== 'phase-production-build') {
+    void import('./instrumentation-node').then((m) => m.startBackgroundJobs())
+  }
 }
 
 export const onRequestError = Sentry.captureRequestError

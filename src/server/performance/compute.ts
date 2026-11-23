@@ -12,9 +12,14 @@ export type ComponentKey = 'attendance' | 'assignments' | 'participation' | 'tes
  */
 export type PartStatus = 'scored' | 'not_started' | 'not_applicable'
 
-/** `ratio` and `score` are null unless the part is `scored`. */
+/**
+ * `ratio` and `score` are null unless the part is `scored`. `id` tells parts apart: the key, or
+ * `tests:<group id>` for a named CA, which also carries its `name`.
+ */
 export type ComponentScore = {
   key: ComponentKey
+  id: string
+  name?: string
   points: number
   ratio: number | null
   score: number | null
@@ -28,15 +33,17 @@ export type CaInput = {
   participationNet: number
   /**
    * Released tests that count for the student: score / out of, never joined = 0. `weight` is the
-   * test's weight in the CA.
+   * test's weight in the CA; `groupId` its named CA (null when the course has none).
    */
-  tests: { weight: number; ratio: number }[]
+  tests: { weight: number; ratio: number; groupId?: string | null }[]
   /**
    * Which parts have started for the class (the current roster): attendance once anyone has a
    * counted session, assignments once a published assignment has its grades released,
    * participation once anyone on the roster has a tap, tests once any test is released.
    */
   classStarted: Record<ComponentKey, boolean>
+  /** With named CAs: which have started (a test in it counts). */
+  groupsStarted?: Record<string, boolean>
 }
 
 export type CaResult = {
@@ -92,36 +99,58 @@ function participationRatio(net: number, target: number): number {
  * 2 decimals, and the final is the sum of those rounded parts. A part that doesn't apply to the
  * student is left out and the sum is scaled by total / (total − its points), then rounded again;
  * a part the class hasn't started counts 0 (it is not scaled over). "So far" is the scored parts
- * out of their own points, never scaled.
+ * out of their own points, never scaled. With named CAs, each is a part of its own in place of
+ * the tests part, scored on the tests in it with its own best N.
  */
 export function computeCa(settings: CaSettings, input: CaInput): CaResult {
-  const specs: { key: ComponentKey; points: number; ratio: number | null }[] = [
-    { key: 'attendance', points: settings.attendancePoints, ratio: attendanceRatio(input.attendance) },
-    { key: 'assignments', points: settings.assignmentPoints, ratio: assignmentsRatio(input.assignments) },
-    {
-      key: 'participation',
-      points: settings.participationPoints,
-      ratio: participationRatio(input.participationNet, settings.participationTarget),
-    },
-    { key: 'tests', points: settings.testPoints, ratio: testsRatio(input.tests, settings.testsBestOf) },
+  type Spec = { key: ComponentKey; id: string; name?: string; points: number; ratio: number | null; started: boolean }
+  const part = (key: ComponentKey, points: number, ratio: number | null): Spec => ({
+    key,
+    id: key,
+    points,
+    ratio,
+    started: input.classStarted[key],
+  })
+  // Named CAs replace the single tests part: each is scored like it, on its own tests and best N.
+  const groups = settings.groups.filter((g): g is typeof g & { id: string } => g.id !== null)
+  const testParts: Spec[] =
+    groups.length === 0
+      ? [part('tests', settings.testPoints, testsRatio(input.tests, settings.testsBestOf))]
+      : groups.map((g) => ({
+          key: 'tests',
+          id: `tests:${g.id}`,
+          name: g.name,
+          points: g.points,
+          ratio: testsRatio(
+            input.tests.filter((t) => t.groupId === g.id),
+            g.bestOf,
+          ),
+          started: input.groupsStarted?.[g.id] ?? false,
+        }))
+  const specs: Spec[] = [
+    part('attendance', settings.attendancePoints, attendanceRatio(input.attendance)),
+    part('assignments', settings.assignmentPoints, assignmentsRatio(input.assignments)),
+    part('participation', settings.participationPoints, participationRatio(input.participationNet, settings.participationTarget)),
+    ...testParts,
   ]
 
   let earned = 0
   let outOf = 0
   let naPoints = 0
   const components: ComponentScore[] = []
-  for (const { key, points, ratio } of specs) {
+  for (const { key, id, name, points, ratio, started } of specs) {
     if (points <= 0) continue
-    if (!input.classStarted[key]) {
-      components.push({ key, points, ratio: null, score: null, status: 'not_started' })
+    const label = name === undefined ? { key, id } : { key, id, name }
+    if (!started) {
+      components.push({ ...label, points, ratio: null, score: null, status: 'not_started' })
     } else if (ratio === null) {
       naPoints += points
-      components.push({ key, points, ratio: null, score: null, status: 'not_applicable' })
+      components.push({ ...label, points, ratio: null, score: null, status: 'not_applicable' })
     } else {
       const score = round2(points * ratio)
       earned += score
       outOf += points
-      components.push({ key, points, ratio, score, status: 'scored' })
+      components.push({ ...label, points, ratio, score, status: 'scored' })
     }
   }
 

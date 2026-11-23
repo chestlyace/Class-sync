@@ -58,6 +58,8 @@ function validInput(over: Partial<TestInput> = {}): TestInput {
     maxExits: 3,
     maxAbsenceSeconds: 10,
     weight: 1,
+    countsInCa: true,
+    caGroupId: null,
     questions: [
       {
         kind: 'mcq',
@@ -344,6 +346,8 @@ describe('test authoring services', () => {
       maxExits: 3,
       maxAbsenceSeconds: 10,
       weight: 1,
+      countsInCa: true,
+      caGroupId: null,
     })
     // Same shape as the input, with an id per question; mark stays null where the default applies.
     expect(questions.every((q) => typeof q.id === 'string' && q.id.length > 0)).toBe(true)

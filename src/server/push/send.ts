@@ -49,13 +49,18 @@ function vapidKeys(): { publicKey: string; privateKey: string } | null {
   return publicKey && privateKey ? { publicKey, privateKey } : null
 }
 
-async function createRealClient(publicKey: string, privateKey: string): Promise<PushClient> {
+/**
+ * The web-push client, set up once. web-push 4 is an ES module with named exports only: its
+ * default export is undefined (the CommonJS-era types still let `default` typecheck). Throws when
+ * the VAPID details are malformed. Exported for tests.
+ */
+export async function createRealClient(publicKey: string, privateKey: string): Promise<PushClient> {
   if (realClient) return realClient
-  const { default: webpush } = await import('web-push')
-  webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:support@clasync.online', publicKey, privateKey)
+  const { sendNotification, setVapidDetails } = await import('web-push')
+  setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:support@clasync.online', publicKey, privateKey)
   realClient = {
     async send(sub, body, opts) {
-      await webpush.sendNotification(sub, body, opts)
+      await sendNotification(sub, body, opts)
     },
   }
   return realClient

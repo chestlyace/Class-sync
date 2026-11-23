@@ -971,6 +971,8 @@ describe('taking a test (student services)', () => {
       myStatus: 'not_joined',
       result: null,
       review: 'waiting_results',
+      isCatchUp: false,
+      practice: false,
     })
     expect(list[1]).toMatchObject({ testId: running.id, state: 'running', myStatus: 'working', result: null, review: 'waiting_results' })
     expect(list[2]).toMatchObject({ testId: done.id, state: 'released', myStatus: 'not_joined', result: null, review: 'open' })

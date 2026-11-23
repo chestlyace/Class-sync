@@ -17,6 +17,22 @@ export function parseTitle(raw: unknown): string | null {
   return title.length >= 1 && title.length <= TITLE_MAX ? title : null
 }
 
+/**
+ * An optional title: trimmed, '' when blank (the caller derives one), null when it is not text or
+ * is longer than TITLE_MAX. Topic titles still use `parseTitle`.
+ */
+export function parseOptionalTitle(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null
+  const title = raw.trim()
+  return title.length <= TITLE_MAX ? title : null
+}
+
+/** First non-empty line of a file name, note body or host, capped at TITLE_MAX. */
+export function titleFromContent(value: string): string {
+  const line = value.split('\n').map((part) => part.trim()).find(Boolean) ?? ''
+  return line.slice(0, TITLE_MAX).trim()
+}
+
 /** An http or https URL of at most URL_MAX characters, as its normalised href; otherwise null. */
 export function parseLinkUrl(raw: unknown): string | null {
   if (typeof raw !== 'string') return null

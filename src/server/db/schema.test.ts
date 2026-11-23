@@ -43,6 +43,7 @@ import {
   whatsappMessage,
   whatsappPreference,
   testAttempt,
+  testCatchUpStudent,
   testExit,
   testLog,
   testOption,
@@ -767,6 +768,49 @@ describe('schema', () => {
     const [after] = await db.select().from(courseTest)
     expect(after.id).toBe(copy.id)
     expect(after.copiedFromId).toBeNull()
+  })
+
+  it('course_test refuses catch_up_of_id without catch_up_for', async () => {
+    const db = await createTestDb()
+    const { owner, course: c, test: t } = await seedTest(db)
+    const row = { courseId: c.id, title: 'Catch-up', durationMinutes: 30, defaultMark: 2, createdBy: owner.id }
+    expect(await sqlState(db.insert(courseTest).values({ ...row, code: 'CUP001', catchUpOfId: t.id }))).toBe('23514')
+  })
+
+  it('course_test refuses catch_up_for without catch_up_of_id', async () => {
+    const db = await createTestDb()
+    const { owner, course: c } = await seedTest(db)
+    const row = { courseId: c.id, title: 'Catch-up', durationMinutes: 30, defaultMark: 2, createdBy: owner.id }
+    expect(await sqlState(db.insert(courseTest).values({ ...row, code: 'CUP002', catchUpFor: 'missed' }))).toBe('23514')
+    expect(
+      await sqlState(db.insert(courseTest).values({ ...row, code: 'CUP003', catchUpFor: 'bogus' as never })),
+    ).toBe('23514')
+  })
+
+  it('deleting the original deletes its catch-ups and their picked students', async () => {
+    const db = await createTestDb()
+    const { owner, course: c, test: t } = await seedTest(db)
+    const st = await makeUser(db, { role: 'student' })
+    const [catchUp] = await db
+      .insert(courseTest)
+      .values({
+        courseId: c.id,
+        code: 'CUP004',
+        title: 'Catch-up',
+        durationMinutes: 30,
+        defaultMark: 2,
+        createdBy: owner.id,
+        catchUpOfId: t.id,
+        catchUpFor: 'picked',
+      })
+      .returning()
+    await db.insert(testCatchUpStudent).values({ testId: catchUp.id, studentId: st.id, addedBy: owner.id })
+    const [picked] = await db.select().from(testCatchUpStudent)
+    expect(picked.addedAt).toBeInstanceOf(Date)
+    expect(await sqlState(db.insert(testCatchUpStudent).values({ testId: catchUp.id, studentId: st.id, addedBy: owner.id }))).toBe('23505')
+    await db.delete(courseTest).where(sql`${courseTest.id} = ${t.id}`)
+    expect(await db.select().from(courseTest)).toHaveLength(0)
+    expect(await db.select().from(testCatchUpStudent)).toHaveLength(0)
   })
 
   it('deleting a course removes its tests, questions, options, attempts, answers, exits and log', async () => {

@@ -95,3 +95,30 @@ export async function resendVerification(
   })
   await send(email)
 }
+
+async function sendResetViaAuth(email: string): Promise<void> {
+  const { getAuth } = await import('@/server/auth/auth')
+  await getAuth().api.requestPasswordReset({ body: { email } })
+}
+
+/**
+ * Emails the account a link to choose a new password, for someone who wrote to support. It goes
+ * through the same flow as "Forgot password", so the per-address wait and the 24-hour link apply.
+ * The admin never sees the link. Sent after the audit row has committed.
+ */
+export async function sendPasswordReset(
+  ctx: Ctx,
+  targetId: string,
+  reason?: string,
+  send: (email: string) => Promise<void> = sendResetViaAuth,
+): Promise<void> {
+  requireAdmin(ctx)
+  const why = cleanReason(reason)
+  const email = await ctx.db.transaction(async (tx) => {
+    const target = await lockTarget(tx, targetId)
+    if (target.suspendedAt) throw new AppError('CONFLICT', 'Account is suspended')
+    await audit(tx, ctx, 'send_password_reset', target.id, why)
+    return target.email
+  })
+  await send(email)
+}

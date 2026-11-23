@@ -38,7 +38,7 @@ import {
   type AssignmentInput,
 } from '@/server/assignments/lecturer'
 import { setAfterResponseForTests } from '@/server/lib/after-response'
-import { createTest } from '@/server/tests/authoring'
+import { createTest, setTestCa } from '@/server/tests/authoring'
 import { loadStoredQuestions } from '@/server/tests/queries'
 import { releaseResults } from '@/server/tests/results'
 import { ANSWER_GRACE_MS, type QuestionInput } from '@/server/tests/rules'
@@ -214,7 +214,11 @@ describe('CA service', () => {
    * A test written in the editor and started now: an MCQ worth 2 and, unless MCQ-only, a short
    * answer worth 2. `weight` is the editor's "Weight in CA" (left out: the default).
    */
-  async function givenTest(lecturer: Ctx, courseId: string, opts: { weight?: number; mcqOnly?: boolean; title?: string } = {}) {
+  async function givenTest(
+    lecturer: Ctx,
+    courseId: string,
+    opts: { weight?: number; mcqOnly?: boolean; title?: string; countsInCa?: boolean; caGroupId?: string } = {},
+  ) {
     const questions: QuestionInput[] = [
       {
         kind: 'mcq',
@@ -236,6 +240,8 @@ describe('CA service', () => {
       maxAbsenceSeconds: 10,
       questions,
       ...(opts.weight === undefined ? {} : { weight: opts.weight }),
+      ...(opts.countsInCa === undefined ? {} : { countsInCa: opts.countsInCa }),
+      ...(opts.caGroupId === undefined ? {} : { caGroupId: opts.caGroupId }),
     })
     await startTest(lecturer, created.id)
     const [mcq, short] = await loadStoredQuestions(db, created.id)
@@ -278,9 +284,9 @@ describe('CA service', () => {
     for (const row of rows) {
       expect(row.result).toEqual({
         components: [
-          { key: 'attendance', points: 5, ratio: null, score: null, status: 'not_started' },
-          { key: 'assignments', points: 20, ratio: null, score: null, status: 'not_started' },
-          { key: 'participation', points: 5, ratio: null, score: null, status: 'not_started' },
+          { key: 'attendance', id: 'attendance', points: 5, ratio: null, score: null, status: 'not_started' },
+          { key: 'assignments', id: 'assignments', points: 20, ratio: null, score: null, status: 'not_started' },
+          { key: 'participation', id: 'participation', points: 5, ratio: null, score: null, status: 'not_started' },
         ],
         soFar: 0,
         soFarOutOf: 0,
@@ -315,6 +321,7 @@ describe('CA service', () => {
     expect(rowOf(rows, dave)).toMatchObject({ countedSessions: 1, attendanceRatio: 1 })
     expect(component(rowOf(rows, dave), 'attendance')).toEqual({
       key: 'attendance',
+      id: 'attendance',
       points: 5,
       ratio: 1,
       score: 5,
@@ -361,6 +368,7 @@ describe('CA service', () => {
     // Alice: (15/20 + 0) / 2 = 0.375 → 7.5 of 20.
     expect(component(rowOf(rows, alice), 'assignments')).toEqual({
       key: 'assignments',
+      id: 'assignments',
       points: 20,
       ratio: 0.375,
       score: 7.5,
@@ -493,12 +501,13 @@ describe('CA service', () => {
     await tap(lecturer, algo.id, bob, 1)
     await tap(lecturer, algo.id, bob, -1, 2)
 
-    expect(await getCaSettings(db, algo.id)).toEqual(custom)
+    expect(await getCaSettings(db, algo.id)).toEqual({ ...custom, groups: [] })
     const { settings, rows } = await getCourseCa(lecturer, algo.id)
-    expect(settings).toEqual(custom)
+    expect(settings).toEqual({ ...custom, groups: [] })
     // Alice: net 3 of 4 → 0.75 → 3.75 of 5.
     expect(component(rowOf(rows, alice), 'participation')).toEqual({
       key: 'participation',
+      id: 'participation',
       points: 5,
       ratio: 0.75,
       score: 3.75,
@@ -635,13 +644,13 @@ describe('CA service', () => {
 
     let rows = (await getCourseCa(lecturer, algo.id)).rows
     for (const who of [alice, bob]) {
-      expect(component(rowOf(rows, who), 'tests')).toEqual({ key: 'tests', points: 10, ratio: null, score: null, status: 'not_started' })
+      expect(component(rowOf(rows, who), 'tests')).toEqual({ key: 'tests', id: 'tests', points: 10, ratio: null, score: null, status: 'not_started' })
     }
     expect(component(await getMyCa(alice, algo.id), 'tests')).toMatchObject({ status: 'not_started' })
 
     await releaseResults(lecturer, test.id)
     rows = (await getCourseCa(lecturer, algo.id)).rows
-    expect(component(rowOf(rows, alice), 'tests')).toEqual({ key: 'tests', points: 10, ratio: 0.75, score: 7.5, status: 'scored' })
+    expect(component(rowOf(rows, alice), 'tests')).toEqual({ key: 'tests', id: 'tests', points: 10, ratio: 0.75, score: 7.5, status: 'scored' })
     expect(component(rowOf(rows, bob), 'tests')).toMatchObject({ ratio: 0, score: 0, status: 'scored' })
     expect(rowOf(rows, alice).result.final).toBe(7.5)
     expect((await getMyCa(alice, algo.id)).result).toEqual(rowOf(rows, alice).result)
@@ -678,7 +687,7 @@ describe('CA service', () => {
     const { rows } = await getCourseCa(lecturer, algo.id)
     expect(component(rowOf(rows, alice), 'tests')).toMatchObject({ ratio: 1, score: 10, status: 'scored' })
     // Bob never joined: 0, not "doesn't apply", so nothing is scaled.
-    expect(component(rowOf(rows, bob), 'tests')).toEqual({ key: 'tests', points: 10, ratio: 0, score: 0, status: 'scored' })
+    expect(component(rowOf(rows, bob), 'tests')).toEqual({ key: 'tests', id: 'tests', points: 10, ratio: 0, score: 0, status: 'scored' })
     expect(rowOf(rows, bob).result).toMatchObject({ final: 0, scaled: false })
   })
 
@@ -804,8 +813,132 @@ describe('CA service', () => {
     expect(await countQueries(() => getCourseCa(lecturer, algo.id))).toBe(smallCourse)
     expect(await countQueries(() => getMyCa(alice, algo.id))).toBe(smallMine)
     // Exact, so a new query is a deliberate change. Tests add four of these: the course's tests,
-    // their attempts and the two score queries.
-    expect(smallCourse).toBe(18)
-    expect(smallMine).toBe(19)
+    // their attempts and the two score queries. Settings are two: the course's and its named CAs.
+    expect(smallCourse).toBe(19)
+    expect(smallMine).toBe(20)
+  })
+  it('named CAs: each is its own part, scored on its own tests; a test given no CA counts in the first', async () => {
+    const { lecturer, algo, alice } = await setup()
+    const saved = await updateCaSettings(lecturer, algo.id, {
+      ...DEFAULT_SETTINGS,
+      assignmentPoints: 10,
+      testPoints: 999, // ignored: with named CAs the test points are their sum
+      groups: [
+        { id: null, name: 'CA 1', points: 4, bestOf: null },
+        { id: null, name: 'CA 2', points: 6, bestOf: null },
+      ],
+    })
+    expect(saved.testPoints).toBe(10)
+    const [ca1, ca2] = saved.groups.map((g) => g.id!)
+    expect(await getCaSettings(db, algo.id)).toEqual(saved)
+
+    const inCa2 = await givenTest(lecturer, algo.id, { mcqOnly: true, title: 'Quiz', caGroupId: ca2 })
+    const noCa = await givenTest(lecturer, algo.id, { mcqOnly: true, title: 'Other' })
+    await sit(inCa2, alice, { mcq: 'right' })
+    await sit(noCa, alice, { mcq: 'wrong' })
+    await finish(lecturer, inCa2)
+    await finish(lecturer, noCa)
+
+    const { rows } = await getCourseCa(lecturer, algo.id)
+    const parts = rowOf(rows, alice).result.components.filter((c) => c.key === 'tests')
+    expect(parts).toEqual([
+      { key: 'tests', id: `tests:${ca1}`, name: 'CA 1', points: 4, ratio: 0, score: 0, status: 'scored' },
+      { key: 'tests', id: `tests:${ca2}`, name: 'CA 2', points: 6, ratio: 1, score: 6, status: 'scored' },
+    ])
+    expect((await getMyCa(alice, algo.id)).result).toEqual(rowOf(rows, alice).result)
+  })
+
+  it("a named CA with no counting test hasn't started; removing it moves its tests to the first", async () => {
+    const { lecturer, algo, alice } = await setup()
+    const saved = await updateCaSettings(lecturer, algo.id, {
+      ...DEFAULT_SETTINGS,
+      assignmentPoints: 10,
+      groups: [
+        { id: null, name: 'CA 1', points: 5, bestOf: null },
+        { id: null, name: 'CA 2', points: 5, bestOf: null },
+      ],
+    })
+    const [ca1, ca2] = saved.groups.map((g) => g.id!)
+    const quiz = await givenTest(lecturer, algo.id, { mcqOnly: true, caGroupId: ca2 })
+    await sit(quiz, alice, { mcq: 'right' })
+    await finish(lecturer, quiz)
+    let parts = rowOf((await getCourseCa(lecturer, algo.id)).rows, alice).result.components
+    expect(parts.find((c) => c.id === `tests:${ca1}`)).toMatchObject({ status: 'not_started', score: null })
+    expect(parts.find((c) => c.id === `tests:${ca2}`)).toMatchObject({ status: 'scored', score: 5 })
+
+    // CA 2 removed, CA 1 renamed and given all 10 points: the quiz now counts in it, kept by id.
+    await updateCaSettings(lecturer, algo.id, {
+      ...DEFAULT_SETTINGS,
+      assignmentPoints: 10,
+      groups: [{ id: ca1, name: 'Tests', points: 10, bestOf: null }],
+    })
+    parts = rowOf((await getCourseCa(lecturer, algo.id)).rows, alice).result.components
+    expect(parts.filter((c) => c.key === 'tests')).toEqual([
+      { key: 'tests', id: `tests:${ca1}`, name: 'Tests', points: 10, ratio: 1, score: 10, status: 'scored' },
+    ])
+  })
+
+  it('refuses a named CA id from another course, and duplicate names', async () => {
+    const { lecturer, algo, cls } = await setup()
+    const other = await createCourse(lecturer, { classId: cls.id, title: 'Networks', semester: 1 })
+    const saved = await updateCaSettings(lecturer, other.id, {
+      ...DEFAULT_SETTINGS,
+      assignmentPoints: 10,
+      groups: [{ id: null, name: 'CA 1', points: 10, bestOf: null }],
+    })
+    const foreign = saved.groups[0].id
+    await expect(
+      updateCaSettings(lecturer, algo.id, { ...DEFAULT_SETTINGS, assignmentPoints: 10, groups: [{ id: foreign, name: 'CA 1', points: 10, bestOf: null }] }),
+    ).rejects.toMatchObject({ code: 'VALIDATION', details: { reason: 'shape' } })
+    await expect(
+      updateCaSettings(lecturer, algo.id, {
+        ...DEFAULT_SETTINGS,
+        assignmentPoints: 10,
+        groups: [
+          { id: null, name: 'CA 1', points: 5, bestOf: null },
+          { id: null, name: 'ca 1', points: 5, bestOf: null },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: 'VALIDATION', details: { reason: 'groupName' } })
+    // A test can only be put in one of its own course's CAs.
+    await updateCaSettings(lecturer, algo.id, {
+      ...DEFAULT_SETTINGS,
+      assignmentPoints: 10,
+      groups: [{ id: null, name: 'CA 1', points: 10, bestOf: null }],
+    })
+    await expect(givenTest(lecturer, algo.id, { caGroupId: foreign! })).rejects.toMatchObject({
+      code: 'VALIDATION',
+      details: { reason: 'caGroup' },
+    })
+  })
+
+  it('a practice test never counts, nor its results; switched into the CA after release, it counts at once', async () => {
+    const { lecturer, algo, alice, bob } = await setup()
+    await withTestPoints(lecturer, algo.id)
+    const practice = await givenTest(lecturer, algo.id, { mcqOnly: true, countsInCa: false })
+    await sit(practice, alice, { mcq: 'right' })
+    await sit(practice, bob, { mcq: 'wrong' })
+    await finish(lecturer, practice)
+
+    let rows = (await getCourseCa(lecturer, algo.id)).rows
+    expect(component(rowOf(rows, alice), 'tests')).toMatchObject({ status: 'not_started', score: null })
+
+    await setTestCa(lecturer, practice.id, { countsInCa: true, caGroupId: null })
+    rows = (await getCourseCa(lecturer, algo.id)).rows
+    expect(component(rowOf(rows, alice), 'tests')).toMatchObject({ status: 'scored', score: 10 })
+    expect(component(rowOf(rows, bob), 'tests')).toMatchObject({ status: 'scored', score: 0 })
+
+    await setTestCa(lecturer, practice.id, { countsInCa: false, caGroupId: null })
+    rows = (await getCourseCa(lecturer, algo.id)).rows
+    expect(component(rowOf(rows, alice), 'tests')).toMatchObject({ status: 'not_started' })
+  })
+
+  it("only the test's lecturer can switch it in or out of the CA", async () => {
+    const { lecturer, colleague, algo, alice } = await setup()
+    const quiz = await givenTest(lecturer, algo.id, { mcqOnly: true })
+    for (const ctx of [colleague, alice]) {
+      await expect(setTestCa(ctx, quiz.id, { countsInCa: false, caGroupId: null })).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    }
+    await expect(setTestCa(lecturer, quiz.id, { countsInCa: 'no' })).rejects.toMatchObject({ code: 'VALIDATION' })
   })
 })

@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, isNull, sql } from 'drizzle-orm'
+import { and, asc, eq, getTableColumns, gt, isNull, sql } from 'drizzle-orm'
 import { now } from '@/server/core/clock'
 import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
@@ -10,7 +10,8 @@ import { courseTest, testAnswer, testAttempt, testExit, testLog, testQuestion } 
 import { pushTestStarted } from '@/server/push/course-events'
 import { queueWhatsApp, WHATSAPP_FALLBACK_DELAY_MS } from '@/server/whatsapp/trigger'
 import { summarizeTest, type TestSummary } from './authoring'
-import { endsAt, testPhase, type TestPhase } from './phase'
+import { eligibleStudents, onlyEligible, satAttempts } from './catch-up'
+import { endsAt, testPhase, testState, type TestPhase, type TestState } from './phase'
 import { requireOwnedTest, type TestRow } from './queries'
 import { loadTestScores } from './scores'
 
@@ -58,6 +59,8 @@ export type ResultRow = {
   score: number
   outOf: number
   pendingShort: number
+  /** On an original's results: the catch-up this student sat (the latest one); null otherwise, and always on a catch-up's own results. */
+  catchUp: { testId: string; title: string; score: number; outOf: number; pendingShort: number } | null
 }
 
 function forbidden(): never {
@@ -150,7 +153,11 @@ export async function startTest(ctx: Ctx, testId: string): Promise<TestSummary> 
   if (!row) forbidden()
   // Only the first Start announces the test.
   if (started) {
-    await pushTestStarted(ctx.db, row.courseId, { id: row.id, title: row.title, code: row.code })
+    // A catch-up announces itself only to the students who may sit it. They are worked out while
+    // the push is prepared (from the roster it loads), where a failure is logged, not thrown.
+    const eligibleOf =
+      row.catchUpOfId === null ? undefined : (studentIds: string[]) => eligibleStudents(ctx.db, row, studentIds)
+    await pushTestStarted(ctx.db, row.courseId, { id: row.id, title: row.title, code: row.code }, eligibleOf)
     queueWhatsApp({ kind: 'testStarted', testId: row.id }, new Date(at.getTime() + WHATSAPP_FALLBACK_DELAY_MS))
   }
   return summarizeTest(ctx.db, row)
@@ -168,12 +175,15 @@ export async function endTestForEveryone(ctx: Ctx, testId: string): Promise<void
     .where(and(eq(courseTest.id, testId), isNull(courseTest.endedAt), gt(courseTest.deadlineAt, at)))
 }
 
-/** The live view: every roster student with their status. A fixed number of queries. */
+/**
+ * The live view: every roster student with their status (a catch-up: every roster student who
+ * may sit it). A fixed number of queries.
+ */
 export async function getLiveTest(ctx: Ctx, testId: string): Promise<LiveTest> {
   const { test: row } = await requireOwnedTest(ctx, testId)
   const at = now()
   const phase = testPhase(row, at)
-  const [roster, [questions], attempts] = await Promise.all([
+  const [fullRoster, [questions], attempts] = await Promise.all([
     courseRosterQuery(ctx.db, { courseId: row.courseId }),
     ctx.db
       .select({ count: sql<number>`count(*)::int` })
@@ -181,6 +191,7 @@ export async function getLiveTest(ctx: Ctx, testId: string): Promise<LiveTest> {
       .where(eq(testQuestion.testId, testId)),
     loadAttemptStates(ctx.db, testId),
   ])
+  const roster = await onlyEligible(ctx.db, row, fullRoster)
 
   const counts = { roster: roster.length, joined: 0, working: 0, handedIn: 0, endedLeaving: 0 }
   const rows: LiveRow[] = roster.map((student) => {
@@ -267,22 +278,69 @@ export async function getAttemptLog(ctx: Ctx, attemptId: string): Promise<LogEnt
   return entries.sort((a, b) => a.at.getTime() - b.at.getTime())
 }
 
-/** Every roster student's score once the test has ended (CONFLICT not_ended before). */
+export type CatchUpRef = { id: string; title: string; state: TestState }
+
+/**
+ * Every roster student's score once the test has ended (CONFLICT not_ended before); a catch-up
+ * lists only the students who may sit it. An original also carries each catch-up of it, and per
+ * student the catch-up they sat (an attempt with at least one answer; the latest if several).
+ */
 export async function getTestResults(
   ctx: Ctx,
   testId: string,
-): Promise<{ test: TestSummary; rows: ResultRow[]; pending: number }> {
+): Promise<{ test: TestSummary; rows: ResultRow[]; pending: number; catchUps: CatchUpRef[] }> {
   const { test: row } = await requireOwnedTest(ctx, testId)
   const at = now()
   const phase = testPhase(row, at)
   if (phase !== 'ended') conflict('not_ended', 'The test has not ended')
 
-  const [summary, roster, attempts] = await Promise.all([
+  const isCatchUp = row.catchUpOfId !== null
+  const [summary, fullRoster, attempts, catchUpRows] = await Promise.all([
     summarizeTest(ctx.db, row),
     courseRosterQuery(ctx.db, { courseId: row.courseId }),
     loadAttemptStates(ctx.db, testId),
+    isCatchUp
+      ? []
+      : ctx.db
+          .select({
+            ...getTableColumns(courseTest),
+            // Aliased, with the outer table spelled out: a bare "id" would bind to the inner table.
+            hasShort: sql<boolean>`exists (select 1 from ${testQuestion} as tq
+              where tq.test_id = ${courseTest}.id and tq.kind = 'short')`,
+          })
+          .from(courseTest)
+          .where(eq(courseTest.catchUpOfId, testId))
+          .orderBy(asc(courseTest.createdAt), asc(courseTest.id)),
   ])
-  const scores = (await loadTestScores(ctx.db, [testId], roster.map((r) => r.studentId))).get(testId)!
+  const roster = await onlyEligible(ctx.db, row, fullRoster)
+  const studentIds = roster.map((r) => r.studentId)
+  const catchUpIds = catchUpRows.map((c) => c.id)
+  // The original's scores and its catch-ups' come from the same two queries.
+  const [allScores, sat] = await Promise.all([
+    loadTestScores(ctx.db, [testId, ...catchUpIds], studentIds),
+    satAttempts(ctx.db, catchUpIds),
+  ])
+  const scores = allScores.get(testId)!
+  const catchUpTitles = new Map(catchUpRows.map((c) => [c.id, c.title]))
+
+  /** The catch-up this student sat: the one whose attempt joined latest. */
+  function catchUpOf(studentId: string): ResultRow['catchUp'] {
+    let latest: { testId: string; joinedAt: Date } | null = null
+    for (const id of catchUpIds) {
+      const joinedAt = sat.get(id)?.get(studentId)?.joinedAt
+      if (joinedAt && (!latest || joinedAt.getTime() > latest.joinedAt.getTime())) latest = { testId: id, joinedAt }
+    }
+    if (!latest) return null
+    const score = allScores.get(latest.testId)?.get(studentId)
+    if (!score) return null
+    return {
+      testId: latest.testId,
+      title: catchUpTitles.get(latest.testId) ?? '',
+      score: score.score,
+      outOf: score.outOf,
+      pendingShort: score.pendingShort,
+    }
+  }
 
   let pending = 0
   const rows: ResultRow[] = roster.map((student) => {
@@ -296,7 +354,13 @@ export async function getTestResults(
       score: score.score,
       outOf: score.outOf,
       pendingShort: score.pendingShort,
+      catchUp: catchUpOf(student.studentId),
     }
   })
-  return { test: summary, rows, pending }
+  const catchUps = catchUpRows.map((c) => ({
+    id: c.id,
+    title: c.title,
+    state: testState(c, at),
+  }))
+  return { test: summary, rows, pending, catchUps }
 }
