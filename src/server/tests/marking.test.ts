@@ -14,7 +14,7 @@ import {
   setupCourse,
 } from '@/test/marking-fixture'
 import { fakeSuggester } from './ai/fake'
-import { SuggesterError } from './ai/gateway'
+import { SuggesterError } from './ai/model'
 import { setMarkSuggesterForTests, type MarkSuggester, type SuggestInput } from './ai/suggester'
 import { confirmMark, getMarkingQuestion, suggestMarks } from './marking'
 import { releaseResults } from './results'
@@ -412,7 +412,7 @@ describe('marking short answers', () => {
     expect(await suggestMarks(s.lecturer, s.q2.id)).toEqual({ suggested: 22 - newlySuggested.length, failed: false })
   })
 
-  it('suggestMarks logs a gateway failure as name, category and status only', async () => {
+  it('suggestMarks logs a provider failure as name, category and status only', async () => {
     const s = await scenario()
     setMarkSuggesterForTests(async () => {
       throw new SuggesterError('GatewayRateLimitError', 'rate_limit', 429)
