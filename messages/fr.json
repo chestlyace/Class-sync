@@ -214,7 +214,18 @@
       "copyStudentLink": "Copier le lien étudiant",
       "copyLecturerLink": "Copier le lien enseignant",
       "copyStudentLinkTitle": "Copier le lien que les étudiants ouvrent pour rejoindre cette classe",
-      "copyLecturerLinkTitle": "Copier le lien que vos collègues ouvrent pour enseigner dans cette classe"
+      "copyLecturerLinkTitle": "Copier le lien que vos collègues ouvrent pour enseigner dans cette classe",
+      "delegates": {
+        "hint": "Les délégués de classe (jusqu'à {max}) peuvent faire l'appel pour tous les cours de cette classe, à votre place ou avec vous.",
+        "current": "Délégués actuels : {names}.",
+        "badge": "Délégué",
+        "make": "Nommer délégué",
+        "remove": "Retirer comme délégué",
+        "makeLabel": "Nommer {name} délégué de classe",
+        "removeLabel": "{name} est délégué de classe : retirer",
+        "full": "Cette classe a déjà 2 délégués. Retirez-en un d'abord.",
+        "studentTitle": "{count, plural, one {Votre délégué de classe} other {Vos délégués de classe}}"
+      }
     },
     "settings": {
       "link": "Paramètres",
@@ -1299,7 +1310,17 @@
       },
       "sessionOver": "Cette séance est terminée : elle a commencé il y a plus de {hours} heures. Démarrez une nouvelle séance pour faire l'appel.",
       "checkMark": "{label} : {state}",
-      "statusOverridden": "{status} (fixé par vous)"
+      "statusOverridden": "{status} (fixé par vous)",
+      "startedByDelegate": "Démarrée par {name} (délégué)"
+    },
+    "delegate": {
+      "eyebrow": "Présences · Délégué",
+      "intro": "En tant que délégué de classe, vous pouvez démarrer une séance et ouvrir ses appels pour que vos camarades pointent. Les corrections et l'historique restent à votre enseignant.",
+      "currentTitle": "Séances du jour",
+      "noCurrent": "Aucune séance aujourd'hui. Démarrez-en une au début du cours.",
+      "checkInOpen": "Appel ouvert",
+      "open": "Ouvrir",
+      "takeAttendance": "Faire l'appel"
     }
   },
   "assignments": {
