@@ -49,7 +49,7 @@ export default async function AttendanceSessionPage({
     return { ...data, live, linkPath }
   })
   if (!view.ok) return <ErrorState code={view.code} />
-  const { session, course, students, joinedOnline, live, linkPath } = view.data
+  const { session, course, students, joinedOnline, live, linkPath, canManage, startedBy } = view.data
   const checkInLink = linkPath ? await absoluteLink(linkPath) : null
   const gridHref = `/courses/${encodeURIComponent(course.id)}/attendance`
   const time = (date: Date) => formatSessionDate(date, locale, config.timeZone, 'time')
@@ -86,6 +86,7 @@ export default async function AttendanceSessionPage({
         <Badge variant={session.requireOnCampus ? 'secondary' : 'outline'}>
           {session.requireOnCampus ? t('campusRequired') : t('campusNotRequired')}
         </Badge>
+        {startedBy && <Badge variant="outline">{t('startedByDelegate', { name: startedBy })}</Badge>}
       </div>
 
       <section aria-labelledby="check-in" className="flex flex-col gap-4">
@@ -164,13 +165,16 @@ export default async function AttendanceSessionPage({
                       )}
                     </span>
                   </div>
-                  <OverrideSelect
-                    key={student.studentId}
-                    sessionId={session.id}
-                    studentId={student.studentId}
-                    name={student.name}
-                    value={student.override ?? 'auto'}
-                  />
+                  {/* Corrections stay with the lecturer: a delegate only runs the session. */}
+                  {canManage && (
+                    <OverrideSelect
+                      key={student.studentId}
+                      sessionId={session.id}
+                      studentId={student.studentId}
+                      name={student.name}
+                      value={student.override ?? 'auto'}
+                    />
+                  )}
                 </li>
               )
             })}
@@ -178,18 +182,20 @@ export default async function AttendanceSessionPage({
         )}
       </section>
 
-      <div className="flex justify-end">
-        <ConfirmAction
-          action={deleteSessionAction.bind(null, session.id)}
-          fields={{}}
-          triggerLabel={t('deleteSession')}
-          triggerIcon={<Trash2 aria-hidden="true" data-icon="inline-start" />}
-          title={t('deleteTitle')}
-          body={t('deleteBody')}
-          confirmLabel={t('deleteConfirm')}
-          destructive
-        />
-      </div>
+      {canManage && (
+        <div className="flex justify-end">
+          <ConfirmAction
+            action={deleteSessionAction.bind(null, session.id)}
+            fields={{}}
+            triggerLabel={t('deleteSession')}
+            triggerIcon={<Trash2 aria-hidden="true" data-icon="inline-start" />}
+            title={t('deleteTitle')}
+            body={t('deleteBody')}
+            confirmLabel={t('deleteConfirm')}
+            destructive
+          />
+        </div>
+      )}
     </>
   )
 }

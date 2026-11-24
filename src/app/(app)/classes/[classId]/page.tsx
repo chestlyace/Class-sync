@@ -5,17 +5,20 @@ import { ConfirmAction } from '@/components/confirm-action'
 import { CopyButton } from '@/components/copy-button'
 import { ErrorState } from '@/components/error-state'
 import { Eyebrow, PageHeader, Panel, SectionHeading } from '@/components/page-header'
+import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
+import { listClassDelegates, MAX_DELEGATES, type ClassDelegate } from '@/server/classes/delegates'
 import { getClassRoster, listMyClasses, type ClassSummary, type RosterEntry } from '@/server/classes/service'
 import { AppError } from '@/server/core/errors'
 import { listLecturerCourses, listStudentCourses, type CourseSummary } from '@/server/courses/service'
 import { absoluteLink, joinLinkPath } from '@/app/share-links'
 import { loadPage } from '../../load-page'
 import { regenerateCodeAction, removeStudentAction } from '../actions'
+import { DelegateButton } from '../delegate-button'
 
 type ClassView =
-  | { role: 'lecturer'; cls: ClassSummary; roster: RosterEntry[]; courses: CourseSummary[] }
-  | { role: 'student'; cls: ClassSummary; courses: CourseSummary[] }
+  | { role: 'lecturer'; cls: ClassSummary; roster: RosterEntry[]; courses: CourseSummary[]; delegates: ClassDelegate[] }
+  | { role: 'student'; cls: ClassSummary; courses: CourseSummary[]; delegates: ClassDelegate[] }
 
 async function findMyClass(classes: Promise<ClassSummary[]>, classId: string): Promise<ClassSummary> {
   const cls = (await classes).find((c) => c.id === classId)
@@ -35,11 +38,16 @@ export default async function ClassPage({ params }: PageProps<'/classes/[classId
   const view = await loadPage<ClassView>(async (ctx) => {
     if (ctx.user.role === 'lecturer') {
       const roster = await getClassRoster(ctx, classId) // FORBIDDEN unless a lecturer of this class
-      const [cls, courses] = await Promise.all([findMyClass(listMyClasses(ctx), classId), listLecturerCourses(ctx)])
-      return { role: 'lecturer', cls, roster, courses: courses.filter((c) => c.classId === classId) }
+      const [cls, courses, delegates] = await Promise.all([
+        findMyClass(listMyClasses(ctx), classId),
+        listLecturerCourses(ctx),
+        listClassDelegates(ctx, classId),
+      ])
+      return { role: 'lecturer', cls, roster, courses: courses.filter((c) => c.classId === classId), delegates }
     }
-    const [cls, courses] = await Promise.all([findMyClass(listMyClasses(ctx), classId), listStudentCourses(ctx)])
-    return { role: 'student', cls, courses: courses.filter((c) => c.classId === classId) }
+    const cls = await findMyClass(listMyClasses(ctx), classId)
+    const [courses, delegates] = await Promise.all([listStudentCourses(ctx), listClassDelegates(ctx, classId)])
+    return { role: 'student', cls, courses: courses.filter((c) => c.classId === classId), delegates }
   })
   if (!view.ok) return <ErrorState code={view.code} />
   const { cls } = view.data
@@ -67,13 +75,23 @@ export default async function ClassPage({ params }: PageProps<'/classes/[classId
         }
       />
       {view.data.role === 'lecturer' ? (
-        <LecturerClass cls={cls} roster={view.data.roster} courses={view.data.courses} />
+        <LecturerClass cls={cls} roster={view.data.roster} courses={view.data.courses} delegates={view.data.delegates} />
       ) : (
-        <CourseList
-          heading={t('classes.page.studentCourses')}
-          empty={t('classes.page.studentCoursesEmpty')}
-          courses={view.data.courses}
-        />
+        <>
+          {view.data.delegates.length > 0 && (
+            <Panel className="flex flex-col gap-1">
+              <span className="font-medium">
+                {t('classes.page.delegates.studentTitle', { count: view.data.delegates.length })}
+              </span>
+              <span className="text-muted-foreground">{view.data.delegates.map((d) => d.name).join(', ')}</span>
+            </Panel>
+          )}
+          <CourseList
+            heading={t('classes.page.studentCourses')}
+            empty={t('classes.page.studentCoursesEmpty')}
+            courses={view.data.courses}
+          />
+        </>
       )}
     </>
   )
@@ -83,12 +101,16 @@ async function LecturerClass({
   cls,
   roster,
   courses,
+  delegates,
 }: {
   cls: ClassSummary
   roster: RosterEntry[]
   courses: CourseSummary[]
+  delegates: ClassDelegate[]
 }) {
   const t = await getTranslations('classes.page')
+  const delegateIds = new Set(delegates.map((d) => d.studentId))
+  const full = delegates.length >= MAX_DELEGATES
   const studentCode = cls.studentCode ?? ''
   const lecturerCode = cls.lecturerCode ?? ''
   const [studentLink, lecturerLink] = await Promise.all([
@@ -152,6 +174,10 @@ async function LecturerClass({
         ) : (
           <>
             <p className="text-sm text-muted-foreground">{t('rejoinNote')}</p>
+            <p data-testid="delegates-note" className="text-sm text-muted-foreground">
+              {t('delegates.hint', { max: MAX_DELEGATES })}{' '}
+              {delegates.length > 0 && t('delegates.current', { names: delegates.map((d) => d.name).join(', ') })}
+            </p>
             <ul className="flex flex-col divide-y overflow-hidden rounded-3xl border bg-card">
               <li
                 aria-hidden="true"
@@ -166,13 +192,23 @@ async function LecturerClass({
                   className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-5"
                 >
                   <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate font-medium">{student.name}</span>
+                    <span className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className="truncate font-medium">{student.name}</span>
+                      {delegateIds.has(student.studentId) && <Badge variant="secondary">{t('delegates.badge')}</Badge>}
+                    </span>
                     <span className="truncate text-sm text-muted-foreground">{student.email}</span>
                   </div>
                   <span className="font-mono text-sm tracking-[0.04em]">
                     <span className="sr-only">{t('matricule')} </span>
                     {student.matricule ?? '—'}
                   </span>
+                  <DelegateButton
+                    classId={cls.id}
+                    studentId={student.studentId}
+                    name={student.name}
+                    isDelegate={delegateIds.has(student.studentId)}
+                    full={full}
+                  />
                   <ConfirmAction
                     action={removeStudentAction}
                     fields={{ classId: cls.id, studentId: student.studentId }}

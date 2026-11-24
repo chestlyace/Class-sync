@@ -5,6 +5,7 @@ import { ErrorState } from '@/components/error-state'
 import { Eyebrow, PageHeader, Panel, SectionHeading } from '@/components/page-header'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
+import { isCourseDelegate } from '@/server/classes/delegates'
 import { getClassRoster, type RosterEntry } from '@/server/classes/service'
 import { getCourse, getCourseRoster, type CourseSummary } from '@/server/courses/service'
 import { loadPage } from '../../load-page'
@@ -26,7 +27,7 @@ type CourseView =
       excluded: RosterEntry[]
       classHasStudents: boolean
     }
-  | { role: 'student'; course: CourseSummary }
+  | { role: 'student'; course: CourseSummary; delegate: boolean }
 
 export async function generateMetadata() {
   const t = await getTranslations('courses.page')
@@ -43,9 +44,11 @@ export default async function CoursePage({ params }: PageProps<'/courses/[course
   const tNotes = await getTranslations('notes.lecturer')
   const tTimetable = await getTranslations('schedule.timetable')
   const tSettings = await getTranslations('courses.settings')
+  const tDelegate = await getTranslations('attendance.delegate')
   const view = await loadPage<CourseView>(async (ctx) => {
     const course = await getCourse(ctx, courseId) // FORBIDDEN unless owner or rostered student
-    if (ctx.user.role !== 'lecturer') return { role: 'student', course }
+    // A class delegate runs attendance for the course too.
+    if (ctx.user.role !== 'lecturer') return { role: 'student', course, delegate: await isCourseDelegate(ctx.db, ctx.user.id, courseId) }
     const [roster, classRoster] = await Promise.all([getCourseRoster(ctx, courseId), getClassRoster(ctx, course.classId)])
     const onRoster = new Set(roster.map((s) => s.studentId))
     // In the class but not on the roster: excluded from this course.
@@ -134,6 +137,15 @@ export default async function CoursePage({ params }: PageProps<'/courses/[course
                 <ArrowRight aria-hidden="true" data-icon="inline-end" />
               </Link>
             </>
+          ) : view.data.delegate ? (
+            <Link
+              href={`/courses/${encodeURIComponent(course.id)}/attendance`}
+              data-tour="delegate-attendance"
+              className={buttonVariants({ variant: 'default' })}
+            >
+              <ClipboardCheck aria-hidden="true" data-icon="inline-start" />
+              {tDelegate('takeAttendance')}
+            </Link>
           ) : undefined
         }
       />

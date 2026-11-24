@@ -6,6 +6,7 @@ import { toActionResult, type ActionResult } from '@/lib/action-result'
 import { formString } from '@/lib/form-data'
 import { getCtx } from '@/server/auth/session'
 import { createClass, regenerateJoinCode, removeStudentFromClass, updateClass } from '@/server/classes/service'
+import { appointDelegate, removeDelegate } from '@/server/classes/delegates'
 import { removeClass } from '@/server/classes/remove'
 import { updateSchool } from '@/server/schools/service'
 import { AppError } from '@/server/core/errors'
@@ -101,5 +102,19 @@ export async function removeClassAction(
     await removeClass(await getCtx(), formString(data, 'classId'), formString(data, 'confirm'), expected)
     revalidatePath('/', 'layout')
     redirect('/dashboard')
+  })
+}
+
+/** Makes a student of the class one of its delegates (on) or ends it (off). */
+export async function setDelegateAction(classId: string, studentId: string, on: boolean): Promise<ActionResult<null>> {
+  return toActionResult(async () => {
+    if (typeof classId !== 'string' || typeof studentId !== 'string' || typeof on !== 'boolean') {
+      throw new AppError('VALIDATION', 'Invalid input', { fields: ['studentId'] })
+    }
+    const ctx = await getCtx()
+    if (on) await appointDelegate(ctx, classId, studentId)
+    else await removeDelegate(ctx, classId, studentId)
+    revalidatePath(`/classes/${classId}`)
+    return null
   })
 }
