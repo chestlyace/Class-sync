@@ -40,7 +40,8 @@ function lineToPieces(line: string): Inline[] {
 }
 
 /**
- * An announcement body as paragraphs of lines of pieces. A blank line starts a new paragraph, a single
+ * An announcement body as paragraphs of lines of pieces. A blank line (or several, even holding spaces)
+ * starts a new paragraph, a single
  * line break stays a line break, and only `http://` and `https://` addresses become links (the
  * punctuation that ends a sentence stays outside the link). Everything else is plain text, so the
  * template escapes it: no markup, no `javascript:` or `mailto:` links.
@@ -48,8 +49,9 @@ function lineToPieces(line: string): Inline[] {
 export function bodyToParagraphs(body: string): Inline[][][] {
   return body
     .replace(/\r\n?/g, '\n')
-    .split(/\n[ \t]*\n/)
-    .map((paragraph) => paragraph.replace(/^\n+|\n+$/g, ''))
+    .split(/\n(?:[ \t]*\n)+/)
+    // Lines of only spaces at either end of a paragraph are blank lines too, not lines of text.
+    .map((paragraph) => paragraph.replace(/^(?:[ \t]*\n)+|(?:\n[ \t]*)+$/g, ''))
     .filter((paragraph) => paragraph.trim() !== '')
     .map((paragraph) => paragraph.split('\n').map(lineToPieces))
 }

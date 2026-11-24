@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
 import { requireAdmin } from '@/server/core/guards'
+import { isAllowedRecipient } from '@/server/email/allowlist'
 import { adminAction, BROADCAST_AUDIENCES, broadcast, broadcastRecipient, user } from '@/server/db/schema'
 import type { BroadcastAudience, BroadcastStatus } from '@/server/db/schema'
 import { enqueueBroadcast } from './queue'
@@ -104,7 +105,6 @@ async function savedBroadcast(ctx: Ctx, id: string): Promise<{ id: string; recip
 }
 
 /**
-/**
  * Queues the sending job of a broadcast that is already saved. When the queue fails, the broadcast
  * stays saved with its rows pending: the admin is told to press Send again (the same id re-queues
  * it), and the daily run picks up any broadcast left like this for more than 10 minutes.
@@ -120,6 +120,7 @@ async function startSending(id: string): Promise<void> {
   }
 }
 
+/**
  * Saves a broadcast with its recipients and the audit row in one transaction, then queues the
  * sending job. Sending the same id again returns the saved broadcast and never sends twice (a
  * double click or a retried request is safe); it only queues the job again if the first request
@@ -198,13 +199,17 @@ export async function createBroadcast(
 
 /**
  * Sends both language versions to the admin's own address so they can check them before the real
- * send. Writes nothing and ignores the admin's own opt-out.
+ * send. Writes nothing and ignores the admin's own opt-out. Outside production the address must
+ * pass `EMAIL_ALLOWLIST`, like every other email (CONFLICT with `details.reason = 'not_allowed'`).
  */
 export async function sendTestBroadcast(ctx: Ctx, input: BroadcastTestInput): Promise<void> {
   requireAdmin(ctx)
   const data = parseInput(testInputSchema, input)
   const sender = broadcastSender()
   if (!sender) throw new AppError('CONFLICT', 'Email sending is not set up (SES_REGION)')
+  if (!isAllowedRecipient(ctx.user.email)) {
+    throw new AppError('CONFLICT', 'Your address is not in EMAIL_ALLOWLIST on this deployment', { reason: 'not_allowed' })
+  }
 
   const token = await unsubscribeTokenFor(ctx.db, ctx.user.id)
   const versions = [
@@ -242,7 +247,8 @@ export type BroadcastDetail = BroadcastSummary & {
   bodyEn: string
   subjectFr: string
   bodyFr: string
-  problems: Array<{ email: string; status: 'failed' | 'skipped'; error: string | null }>
+  /** `id` is the recipient row's: masked addresses can repeat, so it is what tells two rows apart. */
+  problems: Array<{ id: string; email: string; status: 'failed' | 'skipped'; error: string | null }>
 }
 
 type Counts = Pick<BroadcastSummary, 'total' | 'sent' | 'failed' | 'skipped'>
@@ -313,18 +319,24 @@ export async function getBroadcast(ctx: Ctx, id: string): Promise<BroadcastDetai
   const [counts, problems] = await Promise.all([
     countsFor(ctx, [id]),
     ctx.db
-      .select({ email: broadcastRecipient.email, status: broadcastRecipient.status, error: broadcastRecipient.error })
+      .select({
+        id: broadcastRecipient.id,
+        email: broadcastRecipient.email,
+        status: broadcastRecipient.status,
+        error: broadcastRecipient.error,
+      })
       .from(broadcastRecipient)
       .where(
         and(eq(broadcastRecipient.broadcastId, id), inArray(broadcastRecipient.status, ['failed', 'skipped'])),
       )
-      .orderBy(broadcastRecipient.status, broadcastRecipient.email)
+      .orderBy(broadcastRecipient.status, broadcastRecipient.email, broadcastRecipient.id)
       .limit(PROBLEMS_LIMIT),
   ])
   return {
     ...row,
     ...(counts.get(id) ?? NO_COUNTS),
     problems: problems.map((p) => ({
+      id: p.id,
       email: p.email,
       status: p.status === 'failed' ? ('failed' as const) : ('skipped' as const),
       error: p.error,

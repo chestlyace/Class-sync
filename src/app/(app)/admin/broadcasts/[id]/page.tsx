@@ -88,7 +88,7 @@ export default async function AdminBroadcastPage({ params }: PageProps<'/admin/b
               <ul className="flex flex-col divide-y">
                 {detail.problems.map((p) => (
                   <li
-                    key={`${p.status}:${p.email}`}
+                    key={p.id}
                     className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:gap-4"
                   >
                     <span className="min-w-0 flex-1 font-mono text-[13px] break-all">{p.email}</span>

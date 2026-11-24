@@ -31,7 +31,11 @@ const globalForSes = globalThis as typeof globalThis & { __clasyncSes?: { key: s
 function client(region: string): SESv2Client {
   const cached = globalForSes.__clasyncSes
   if (cached && cached.key === region) return cached.client
-  const created = new SESv2Client({ region })
+  // A hung request must not hold the sending job: give up on one email after 10 s (it is marked failed).
+  const created = new SESv2Client({
+    region,
+    requestHandler: { connectionTimeout: 5_000, requestTimeout: 10_000, throwOnRequestTimeout: true },
+  })
   globalForSes.__clasyncSes = { key: region, client: created }
   return created
 }

@@ -40,10 +40,11 @@ async function registerWorkers(): Promise<void> {
   })
 
   // One broadcast run at a time keeps the pace at 10 emails a second. A run that stops at its time budget
-  // queues a fresh run (a new job id) and ends normally.
+  // queues a fresh run (a new job id) and ends normally. When pg-boss aborts the job (shutdown, or past its
+  // expiry) it has already failed it and retries it itself, so the run stops claiming rows and queues nothing.
   await boss.work<BroadcastMessage>(BROADCAST_TOPIC, { localConcurrency: 1 }, async ([job]) => {
-    const { done } = await runBroadcastJobDefault(job.data.broadcastId)
-    if (!done) await enqueueBroadcast(job.data.broadcastId)
+    const { done } = await runBroadcastJobDefault(job.data.broadcastId, { signal: job.signal })
+    if (!done && !job.signal.aborted) await enqueueBroadcast(job.data.broadcastId)
   })
 
   await boss.work(DAILY_REMINDERS_QUEUE, async () => {

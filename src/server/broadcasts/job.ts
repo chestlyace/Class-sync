@@ -97,13 +97,17 @@ async function finish(
  * after, so a retried or repeated run never sends to anyone twice. Returns `done: false` when it
  * stopped at the budget with rows still pending; the caller queues the next run.
  *
+ * `signal` (pg-boss aborts it when the process shuts down or the job runs past its expiry, and
+ * retries the job itself) stops the run before it claims another row; the email already on its
+ * way is finished and recorded first.
+ *
  * Throws (leaving rows pending, for a later retry) when no sender is configured, or when the
  * database fails; a row caught mid-send by a failure is marked failed `interrupted` by the next run.
  */
 export async function runBroadcastJob(
   db: Db,
   broadcastId: string,
-  opts: { budgetMs?: number; now?: () => number } = {},
+  opts: { budgetMs?: number; now?: () => number; signal?: AbortSignal } = {},
 ): Promise<{ done: boolean }> {
   const now = opts.now ?? Date.now
   const budgetMs = opts.budgetMs ?? DEFAULT_BUDGET_MS
@@ -130,7 +134,7 @@ export async function runBroadcastJob(
   }
 
   try {
-    while (now() - startedAt < budgetMs) {
+    while (!opts.signal?.aborted && now() - startedAt < budgetMs) {
       const row = await claimNext(db, broadcastId)
       if (!row) break
 
@@ -196,6 +200,6 @@ export async function runBroadcastJob(
 }
 
 /** `runBroadcastJob` on the app's own database, for the queue drivers and the pg-boss worker. */
-export function runBroadcastJobDefault(broadcastId: string): Promise<{ done: boolean }> {
-  return runBroadcastJob(defaultDb, broadcastId)
+export function runBroadcastJobDefault(broadcastId: string, opts: { signal?: AbortSignal } = {}): Promise<{ done: boolean }> {
+  return runBroadcastJob(defaultDb, broadcastId, { signal: opts.signal })
 }

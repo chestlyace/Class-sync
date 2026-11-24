@@ -2910,6 +2910,7 @@
         "recent": "Recent failures",
         "none": "No failures recorded.",
         "batch": "Batch",
+        "broadcast": "Announcement",
         "unknownKind": "Unknown kind",
         "noError": "No details"
       },
@@ -2957,10 +2958,10 @@
         "testFailed": "The test couldn't be sent. Check the email setup and try again.",
         "sendButton": "Send to {count, plural, one {# person} other {# people}}…",
         "sendFailed": "Email sending isn't set up, so nothing was sent.",
-        "sentNotice": "Sending to {count, plural, one {# person} other {# people}}. Follow it in the history below.",
         "notStarted": "The announcement is saved, but sending didn't start. Press Send now again to start it.",
         "unexpected": "Something went wrong. Your message is still here: try again.",
         "testNotAllowed": "Your address isn't in EMAIL_ALLOWLIST on this deployment, so the test wasn't sent.",
+        "sentNotice": "Sending to {count, plural, one {# person} other {# people}}. Follow it in the history below.",
         "confirm": {
           "title": "Send this announcement?",
           "description": "This sends it now to {audience, select, lecturers {lecturers} students {students} other {everyone}}: {count, plural, one {# person} other {# people}}. It can't be recalled once it is sent.",
@@ -3002,7 +3003,7 @@
           "suspended": "Account suspended",
           "opted_out": "Turned announcements off",
           "not_allowed": "Not an allowed address outside production",
-          "interrupted": "Interrupted before it was sent"
+          "interrupted": "Interrupted while sending: it may have been delivered"
         }
       }
     },

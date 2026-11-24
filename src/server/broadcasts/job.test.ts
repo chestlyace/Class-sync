@@ -212,6 +212,33 @@ describe('runBroadcastJob', () => {
     expect((await broadcastRow(broadcastId)).status).toBe('done')
   })
 
+  it('stops claiming rows once its signal is aborted, finishing the email in flight', async () => {
+    const controller = new AbortController()
+    const { sender } = stubSender(() => {
+      // The first send is under way when the process starts shutting down.
+      controller.abort()
+      return { ok: true }
+    })
+    const { broadcastId } = await seed([{}, {}, {}])
+
+    expect(await runBroadcastJob(db, broadcastId, { signal: controller.signal })).toEqual({ done: false })
+    expect(sender.send).toHaveBeenCalledTimes(1)
+    const rows = await rowsOf(broadcastId)
+    expect(rows.filter((r) => r.status === 'sent')).toHaveLength(1)
+    expect(rows.filter((r) => r.status === 'pending')).toHaveLength(2)
+    expect(rows.filter((r) => r.status === 'sending')).toHaveLength(0)
+    expect((await broadcastRow(broadcastId)).status).toBe('sending')
+  })
+
+  it('claims nothing when its signal is already aborted', async () => {
+    const { sender } = stubSender()
+    const { broadcastId } = await seed([{}])
+
+    expect(await runBroadcastJob(db, broadcastId, { signal: AbortSignal.abort() })).toEqual({ done: false })
+    expect(sender.send).not.toHaveBeenCalled()
+    expect((await rowsOf(broadcastId))[0]!.status).toBe('pending')
+  })
+
   it('throws and leaves rows pending when no sender is configured', async () => {
     vi.stubEnv('APP_ENV', 'production')
     vi.stubEnv('SES_REGION', '')

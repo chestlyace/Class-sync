@@ -77,6 +77,7 @@ const FORBIDDEN_MEMBERS = [
   'privateKey',
   'clientSecret',
   'secret',
+  'unsubscribeToken',
   // Content and per-student columns on allowed tables.
   'instructions',
   'prompt',
@@ -92,7 +93,7 @@ const FORBIDDEN_MEMBERS = [
 const FORBIDDEN_MEMBER_RE = new RegExp(`\\.(${FORBIDDEN_MEMBERS.join('|')})\\b`, 'g')
 /** The same columns by their SQL names, for raw `sql` fragments. */
 const FORBIDDEN_SQL_COLUMN_RE =
-  /\b(suggested_mark|suggested_reason|suggested_feedback|storage_key|body_text|private_key|client_secret|is_late|is_correct|student_id|option_id|accuracy_m)\b/g
+  /\b(suggested_mark|suggested_reason|suggested_feedback|storage_key|body_text|private_key|client_secret|is_late|is_correct|student_id|option_id|accuracy_m|unsubscribe_token)\b/g
 
 /** The literal key of a translation call, `t('a.b')` or `t.rich("a.b", …)`. */
 const TRANSLATION_KEY_RE = /(\bt(?:\.\w+)?\(\s*)(['"])[\w.]*\2/g
@@ -247,6 +248,8 @@ describe('admin data fence', () => {
         expect(check(`db.select({ x: t.${member} })`)).toHaveLength(1)
       }
       expect(check('sql`select suggested_mark from test_answer`')).toHaveLength(1)
+      expect(check(`db.select({ x: user.unsubscribeToken })`)).toHaveLength(1)
+      expect(check('sql`select unsubscribe_token from "user"`')).toHaveLength(1)
       expect(check(`db.select({ x: classStudent.userId, y: oauthClient.name, z: apikey.lastRequest })`)).toEqual([])
     })
 

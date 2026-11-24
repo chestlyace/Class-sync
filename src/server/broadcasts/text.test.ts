@@ -18,6 +18,13 @@ describe('bodyToParagraphs', () => {
     ])
   })
 
+  it('treats lines of only spaces as blank lines, with no stray empty line', () => {
+    expect(bodyToParagraphs(' \t\nFirst\n  \n\t\n \nSecond\n  indented\n   \n')).toEqual([
+      [[{ kind: 'text', value: 'First' }]],
+      [[{ kind: 'text', value: 'Second' }], [{ kind: 'text', value: '  indented' }]],
+    ])
+  })
+
   it('turns https links into links and leaves trailing punctuation outside', () => {
     expect(bodyToParagraphs('See https://clasync.online/news, then (http://example.org/a?b=1).')).toEqual([
       [

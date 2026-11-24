@@ -2910,6 +2910,7 @@
         "recent": "Derniers échecs",
         "none": "Aucun échec enregistré.",
         "batch": "Envoi groupé",
+        "broadcast": "Annonce",
         "unknownKind": "Type inconnu",
         "noError": "Aucun détail"
       },
@@ -2957,10 +2958,10 @@
         "testFailed": "Le test n'a pas pu être envoyé. Vérifiez la configuration e-mail et réessayez.",
         "sendButton": "Envoyer à {count, plural, one {# personne} other {# personnes}}…",
         "sendFailed": "L'envoi d'e-mails n'est pas configuré : rien n'a été envoyé.",
-        "sentNotice": "Envoi en cours à {count, plural, one {# personne} other {# personnes}}. Suivez-le dans l'historique ci-dessous.",
         "notStarted": "L'annonce est enregistrée, mais l'envoi n'a pas démarré. Appuyez de nouveau sur Envoyer maintenant pour le lancer.",
         "unexpected": "Un problème est survenu. Votre message est conservé : réessayez.",
         "testNotAllowed": "Votre adresse ne figure pas dans EMAIL_ALLOWLIST sur ce déploiement : le test n'a pas été envoyé.",
+        "sentNotice": "Envoi en cours à {count, plural, one {# personne} other {# personnes}}. Suivez-le dans l'historique ci-dessous.",
         "confirm": {
           "title": "Envoyer cette annonce ?",
           "description": "Elle part maintenant {audience, select, lecturers {aux enseignants} students {aux étudiants} other {à tout le monde}} : {count, plural, one {# personne} other {# personnes}}. Impossible de la rappeler une fois envoyée.",
@@ -3002,7 +3003,7 @@
           "suspended": "Compte suspendu",
           "opted_out": "A désactivé les annonces",
           "not_allowed": "Adresse non autorisée hors production",
-          "interrupted": "Interrompu avant l'envoi"
+          "interrupted": "Interrompu pendant l'envoi : l'e-mail a peut-être été remis"
         }
       }
     },
@@ -3021,14 +3022,14 @@
         "school_update": "École modifiée",
         "school_delete": "École supprimée",
         "school_merge": "Écoles fusionnées",
-        "broadcast_send": "Message envoyé à un groupe"
+        "broadcast_send": "Annonce envoyée"
       },
       "audiences": {
         "lecturers": "les enseignants",
         "students": "les étudiants",
         "everyone": "tout le monde"
       },
-      "broadcast": "Message à {audience} : {subject} ({count, plural, one {# personne} other {# personnes}})",
+      "broadcast": "Annonce pour {audience} : {subject} ({count, plural, one {# personne} other {# personnes}})",
       "school": {
         "update": "{before}, {beforeTown} → {after}, {town}",
         "delete": "{name}, {town} · {classes, plural, one {# classe} other {# classes}}",
@@ -3082,7 +3083,7 @@
       "title": "Vos choix",
       "edit": "Vous pouvez modifier votre nom et votre langue dans les Paramètres, et ajouter votre matricule à une classe.",
       "google": "Vous pouvez associer ou dissocier Google dans les Paramètres.",
-      "announcements": "Vous pouvez ne plus recevoir les annonces par e-mail grâce au lien en bas de chacune ou au bouton dans les Paramètres. Les e-mails concernant votre compte, comme la vérification et la réinitialisation du mot de passe, continuent.",
+      "announcements": "Vous pouvez ne plus recevoir les annonces par e-mail grâce au lien en bas de chacune ou à l'interrupteur dans les Paramètres. Les e-mails concernant votre compte, comme la vérification et la réinitialisation du mot de passe, continuent.",
       "delete": "Pour obtenir une copie de vos données ou faire supprimer votre compte, écrivez à <email>{address}</email>. La suppression d'un compte supprime aussi ses données.",
       "keep": "Clasync conserve vos données tant que votre compte existe."
     },

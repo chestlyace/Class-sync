@@ -274,6 +274,20 @@ describe('broadcast service', () => {
     expect(queued).toEqual([])
   })
 
+  it('refuses a test to an address outside EMAIL_ALLOWLIST outside production', async () => {
+    const { sent } = stubSender()
+    vi.stubEnv('EMAIL_ALLOWLIST', 'someone-else@example.com')
+    await expect(sendTestBroadcast(ctxFor(db, admin), input())).rejects.toMatchObject({
+      code: 'CONFLICT',
+      details: { reason: 'not_allowed' },
+    })
+    expect(sent).toHaveLength(0)
+
+    vi.stubEnv('EMAIL_ALLOWLIST', admin.email)
+    await sendTestBroadcast(ctxFor(db, admin), input())
+    expect(sent).toHaveLength(2)
+  })
+
   it('turns a failed test send into an error with the scrubbed message', async () => {
     stubSender(() => ({ ok: false, error: 'Rejected a***@example.com' }))
     await expect(sendTestBroadcast(ctxFor(db, admin), input())).rejects.toMatchObject({
@@ -346,10 +360,27 @@ describe('broadcast service', () => {
       failed: 1,
       skipped: 1,
     })
+    const rows = await recipientsOf(data.id)
+    const rowId = (userId: string) => rows.find((r) => r.userId === userId)!.id
     expect(detail.problems).toEqual([
-      { email: a.email, status: 'failed', error: 'Mailbox full' },
-      { email: b.email, status: 'skipped', error: 'opted_out' },
+      { id: rowId(a.id), email: a.email, status: 'failed', error: 'Mailbox full' },
+      { id: rowId(b.id), email: b.email, status: 'skipped', error: 'opted_out' },
     ])
+  })
+
+  it('tells apart problem rows whose masked addresses are the same', async () => {
+    await makeUser(db, { role: 'student' })
+    await makeUser(db, { role: 'student' })
+    const data = input({ audience: 'students' })
+    await createBroadcast(ctxFor(db, admin), data, 'SEND')
+    await db
+      .update(broadcastRecipient)
+      .set({ status: 'failed', error: 'Mailbox full', email: 'a***@example.com' })
+      .where(eq(broadcastRecipient.broadcastId, data.id))
+
+    const { problems } = await getBroadcast(ctxFor(db, admin), data.id)
+    expect(problems.map((p) => p.email)).toEqual(['a***@example.com', 'a***@example.com'])
+    expect(new Set(problems.map((p) => p.id)).size).toBe(2)
   })
 
   it('gives NOT_FOUND for a broadcast that does not exist', async () => {
