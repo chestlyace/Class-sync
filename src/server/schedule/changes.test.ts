@@ -490,11 +490,12 @@ describe('date changes', () => {
     const key = `slot:${slot.id}:${MONDAY}`
     const url = 'https://meet.google.com/abc-defg-hij'
 
-    await moveClassOnline(fx.lecturer, key, `  ${url}  `)
+    const newKey = await moveClassOnline(fx.lecturer, key, `  ${url}  `)
     await flush()
 
     expect(await db.select().from(classDateStatus)).toMatchObject([{ slotId: slot.id, date: MONDAY, status: 'cancelled' }])
     const [extra] = await db.select().from(classExtra)
+    expect(newKey).toBe(`extra:${extra.id}`)
     expect(extra).toMatchObject({
       courseId: fx.bio.id,
       meetingUrl: url,

@@ -87,11 +87,12 @@ export async function undoCancelAction(key: string): Promise<ActionResult<null>>
 }
 
 /** "Move online" on a lecturer's class page: the service validates the Meet link and reuses the make-up flow. */
-export async function moveOnlineAction(key: string, data: FormData): Promise<ActionResult<null>> {
+export async function moveOnlineAction(key: string, data: FormData): Promise<ActionResult<never>> {
   return toActionResult(async () => {
-    await moveClassOnline(await getCtx(), requireId(key, 'key'), formString(data, 'meetingUrl'))
+    const newKey = await moveClassOnline(await getCtx(), requireId(key, 'key'), formString(data, 'meetingUrl'))
     revalidateSchedule()
-    return null
+    // The old key is now cancelled: stay on the class the lecturer just created instead of an error page.
+    redirect(`/schedule/class/${encodeURIComponent(newKey)}`)
   })
 }
 

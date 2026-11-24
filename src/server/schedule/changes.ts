@@ -164,7 +164,7 @@ const slotIdOf = (occ: Occurrence) => (occ.source.kind === 'slot' ? occ.source.s
  * Cancels a future class. With `makeUp`, the cancelled class and its replacement are saved together and the
  * roster hears one "moved" notification instead of a cancellation and a make-up.
  */
-export async function cancelClass(ctx: Ctx, occurrenceKey: string, makeUp?: MakeUpInput): Promise<void> {
+export async function cancelClass(ctx: Ctx, occurrenceKey: string, makeUp?: MakeUpInput): Promise<string | null> {
   const { occ, owned } = await requireOwnedOccurrence(ctx, occurrenceKey)
   if (!isFuture(occ))
     throw new AppError('VALIDATION', 'Only a class that has not started can be cancelled', { reason: 'not_future' })
@@ -221,13 +221,15 @@ export async function cancelClass(ctx: Ctx, occurrenceKey: string, makeUp?: Make
       await pushClassCancelled(ctx.db, occ)
     }
   })
+  return created?.id ?? null
 }
 
 /**
  * Moves one future class online by reusing the cancel-with-make-up flow: the old date is cancelled and
- * replaced by an extra at the same time with the lecturer's Google Meet link.
+ * replaced by an extra at the same time with the lecturer's Google Meet link. Returns the replacement's
+ * occurrence key so the caller can leave the cancelled class page.
  */
-export async function moveClassOnline(ctx: Ctx, occurrenceKey: string, meetingUrl: string): Promise<void> {
+export async function moveClassOnline(ctx: Ctx, occurrenceKey: string, meetingUrl: string): Promise<string> {
   const url = parseMeetingUrl(meetingUrl)
   if (url === null) {
     throw new AppError('VALIDATION', 'A Google Meet link is required', { fields: ['meetingUrl'] })
@@ -239,7 +241,7 @@ export async function moveClassOnline(ctx: Ctx, occurrenceKey: string, meetingUr
   const startMinute = localMinuteOf(occ.startsAt, config.timeZone)
   const endsOnNextDay = localDateOf(occ.endsAt, config.timeZone) > occ.date
   const endMinute = endsOnNextDay ? 1440 : localMinuteOf(occ.endsAt, config.timeZone)
-  await cancelClass(ctx, occurrenceKey, {
+  const extraId = await cancelClass(ctx, occurrenceKey, {
     date: occ.date,
     startMinute,
     endMinute,
@@ -247,6 +249,8 @@ export async function moveClassOnline(ctx: Ctx, occurrenceKey: string, meetingUr
     requireOnCampus: false,
     meetingUrl: url,
   })
+  if (!extraId) throw new Error(`The online replacement for ${occurrenceKey} could not be created`)
+  return `extra:${extraId}`
 }
 
 /** Brings a cancelled future class back and tells the roster it is back on. */

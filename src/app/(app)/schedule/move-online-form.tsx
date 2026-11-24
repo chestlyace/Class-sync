@@ -31,11 +31,10 @@ export function MoveOnlineButton({ occurrenceKey, when }: { occurrenceKey: strin
   const tMakeUp = useTranslations('schedule.makeUp')
   const tCommon = useTranslations('common')
   const [open, setOpen] = useState(false)
-  const [state, dispatch, pending] = useActionState(async (_prev: ActionResult<null> | null, data: FormData) => {
-    const result = await moveOnlineAction(occurrenceKey, data)
-    if (result.ok) setOpen(false)
-    return result
-  }, null)
+  const [state, dispatch, pending] = useActionState(
+    async (_prev: ActionResult<never> | null, data: FormData) => moveOnlineAction(occurrenceKey, data),
+    null,
+  )
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

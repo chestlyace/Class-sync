@@ -146,9 +146,12 @@ describe('schedule Server Actions', () => {
     expect(addMakeUp).toHaveBeenCalledWith(ctx, 'c1', expect.objectContaining({ meetingUrl }))
   })
 
-  it('moves a class online through the service', async () => {
+  it('moves a class online and opens the replacement instead of the cancelled class', async () => {
     const meetingUrl = '  https://meet.google.com/abc-defg-hij  '
-    expect(await moveOnlineAction('slot:a:2026-11-16', form({ meetingUrl }))).toEqual({ ok: true, data: null })
+    moveClassOnline.mockResolvedValue('extra:e1')
+    await expect(moveOnlineAction('slot:a:2026-11-16', form({ meetingUrl }))).rejects.toMatchObject({
+      digest: expect.stringContaining('/schedule/class/extra%3Ae1'),
+    })
     expect(moveClassOnline).toHaveBeenCalledWith(ctx, 'slot:a:2026-11-16', meetingUrl)
     expect(revalidatePath).toHaveBeenCalled()
   })
