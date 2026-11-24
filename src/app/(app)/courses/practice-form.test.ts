@@ -49,4 +49,9 @@ describe('parsePracticeForm', () => {
   it('passes an unknown kind on for the service to refuse', () => {
     expect(parsePracticeForm(form([['kind', 'essay']]))).toMatchObject({ kind: 'essay' })
   })
+
+  it('does not throw when a malformed action request supplies no FormData', () => {
+    expect(parsePracticeForm(null as unknown as FormData)).toMatchObject({ kind: '', options: [] })
+    expect(parsePracticeForm(undefined as unknown as FormData)).toMatchObject({ kind: '', options: [] })
+  })
 })

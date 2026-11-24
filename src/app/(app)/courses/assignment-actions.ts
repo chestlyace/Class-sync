@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { toActionResult, type ActionResult } from '@/lib/action-result'
-import { formString } from '@/lib/form-data'
+import { formAll, formString } from '@/lib/form-data'
 import {
   createAssignment,
   deleteDraftAssignment,
@@ -73,7 +73,7 @@ function parseAssignmentForm(data: FormData): AssignmentInput {
   const latePolicy = formString(data, 'latePolicy') as AssignmentInput['latePolicy']
   if (!LATE_POLICIES.includes(latePolicy)) bad.push('latePolicy')
 
-  const attachmentIds = data.getAll('attachmentIds')
+  const attachmentIds = formAll(data, 'attachmentIds')
   if (attachmentIds.length > MAX_FILES || attachmentIds.some((id) => typeof id !== 'string' || id === '')) {
     bad.push('attachments')
   }
