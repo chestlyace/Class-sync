@@ -2,7 +2,7 @@ import { generateText, Output, type LanguageModel } from 'ai'
 import { z } from 'zod'
 import { cleanSuggestions } from './clean'
 import { buildMarkingPrompt } from './prompt'
-import type { MarkSuggester, Suggestion, SuggestInput } from './suggester'
+import type { MarkSuggester, Suggestion, SuggestInput, SuggestOptions } from './suggester'
 
 const TIMEOUT_MS = 30_000
 
@@ -63,7 +63,7 @@ export function createModelSuggester(
   model: LanguageModel,
   { timeoutMs = TIMEOUT_MS }: { timeoutMs?: number } = {},
 ): MarkSuggester {
-  async function suggestChunk(input: SuggestInput): Promise<Suggestion[]> {
+  async function suggestChunk(input: SuggestInput, onUsage: SuggestOptions['onUsage']): Promise<Suggestion[]> {
     const { system, prompt } = buildMarkingPrompt(input)
     let output: unknown
     try {
@@ -78,18 +78,19 @@ export function createModelSuggester(
         abortSignal: AbortSignal.timeout(timeoutMs),
       })
       output = result.output
+      onUsage?.({ inputTokens: result.usage.inputTokens ?? 0, outputTokens: result.usage.outputTokens ?? 0 })
     } catch (error) {
       throw describeFailure(error)
     }
     return cleanSuggestions(output, new Set(input.answers.map((a) => a.key)), input.maxMark)
   }
 
-  return async (input) => {
+  return async (input, opts) => {
     if (input.answers.length === 0) return []
     const chunks: SuggestInput[] = []
     for (let i = 0; i < input.answers.length; i += MAX_ANSWERS_PER_CALL) {
       chunks.push({ ...input, answers: input.answers.slice(i, i + MAX_ANSWERS_PER_CALL) })
     }
-    return (await Promise.all(chunks.map(suggestChunk))).flat()
+    return (await Promise.all(chunks.map((chunk) => suggestChunk(chunk, opts?.onUsage)))).flat()
   }
 }
