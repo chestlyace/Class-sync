@@ -11,6 +11,15 @@ export function formString(data: FormData | null | undefined, key: string): stri
   return typeof value === 'string' ? value : ''
 }
 
+/**
+ * Repeated fields from a submitted form. [] when the payload is missing, for the same reason as
+ * `formString`: a malformed or stale action request must reach the service's VALIDATION error.
+ */
+export function formAll(data: FormData | null | undefined, key: string): FormDataEntryValue[] {
+  if (!data || typeof data.getAll !== 'function') return []
+  return data.getAll(key)
+}
+
 /** An optional numeric field (latitude/longitude): blank → undefined, junk → VALIDATION. */
 export function optionalCoordinate(data: FormData | null | undefined, key: string): number | undefined {
   const raw = formString(data, key).trim()

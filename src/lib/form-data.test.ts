@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formString, optionalCoordinate } from './form-data'
+import { formAll, formString, optionalCoordinate } from './form-data'
 
 function fd(entries: Record<string, string>): FormData {
   const data = new FormData()
@@ -23,6 +23,20 @@ describe('formString', () => {
     expect(formString(undefined, 'name')).toBe('')
     expect(formString(null, 'name')).toBe('')
     expect(formString({} as FormData, 'name')).toBe('')
+  })
+})
+
+describe('formAll', () => {
+  it('returns every value for a repeated field', () => {
+    const data = fd({ name: 'HND 2' })
+    data.append('name', 'HND 3')
+    expect(formAll(data, 'name')).toEqual(['HND 2', 'HND 3'])
+  })
+
+  it('returns an empty array when a malformed action request supplies no FormData', () => {
+    expect(formAll(undefined, 'option')).toEqual([])
+    expect(formAll(null, 'option')).toEqual([])
+    expect(formAll({} as FormData, 'option')).toEqual([])
   })
 })
 

@@ -32,7 +32,7 @@ vi.mock('next/cache', () => ({
   revalidatePath: (path: string, type?: string) => revalidatePath(path, type),
 }))
 
-import { suggestMarksAction } from '@/app/(app)/courses/assignment-actions'
+import { createAssignmentAction, suggestMarksAction } from '@/app/(app)/courses/assignment-actions'
 
 const NOW = new Date('2026-11-21T10:00:00Z')
 const SUBMITTED = new Date('2026-11-20T00:00:00Z')
@@ -180,5 +180,13 @@ describe('suggestMarksAction', () => {
       details: { reason: 'cap' },
     })
     expect(sent).toEqual([])
+  })
+})
+
+describe('createAssignmentAction with a malformed request', () => {
+  it('returns VALIDATION instead of throwing when no FormData is supplied', async () => {
+    // The form is parsed before getCtx, so a missing payload is refused without a session.
+    const result = await createAssignmentAction('course-1', null, undefined as unknown as FormData)
+    expect(result).toMatchObject({ ok: false, code: 'VALIDATION' })
   })
 })
