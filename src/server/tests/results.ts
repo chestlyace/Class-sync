@@ -11,6 +11,7 @@ import { sendNotifications, type Notification } from '@/server/email/notify'
 import { TestResultsReleasedEmail } from '@/server/email/templates/test-results-released'
 import { emailSubject } from '@/server/email/templates/verify-email'
 import { runAfterResponse } from '@/server/lib/after-response'
+import { queueWhatsApp } from '@/server/whatsapp/trigger'
 import { safePushItems } from '@/server/push/build'
 import { pushPayload } from '@/server/push/payload'
 import { sendPush } from '@/server/push/send'
@@ -125,6 +126,7 @@ export async function releaseResults(ctx: Ctx, testId: string): Promise<{ releas
       )
       await Promise.all([sendNotifications(items), sendPush(pushItems)])
     })
+    queueWhatsApp({ kind: 'resultsReleased', source: 'test', id: test.id })
   }
   return { released: recipients.length }
 }

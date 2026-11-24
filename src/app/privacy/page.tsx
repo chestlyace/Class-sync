@@ -17,12 +17,12 @@ export async function generateMetadata() {
 
 /** The policy's sections, in order: message keys under `privacy.<key>`. */
 const sections = [
-  { key: 'collect', items: ['account', 'google', 'classes', 'tests', 'location', 'signIns'] },
+  { key: 'collect', items: ['account', 'google', 'classes', 'tests', 'location', 'signIns', 'whatsapp'] },
   { key: 'access', items: ['lecturers', 'you', 'admins', 'sold'] },
-  { key: 'services', intro: true, items: ['hosting', 'database', 'email', 'announcements', 'errors', 'push', 'ai', 'aiAssignments', 'google'] },
+  { key: 'services', intro: true, items: ['hosting', 'database', 'email', 'announcements', 'errors', 'push', 'whatsapp', 'ai', 'aiAssignments', 'google'] },
   { key: 'assistants', items: ['body'] },
   { key: 'cookies', items: ['body'] },
-  { key: 'rights', items: ['edit', 'google', 'announcements', 'delete', 'keep'] },
+  { key: 'rights', items: ['edit', 'google', 'whatsapp', 'announcements', 'delete', 'keep'] },
   { key: 'changes', items: ['body'] },
 ] as const
 

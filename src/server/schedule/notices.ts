@@ -5,6 +5,7 @@ import type { Db } from '@/server/db'
 import { classExtra, classNotice, classSlot } from '@/server/db/schema'
 import { addDays, instantAt, isoWeekday, localDateOf } from '@/server/lib/local-time'
 import { pushClassMissedQuestion, pushClassSoon } from '@/server/push/course-events'
+import { queueWhatsApp } from '@/server/whatsapp/trigger'
 import { buildSittings, type Sitting } from './occurrences'
 import { loadOccurrences, loadSittingByKey, sittingsWithAttendance } from './queries'
 import { scheduleQueue, type NoticeKind, type NoticeMessage } from './queue'
@@ -114,8 +115,15 @@ export async function handleNotice(db: Db, message: NoticeMessage): Promise<'sen
   if (claimed.length === 0) return 'skipped'
 
   try {
-    if (message.kind === 'reminder') await pushClassSoon(db, sitting, sitting.occurrences[0]?.room ?? null)
-    else await pushClassMissedQuestion(db, sitting)
+    if (message.kind === 'reminder') {
+      await pushClassSoon(db, sitting, sitting.occurrences[0]?.room ?? null)
+      queueWhatsApp({
+        kind: 'classSoonLecturer',
+        courseId: sitting.courseId,
+        sittingKey: sitting.key,
+        startsAt: sitting.startsAt.toISOString(),
+      })
+    } else await pushClassMissedQuestion(db, sitting)
   } catch (error) {
     console.error(`[schedule] could not push the ${message.kind} for ${sitting.key}`, error)
   }

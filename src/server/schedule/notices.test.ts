@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { setNowForTests } from '@/server/core/clock'
 import { config } from '@/server/core/config'
@@ -17,6 +17,7 @@ import { instantAt } from '@/server/lib/local-time'
 import { setPushClientForTests } from '@/server/push/send'
 import { setupCourse } from '@/test/marking-fixture'
 import { createTestDb } from '@/test/db'
+import { captureWhatsApp } from '@/test/whatsapp-capture'
 import { enqueueCourseDay, enqueueToday, handleNotice } from './notices'
 import { setScheduleQueueForTests, type NoticeMessage } from './queue'
 
@@ -161,6 +162,69 @@ describe('class notices', () => {
     )
     const lecturerPush = JSON.parse(pushes.find((p) => p.endpoint.endsWith('/lecturer'))!.body)
     expect(lecturerPush.kind).toBe('classSoonLecturer')
+  })
+
+  describe('whatsapp', () => {
+    let wa: ReturnType<typeof captureWhatsApp> | null = null
+    afterEach(() => {
+      wa?.stop()
+      wa = null
+    })
+    const reminder = (): NoticeMessage => ({
+      sittingKey: `slot:${slotId}:${MONDAY}`,
+      kind: 'reminder',
+      expectedAt: local(8).toISOString(),
+    })
+
+    it('a reminder queues a lecturer alert once, for now', async () => {
+      setNowForTests(() => local(7, 45))
+      wa = captureWhatsApp()
+      expect(await handleNotice(db, reminder())).toBe('sent')
+      expect(await handleNotice(db, reminder())).toBe('skipped')
+      await wa.flush()
+      expect(wa.captured).toEqual([
+        {
+          event: {
+            kind: 'classSoonLecturer',
+            courseId: fx.bio.id,
+            sittingKey: `slot:${slotId}:${MONDAY}`,
+            startsAt: local(8).toISOString(),
+          },
+          deliverAt: local(7, 45),
+        },
+      ])
+    })
+
+    it('a missed-check queues nothing', async () => {
+      setNowForTests(() => local(10, 10))
+      wa = captureWhatsApp()
+      const message: NoticeMessage = {
+        sittingKey: `slot:${slotId}:${MONDAY}`,
+        kind: 'missed-check',
+        expectedAt: local(10).toISOString(),
+      }
+      expect(await handleNotice(db, message)).toBe('sent')
+      await wa.flush()
+      expect(wa.captured).toEqual([])
+    })
+
+    it('queues nothing when WhatsApp is not configured', async () => {
+      setNowForTests(() => local(7, 45))
+      wa = captureWhatsApp({ configured: false })
+      expect(await handleNotice(db, reminder())).toBe('sent')
+      await wa.flush()
+      expect(wa.captured).toEqual([])
+    })
+
+    it('a failing queue never fails the notice', async () => {
+      setNowForTests(() => local(7, 45))
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      wa = captureWhatsApp({ failWith: new Error('queue down') })
+      expect(await handleNotice(db, reminder())).toBe('sent')
+      await wa.flush()
+      expect(error).toHaveBeenCalled()
+      error.mockRestore()
+    })
   })
 
   it('a late reminder after the class started is skipped', async () => {
