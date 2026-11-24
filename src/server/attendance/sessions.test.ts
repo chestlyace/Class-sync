@@ -17,6 +17,7 @@ import {
   school,
 } from '@/server/db/schema'
 import { createTestDb } from '@/test/db'
+import { captureWhatsApp } from '@/test/whatsapp-capture'
 import { ctxFor, makeUser } from '@/test/factories'
 import { createSchool, setSchoolLocation } from '@/server/schools/service'
 import { createClass, joinClassAsLecturer, joinClassAsStudent } from '@/server/classes/service'
@@ -127,6 +128,57 @@ describe('attendance sessions', () => {
     expect(items.every((i) => i.payload.url === '/check-in' && i.payload.kind === 'checkInOpened')).toBe(true)
     // Tagged per window, not per course.
     expect(items.every((i) => i.payload.tag === `checkin-${opened.windowId}`)).toBe(true)
+  })
+
+  describe('whatsapp', () => {
+    let wa: ReturnType<typeof captureWhatsApp> | null = null
+    afterEach(() => {
+      wa?.stop()
+      wa = null
+    })
+
+    it('opening a start window queues a check-in alert 3 minutes after it opened', async () => {
+      const { lecturer, algo } = await setup()
+      wa = captureWhatsApp()
+      const session = await createSession(lecturer, algo.id, { requireOnCampus: false })
+      const live = await openWindow(lecturer, session.id, 'start')
+      await wa.flush()
+      expect(wa.captured).toEqual([
+        { event: { kind: 'checkinOpen', windowId: live.windowId }, deliverAt: new Date(clock.getTime() + 3 * MIN) },
+      ])
+    })
+
+    it('an end window queues nothing', async () => {
+      const { lecturer, algo } = await setup()
+      const session = await createSession(lecturer, algo.id, { requireOnCampus: false })
+      await openWindow(lecturer, session.id, 'start')
+      advance(16 * MIN)
+      wa = captureWhatsApp()
+      await openWindow(lecturer, session.id, 'end')
+      await wa.flush()
+      expect(wa.captured).toEqual([])
+    })
+
+    it('queues nothing when WhatsApp is not configured', async () => {
+      const { lecturer, algo } = await setup()
+      wa = captureWhatsApp({ configured: false })
+      const session = await createSession(lecturer, algo.id, { requireOnCampus: false })
+      await openWindow(lecturer, session.id, 'start')
+      await wa.flush()
+      expect(wa.captured).toEqual([])
+    })
+
+    it('a failing queue never fails the action', async () => {
+      const { lecturer, algo } = await setup()
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      wa = captureWhatsApp({ failWith: new Error('queue down') })
+      const session = await createSession(lecturer, algo.id, { requireOnCampus: false })
+      const live = await openWindow(lecturer, session.id, 'start')
+      await wa.flush()
+      expect(live.open).toBe(true)
+      expect(error).toHaveBeenCalled()
+      error.mockRestore()
+    })
   })
 
   it('owner creates a session; a colleague sharing the class gets FORBIDDEN on every function', async () => {

@@ -8,6 +8,7 @@ import { requireCourseOwner } from '@/server/courses/service'
 import type { Db } from '@/server/db'
 import { courseTest, testAnswer, testAttempt, testExit, testLog, testQuestion } from '@/server/db/schema'
 import { pushTestStarted } from '@/server/push/course-events'
+import { queueWhatsApp, WHATSAPP_FALLBACK_DELAY_MS } from '@/server/whatsapp/trigger'
 import { summarizeTest, type TestSummary } from './authoring'
 import { eligibleStudents, onlyEligible, satAttempts } from './catch-up'
 import { endsAt, testPhase, testState, type TestPhase, type TestState } from './phase'
@@ -157,6 +158,7 @@ export async function startTest(ctx: Ctx, testId: string): Promise<TestSummary> 
     const eligibleOf =
       row.catchUpOfId === null ? undefined : (studentIds: string[]) => eligibleStudents(ctx.db, row, studentIds)
     await pushTestStarted(ctx.db, row.courseId, { id: row.id, title: row.title, code: row.code }, eligibleOf)
+    queueWhatsApp({ kind: 'testStarted', testId: row.id }, new Date(at.getTime() + WHATSAPP_FALLBACK_DELAY_MS))
   }
   return summarizeTest(ctx.db, row)
 }

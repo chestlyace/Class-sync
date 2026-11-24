@@ -41,6 +41,9 @@ import {
   submission,
   submissionFile,
   testAnswer,
+  whatsappLink,
+  whatsappMessage,
+  whatsappPreference,
   testAttempt,
   testCatchUpStudent,
   testExit,
@@ -1077,6 +1080,25 @@ describe('admin schema', () => {
       .values({ userId: u.id, endpoint: 'https://push.example/x', p256dh: 'k', auth: 'a', label: 'Phone' })
     await db.delete(user).where(sql`${user.id} = ${u.id}`)
     expect(await db.select().from(pushSubscription)).toHaveLength(0)
+  })
+
+  it('keeps whatsapp links unique and sending idempotent, and cascades with the user', async () => {
+    const db = await createTestDb()
+    const u = await makeUser(db)
+    const other = await makeUser(db)
+    await db.insert(whatsappLink).values({ userId: u.id, phone: '+237600000001' })
+    await expect(db.insert(whatsappLink).values({ userId: other.id, phone: '+237600000001' })).rejects.toThrow()
+    await db.insert(whatsappPreference).values({ userId: u.id })
+    const [prefs] = await db.select().from(whatsappPreference)
+    expect(prefs).toMatchObject({ checkin: true, tests: true, results: true, assignments: true, classSoon: true })
+    const msg = { userId: u.id, kind: 'checkinOpen' as const, eventKey: 'e1', template: 't', status: 'sent' as const }
+    await db.insert(whatsappMessage).values(msg)
+    await expect(db.insert(whatsappMessage).values(msg)).rejects.toThrow()
+    await db.delete(user).where(sql`${user.id} = ${u.id}`)
+    expect(await db.select().from(whatsappLink)).toHaveLength(0)
+    expect(await db.select().from(whatsappPreference)).toHaveLength(0)
+    const [kept] = await db.select().from(whatsappMessage)
+    expect(kept.userId).toBeNull()
   })
 
   it('accepts push_sent and push_failed ops events', async () => {

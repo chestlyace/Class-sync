@@ -39,6 +39,7 @@ import {
   getOverview,
   getPerson,
   getUsage,
+  getWhatsAppUsage,
   listAudit,
   listPeople,
   maskIp,
@@ -325,6 +326,23 @@ describe('admin read models', () => {
     expect(u.testAttempts[29].value).toBe(1)
     expect(u.resourcesAdded[29].value).toBe(1)
     expect(sum(u.practiceAnswers)).toBe(0)
+  })
+
+  it('getWhatsAppUsage is null when WhatsApp is not set up, and counts this month when it is', async () => {
+    const at = new Date()
+    expect(await getWhatsAppUsage(adminCtx, at, {})).toBeNull()
+    const env = {
+      WHATSAPP_AWS_REGION: 'eu-west-1',
+      AWS_ACCESS_KEY_ID: 'AKIAEXAMPLE',
+      AWS_SECRET_ACCESS_KEY: 'secret-example',
+      WHATSAPP_PHONE_NUMBER_ID: 'phone-number-id-1',
+      WHATSAPP_DISPLAY_NUMBER: '+237600000000',
+      WHATSAPP_SNS_TOPIC_ARN: 'arn:aws:sns:eu-west-1:123456789012:test',
+    }
+    const usage = await getWhatsAppUsage(adminCtx, at, env)
+    expect(usage).toMatchObject({ sent: 0, skippedCap: 0, failed: 0 })
+    expect(usage?.month).toBe(at.toISOString().slice(0, 7))
+    await expect(getWhatsAppUsage(ctxFor(db, s1), at, env)).rejects.toMatchObject({ code: 'NOT_FOUND' })
   })
 
   it('getAiAndMcp gives null credits when the call throws, and counts suggestions and MCP use', async () => {

@@ -3,8 +3,11 @@ import { MARKING_TOPIC, type MarkingMessage } from '@/server/assignments/ai/queu
 import { runBroadcastJobDefault } from '@/server/broadcasts/job'
 import { BROADCAST_TOPIC, enqueueBroadcast, type BroadcastMessage } from '@/server/broadcasts/queue'
 import { requeueStaleBroadcastsDefault } from '@/server/broadcasts/requeue'
+import { now } from '@/server/core/clock'
 import { handleNoticeDefault } from '@/server/schedule/default-db'
 import { CLASS_NOTICES_TOPIC, type NoticeMessage } from '@/server/schedule/queue'
+import { handleWhatsAppEventDefault } from '@/server/whatsapp/default-db'
+import { WHATSAPP_TOPIC, type WhatsAppEvent } from '@/server/whatsapp/events'
 import { DAILY_REMINDERS_QUEUE, DAILY_SCHEDULE_QUEUE, getBoss, resetBoss } from './boss'
 import { runRemindersDaily, runScheduleDaily } from './daily'
 
@@ -45,6 +48,11 @@ async function registerWorkers(): Promise<void> {
   await boss.work<BroadcastMessage>(BROADCAST_TOPIC, { localConcurrency: 1 }, async ([job]) => {
     const { done } = await runBroadcastJobDefault(job.data.broadcastId, { signal: job.signal })
     if (!done && !job.signal.aborted) await enqueueBroadcast(job.data.broadcastId)
+  })
+
+  // Who still needs a message is worked out at delivery time; a throw (a database error) retries the event.
+  await boss.work<WhatsAppEvent>(WHATSAPP_TOPIC, { localConcurrency: 2 }, async ([job]) => {
+    await handleWhatsAppEventDefault(job.data, now())
   })
 
   await boss.work(DAILY_REMINDERS_QUEUE, async () => {

@@ -26,10 +26,12 @@ import {
 import { getClassReminders } from '@/server/push/preferences'
 import { listMyDevices } from '@/server/push/subscriptions'
 import { getSchool, type School } from '@/server/schools/service'
+import { getWhatsAppSettings } from '@/server/whatsapp/link'
 import { loadPage } from '../load-page'
 import { AiAssistantsSection, type AppRow, type TokenRow } from './ai-assistants'
 import { AnnouncementsSwitch } from './announcements'
 import { NotificationsSettings } from './notifications'
+import { WhatsAppSettings } from './whatsapp'
 import {
   AddMatriculeForm,
   ChangePasswordForm,
@@ -103,16 +105,17 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
   const isLecturer = user.role === 'lecturer'
 
   const data = await loadPage(async (ctx) => {
-    const [classes, signIn, devices, announcements] = await Promise.all([
+    const [classes, signIn, devices, announcements, whatsapp] = await Promise.all([
       listMyClasses(ctx),
       listSignInMethods(ctx),
       listMyDevices(ctx),
       announcementsEnabled(ctx),
+      getWhatsAppSettings(ctx),
     ])
     if (!isLecturer) {
       // Only students have the class reminder switch.
       const classReminders = await getClassReminders(ctx)
-      return { classes, signIn, devices, announcements, classReminders, schools: [] as SchoolGroup[], tokens: [], apps: [] }
+      return { classes, signIn, devices, announcements, whatsapp, classReminders, schools: [] as SchoolGroup[], tokens: [], apps: [] }
     }
     const schoolIds = [...new Set(classes.map((c) => c.schoolId))]
     const [schools, tokens, apps] = await Promise.all([
@@ -125,6 +128,7 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
       signIn,
       devices,
       announcements,
+      whatsapp,
       classReminders: null,
       schools: schools.map((school) => ({ school, classes: classes.filter((c) => c.schoolId === school.id) })),
       tokens,
@@ -132,7 +136,7 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
     }
   })
   if (!data.ok) return <ErrorState code={data.code} />
-  const { classes, signIn, devices, announcements, classReminders, schools, tokens, apps } = data.data
+  const { classes, signIn, devices, announcements, whatsapp, classReminders, schools, tokens, apps } = data.data
   const day = dayFormatter(locale)
 
   return (
@@ -192,6 +196,18 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
           </div>
         </Panel>
       </section>
+
+      {whatsapp.available && (
+        <section aria-labelledby="whatsapp" className="flex scroll-mt-24 flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <SectionHeading id="whatsapp">{t('whatsapp.title')}</SectionHeading>
+            <p className="text-sm text-muted-foreground">{t('whatsapp.description')}</p>
+          </div>
+          <Panel>
+            <WhatsAppSettings maskedPhone={whatsapp.maskedPhone} prefs={whatsapp.prefs} roles={whatsapp.roles} />
+          </Panel>
+        </section>
+      )}
 
       {isLecturer ? (
         <section aria-labelledby="where-you-teach" className="flex flex-col gap-4">
