@@ -5,6 +5,7 @@ import { toActionResult, type ActionResult } from '@/lib/action-result'
 import { formString } from '@/lib/form-data'
 import { parsePosition } from '@/lib/position'
 import { getCtx } from '@/server/auth/session'
+import { setAnnouncementsEnabled } from '@/server/broadcasts/unsubscribe'
 import { addMyMatricule } from '@/server/classes/service'
 import { AppError } from '@/server/core/errors'
 import {
@@ -81,6 +82,16 @@ export async function revokeAccessTokenAction(_prev: ActionResult<unknown> | nul
 export async function disconnectAppAction(_prev: ActionResult<unknown> | null, data: FormData): Promise<ActionResult<null>> {
   return toActionResult(async () => {
     await disconnectApp(await getCtx(), String(data.get('clientId') ?? ''))
+    revalidatePath('/settings')
+    return null
+  })
+}
+
+/** The Settings switch for announcement emails (every role). Account emails are not affected. */
+export async function setAnnouncementsAction(enabled: boolean): Promise<ActionResult<null>> {
+  return toActionResult(async () => {
+    if (typeof enabled !== 'boolean') throw new AppError('VALIDATION', 'enabled must be a boolean')
+    await setAnnouncementsEnabled(await getCtx(), enabled)
     revalidatePath('/settings')
     return null
   })

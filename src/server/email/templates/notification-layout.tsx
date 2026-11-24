@@ -44,21 +44,8 @@ export function CtaLink({ href, children }: { href: string; children: ReactNode 
   )
 }
 
-export function NotificationLayout({
-  locale,
-  greeting,
-  paragraphs,
-  cta,
-  url,
-  fallback,
-}: {
-  locale: Locale
-  greeting: string
-  paragraphs: ReactNode[]
-  cta: string
-  url: string
-  fallback: string
-}) {
+/** The shared page frame of every email: grey background, white card, the Clasync heading. */
+export function EmailFrame({ locale, children }: { locale: Locale; children: ReactNode }) {
   return (
     <Html lang={locale}>
       <Head />
@@ -75,21 +62,43 @@ export function NotificationLayout({
           <Heading as="h1" style={{ fontSize: '22px', margin: '0 0 16px' }}>
             Clasync
           </Heading>
-          <Text style={{ fontSize: '16px', lineHeight: '24px' }}>{greeting}</Text>
-          {paragraphs.map((p, i) => (
-            <Text key={i} style={{ fontSize: '16px', lineHeight: '24px' }}>
-              {p}
-            </Text>
-          ))}
-          <Section style={{ margin: '24px 0' }}>
-            <CtaLink href={url}>{cta}</CtaLink>
-          </Section>
-          <Text style={{ fontSize: '14px', lineHeight: '20px', color: '#52525b' }}>{fallback}</Text>
-          <Link href={url} style={{ fontSize: '14px', wordBreak: 'break-all' }}>
-            {url}
-          </Link>
+          {children}
         </Container>
       </Body>
     </Html>
+  )
+}
+
+export function NotificationLayout({
+  locale,
+  greeting,
+  paragraphs,
+  cta,
+  url,
+  fallback,
+}: {
+  locale: Locale
+  greeting: string
+  paragraphs: ReactNode[]
+  cta: string
+  url: string
+  fallback: string
+}) {
+  return (
+    <EmailFrame locale={locale}>
+      <Text style={{ fontSize: '16px', lineHeight: '24px' }}>{greeting}</Text>
+      {paragraphs.map((p, i) => (
+        <Text key={i} style={{ fontSize: '16px', lineHeight: '24px' }}>
+          {p}
+        </Text>
+      ))}
+      <Section style={{ margin: '24px 0' }}>
+        <CtaLink href={url}>{cta}</CtaLink>
+      </Section>
+      <Text style={{ fontSize: '14px', lineHeight: '20px', color: '#52525b' }}>{fallback}</Text>
+      <Link href={url} style={{ fontSize: '14px', wordBreak: 'break-all' }}>
+        {url}
+      </Link>
+    </EmailFrame>
   )
 }

@@ -11,6 +11,7 @@ import { mcpResourceUrl, resolveAppOrigin } from '@/server/auth/auth'
 import { isGoogleSignInEnabled } from '@/server/auth/google'
 import { getSessionUser } from '@/server/auth/session'
 import { listSignInMethods } from '@/server/auth/sign-in-methods'
+import { announcementsEnabled } from '@/server/broadcasts/unsubscribe'
 import { isAdmin } from '@/server/core/admin'
 import { listMyClasses, type ClassSummary } from '@/server/classes/service'
 import { config } from '@/server/core/config'
@@ -27,6 +28,7 @@ import { listMyDevices } from '@/server/push/subscriptions'
 import { getSchool, type School } from '@/server/schools/service'
 import { loadPage } from '../load-page'
 import { AiAssistantsSection, type AppRow, type TokenRow } from './ai-assistants'
+import { AnnouncementsSwitch } from './announcements'
 import { NotificationsSettings } from './notifications'
 import {
   AddMatriculeForm,
@@ -101,11 +103,16 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
   const isLecturer = user.role === 'lecturer'
 
   const data = await loadPage(async (ctx) => {
-    const [classes, signIn, devices] = await Promise.all([listMyClasses(ctx), listSignInMethods(ctx), listMyDevices(ctx)])
+    const [classes, signIn, devices, announcements] = await Promise.all([
+      listMyClasses(ctx),
+      listSignInMethods(ctx),
+      listMyDevices(ctx),
+      announcementsEnabled(ctx),
+    ])
     if (!isLecturer) {
       // Only students have the class reminder switch.
       const classReminders = await getClassReminders(ctx)
-      return { classes, signIn, devices, classReminders, schools: [] as SchoolGroup[], tokens: [], apps: [] }
+      return { classes, signIn, devices, announcements, classReminders, schools: [] as SchoolGroup[], tokens: [], apps: [] }
     }
     const schoolIds = [...new Set(classes.map((c) => c.schoolId))]
     const [schools, tokens, apps] = await Promise.all([
@@ -117,6 +124,7 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
       classes,
       signIn,
       devices,
+      announcements,
       classReminders: null,
       schools: schools.map((school) => ({ school, classes: classes.filter((c) => c.schoolId === school.id) })),
       tokens,
@@ -124,7 +132,7 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
     }
   })
   if (!data.ok) return <ErrorState code={data.code} />
-  const { classes, signIn, devices, classReminders, schools, tokens, apps } = data.data
+  const { classes, signIn, devices, announcements, classReminders, schools, tokens, apps } = data.data
   const day = dayFormatter(locale)
 
   return (
@@ -179,6 +187,9 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
             devices={devices.map((d) => ({ id: d.id, label: d.label, added: day(d.createdAt) }))}
             classReminders={classReminders}
           />
+          <div className="mt-6 border-t pt-6">
+            <AnnouncementsSwitch initial={announcements} />
+          </div>
         </Panel>
       </section>
 
