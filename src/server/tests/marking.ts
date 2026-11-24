@@ -12,7 +12,7 @@ import type { Db } from '@/server/db'
 import { courseTest, testAnswer, testAttempt, testQuestion } from '@/server/db/schema'
 import { MAX_ANSWERS_PER_CALL, SuggesterError } from './ai/model'
 import { assertCanSuggestTestMarks } from './ai/limits'
-import { getMarkSuggester, type MarkSuggester, type Suggestion } from './ai/suggester'
+import { getMarkSuggester, type MarkSuggester, type Suggestion, type SuggestUsage } from './ai/suggester'
 import { answersFinalAt } from './phase'
 import { requireOwnedTest, type TestRow } from './queries'
 import { COMMENT_MAX, questionMark, type QuestionKind } from './rules'
@@ -247,8 +247,8 @@ async function suggestBatch(
   at: Date,
 ): Promise<number> {
   const byKey = new Map(batch.map((a, i) => [`a${i + 1}`, a.attemptId]))
-  // The suggester does not pass token counts back yet: one row per call, with 0 tokens. A failed call
-  // is logged too, since it can still be billed, just like assignment marking.
+  // One row per batch, with the tokens the suggester reported (0 when a call failed before
+  // reporting). A failed batch is logged too, since it can still be billed, just like assignment marking.
   const usage = {
     purpose: 'test_correction' as const,
     lecturerId: input.lecturerId,
@@ -257,15 +257,22 @@ async function suggestBatch(
     inputTokens: 0,
     outputTokens: 0,
   }
+  const onUsage = (u: SuggestUsage) => {
+    usage.inputTokens += u.inputTokens
+    usage.outputTokens += u.outputTokens
+  }
   let suggestions: Suggestion[]
   try {
-    suggestions = await suggester({
-      prompt: input.prompt,
-      guide: input.guide,
-      maxMark: input.maxMark,
-      locale: input.locale,
-      answers: batch.map((a, i) => ({ key: `a${i + 1}`, text: a.text })),
-    })
+    suggestions = await suggester(
+      {
+        prompt: input.prompt,
+        guide: input.guide,
+        maxMark: input.maxMark,
+        locale: input.locale,
+        answers: batch.map((a, i) => ({ key: `a${i + 1}`, text: a.text })),
+      },
+      { onUsage },
+    )
   } catch (error) {
     await recordAiUsage(db, { ...usage, ok: false })
     throw error

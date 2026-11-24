@@ -26,6 +26,21 @@ export function isNodeWarningLog(args: unknown[]): boolean {
   return args.length === 1 && typeof args[0] === 'string' && NODE_WARNING.test(args[0])
 }
 
+// Better Auth's logger writes "<ISO time> ERROR [Better Auth]: <message>" (ANSI colours when the
+// terminal has them). Only outcomes the app already handles for the user belong here.
+const BETTER_AUTH_EXPECTED = /^\S+ ERROR \[Better Auth\]: signup_disabled$/
+
+/**
+ * True for Better Auth's log of a Google sign-in by someone with no Clasync account. Sign-up through
+ * Google is off on purpose (disableImplicitSignUp), and the sign-in page explains it to the visitor,
+ * so it isn't a failure. It was filling CLASYNC-13 and CLASYNC-17.
+ */
+export function isExpectedAuthLog(args: unknown[]): boolean {
+  return (
+    args.length === 1 && typeof args[0] === 'string' && BETTER_AUTH_EXPECTED.test(args[0].replace(ANSI_COLOUR, ''))
+  )
+}
+
 /**
  * Even with personal data off, Sentry reads a visitor's IP from forwarding headers
  * (x-forwarded-for on Vercel). Keep only the user agent, which says which browser failed.

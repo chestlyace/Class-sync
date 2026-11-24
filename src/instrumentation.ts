@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/nextjs'
 import { deployEnv } from '@/lib/deploy-env'
 import {
+  isExpectedAuthLog,
   isNextRequestErrorLog,
   isNodeWarningLog,
   withoutResetToken,
@@ -41,7 +42,7 @@ function reportLoggedErrors() {
   const log = console.error
   console.error = (...args: unknown[]) => {
     log(...args)
-    if (isNextRequestErrorLog(args) || isNodeWarningLog(args)) return
+    if (isNextRequestErrorLog(args) || isNodeWarningLog(args) || isExpectedAuthLog(args)) return
     const error = args.find((arg) => arg instanceof Error)
     const context = { level: 'error' as const, tags: { logged: 'console' }, extra: { arguments: args } }
     if (error) Sentry.captureException(error, context)

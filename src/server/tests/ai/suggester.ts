@@ -27,7 +27,13 @@ export type Suggestion = { key: string; mark: number; reason: string }
  * nearest 0.25 and a bad item (unknown or repeated key, mark outside 0..maxMark, empty reason) is
  * dropped, so answers it cannot judge are simply missing from the result.
  */
-export type MarkSuggester = (input: SuggestInput) => Promise<Suggestion[]>
+export type MarkSuggester = (input: SuggestInput, opts?: SuggestOptions) => Promise<Suggestion[]>
+
+/** Tokens one model call used, as the provider reported them (0 when it reported none). */
+export type SuggestUsage = { inputTokens: number; outputTokens: number }
+
+/** `onUsage` is called once per model call that returned, so the caller can log what it is billed. */
+export type SuggestOptions = { onUsage?: (usage: SuggestUsage) => void }
 
 let testOverride: MarkSuggester | null | undefined
 

@@ -170,6 +170,13 @@ describe('createModelSuggester (mock model, no network)', () => {
     expect(call.providerOptions).toMatchObject({ amazonBedrock: { structuredOutputMode: 'jsonTool' } })
   })
 
+  it('reports the tokens of each model call through onUsage', async () => {
+    const model = new MockLanguageModelV4({ doGenerate: async () => textResult('{"suggestions":[]}') })
+    const usage: { inputTokens: number; outputTokens: number }[] = []
+    await createModelSuggester(model)(input, { onUsage: (u) => usage.push(u) })
+    expect(usage).toEqual([{ inputTokens: 10, outputTokens: 20 }])
+  })
+
   it('sends at most 20 answers per model call and joins the results', async () => {
     const many: SuggestInput = {
       ...input,
