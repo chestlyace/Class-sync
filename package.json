@@ -23,6 +23,7 @@
     "@ai-sdk/amazon-bedrock": "^5.0.145",
     "@aws-sdk/client-socialmessaging": "^3.1170.0",
     "@aws-sdk/client-s3": "^3.1174.0",
+    "@aws-sdk/client-sesv2": "^3.1176.0",
     "@aws-sdk/credential-provider-web-identity": "^3.972.90",
     "@aws-sdk/s3-request-presigner": "^3.1174.0",
     "@better-auth/api-key": "^1.7.18",

@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { getSessionUser } from '@/server/auth/session'
 import { isAdmin } from '@/server/core/admin'
 
-type Section = 'overview' | 'people' | 'schools' | 'usage' | 'ai' | 'health' | 'audit'
+type Section = 'overview' | 'people' | 'schools' | 'usage' | 'ai' | 'health' | 'broadcasts' | 'audit'
 
 /**
  * "<Section> · Admin" for an admin. Metadata is resolved apart from the layout's guard, so it
@@ -21,6 +21,7 @@ export async function adminMetadata(section: Section): Promise<Metadata> {
     usage: t('usage.title'),
     ai: t('ai.title'),
     health: t('health.title'),
+    broadcasts: t('broadcasts.title'),
     audit: t('audit.title'),
   }
   return { title: `${titles[section]} · ${t('title')}` }

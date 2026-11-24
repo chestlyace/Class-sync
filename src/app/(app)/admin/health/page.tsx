@@ -70,7 +70,11 @@ export default async function AdminHealthPage() {
                     <span>{f.dateTime(failure.at)}</span>
                     <span aria-hidden="true">·</span>
                     <span className="font-mono">
-                      {failure.kind === 'batch' ? t('health.email.batch') : (failure.kind ?? t('health.email.unknownKind'))}
+                      {failure.kind === 'batch'
+                        ? t('health.email.batch')
+                        : failure.kind === 'broadcast'
+                          ? t('health.email.broadcast')
+                          : (failure.kind ?? t('health.email.unknownKind'))}
                     </span>
                     {failure.to && (
                       <>

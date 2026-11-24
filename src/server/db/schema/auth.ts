@@ -19,6 +19,9 @@ export const user = pgTable(
     lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
     suspendedAt: timestamp('suspended_at', { withTimezone: true }),
     suspendedReason: text('suspended_reason'),
+    // Announcement emails: not Better Auth fields. A set date means the person opted out.
+    announcementsOptOutAt: timestamp('announcements_opt_out_at', { withTimezone: true }),
+    unsubscribeToken: text('unsubscribe_token').unique(),
   },
   (t) => [
     check('user_role_check', sql`${t.role} in ('lecturer', 'student')`),

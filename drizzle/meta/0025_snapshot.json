@@ -1,5 +1,5 @@
 {
-  "id": "2a5c735f-1a02-4ed0-8e3c-96840e3aca56",
+  "id": "9f7cc118-af1b-45d8-9f9e-800c32bb34e2",
   "prevId": "b19c87d3-5faf-4f14-a42c-38485c150702",
   "version": "7",
   "dialect": "postgresql",
@@ -109,11 +109,11 @@
       "checkConstraints": {
         "admin_action_action_check": {
           "name": "admin_action_action_check",
-          "value": "\"admin_action\".\"action\" in ('suspend', 'unsuspend', 'revoke_sessions', 'resend_verification', 'send_password_reset', 'school_update', 'school_delete', 'school_merge')"
+          "value": "\"admin_action\".\"action\" in ('suspend', 'unsuspend', 'revoke_sessions', 'resend_verification', 'send_password_reset', 'school_update', 'school_delete', 'school_merge', 'broadcast_send')"
         },
         "admin_action_one_target_check": {
           "name": "admin_action_one_target_check",
-          "value": "(\"admin_action\".\"target_user_id\" is null) <> (\"admin_action\".\"target_school_id\" is null)"
+          "value": "case when \"admin_action\".\"action\" = 'broadcast_send' then \"admin_action\".\"target_user_id\" is null and \"admin_action\".\"target_school_id\" is null else (\"admin_action\".\"target_user_id\" is null) <> (\"admin_action\".\"target_school_id\" is null) end"
         }
       },
       "isRLSEnabled": false
@@ -1841,6 +1841,18 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "announcements_opt_out_at": {
+          "name": "announcements_opt_out_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "unsubscribe_token": {
+          "name": "unsubscribe_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -1869,6 +1881,13 @@
           "nullsNotDistinct": false,
           "columns": [
             "email"
+          ]
+        },
+        "user_unsubscribe_token_unique": {
+          "name": "user_unsubscribe_token_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "unsubscribe_token"
           ]
         }
       },
@@ -1950,6 +1969,250 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.broadcast": {
+      "name": "broadcast",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "admin_id": {
+          "name": "admin_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "audience": {
+          "name": "audience",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subject_en": {
+          "name": "subject_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "body_en": {
+          "name": "body_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subject_fr": {
+          "name": "subject_fr",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "body_fr": {
+          "name": "body_fr",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'sending'"
+        },
+        "finished_at": {
+          "name": "finished_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "broadcast_created_at_idx": {
+          "name": "broadcast_created_at_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "broadcast_admin_id_user_id_fk": {
+          "name": "broadcast_admin_id_user_id_fk",
+          "tableFrom": "broadcast",
+          "tableTo": "user",
+          "columnsFrom": [
+            "admin_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "broadcast_audience_check": {
+          "name": "broadcast_audience_check",
+          "value": "\"broadcast\".\"audience\" in ('lecturers', 'students', 'everyone')"
+        },
+        "broadcast_status_check": {
+          "name": "broadcast_status_check",
+          "value": "\"broadcast\".\"status\" in ('sending', 'done')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.broadcast_recipient": {
+      "name": "broadcast_recipient",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "broadcast_id": {
+          "name": "broadcast_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "locale": {
+          "name": "locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "error": {
+          "name": "error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sent_at": {
+          "name": "sent_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "broadcast_recipient_broadcast_status_idx": {
+          "name": "broadcast_recipient_broadcast_status_idx",
+          "columns": [
+            {
+              "expression": "broadcast_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "broadcast_recipient_broadcast_id_broadcast_id_fk": {
+          "name": "broadcast_recipient_broadcast_id_broadcast_id_fk",
+          "tableFrom": "broadcast_recipient",
+          "tableTo": "broadcast",
+          "columnsFrom": [
+            "broadcast_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "broadcast_recipient_user_id_user_id_fk": {
+          "name": "broadcast_recipient_user_id_user_id_fk",
+          "tableFrom": "broadcast_recipient",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "broadcast_recipient_broadcast_user_unique": {
+          "name": "broadcast_recipient_broadcast_user_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "broadcast_id",
+            "user_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "broadcast_recipient_locale_check": {
+          "name": "broadcast_recipient_locale_check",
+          "value": "\"broadcast_recipient\".\"locale\" in ('en', 'fr')"
+        },
+        "broadcast_recipient_status_check": {
+          "name": "broadcast_recipient_status_check",
+          "value": "\"broadcast_recipient\".\"status\" in ('pending', 'sending', 'sent', 'failed', 'skipped')"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.class_lecturer": {
@@ -7146,349 +7409,6 @@
         "notification_preference_user_id_user_id_fk": {
           "name": "notification_preference_user_id_user_id_fk",
           "tableFrom": "notification_preference",
-          "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.whatsapp_connect_code": {
-      "name": "whatsapp_connect_code",
-      "schema": "",
-      "columns": {
-        "code": {
-          "name": "code",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "used_at": {
-          "name": "used_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "whatsapp_connect_code_user_id_idx": {
-          "name": "whatsapp_connect_code_user_id_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "whatsapp_connect_code_user_id_user_id_fk": {
-          "name": "whatsapp_connect_code_user_id_user_id_fk",
-          "tableFrom": "whatsapp_connect_code",
-          "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.whatsapp_link": {
-      "name": "whatsapp_link",
-      "schema": "",
-      "columns": {
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "phone": {
-          "name": "phone",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "linked_at": {
-          "name": "linked_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "whatsapp_link_user_id_user_id_fk": {
-          "name": "whatsapp_link_user_id_user_id_fk",
-          "tableFrom": "whatsapp_link",
-          "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "whatsapp_link_phone_unique": {
-          "name": "whatsapp_link_phone_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "phone"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.whatsapp_message": {
-      "name": "whatsapp_message",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "event_key": {
-          "name": "event_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "template": {
-          "name": "template",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "provider_message_id": {
-          "name": "provider_message_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "error": {
-          "name": "error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "whatsapp_message_created_at_idx": {
-          "name": "whatsapp_message_created_at_idx",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "whatsapp_message_user_id_user_id_fk": {
-          "name": "whatsapp_message_user_id_user_id_fk",
-          "tableFrom": "whatsapp_message",
-          "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "whatsapp_message_provider_message_id_unique": {
-          "name": "whatsapp_message_provider_message_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "provider_message_id"
-          ]
-        },
-        "whatsapp_message_user_event_unique": {
-          "name": "whatsapp_message_user_event_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "user_id",
-            "event_key"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.whatsapp_month_usage": {
-      "name": "whatsapp_month_usage",
-      "schema": "",
-      "columns": {
-        "month": {
-          "name": "month",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "sent": {
-          "name": "sent",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "cap_mailed_at": {
-          "name": "cap_mailed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.whatsapp_preference": {
-      "name": "whatsapp_preference",
-      "schema": "",
-      "columns": {
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "checkin": {
-          "name": "checkin",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "tests": {
-          "name": "tests",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "results": {
-          "name": "results",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "assignments": {
-          "name": "assignments",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "class_soon": {
-          "name": "class_soon",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "whatsapp_preference_user_id_user_id_fk": {
-          "name": "whatsapp_preference_user_id_user_id_fk",
-          "tableFrom": "whatsapp_preference",
           "tableTo": "user",
           "columnsFrom": [
             "user_id"

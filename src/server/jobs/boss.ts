@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import type { PgBoss, Queue } from 'pg-boss'
 import { MARKING_TOPIC } from '@/server/assignments/ai/queue'
+import { BROADCAST_TOPIC } from '@/server/broadcasts/queue'
 import { poolSsl } from '@/server/db/ssl'
 import { CLASS_NOTICES_TOPIC } from '@/server/schedule/queue'
 import { WHATSAPP_TOPIC } from '@/server/whatsapp/events'
@@ -21,6 +22,8 @@ export const QUEUES: Record<string, Omit<Queue, 'name'>> = {
   [CLASS_NOTICES_TOPIC]: { retryLimit: 5, retryDelay: 60, retryBackoff: true, expireInSeconds: 120, retentionSeconds: 3600 },
   // Two deliveries at most (the job stops calling the model on a redelivery of a cut-off run), 50 s budget.
   [MARKING_TOPIC]: { retryLimit: 1, retryDelay: 30, expireInSeconds: 120, retentionSeconds: 86_400 },
+  // A run sends for 120 s at most, then queues the next; a retried run only takes rows still pending.
+  [BROADCAST_TOPIC]: { retryLimit: 3, retryDelay: 30, expireInSeconds: 300, retentionSeconds: 86_400 },
   // Due when the event happens, or 3 minutes after a start. Not delivered more than an hour late; the
   // dispatcher drops what has gone stale and never sends a student the same event twice.
   [WHATSAPP_TOPIC]: { retryLimit: 5, retryDelay: 60, retryBackoff: true, expireInSeconds: 300, retentionSeconds: 3600 },

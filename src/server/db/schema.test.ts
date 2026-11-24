@@ -13,6 +13,8 @@ import {
   attendanceOverride,
   attendanceSession,
   attendanceWindow,
+  broadcast,
+  broadcastRecipient,
   class_,
   classDateStatus,
   classNotice,
@@ -957,6 +959,91 @@ describe('admin schema', () => {
         targetUserId: target.id,
       }),
     ).rejects.toThrow()
+  })
+
+  it('allows a broadcast_send audit row without a target', async () => {
+    const db = await createTestDb()
+    const admin = await makeUser(db)
+    await db.insert(adminAction).values({
+      adminId: admin.id,
+      action: 'broadcast_send',
+      details: { kind: 'broadcast_send', broadcastId: 'b1', audience: 'everyone', recipients: 3, subjectEn: 'Hello' },
+    })
+    const [row] = await db.select().from(adminAction)
+    expect(row).toMatchObject({ action: 'broadcast_send', targetUserId: null, targetSchoolId: null })
+  })
+
+  it('still refuses other audit rows without a target', async () => {
+    const db = await createTestDb()
+    const admin = await makeUser(db)
+    await expect(db.insert(adminAction).values({ adminId: admin.id, action: 'suspend' })).rejects.toThrow()
+    await expect(db.insert(adminAction).values({ adminId: admin.id, action: 'school_update' })).rejects.toThrow()
+  })
+
+  it('refuses a broadcast_send audit row that names a target', async () => {
+    const db = await createTestDb()
+    const admin = await makeUser(db)
+    const target = await makeUser(db)
+    await expect(
+      db.insert(adminAction).values({ adminId: admin.id, action: 'broadcast_send', targetUserId: target.id }),
+    ).rejects.toThrow()
+  })
+
+  it('keeps broadcast rows when a recipient user is deleted (user_id set null)', async () => {
+    const db = await createTestDb()
+    const admin = await makeUser(db)
+    const recipient = await makeUser(db)
+    const [b] = await db
+      .insert(broadcast)
+      .values({ adminId: admin.id, audience: 'students', subjectEn: 'Hi', bodyEn: 'Hello', subjectFr: 'Salut', bodyFr: 'Bonjour' })
+      .returning()
+    expect(b).toMatchObject({ status: 'sending', finishedAt: null })
+    await db.insert(broadcastRecipient).values({ broadcastId: b.id, userId: recipient.id, email: 'r@example.com', locale: 'fr' })
+    await db.delete(user).where(sql`${user.id} = ${recipient.id}`)
+    const [row] = await db.select().from(broadcastRecipient)
+    expect(row).toMatchObject({ userId: null, email: 'r@example.com', status: 'pending', error: null, sentAt: null })
+    expect(await db.select().from(broadcast)).toHaveLength(1)
+  })
+
+  it('refuses a second recipient row for the same user and broadcast', async () => {
+    const db = await createTestDb()
+    const admin = await makeUser(db)
+    const recipient = await makeUser(db)
+    const [b] = await db
+      .insert(broadcast)
+      .values({ adminId: admin.id, audience: 'everyone', subjectEn: 'Hi', bodyEn: 'Hello', subjectFr: 'Salut', bodyFr: 'Bonjour' })
+      .returning()
+    const values = { broadcastId: b.id, userId: recipient.id, email: 'r@example.com', locale: 'en' as const }
+    await db.insert(broadcastRecipient).values(values)
+    await expect(db.insert(broadcastRecipient).values(values)).rejects.toThrow()
+  })
+
+  it('refuses an unknown broadcast audience', async () => {
+    const db = await createTestDb()
+    const admin = await makeUser(db)
+    await expect(
+      db.insert(broadcast).values({
+        adminId: admin.id,
+        audience: 'admins' as 'everyone',
+        subjectEn: 'Hi',
+        bodyEn: 'Hello',
+        subjectFr: 'Salut',
+        bodyFr: 'Bonjour',
+      }),
+    ).rejects.toThrow()
+  })
+
+  it('stores an unsubscribe token once per user, null by default', async () => {
+    const db = await createTestDb()
+    const a = await makeUser(db)
+    const b = await makeUser(db)
+    const [row] = await db
+      .select({ optOut: user.announcementsOptOutAt, token: user.unsubscribeToken })
+      .from(user)
+      .where(sql`${user.id} = ${a.id}`)
+    expect(row).toEqual({ optOut: null, token: null })
+    await db.update(user).set({ unsubscribeToken: 'tok' }).where(sql`${user.id} = ${a.id}`)
+    await expect(db.update(user).set({ unsubscribeToken: 'tok' }).where(sql`${user.id} = ${b.id}`)).rejects.toThrow()
   })
 
   it('stores an ops event and refuses an unknown kind', async () => {

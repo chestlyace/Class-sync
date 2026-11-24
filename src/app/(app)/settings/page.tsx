@@ -11,6 +11,7 @@ import { mcpResourceUrl, resolveAppOrigin } from '@/server/auth/auth'
 import { isGoogleSignInEnabled } from '@/server/auth/google'
 import { getSessionUser } from '@/server/auth/session'
 import { listSignInMethods } from '@/server/auth/sign-in-methods'
+import { announcementsEnabled } from '@/server/broadcasts/unsubscribe'
 import { isAdmin } from '@/server/core/admin'
 import { listMyClasses, type ClassSummary } from '@/server/classes/service'
 import { config } from '@/server/core/config'
@@ -28,6 +29,7 @@ import { getSchool, type School } from '@/server/schools/service'
 import { getWhatsAppSettings } from '@/server/whatsapp/link'
 import { loadPage } from '../load-page'
 import { AiAssistantsSection, type AppRow, type TokenRow } from './ai-assistants'
+import { AnnouncementsSwitch } from './announcements'
 import { NotificationsSettings } from './notifications'
 import { WhatsAppSettings } from './whatsapp'
 import {
@@ -103,16 +105,17 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
   const isLecturer = user.role === 'lecturer'
 
   const data = await loadPage(async (ctx) => {
-    const [classes, signIn, devices, whatsapp] = await Promise.all([
+    const [classes, signIn, devices, announcements, whatsapp] = await Promise.all([
       listMyClasses(ctx),
       listSignInMethods(ctx),
       listMyDevices(ctx),
+      announcementsEnabled(ctx),
       getWhatsAppSettings(ctx),
     ])
     if (!isLecturer) {
       // Only students have the class reminder switch.
       const classReminders = await getClassReminders(ctx)
-      return { classes, signIn, devices, whatsapp, classReminders, schools: [] as SchoolGroup[], tokens: [], apps: [] }
+      return { classes, signIn, devices, announcements, whatsapp, classReminders, schools: [] as SchoolGroup[], tokens: [], apps: [] }
     }
     const schoolIds = [...new Set(classes.map((c) => c.schoolId))]
     const [schools, tokens, apps] = await Promise.all([
@@ -124,6 +127,7 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
       classes,
       signIn,
       devices,
+      announcements,
       whatsapp,
       classReminders: null,
       schools: schools.map((school) => ({ school, classes: classes.filter((c) => c.schoolId === school.id) })),
@@ -132,7 +136,7 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
     }
   })
   if (!data.ok) return <ErrorState code={data.code} />
-  const { classes, signIn, devices, whatsapp, classReminders, schools, tokens, apps } = data.data
+  const { classes, signIn, devices, announcements, whatsapp, classReminders, schools, tokens, apps } = data.data
   const day = dayFormatter(locale)
 
   return (
@@ -187,6 +191,9 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
             devices={devices.map((d) => ({ id: d.id, label: d.label, added: day(d.createdAt) }))}
             classReminders={classReminders}
           />
+          <div className="mt-6 border-t pt-6">
+            <AnnouncementsSwitch initial={announcements} />
+          </div>
         </Panel>
       </section>
 

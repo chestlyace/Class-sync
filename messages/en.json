@@ -362,6 +362,10 @@
       "cta": "Go to my dashboard",
       "fallback": "If the button doesn't work, copy and paste this link into your browser:"
     },
+    "broadcast": {
+      "why": "You received this announcement because you have a Clasync account.",
+      "stop": "Stop these announcements"
+    },
     "lecturerJoinedClass": {
       "subject": "You're now a lecturer of {class} at {school}",
       "greeting": "Hello {name},",
@@ -1070,6 +1074,10 @@
         "emptyBody": "Add the connector URL above in Claude or ChatGPT, sign in with Clasync and allow access. The assistant then appears here, and you can disconnect it at any time."
       }
     },
+    "announcements": {
+      "title": "Email announcements from Clasync",
+      "hint": "News and changes sent by the Clasync team. Emails about your account, like sign-in and password reset, always come through."
+    },
     "whatsapp": {
       "title": "WhatsApp",
       "description": "Get your most important Clasync alerts on WhatsApp.",
@@ -1091,6 +1099,22 @@
         "classSoon": "Class starts soon"
       }
     }
+  },
+  "unsubscribe": {
+    "title": "Unsubscribe",
+    "question": "Stop getting announcements from Clasync by email? Nothing changes until you press the button.",
+    "submit": "Unsubscribe",
+    "submitting": "Unsubscribing…",
+    "failed": "That didn't work. Try again.",
+    "done": {
+      "title": "You won't get announcements any more.",
+      "body": "Emails about your account, like sign-in and password reset, will still reach you. You can turn announcements back on in Settings."
+    },
+    "unknown": {
+      "title": "This link no longer works.",
+      "body": "You can turn announcements on or off in Settings, after signing in."
+    },
+    "settingsLink": "Open Settings"
   },
   "join": {
     "title": "Join a class",
@@ -2605,6 +2629,7 @@
       "usage": "Usage",
       "ai": "AI & MCP",
       "health": "Health",
+      "broadcasts": "Broadcasts",
       "audit": "Audit"
     },
     "chart": {
@@ -2913,6 +2938,7 @@
         "recent": "Recent failures",
         "none": "No failures recorded.",
         "batch": "Batch",
+        "broadcast": "Announcement",
         "unknownKind": "Unknown kind",
         "noError": "No details"
       },
@@ -2935,6 +2961,80 @@
         "link": "Open the Vercel logs"
       }
     },
+    "broadcasts": {
+      "title": "Broadcasts",
+      "description": "Send an announcement by email to lecturers, students or everyone. Each person gets it in their own language.",
+      "notReady": "Email sending isn't set up on this deployment, so announcements can't go out. Set SES_REGION to turn it on.",
+      "form": {
+        "audienceLegend": "Who receives it",
+        "audienceHint": "Only verified, active accounts that haven't turned announcements off.",
+        "audiences": {
+          "lecturers": "Lecturers",
+          "students": "Students",
+          "everyone": "Everyone"
+        },
+        "audienceCount": "{count, plural, one {# person} other {# people}}",
+        "versionEn": "English version",
+        "versionFr": "French version",
+        "subject": "Subject",
+        "message": "Message",
+        "messageHint": "Plain text. A blank line starts a new paragraph, and web addresses become links.",
+        "counter": "{count} / {max}",
+        "incomplete": "Fill in the subject and message in both languages to send.",
+        "testButton": "Send me a test",
+        "testSent": "Test sent to your address, in English and French.",
+        "testFailed": "The test couldn't be sent. Check the email setup and try again.",
+        "sendButton": "Send to {count, plural, one {# person} other {# people}}…",
+        "sendFailed": "Email sending isn't set up, so nothing was sent.",
+        "notStarted": "The announcement is saved, but sending didn't start. Press Send now again to start it.",
+        "unexpected": "Something went wrong. Your message is still here: try again.",
+        "testNotAllowed": "Your address isn't in EMAIL_ALLOWLIST on this deployment, so the test wasn't sent.",
+        "sentNotice": "Sending to {count, plural, one {# person} other {# people}}. Follow it in the history below.",
+        "confirm": {
+          "title": "Send this announcement?",
+          "description": "This sends it now to {audience, select, lecturers {lecturers} students {students} other {everyone}}: {count, plural, one {# person} other {# people}}. It can't be recalled once it is sent.",
+          "wordLabel": "Type SEND to confirm",
+          "submit": "Send now"
+        }
+      },
+      "history": {
+        "title": "History",
+        "empty": "Nothing has been sent yet.",
+        "sending": "Sending… {done} of {total}",
+        "done": "{sent, number} sent{failed, plural, =0 {} other {, # failed}}{skipped, plural, =0 {} other {, # skipped}}",
+        "meta": "{admin} · {audience}"
+      },
+      "detail": {
+        "back": "All broadcasts",
+        "eyebrow": "Broadcast",
+        "factsTitle": "Details",
+        "sentOn": "Sent",
+        "sentBy": "Sent by",
+        "audience": "Audience",
+        "status": "Status",
+        "statusSending": "Sending",
+        "statusDone": "Done",
+        "recipients": "Recipients",
+        "sent": "Sent",
+        "failed": "Failed",
+        "skipped": "Skipped",
+        "versionsTitle": "What was sent",
+        "subject": "Subject",
+        "problemsTitle": "Failed and skipped",
+        "noProblems": "No email failed and none was skipped.",
+        "problemsCapped": "Showing the first {count}. The counts above are complete.",
+        "problemFailed": "Failed",
+        "problemSkipped": "Skipped",
+        "noReason": "No details",
+        "reasons": {
+          "deleted": "Account deleted",
+          "suspended": "Account suspended",
+          "opted_out": "Turned announcements off",
+          "not_allowed": "Not an allowed address outside production",
+          "interrupted": "Interrupted while sending: it may have been delivered"
+        }
+      }
+    },
     "audit": {
       "title": "Audit log",
       "description": "Every admin action, newest first. Entries can't be edited or deleted.",
@@ -2949,8 +3049,15 @@
         "send_password_reset": "Sent a password reset link",
         "school_update": "Edited a school",
         "school_delete": "Deleted a school",
-        "school_merge": "Merged schools"
+        "school_merge": "Merged schools",
+        "broadcast_send": "Sent a broadcast"
       },
+      "audiences": {
+        "lecturers": "lecturers",
+        "students": "students",
+        "everyone": "everyone"
+      },
+      "broadcast": "Broadcast to {audience}: {subject} ({count, plural, one {# person} other {# people}})",
       "school": {
         "update": "{before}, {beforeTown} → {after}, {town}",
         "delete": "{name}, {town} · {classes, plural, one {# class} other {# classes}}",
@@ -2986,6 +3093,7 @@
       "hosting": "Heroku runs the app in the European Union.",
       "database": "Heroku Postgres stores the database, and Amazon Web Services stores uploaded files, both in the European Union.",
       "email": "Resend sends emails such as verification links and assignment reminders.",
+      "announcements": "Announcements from the Clasync team are sent through Amazon SES, in the European Union (Paris). Resend still sends everything else.",
       "errors": "Sentry receives error reports so problems can be fixed, with IP addresses removed.",
       "push": "If you turn on notifications, the push service of your browser's maker (Google, Apple, Mozilla or Microsoft) delivers them to your device. It only sees an encrypted message.",
       "ai": "When a lecturer asks for suggested marks on a test, the written answers and their question are sent to Amazon Bedrock in the European Union, without the student's name, matricule or email. The answers are not used to train AI models. The lecturer decides every mark.",
@@ -3005,6 +3113,7 @@
       "title": "Your choices",
       "edit": "You can change your name and language in Settings, and add your matricule to a class.",
       "google": "You can connect or disconnect Google in Settings.",
+      "announcements": "You can stop announcement emails with the link at the bottom of each one, or with the switch in Settings. Emails about your account, such as verification and password reset, continue.",
       "delete": "To get a copy of your data or have your account deleted, write to <email>{address}</email>. Deleting an account deletes its data with it.",
       "keep": "Clasync keeps your data while your account exists.",
       "whatsapp": "To stop WhatsApp alerts and remove your number, send STOP on WhatsApp or tap Disconnect in Settings."
