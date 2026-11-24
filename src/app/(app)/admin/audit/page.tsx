@@ -60,6 +60,12 @@ export default async function AdminAuditPage({ searchParams }: PageProps<'/admin
                       <>
                         {row.target.name} <span className="break-all text-muted-foreground">({row.target.email})</span>
                       </>
+                    ) : row.target.kind === 'broadcast' ? (
+                      t('audit.broadcast', {
+                        audience: t(`audit.audiences.${row.target.details.audience}`),
+                        subject: row.target.details.subjectEn,
+                        count: row.target.details.recipients,
+                      })
                     ) : (
                       <SchoolTarget
                         schoolId={row.target.schoolId}

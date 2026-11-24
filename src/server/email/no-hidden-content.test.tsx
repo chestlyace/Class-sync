@@ -5,6 +5,7 @@ import type { Locale } from '@/server/core/context'
 import { AssignmentPublishedEmail } from './templates/assignment-published'
 import { AssignmentReminderEmail } from './templates/assignment-reminder'
 import { AssignmentSubmittedEmail } from './templates/assignment-submitted'
+import { BroadcastEmail } from './templates/broadcast'
 import { ClassJoinedEmail } from './templates/class-joined'
 import { GradesReleasedEmail } from './templates/grades-released'
 import { ColleagueJoinedClassEmail, LecturerJoinedClassEmail } from './templates/lecturer-joined-class'
@@ -36,6 +37,7 @@ const emails: Array<[string, (locale: Locale) => ReactElement]> = [
   ['gradesReleased', (l) => <GradesReleasedEmail studentName="Ada" {...course} assignmentTitle="Lab" url={url} locale={l} />],
   ['testResultsReleased', (l) => <TestResultsReleasedEmail studentName="Ada" {...course} testTitle="Quiz" url={url} locale={l} />],
   ['testHandedIn', (l) => <TestHandedInEmail studentName="Ada" {...course} testTitle="Quiz" handedInAt={at} timeZone={tz} url={url} locale={l} />],
+  ['broadcast', (l) => <BroadcastEmail body={`Hello\n\nSee ${url}`} unsubscribePageUrl={url} locale={l} />],
   ['classJoined', (l) => <ClassJoinedEmail studentName="Ada" {...names} url={url} locale={l} />],
   ['lecturerJoinedClass', (l) => <LecturerJoinedClassEmail lecturerName="Dr Ada" {...names} url={url} locale={l} />],
   ['colleagueJoinedClass', (l) => <ColleagueJoinedClassEmail recipientName="Dr Bea" colleagueName="Dr Ada" {...names} url={url} locale={l} />],

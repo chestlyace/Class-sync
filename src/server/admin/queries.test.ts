@@ -508,6 +508,25 @@ describe('listAudit with school rows', () => {
       db.insert(adminAction).values({ adminId: admin.id, action: 'suspend', targetUserId: admin.id, targetSchoolId: 'x' }),
     ).rejects.toThrow()
   })
+
+  it('lists a broadcast row with its details and no person or school', async () => {
+    const details = {
+      kind: 'broadcast_send' as const,
+      broadcastId: 'b1',
+      audience: 'students' as const,
+      recipients: 12,
+      subjectEn: 'Exam week',
+    }
+    await db.insert(adminAction).values({ adminId: admin.id, action: 'broadcast_send', details, at: new Date(Date.now() + 60_000) })
+    const a = await listAudit(ctxFor(db, admin), 1)
+    expect(a.rows[0]).toEqual({
+      at: expect.any(Date),
+      adminName: 'Dr Admin',
+      action: 'broadcast_send',
+      target: { kind: 'broadcast', details },
+      reason: null,
+    })
+  })
 })
 
 describe('daily series and the time zone', () => {

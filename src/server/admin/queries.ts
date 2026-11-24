@@ -555,7 +555,9 @@ export async function getHealth(ctx: Ctx, at: Date, env: Env = process.env): Pro
 export type AuditTarget =
   | { kind: 'user'; name: string; email: string }
   /** `exists`: false once the school was deleted or merged away; `details` still names it. */
-  | { kind: 'school'; schoolId: string; exists: boolean; details: AdminActionDetails }
+  | { kind: 'school'; schoolId: string; exists: boolean; details: Exclude<AdminActionDetails, { kind: 'broadcast_send' }> }
+  /** A broadcast email has no person or school; `details` names the audience, subject and head count. */
+  | { kind: 'broadcast'; details: Extract<AdminActionDetails, { kind: 'broadcast_send' }> }
 
 export type AuditRow = {
   at: Date
@@ -594,11 +596,13 @@ export async function listAudit(ctx: Ctx, page: number): Promise<Page<AuditRow>>
   ])
   return {
     rows: rows.map((r): AuditRow => {
-      // The check constraint guarantees exactly one target per row.
+      // The check constraint guarantees one target per row, except broadcasts, which have none.
       const auditTarget: AuditTarget =
-        r.targetSchoolId !== null && r.details !== null
-          ? { kind: 'school', schoolId: r.targetSchoolId, exists: r.schoolStillThere !== null, details: r.details }
-          : { kind: 'user', name: r.targetName ?? '', email: r.targetEmail ?? '' }
+        r.details?.kind === 'broadcast_send'
+          ? { kind: 'broadcast', details: r.details }
+          : r.targetSchoolId !== null && r.details !== null
+            ? { kind: 'school', schoolId: r.targetSchoolId, exists: r.schoolStillThere !== null, details: r.details }
+            : { kind: 'user', name: r.targetName ?? '', email: r.targetEmail ?? '' }
       return { at: r.at, adminName: r.adminName, action: r.action, target: auditTarget, reason: r.reason }
     }),
     total,

@@ -362,6 +362,10 @@
       "cta": "Ouvrir mon tableau de bord",
       "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :"
     },
+    "broadcast": {
+      "why": "Vous recevez cette annonce parce que vous avez un compte Clasync.",
+      "stop": "Ne plus recevoir ces annonces"
+    },
     "lecturerJoinedClass": {
       "subject": "Vous enseignez maintenant en {class} ({school})",
       "greeting": "Bonjour {name},",
@@ -1069,7 +1073,27 @@
         "emptyTitle": "Aucun assistant connecté pour l'instant",
         "emptyBody": "Ajoutez l'URL du connecteur ci-dessus dans Claude ou ChatGPT, connectez-vous avec Clasync et autorisez l'accès. L'assistant apparaît alors ici, et vous pouvez le déconnecter à tout moment."
       }
+    },
+    "announcements": {
+      "title": "Annonces de Clasync par e-mail",
+      "hint": "Les nouveautés et changements envoyés par l'équipe Clasync. Les e-mails sur votre compte, comme la connexion et la réinitialisation du mot de passe, arrivent toujours."
     }
+  },
+  "unsubscribe": {
+    "title": "Se désabonner",
+    "question": "Ne plus recevoir les annonces de Clasync par e-mail ? Rien ne change tant que vous n'appuyez pas sur le bouton.",
+    "submit": "Me désabonner",
+    "submitting": "Désabonnement…",
+    "failed": "Cela n'a pas marché. Réessayez.",
+    "done": {
+      "title": "Vous ne recevrez plus d'annonces.",
+      "body": "Les e-mails sur votre compte, comme la connexion et la réinitialisation du mot de passe, vous parviendront toujours. Vous pouvez réactiver les annonces dans les Paramètres."
+    },
+    "unknown": {
+      "title": "Ce lien ne fonctionne plus.",
+      "body": "Vous pouvez activer ou désactiver les annonces dans les Paramètres, après vous être connecté."
+    },
+    "settingsLink": "Ouvrir les Paramètres"
   },
   "join": {
     "title": "Rejoindre une classe",
@@ -2584,6 +2608,7 @@
       "usage": "Utilisation",
       "ai": "IA et MCP",
       "health": "État",
+      "broadcasts": "Annonces",
       "audit": "Journal"
     },
     "chart": {
@@ -2885,6 +2910,7 @@
         "recent": "Derniers échecs",
         "none": "Aucun échec enregistré.",
         "batch": "Envoi groupé",
+        "broadcast": "Annonce",
         "unknownKind": "Type inconnu",
         "noError": "Aucun détail"
       },
@@ -2907,6 +2933,80 @@
         "link": "Ouvrir les journaux Vercel"
       }
     },
+    "broadcasts": {
+      "title": "Annonces",
+      "description": "Envoyez une annonce par e-mail aux enseignants, aux étudiants ou à tout le monde. Chacun la reçoit dans sa langue.",
+      "notReady": "L'envoi d'e-mails n'est pas configuré sur ce déploiement : les annonces ne peuvent pas partir. Renseignez SES_REGION pour l'activer.",
+      "form": {
+        "audienceLegend": "Qui la reçoit",
+        "audienceHint": "Uniquement les comptes vérifiés et actifs qui n'ont pas désactivé les annonces.",
+        "audiences": {
+          "lecturers": "Enseignants",
+          "students": "Étudiants",
+          "everyone": "Tout le monde"
+        },
+        "audienceCount": "{count, plural, one {# personne} other {# personnes}}",
+        "versionEn": "Version anglaise",
+        "versionFr": "Version française",
+        "subject": "Objet",
+        "message": "Message",
+        "messageHint": "Texte simple. Une ligne vide commence un nouveau paragraphe, et les adresses web deviennent des liens.",
+        "counter": "{count} / {max}",
+        "incomplete": "Renseignez l'objet et le message dans les deux langues pour envoyer.",
+        "testButton": "M'envoyer un test",
+        "testSent": "Test envoyé à votre adresse, en anglais et en français.",
+        "testFailed": "Le test n'a pas pu être envoyé. Vérifiez la configuration e-mail et réessayez.",
+        "sendButton": "Envoyer à {count, plural, one {# personne} other {# personnes}}…",
+        "sendFailed": "L'envoi d'e-mails n'est pas configuré : rien n'a été envoyé.",
+        "notStarted": "L'annonce est enregistrée, mais l'envoi n'a pas démarré. Appuyez de nouveau sur Envoyer maintenant pour le lancer.",
+        "unexpected": "Un problème est survenu. Votre message est conservé : réessayez.",
+        "testNotAllowed": "Votre adresse ne figure pas dans EMAIL_ALLOWLIST sur ce déploiement : le test n'a pas été envoyé.",
+        "sentNotice": "Envoi en cours à {count, plural, one {# personne} other {# personnes}}. Suivez-le dans l'historique ci-dessous.",
+        "confirm": {
+          "title": "Envoyer cette annonce ?",
+          "description": "Elle part maintenant {audience, select, lecturers {aux enseignants} students {aux étudiants} other {à tout le monde}} : {count, plural, one {# personne} other {# personnes}}. Impossible de la rappeler une fois envoyée.",
+          "wordLabel": "Tapez ENVOYER pour confirmer",
+          "submit": "Envoyer maintenant"
+        }
+      },
+      "history": {
+        "title": "Historique",
+        "empty": "Rien n'a encore été envoyé.",
+        "sending": "Envoi en cours… {done} sur {total}",
+        "done": "{sent, number} {sent, plural, one {envoyé} other {envoyés}}{failed, plural, =0 {} one {, # échec} other {, # échecs}}{skipped, plural, =0 {} one {, # ignoré} other {, # ignorés}}",
+        "meta": "{admin} · {audience}"
+      },
+      "detail": {
+        "back": "Toutes les annonces",
+        "eyebrow": "Annonce",
+        "factsTitle": "Détails",
+        "sentOn": "Envoyée",
+        "sentBy": "Envoyée par",
+        "audience": "Destinataires",
+        "status": "État",
+        "statusSending": "Envoi en cours",
+        "statusDone": "Terminé",
+        "recipients": "Personnes visées",
+        "sent": "Envoyés",
+        "failed": "Échecs",
+        "skipped": "Ignorés",
+        "versionsTitle": "Ce qui a été envoyé",
+        "subject": "Objet",
+        "problemsTitle": "Échecs et ignorés",
+        "noProblems": "Aucun e-mail n'a échoué et aucun n'a été ignoré.",
+        "problemsCapped": "Les {count} premiers sont affichés. Les totaux ci-dessus sont complets.",
+        "problemFailed": "Échec",
+        "problemSkipped": "Ignoré",
+        "noReason": "Aucun détail",
+        "reasons": {
+          "deleted": "Compte supprimé",
+          "suspended": "Compte suspendu",
+          "opted_out": "A désactivé les annonces",
+          "not_allowed": "Adresse non autorisée hors production",
+          "interrupted": "Interrompu pendant l'envoi : l'e-mail a peut-être été remis"
+        }
+      }
+    },
     "audit": {
       "title": "Journal d'administration",
       "description": "Toutes les actions d'administration, des plus récentes aux plus anciennes. Les entrées ne peuvent être ni modifiées ni supprimées.",
@@ -2921,8 +3021,15 @@
         "send_password_reset": "Lien de réinitialisation du mot de passe envoyé",
         "school_update": "École modifiée",
         "school_delete": "École supprimée",
-        "school_merge": "Écoles fusionnées"
+        "school_merge": "Écoles fusionnées",
+        "broadcast_send": "Annonce envoyée"
       },
+      "audiences": {
+        "lecturers": "les enseignants",
+        "students": "les étudiants",
+        "everyone": "tout le monde"
+      },
+      "broadcast": "Annonce pour {audience} : {subject} ({count, plural, one {# personne} other {# personnes}})",
       "school": {
         "update": "{before}, {beforeTown} → {after}, {town}",
         "delete": "{name}, {town} · {classes, plural, one {# classe} other {# classes}}",
@@ -2957,6 +3064,7 @@
       "hosting": "Heroku fait tourner l'application dans l'Union européenne.",
       "database": "Heroku Postgres héberge la base de données et Amazon Web Services stocke les fichiers envoyés, tous deux dans l'Union européenne.",
       "email": "Resend envoie les e-mails, comme les liens de vérification et les rappels de devoirs.",
+      "announcements": "Les annonces de l'équipe Clasync sont envoyées par Amazon SES, dans l'Union européenne (Paris). Resend continue d'envoyer tout le reste.",
       "errors": "Sentry reçoit les rapports d'erreurs pour corriger les problèmes, sans les adresses IP.",
       "push": "Si vous activez les notifications, le service de notifications du fabricant de votre navigateur (Google, Apple, Mozilla ou Microsoft) les livre à votre appareil. Il ne voit qu'un message chiffré.",
       "ai": "Quand un enseignant demande des notes suggérées pour un test, les réponses rédigées et leur question sont envoyées à Amazon Bedrock dans l'Union européenne, sans le nom, le matricule ni l'e-mail de l'étudiant. Les réponses ne servent pas à entraîner des modèles d'IA. L'enseignant décide de chaque note.",
@@ -2975,6 +3083,7 @@
       "title": "Vos choix",
       "edit": "Vous pouvez modifier votre nom et votre langue dans les Paramètres, et ajouter votre matricule à une classe.",
       "google": "Vous pouvez associer ou dissocier Google dans les Paramètres.",
+      "announcements": "Vous pouvez ne plus recevoir les annonces par e-mail grâce au lien en bas de chacune ou à l'interrupteur dans les Paramètres. Les e-mails concernant votre compte, comme la vérification et la réinitialisation du mot de passe, continuent.",
       "delete": "Pour obtenir une copie de vos données ou faire supprimer votre compte, écrivez à <email>{address}</email>. La suppression d'un compte supprime aussi ses données.",
       "keep": "Clasync conserve vos données tant que votre compte existe."
     },

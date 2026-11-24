@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import type { PgBoss, Queue } from 'pg-boss'
 import { MARKING_TOPIC } from '@/server/assignments/ai/queue'
+import { BROADCAST_TOPIC } from '@/server/broadcasts/queue'
 import { poolSsl } from '@/server/db/ssl'
 import { CLASS_NOTICES_TOPIC } from '@/server/schedule/queue'
 
@@ -20,6 +21,8 @@ export const QUEUES: Record<string, Omit<Queue, 'name'>> = {
   [CLASS_NOTICES_TOPIC]: { retryLimit: 5, retryDelay: 60, retryBackoff: true, expireInSeconds: 120, retentionSeconds: 3600 },
   // Two deliveries at most (the job stops calling the model on a redelivery of a cut-off run), 50 s budget.
   [MARKING_TOPIC]: { retryLimit: 1, retryDelay: 30, expireInSeconds: 120, retentionSeconds: 86_400 },
+  // A run sends for 120 s at most, then queues the next; a retried run only takes rows still pending.
+  [BROADCAST_TOPIC]: { retryLimit: 3, retryDelay: 30, expireInSeconds: 300, retentionSeconds: 86_400 },
   [DAILY_REMINDERS_QUEUE]: { retryLimit: 2, retryDelay: 300, expireInSeconds: 600, retentionSeconds: 6 * 3600 },
   [DAILY_SCHEDULE_QUEUE]: { retryLimit: 2, retryDelay: 300, expireInSeconds: 600, retentionSeconds: 6 * 3600 },
 }
