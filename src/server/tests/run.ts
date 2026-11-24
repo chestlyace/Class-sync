@@ -237,9 +237,12 @@ export async function letBackIn(ctx: Ctx, attemptId: string): Promise<void> {
   if (testPhase(test, at) !== 'running') conflict('test_over', 'The test is over')
 
   await ctx.db.transaction(async (tx) => {
-    // Again inside the transaction: the test may have been ended since the check above.
+    // Re-read the clock here: the test may have been ended after the check above but before this
+    // one. Reusing the earlier `at` would compare that stale instant with the new `endedAt` and
+    // reopen an attempt on a test that has already ended.
+    const reopenedAt = now()
     const [current] = await tx.select().from(courseTest).where(eq(courseTest.id, test.id))
-    if (!current || testPhase(current, at) !== 'running') conflict('test_over', 'The test is over')
+    if (!current || testPhase(current, reopenedAt) !== 'running') conflict('test_over', 'The test is over')
     const reopened = await tx
       .update(testAttempt)
       .set({ closedAt: null, closedReason: null, exitsSinceReopen: 0 })
@@ -249,9 +252,9 @@ export async function letBackIn(ctx: Ctx, attemptId: string): Promise<void> {
     if (reopened.length === 0) conflict('not_ended', 'This student was not ended for leaving')
     await tx
       .update(testExit)
-      .set({ returnedAt: at })
+      .set({ returnedAt: reopenedAt })
       .where(and(eq(testExit.attemptId, attemptId), isNull(testExit.returnedAt)))
-    await tx.insert(testLog).values({ attemptId, kind: 'reopened', at, byUserId: ctx.user.id })
+    await tx.insert(testLog).values({ attemptId, kind: 'reopened', at: reopenedAt, byUserId: ctx.user.id })
   })
 }
 
