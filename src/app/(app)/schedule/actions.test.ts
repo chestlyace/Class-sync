@@ -17,11 +17,13 @@ vi.mock('@/server/schedule/timetable', () => ({
 }))
 const cancelClass = vi.fn()
 const undoCancel = vi.fn()
+const moveClassOnline = vi.fn()
 const addMakeUp = vi.fn()
 const answerSitting = vi.fn()
 vi.mock('@/server/schedule/changes', () => ({
   cancelClass: (...args: unknown[]) => cancelClass(...args),
   undoCancel: (...args: unknown[]) => undoCancel(...args),
+  moveClassOnline: (...args: unknown[]) => moveClassOnline(...args),
   addMakeUp: (...args: unknown[]) => addMakeUp(...args),
   answerSitting: (...args: unknown[]) => answerSitting(...args),
 }))
@@ -35,6 +37,7 @@ import {
   answerSittingAction,
   cancelClassAction,
   createSlotAction,
+  moveOnlineAction,
   startClassAttendanceAction,
   updateSlotAction,
 } from './actions'
@@ -57,7 +60,16 @@ const slotFields = {
 
 describe('schedule Server Actions', () => {
   beforeEach(() => {
-    for (const fn of [createSlot, updateSlot, removeSlot, cancelClass, undoCancel, addMakeUp, answerSitting]) {
+    for (const fn of [
+      createSlot,
+      updateSlot,
+      removeSlot,
+      cancelClass,
+      undoCancel,
+      moveClassOnline,
+      addMakeUp,
+      answerSitting,
+    ]) {
       fn.mockReset()
     }
     startClassAttendance.mockReset()
@@ -86,6 +98,7 @@ describe('schedule Server Actions', () => {
       endMinute: 750,
       room: 'B4',
       requireOnCampus: false,
+      meetingUrl: '',
       startsOn: '2026-09-07',
       endsOn: '2027-01-15',
     })
@@ -119,6 +132,27 @@ describe('schedule Server Actions', () => {
     expect(createSlot).not.toHaveBeenCalled()
   })
 
+  it('forwards a Meet link from the slot and make-up forms to the services', async () => {
+    const meetingUrl = ' https://meet.google.com/abc-defg-hij '
+    createSlot.mockResolvedValue({ slot: { id: 's3' }, overlaps: [] })
+
+    expect(await createSlotAction('c1', form({ ...slotFields, meetingUrl }))).toEqual({
+      ok: true,
+      data: { overlaps: [] },
+    })
+    expect(createSlot).toHaveBeenCalledWith(ctx, 'c1', expect.objectContaining({ meetingUrl }))
+
+    await addMakeUpAction('c1', form({ date: '2026-11-20', startMinute: '13:00', endMinute: '15:00', meetingUrl }))
+    expect(addMakeUp).toHaveBeenCalledWith(ctx, 'c1', expect.objectContaining({ meetingUrl }))
+  })
+
+  it('moves a class online through the service', async () => {
+    const meetingUrl = '  https://meet.google.com/abc-defg-hij  '
+    expect(await moveOnlineAction('slot:a:2026-11-16', form({ meetingUrl }))).toEqual({ ok: true, data: null })
+    expect(moveClassOnline).toHaveBeenCalledWith(ctx, 'slot:a:2026-11-16', meetingUrl)
+    expect(revalidatePath).toHaveBeenCalled()
+  })
+
   it('cancels without a make-up unless the make-up box is ticked', async () => {
     expect(await cancelClassAction('slot:a:2026-11-16', form({ date: '2026-11-18', startMinute: '10:00' }))).toEqual(
       { ok: true, data: null },
@@ -133,6 +167,7 @@ describe('schedule Server Actions', () => {
       endMinute: 720,
       room: '',
       requireOnCampus: false,
+      meetingUrl: '',
     })
   })
 
@@ -147,6 +182,7 @@ describe('schedule Server Actions', () => {
       endMinute: 900,
       room: 'A1',
       requireOnCampus: false,
+      meetingUrl: '',
     })
 
     await addMakeUpAction('c1', form({ ...fields, requireOnCampus: 'on', replaces: 'slot:a:2026-11-02' }))
@@ -156,6 +192,7 @@ describe('schedule Server Actions', () => {
       endMinute: 900,
       room: 'A1',
       requireOnCampus: true,
+      meetingUrl: '',
       replaces: 'slot:a:2026-11-02',
     })
   })
