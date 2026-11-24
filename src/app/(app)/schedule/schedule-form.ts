@@ -39,6 +39,7 @@ export function parseSlotForm(data: FormData): SlotInput {
     endMinute: parseTimeField(data, 'endMinute'),
     room: formString(data, 'room'),
     requireOnCampus: parseCheckbox(data, 'requireOnCampus'),
+    meetingUrl: formString(data, 'meetingUrl'),
     startsOn: formString(data, 'startsOn'),
     endsOn: formString(data, 'endsOn'),
   }
@@ -52,6 +53,7 @@ export function parseMakeUpForm(data: FormData): MakeUpInput & { replaces?: stri
     endMinute: parseTimeField(data, 'endMinute'),
     room: formString(data, 'room'),
     requireOnCampus: parseCheckbox(data, 'requireOnCampus'),
+    meetingUrl: formString(data, 'meetingUrl'),
   }
   const replaces = formString(data, 'replaces')
   if (replaces !== '') input.replaces = replaces

@@ -10,6 +10,7 @@ import { requireCourseOwner } from '@/server/courses/service'
 import { addDays, localDateOf } from '@/server/lib/local-time'
 import { pushTimetableChanged } from '@/server/push/course-events'
 import { getSchool } from '@/server/schools/service'
+import { parseMeetingUrl } from './meeting-url'
 import { enqueueCourseDay } from './notices'
 
 export type SlotInput = {
@@ -18,6 +19,8 @@ export type SlotInput = {
   endMinute: number
   room: string | null
   requireOnCampus: boolean
+  /** Trimmed Google Meet URL, or null when the class is in person. */
+  meetingUrl: string | null
   startsOn: string
   endsOn: string
 }
@@ -64,6 +67,7 @@ const slotSchema = z
       .nullish()
       .transform((r) => r || null),
     requireOnCampus: z.boolean(),
+    meetingUrl: z.string().nullish(),
     startsOn: date,
     endsOn: date,
   })
@@ -86,7 +90,17 @@ function parseInput(input: unknown): SlotInput {
     const fields = [...new Set(result.error.issues.map((i) => i.path.join('.')))]
     throw new AppError('VALIDATION', 'Invalid input', { fields })
   }
-  return result.data
+  return { ...result.data, meetingUrl: parseMeetingUrl(result.data.meetingUrl) }
+}
+
+/** An online class can never also require the student's location, in the form or from any other caller. */
+export function assertOnlineRules(data: { meetingUrl: string | null; requireOnCampus: boolean }): void {
+  if (data.meetingUrl !== null && data.requireOnCampus) {
+    throw new AppError('VALIDATION', 'An online class cannot require students on campus', {
+      fields: ['requireOnCampus'],
+      reason: 'online_and_campus',
+    })
+  }
 }
 
 function toView(row: SlotRow): SlotView {
@@ -98,6 +112,7 @@ function toView(row: SlotRow): SlotView {
     endMinute: row.endMinute,
     room: row.room,
     requireOnCampus: row.requireOnCampus,
+    meetingUrl: row.meetingUrl,
     startsOn: row.startsOn,
     endsOn: row.endsOn,
   }
@@ -184,6 +199,7 @@ export async function createSlot(
 ): Promise<{ slot: SlotView; overlaps: SlotOverlap[] }> {
   const owned = await requireCourseOwner(ctx, courseId)
   const data = parseInput(input)
+  assertOnlineRules(data)
   await requireCampusLocation(ctx, owned.schoolId, data)
 
   const [row] = await ctx.db
@@ -202,14 +218,25 @@ export async function updateSlot(
 ): Promise<{ slot: SlotView; overlaps: SlotOverlap[] }> {
   const { slot: old, owned } = await requireOwnedSlot(ctx, slotId)
   const data = parseInput(input)
+  assertOnlineRules(data)
   await requireCampusLocation(ctx, owned.schoolId, data)
 
   const todayDate = today()
   const hasPast = old.startsOn < todayDate
   const sameWeekday = data.weekday === old.weekday
+  // A link-only edit must keep the slot id: today's join links, joins and reminder records all use it.
+  const onlineOnlyEdit =
+    data.meetingUrl !== old.meetingUrl &&
+    !data.requireOnCampus &&
+    data.weekday === old.weekday &&
+    data.startMinute === old.startMinute &&
+    data.endMinute === old.endMinute &&
+    data.room === old.room &&
+    data.startsOn === old.startsOn &&
+    data.endsOn === old.endsOn
 
-  if (!hasPast) {
-    // Not started yet: edit in place. Dated statuses survive only on the same weekday and inside the new term.
+  if (!hasPast || onlineOnlyEdit) {
+    // Edit in place. Dated statuses survive only on the same weekday and inside the new term.
     const row = await ctx.db.transaction(async (tx) => {
       const [updated] = await tx.update(classSlot).set(data).where(eq(classSlot.id, old.id)).returning()
       const stale = await tx.select().from(classDateStatus).where(eq(classDateStatus.slotId, old.id))
@@ -224,7 +251,7 @@ export async function updateSlot(
       return updated
     })
     const overlaps = await findOverlaps(ctx, data, [row.id])
-    await afterWrite(ctx, row.courseId, true) // not started yet, so every date is upcoming
+    await afterWrite(ctx, row.courseId, !hasPast) // a link-only edit changes no dates, so the roster is not told
     return { slot: toView(row), overlaps }
   }
 

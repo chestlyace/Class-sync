@@ -4,6 +4,7 @@ import type { Locale } from '@/i18n/locale'
 import { cn } from '@/lib/utils'
 import { config } from '@/server/core/config'
 import type { WeekRow } from '@/server/schedule/views'
+import { JoinClass } from '../schedule/join-class'
 import { RowBadge } from '../schedule/row-badge'
 import { formatDay, formatTime } from '../schedule/schedule-format'
 
@@ -34,10 +35,18 @@ export async function ThisWeek({ rows, locale, today }: { rows: WeekRow[]; local
               <div className={cn('flex min-w-0 flex-col gap-0.5', cancelled && 'text-muted-foreground')}>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <span className="font-medium">{row.courseTitle}</span>
-                  {row.badge && <RowBadge badge={row.badge} replacesDate={row.replacesDate} locale={locale} />}
+                  <RowBadge badge={row.badge} replacesDate={row.replacesDate} online={occ.online} locale={locale} />
                 </div>
                 {occ.room && <span className="text-sm text-muted-foreground">{occ.room}</span>}
               </div>
+              {row.joinWindow && (
+                <JoinClass
+                  occurrenceKey={occ.key}
+                  courseTitle={row.courseTitle}
+                  window={row.joinWindow}
+                  startsAt={occ.startsAt}
+                />
+              )}
             </li>
           )
         })}

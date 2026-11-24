@@ -1,7 +1,7 @@
 import { and, eq, gte, inArray, lt, lte } from 'drizzle-orm'
 import { config } from '@/server/core/config'
 import type { Db } from '@/server/db'
-import { attendanceSession, attendanceWindow, classDateStatus, classExtra, classSlot } from '@/server/db/schema'
+import { attendanceSession, attendanceWindow, classDateStatus, classExtra, classSlot, course } from '@/server/db/schema'
 import { addDays, instantAt, localDateOf } from '@/server/lib/local-time'
 import {
   buildSittings,
@@ -13,6 +13,8 @@ import {
 
 /** Attendance opened this long before a sitting starts still counts for it. */
 export const ATTENDANCE_LEAD_MS = 30 * 60_000
+/** Students can join an online class from this long before it starts until it ends. */
+export const JOIN_LEAD_MS = 15 * 60_000
 
 /**
  * The classes of the given courses between two local dates (inclusive): weekly slots whose term overlaps the range
@@ -132,4 +134,100 @@ export async function sittingsWithAttendance(db: Db, sittings: Sitting[]): Promi
     }
   }
   return found
+}
+
+/**
+ * The occurrence behind a key, with the meeting URL and the course's owner. This is only for server-side
+ * gating: `Occurrence` itself never carries the URL into page or week data.
+ */
+export async function loadOnlineOccurrence(
+  db: Db,
+  key: string,
+): Promise<{ occurrence: Occurrence; courseId: string; lecturerId: string; meetingUrl: string } | null> {
+  const parsed = parseOccurrenceKey(key)
+  if (!parsed) return null
+
+  let courseId: string
+  let meetingUrl: string | null
+  let date: string
+  if (parsed.kind === 'slot') {
+    const [slot] = await db
+      .select({ courseId: classSlot.courseId, meetingUrl: classSlot.meetingUrl })
+      .from(classSlot)
+      .where(eq(classSlot.id, parsed.slotId))
+    if (!slot) return null
+    courseId = slot.courseId
+    meetingUrl = slot.meetingUrl
+    date = parsed.date
+  } else {
+    const [extra] = await db
+      .select({ courseId: classExtra.courseId, meetingUrl: classExtra.meetingUrl, startsAt: classExtra.startsAt })
+      .from(classExtra)
+      .where(eq(classExtra.id, parsed.extraId))
+    if (!extra) return null
+    courseId = extra.courseId
+    meetingUrl = extra.meetingUrl
+    date = localDateOf(extra.startsAt, config.timeZone)
+  }
+  if (meetingUrl === null) return null
+
+  const [owned] = await db.select({ lecturerId: course.lecturerId }).from(course).where(eq(course.id, courseId))
+  if (!owned) return null
+  const occurrence = (await loadOccurrences(db, [courseId], date, date)).find((o) => o.key === key)
+  if (!occurrence) return null
+  return { occurrence, courseId, lecturerId: owned.lecturerId, meetingUrl }
+}
+
+/** Occurrence key → meeting URL, for the course owner's class page only. */
+export async function meetingUrlsFor(db: Db, occurrences: Occurrence[]): Promise<Map<string, string>> {
+  const urls = new Map<string, string>()
+  const slotIds = [...new Set(occurrences.flatMap((o) => (o.source.kind === 'slot' ? [o.source.slotId] : [])))]
+  const extraIds = occurrences.flatMap((o) => (o.source.kind === 'extra' ? [o.source.extraId] : []))
+  const [slots, extras] = await Promise.all([
+    slotIds.length === 0
+      ? []
+      : db
+          .select({ id: classSlot.id, meetingUrl: classSlot.meetingUrl })
+          .from(classSlot)
+          .where(inArray(classSlot.id, slotIds)),
+    extraIds.length === 0
+      ? []
+      : db
+          .select({ id: classExtra.id, meetingUrl: classExtra.meetingUrl })
+          .from(classExtra)
+          .where(inArray(classExtra.id, extraIds)),
+  ])
+  const bySlot = new Map(slots.map((s) => [s.id, s.meetingUrl]))
+  const byExtra = new Map(extras.map((e) => [e.id, e.meetingUrl]))
+  for (const o of occurrences) {
+    const url = o.source.kind === 'slot' ? bySlot.get(o.source.slotId) : byExtra.get(o.source.extraId)
+    if (url) urls.set(o.key, url)
+  }
+  return urls
+}
+
+/**
+ * The sittings a session belongs to. Sessions have no class FK, so a session is matched by its course and the
+ * time it (or one of its windows) was opened, with the same lead used when check-in is started from a class.
+ */
+export async function sittingsForSession(db: Db, sessionId: string): Promise<Sitting[]> {
+  const [session] = await db
+    .select({ courseId: attendanceSession.courseId, createdAt: attendanceSession.createdAt })
+    .from(attendanceSession)
+    .where(eq(attendanceSession.id, sessionId))
+  if (!session) return []
+  const windows = await db
+    .select({ openedAt: attendanceWindow.openedAt })
+    .from(attendanceWindow)
+    .where(eq(attendanceWindow.sessionId, sessionId))
+  const events = [session.createdAt, ...windows.map((w) => w.openedAt)].map((d) => d.getTime())
+  if (events.length === 0) return []
+  const from = localDateOf(new Date(Math.min(...events) - ATTENDANCE_LEAD_MS), config.timeZone)
+  const to = localDateOf(new Date(Math.max(...events)), config.timeZone)
+  const sittings = buildSittings(await loadOccurrences(db, [session.courseId], from, to))
+  return sittings.filter((s) => {
+    const start = s.startsAt.getTime() - ATTENDANCE_LEAD_MS
+    const end = s.endsAt.getTime()
+    return events.some((at) => at >= start && at <= end)
+  })
 }

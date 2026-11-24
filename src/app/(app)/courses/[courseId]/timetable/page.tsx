@@ -60,6 +60,7 @@ export default async function TimetablePage({ params }: PageProps<'/courses/[cou
     end: minutesToTime(s.endMinute),
     room: s.room ?? '',
     requireOnCampus: s.requireOnCampus,
+    meetingUrl: s.meetingUrl ?? '',
     startsOn: s.startsOn,
     endsOn: s.endsOn,
     dayLabel: weekdays[s.weekday - 1],
@@ -71,6 +72,7 @@ export default async function TimetablePage({ params }: PageProps<'/courses/[cou
     end: '',
     room: '',
     requireOnCampus: false,
+    meetingUrl: '',
     ...defaultTerm(slots, today),
   }
   const courseHref = `/courses/${encodeURIComponent(course.id)}`

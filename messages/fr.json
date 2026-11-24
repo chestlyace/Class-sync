@@ -805,6 +805,8 @@
     "lecturerEyebrow": "Enseignant",
     "studentEyebrow": "Étudiant",
     "thisWeek": "Cette semaine",
+    "joinNotOpen": "Le lien Google Meet s'ouvre 15 minutes avant le début du cours.",
+    "joinEnded": "Le cours est terminé : son lien Google Meet n'est plus disponible.",
     "newSchool": "Nouvel établissement",
     "newClass": "Nouvelle classe",
     "newCourse": "Nouveau cours",
@@ -1273,6 +1275,9 @@
       "start": "Début",
       "end": "Fin",
       "statusTitle": "Statut",
+      "joinedOnline": "A rejoint en ligne",
+      "joinedAt": "A rejoint à {time}",
+      "notJoined": "Pas rejoint",
       "checked": "a pointé",
       "notChecked": "n'a pas pointé",
       "notOpened": "pas ouvert",
@@ -3428,14 +3433,18 @@
       "cancelled": "Annulé",
       "missed": "Manqué",
       "makeUp": "Rattrapage",
-      "makeUpFor": "Rattrapage du {date}"
+      "makeUpFor": "Rattrapage du {date}",
+      "online": "En ligne"
     },
     "row": {
       "cantMakeIt": "Je ne peux pas",
       "openCheckIn": "Ouvrir l’appel",
       "opening": "Ouverture…",
       "undoCancel": "Rétablir",
-      "undoing": "Rétablissement…"
+      "undoing": "Rétablissement…",
+      "join": "Rejoindre",
+      "joinLabel": "Rejoindre {course} sur Google Meet",
+      "opensAt": "S’ouvre à {time}"
     },
     "cancel": {
       "title": "Annuler ce cours ?",
@@ -3459,6 +3468,10 @@
       "roomPlaceholder": "ex. B4",
       "requireCampus": "Exiger la présence sur le campus",
       "requireCampusHint": "L’appel demande la position de l’étudiant, comme une séance qui l’exige.",
+      "online": "Cours en ligne",
+      "onlineHint": "Les étudiants rejoignent sur Google Meet. La présence sur le campus est désactivée.",
+      "meetingUrl": "Lien Google Meet",
+      "meetingUrlPlaceholder": "https://meet.google.com/abc-defg-hij",
       "save": "Ajouter le cours",
       "saving": "Ajout…",
       "noCourses": "Vous n’avez pas encore de cours."
@@ -3490,6 +3503,10 @@
       "requireCampus": "Exiger la présence sur le campus",
       "requireCampusHint": "L’appel demande la position de l’étudiant et la compare au campus de l’école.",
       "noCampusHint": "Ajoutez la position du campus de l’école pour utiliser cette option.",
+      "online": "Cours en ligne",
+      "onlineHint": "Les étudiants rejoignent sur Google Meet. La présence sur le campus est désactivée.",
+      "meetingUrl": "Lien Google Meet",
+      "meetingUrlPlaceholder": "https://meet.google.com/abc-defg-hij",
       "add": "Ajouter le cours",
       "adding": "Ajout…",
       "save": "Enregistrer",
@@ -3514,6 +3531,15 @@
       "when": "{day} · {time}",
       "room": "Salle {room}",
       "noRoom": "Pas de salle indiquée",
+      "meetingLink": "Lien Google Meet",
+      "openLink": "Ouvrir le lien",
+      "copyLink": "Copier le lien",
+      "moveOnline": "Passer en ligne",
+      "moveOnlineTitle": "Faire donner ce cours en ligne ?",
+      "moveOnlineBody": "Faire donner {when} en ligne. Le cours initial est annulé et remplacé par un cours en ligne à la même heure. Les étudiants du cours reçoivent un seul avis.",
+      "meetingUrlHint": "Collez un lien Google Meet. Les étudiants peuvent l’ouvrir de 15 minutes avant le cours jusqu’à sa fin.",
+      "moving": "Transfert…",
+      "confirmMove": "Passer en ligne",
       "goToAttendance": "Voir les présences",
       "checkInHint": "L’appel peut être ouvert de 30 minutes avant le cours jusqu’à sa fin.",
       "missed": "Vous avez indiqué que ce cours a été manqué.",
@@ -3525,7 +3551,10 @@
       "notFuture": "Ce cours a déjà commencé : il ne peut plus être modifié.",
       "alreadySet": "Ce cours est déjà annulé ou a déjà reçu une réponse.",
       "notCancelled": "Ce cours n’est pas annulé.",
-      "notEnded": "Ce cours n’est pas encore terminé."
+      "notEnded": "Ce cours n’est pas encore terminé.",
+      "invalidMeetingUrl": "Saisissez un lien Google Meet, par ex. https://meet.google.com/abc-defg-hij.",
+      "onlineAndCampus": "Un cours en ligne ne peut pas aussi exiger la présence sur le campus.",
+      "alreadyOnline": "Ce cours est déjà en ligne."
     }
   },
   "removal": {

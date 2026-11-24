@@ -7,12 +7,13 @@ import { AppError } from '@/server/core/errors'
 import { classDateStatus, classExtra, classSlot } from '@/server/db/schema'
 import { requireCourseOwner } from '@/server/courses/service'
 import { isUniqueViolation } from '@/server/lib/db-errors'
-import { addDays, instantAt, localDateOf } from '@/server/lib/local-time'
+import { addDays, instantAt, localDateOf, localMinuteOf } from '@/server/lib/local-time'
 import { pushClassCancelled, pushClassMakeUp, pushClassMoved, pushClassReinstated } from '@/server/push/course-events'
+import { parseMeetingUrl } from './meeting-url'
 import { enqueueCourseDay } from './notices'
 import { parseOccurrenceKey, type Occurrence } from './occurrences'
 import { loadOccurrences, loadSittingByKey } from './queries'
-import { requireCampusLocation } from './timetable'
+import { assertOnlineRules, requireCampusLocation } from './timetable'
 
 export type MakeUpInput = {
   date: string
@@ -20,6 +21,7 @@ export type MakeUpInput = {
   endMinute: number
   room: string | null
   requireOnCampus: boolean
+  meetingUrl: string | null
 }
 
 const isDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && addDays(value, 0) === value
@@ -38,6 +40,7 @@ const makeUpSchema = z
       .nullish()
       .transform((r) => r || null),
     requireOnCampus: z.boolean(),
+    meetingUrl: z.string().nullish(),
     replaces: z.string().optional(),
   })
   .superRefine((value, ctx) => {
@@ -58,7 +61,9 @@ function parseMakeUp(input: unknown): ParsedMakeUp {
     const fields = [...new Set(result.error.issues.map((i) => i.path.join('.')))]
     throw new AppError('VALIDATION', 'Invalid input', { fields })
   }
-  return result.data
+  const data = { ...result.data, meetingUrl: parseMeetingUrl(result.data.meetingUrl) }
+  assertOnlineRules(data)
+  return data
 }
 
 function forbidden(): never {
@@ -139,6 +144,7 @@ function extraValues(
     endsAt: instantAt(data.date, data.endMinute, config.timeZone),
     room: data.room,
     requireOnCampus: data.requireOnCampus,
+    meetingUrl: data.meetingUrl,
     replacesSlotId: replaces?.slotId ?? null,
     replacesDate: replaces?.date ?? null,
     createdBy: ctx.user.id,
@@ -214,6 +220,32 @@ export async function cancelClass(ctx: Ctx, occurrenceKey: string, makeUp?: Make
     } else {
       await pushClassCancelled(ctx.db, occ)
     }
+  })
+}
+
+/**
+ * Moves one future class online by reusing the cancel-with-make-up flow: the old date is cancelled and
+ * replaced by an extra at the same time with the lecturer's Google Meet link.
+ */
+export async function moveClassOnline(ctx: Ctx, occurrenceKey: string, meetingUrl: string): Promise<void> {
+  const url = parseMeetingUrl(meetingUrl)
+  if (url === null) {
+    throw new AppError('VALIDATION', 'A Google Meet link is required', { fields: ['meetingUrl'] })
+  }
+  const { occ } = await requireOwnedOccurrence(ctx, occurrenceKey)
+  if (occ.online) {
+    throw new AppError('VALIDATION', 'This class is already online', { reason: 'already_online' })
+  }
+  const startMinute = localMinuteOf(occ.startsAt, config.timeZone)
+  const endsOnNextDay = localDateOf(occ.endsAt, config.timeZone) > occ.date
+  const endMinute = endsOnNextDay ? 1440 : localMinuteOf(occ.endsAt, config.timeZone)
+  await cancelClass(ctx, occurrenceKey, {
+    date: occ.date,
+    startMinute,
+    endMinute,
+    room: occ.room,
+    requireOnCampus: false,
+    meetingUrl: url,
   })
 }
 

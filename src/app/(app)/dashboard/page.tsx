@@ -43,10 +43,17 @@ function intlLocale(locale: Locale): string {
   return locale === 'fr' ? 'fr-FR' : 'en-GB'
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: PageProps<'/dashboard'>) {
   const user = await getSessionUser()
   if (!user) return null
+  const { join } = await searchParams
   const t = await getTranslations('dashboard')
+  const joinNotice =
+    join === 'not-open' || join === 'ended' ? (
+      <Panel role="status" className="flex items-center text-sm">
+        {join === 'not-open' ? t('joinNotOpen') : t('joinEnded')}
+      </Panel>
+    ) : null
   const rawLocale = await getLocale()
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
   const pending = isVerificationPending(user)
@@ -112,6 +119,7 @@ export default async function DashboardPage() {
     return (
       <>
         {header}
+        {joinNotice}
         <NotificationsCard role={user.role} />
         {/* The checklist already says what to do first; the empty panel is for those who hid it. */}
         {setup ?? (
@@ -127,6 +135,7 @@ export default async function DashboardPage() {
   return (
     <>
       {header}
+      {joinNotice}
       <NotificationsCard role={user.role} />
       {setup}
       {!isLecturer && <OpenCheckIns initial={data.data.openCheckIns} />}

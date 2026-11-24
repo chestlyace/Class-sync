@@ -12,7 +12,7 @@ import { instantAt } from '@/server/lib/local-time'
 import { setPushClientForTests } from '@/server/push/send'
 import { createTestDb } from '@/test/db'
 import { setupCourse } from '@/test/marking-fixture'
-import { addMakeUp, answerSitting, cancelClass, undoCancel, type MakeUpInput } from './changes'
+import { addMakeUp, answerSitting, cancelClass, moveClassOnline, undoCancel, type MakeUpInput } from './changes'
 import { setScheduleQueueForTests, type NoticeMessage } from './queue'
 
 const tz = config.timeZone
@@ -37,6 +37,7 @@ const makeUp = (over: Partial<MakeUpInput> = {}): MakeUpInput => ({
   endMinute: 16 * 60,
   room: 'C4',
   requireOnCampus: false,
+  meetingUrl: null,
   ...over,
 })
 
@@ -452,6 +453,61 @@ describe('date changes', () => {
     const blank = await bad({ room: '   ' })
     expect(blank.room).toBeNull()
     expect(await db.select().from(classExtra)).toHaveLength(1)
+  })
+
+  it('validates an online make-up in the service and in the database', async () => {
+    await expect(
+      addMakeUp(fx.lecturer, fx.bio.id, makeUp({ meetingUrl: 'https://teams.microsoft.com/l/meetup-join' })),
+    ).rejects.toMatchObject({ code: 'VALIDATION', details: { fields: ['meetingUrl'] } })
+    await expect(
+      addMakeUp(
+        fx.lecturer,
+        fx.bio.id,
+        makeUp({ meetingUrl: 'https://meet.google.com/abc-defg-hij', requireOnCampus: true }),
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION', details: { reason: 'online_and_campus' } })
+
+    const occ = await addMakeUp(fx.lecturer, fx.bio.id, makeUp({ meetingUrl: ' https://meet.google.com/abc-defg-hij ' }))
+    expect(occ.online).toBe(true)
+    const [row] = await db.select().from(classExtra)
+    expect(row.meetingUrl).toBe('https://meet.google.com/abc-defg-hij')
+    await expect(
+      db.insert(classExtra).values({
+        courseId: fx.bio.id,
+        startsAt: local(14),
+        endsAt: local(16),
+        room: null,
+        requireOnCampus: true,
+        meetingUrl: 'https://meet.google.com/abc-defg-hij',
+        createdBy: fx.lecturer.user.id,
+      }),
+    ).rejects.toThrow()
+    expect(await db.select().from(classExtra)).toHaveLength(1)
+  })
+
+  it('moves a future class online by cancelling it and adding an online replacement', async () => {
+    const slot = await seedSlot()
+    const key = `slot:${slot.id}:${MONDAY}`
+    const url = 'https://meet.google.com/abc-defg-hij'
+
+    await moveClassOnline(fx.lecturer, key, `  ${url}  `)
+    await flush()
+
+    expect(await db.select().from(classDateStatus)).toMatchObject([{ slotId: slot.id, date: MONDAY, status: 'cancelled' }])
+    const [extra] = await db.select().from(classExtra)
+    expect(extra).toMatchObject({
+      courseId: fx.bio.id,
+      meetingUrl: url,
+      requireOnCampus: false,
+      room: 'B2',
+      replacesSlotId: slot.id,
+      replacesDate: MONDAY,
+      startsAt: local(8),
+      endsAt: local(10),
+    })
+    // The existing cancellation push is reused; no new "now online" notification.
+    expect(pushes.map((p) => p.kind)).toContain('classMoved')
+    await expect(moveClassOnline(fx.lecturer, key, url)).rejects.toMatchObject({ code: 'VALIDATION' })
   })
 
   it('only the lecturer of the course can change its dates', async () => {

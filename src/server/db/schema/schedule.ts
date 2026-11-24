@@ -32,6 +32,8 @@ export const classSlot = pgTable(
     endMinute: smallint('end_minute').notNull(),
     room: text('room'),
     requireOnCampus: boolean('require_on_campus').notNull().default(false),
+    /** A Google Meet link. Non-null means the class is online (it may still have a room too). */
+    meetingUrl: text('meeting_url'),
     startsOn: date('starts_on', { mode: 'string' }).notNull(),
     endsOn: date('ends_on', { mode: 'string' }).notNull(),
     createdBy: text('created_by')
@@ -47,6 +49,7 @@ export const classSlot = pgTable(
       sql`${t.startMinute} >= 0 and ${t.startMinute} < ${t.endMinute} and ${t.endMinute} <= 1440`,
     ),
     check('class_slot_dates_check', sql`${t.endsOn} >= ${t.startsOn}`),
+    check('class_slot_online_campus_check', sql`${t.meetingUrl} is null or ${t.requireOnCampus} = false`),
   ],
 )
 
@@ -84,6 +87,8 @@ export const classExtra = pgTable(
     endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
     room: text('room'),
     requireOnCampus: boolean('require_on_campus').notNull().default(false),
+    /** A Google Meet link. Non-null means the class is online (it may still have a room too). */
+    meetingUrl: text('meeting_url'),
     replacesSlotId: text('replaces_slot_id').references(() => classSlot.id, { onDelete: 'set null' }),
     replacesDate: date('replaces_date', { mode: 'string' }),
     status: text('status', { enum: CLASS_STATUSES }),
@@ -98,6 +103,7 @@ export const classExtra = pgTable(
     // A slot implies a date. A date alone stays as history once the slot is deleted (FK sets the slot to null).
     check('class_extra_replaces_check', sql`${t.replacesSlotId} is null or ${t.replacesDate} is not null`),
     check('class_extra_status_check', sql`${t.status} is null or ${t.status} in ('cancelled', 'missed', 'taught')`),
+    check('class_extra_online_campus_check', sql`${t.meetingUrl} is null or ${t.requireOnCampus} = false`),
   ],
 )
 
@@ -110,6 +116,20 @@ export const classNotice = pgTable(
     sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.occurrenceKey, t.kind] })],
+)
+
+/** A student's first and last tap on a Google Meet Join button. Occurrence keys are not rows, so there is no class FK. */
+export const onlineClassJoin = pgTable(
+  'online_class_join',
+  {
+    occurrenceKey: text('occurrence_key').notNull(),
+    studentId: text('student_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    firstJoinedAt: timestamp('first_joined_at', { withTimezone: true }).notNull(),
+    lastJoinedAt: timestamp('last_joined_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.occurrenceKey, t.studentId] })],
 )
 
 /** Per-user notification switches. No row means everything is on. */

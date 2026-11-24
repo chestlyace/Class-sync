@@ -31,6 +31,7 @@ const input = (over: Partial<SlotInput> = {}): SlotInput => ({
   endMinute: 10 * 60,
   room: 'B2',
   requireOnCampus: false,
+  meetingUrl: null,
   startsOn: '2026-09-01',
   endsOn: '2026-12-31',
   ...over,
@@ -174,6 +175,62 @@ describe('timetable service', () => {
 
     expect(slot).toMatchObject({ id: future.id, startsOn: '2026-11-30', room: null })
     expect(await db.select().from(classSlot)).toHaveLength(1)
+  })
+
+  it('validates a Google Meet link and never allows online plus on-campus check-in', async () => {
+    await expect(
+      createSlot(fx.lecturer, fx.bio.id, input({ meetingUrl: 'https://zoom.us/abc' })),
+    ).rejects.toMatchObject({ code: 'VALIDATION', details: { fields: ['meetingUrl'] } })
+    await expect(
+      createSlot(
+        fx.lecturer,
+        fx.bio.id,
+        input({ meetingUrl: 'https://meet.google.com/abc-defg-hij', requireOnCampus: true }),
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION', details: { reason: 'online_and_campus' } })
+    expect(await db.select().from(classSlot)).toEqual([])
+
+    const { slot } = await createSlot(
+      fx.lecturer,
+      fx.bio.id,
+      input({ meetingUrl: '  https://meet.google.com/abc-defg-hij  ' }),
+    )
+    expect(slot.meetingUrl).toBe('https://meet.google.com/abc-defg-hij')
+    // The database agrees with the service: a link cannot be combined with campus-only check-in.
+    await expect(
+      db.insert(classSlot).values({
+        courseId: fx.bio.id,
+        weekday: 2,
+        startMinute: 480,
+        endMinute: 600,
+        room: null,
+        requireOnCampus: true,
+        meetingUrl: 'https://meet.google.com/abc-defg-hij',
+        startsOn: '2026-09-01',
+        endsOn: '2026-12-31',
+        createdBy: fx.lecturer.user.id,
+      }),
+    ).rejects.toThrow()
+    expect(await db.select().from(classSlot)).toHaveLength(1)
+  })
+
+  it('a link-only edit keeps the slot id even when the slot has past dates', async () => {
+    const old = await seedSlot(fx.bio.id)
+    const statuses = [
+      { slotId: old.id, date: '2026-11-09', status: 'cancelled' as const, setBy: fx.lecturer.user.id },
+      { slotId: old.id, date: MONDAY, status: 'cancelled' as const, setBy: fx.lecturer.user.id },
+      { slotId: old.id, date: '2026-11-23', status: 'cancelled' as const, setBy: fx.lecturer.user.id },
+    ]
+    await db.insert(classDateStatus).values(statuses)
+
+    const { slot } = await updateSlot(fx.lecturer, old.id, input({ meetingUrl: 'https://meet.google.com/abc-defg-hij' }))
+
+    expect(slot.id).toBe(old.id)
+    expect(slot.meetingUrl).toBe('https://meet.google.com/abc-defg-hij')
+    expect(await db.select().from(classSlot)).toHaveLength(1)
+    expect((await db.select().from(classDateStatus)).map((s) => [s.slotId, s.date])).toEqual(
+      statuses.map((s) => [old.id, s.date]),
+    )
   })
 
   it('removing a slot with past dates keeps its history', async () => {

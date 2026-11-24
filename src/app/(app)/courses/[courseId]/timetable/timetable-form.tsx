@@ -25,6 +25,7 @@ export type SlotFormValues = {
   end: string
   room: string
   requireOnCampus: boolean
+  meetingUrl: string
   startsOn: string
   endsOn: string
 }
@@ -53,13 +54,21 @@ function SlotForm({
   const t = useTranslations('schedule.timetable')
   const tCommon = useTranslations('common')
   const formRef = useRef<HTMLFormElement>(null)
+  const [online, setOnline] = useState(initial.meetingUrl !== '')
+  const [meetingUrl, setMeetingUrl] = useState(initial.meetingUrl)
+  const [campus, setCampus] = useState(initial.requireOnCampus)
   const [state, dispatch, pending] = useActionState(async (_prev: ActionResult<SlotSaved> | null, data: FormData) => {
     const result =
       target.kind === 'create'
         ? await createSlotAction(target.courseId, data)
         : await updateSlotAction(target.slotId, data)
     if (result.ok) {
-      if (target.kind === 'create') formRef.current?.reset()
+      if (target.kind === 'create') {
+        formRef.current?.reset()
+        setOnline(false)
+        setMeetingUrl('')
+        setCampus(false)
+      }
       onSaved(result.data)
     }
     return result
@@ -155,6 +164,43 @@ function SlotForm({
         </FieldDescription>
 
         <label
+          htmlFor={id('online')}
+          className="flex items-start gap-3 has-disabled:cursor-not-allowed has-disabled:opacity-60"
+        >
+          <input
+            id={id('online')}
+            name="online"
+            type="checkbox"
+            checked={online}
+            onChange={(e) => setOnline(e.target.checked)}
+            aria-describedby={id('online-hint')}
+            className="mt-0.5 size-5 shrink-0 accent-primary"
+          />
+          <span className="flex flex-col gap-0.5">
+            <span className="font-medium">{t('online')}</span>
+            <span id={id('online-hint')} className="text-sm text-muted-foreground">
+              {t('onlineHint')}
+            </span>
+          </span>
+        </label>
+        {online && (
+          <Field data-invalid={invalid('meetingUrl')}>
+            <FieldLabel htmlFor={id('meetingUrl')}>{t('meetingUrl')}</FieldLabel>
+            <Input
+              id={id('meetingUrl')}
+              name="meetingUrl"
+              type="url"
+              inputMode="url"
+              maxLength={2048}
+              required
+              value={meetingUrl}
+              onChange={(e) => setMeetingUrl(e.target.value)}
+              placeholder={t('meetingUrlPlaceholder')}
+              aria-invalid={invalid('meetingUrl')}
+            />
+          </Field>
+        )}
+        <label
           htmlFor={id('campus')}
           className="flex items-start gap-3 has-disabled:cursor-not-allowed has-disabled:opacity-60"
         >
@@ -162,8 +208,9 @@ function SlotForm({
             id={id('campus')}
             name="requireOnCampus"
             type="checkbox"
-            defaultChecked={initial.requireOnCampus}
-            disabled={!hasCampusLocation && !initial.requireOnCampus}
+            checked={!online && campus}
+            onChange={(e) => setCampus(e.target.checked)}
+            disabled={online || (!hasCampusLocation && !campus)}
             aria-describedby={id('campus-hint')}
             className="mt-0.5 size-5 shrink-0 accent-primary"
           />
@@ -276,6 +323,7 @@ export function TimetableEditor({
                         <span className="font-medium">{slot.dayLabel}</span>
                         <span className="font-mono text-sm tabular-nums">{time}</span>
                         {slot.requireOnCampus && <Badge variant="secondary">{t('onCampus')}</Badge>}
+                        {slot.meetingUrl !== '' && <Badge variant="outline">{t('online')}</Badge>}
                       </div>
                       <span className="text-sm text-muted-foreground">
                         {[slot.room, slot.termLabel].filter(Boolean).join(' · ')}

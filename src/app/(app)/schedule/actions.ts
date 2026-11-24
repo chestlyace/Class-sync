@@ -3,9 +3,17 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { toActionResult, type ActionResult } from '@/lib/action-result'
+import { formString } from '@/lib/form-data'
 import { getCtx } from '@/server/auth/session'
 import { AppError } from '@/server/core/errors'
-import { addMakeUp, answerSitting, cancelClass, undoCancel, type MakeUpInput } from '@/server/schedule/changes'
+import {
+  addMakeUp,
+  answerSitting,
+  cancelClass,
+  moveClassOnline,
+  undoCancel,
+  type MakeUpInput,
+} from '@/server/schedule/changes'
 import { createSlot, removeSlot, updateSlot, type SlotOverlap } from '@/server/schedule/timetable'
 import { startClassAttendance } from '@/server/schedule/views'
 import { parseCheckbox, parseMakeUpForm, parseSlotForm } from './schedule-form'
@@ -27,6 +35,7 @@ function revalidateSchedule() {
   revalidatePath('/schedule/class/[key]', 'page')
   revalidatePath('/courses/[courseId]/timetable', 'page')
   revalidatePath('/dashboard')
+  revalidatePath('/courses/[courseId]/attendance/[sessionId]', 'page')
 }
 
 export async function createSlotAction(courseId: string, data: FormData): Promise<ActionResult<SlotSaved>> {
@@ -61,8 +70,7 @@ export async function cancelClassAction(key: string, data: FormData): Promise<Ac
     const occurrenceKey = requireId(key, 'key')
     let makeUp: MakeUpInput | undefined
     if (parseCheckbox(data, 'makeUp')) {
-      const { date, startMinute, endMinute, room, requireOnCampus } = parseMakeUpForm(data)
-      makeUp = { date, startMinute, endMinute, room, requireOnCampus }
+      makeUp = parseMakeUpForm(data)
     }
     await cancelClass(await getCtx(), occurrenceKey, makeUp)
     revalidateSchedule()
@@ -73,6 +81,15 @@ export async function cancelClassAction(key: string, data: FormData): Promise<Ac
 export async function undoCancelAction(key: string): Promise<ActionResult<null>> {
   return toActionResult(async () => {
     await undoCancel(await getCtx(), requireId(key, 'key'))
+    revalidateSchedule()
+    return null
+  })
+}
+
+/** "Move online" on a lecturer's class page: the service validates the Meet link and reuses the make-up flow. */
+export async function moveOnlineAction(key: string, data: FormData): Promise<ActionResult<null>> {
+  return toActionResult(async () => {
+    await moveClassOnline(await getCtx(), requireId(key, 'key'), formString(data, 'meetingUrl'))
     revalidateSchedule()
     return null
   })

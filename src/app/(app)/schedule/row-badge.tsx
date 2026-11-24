@@ -4,22 +4,29 @@ import type { Locale } from '@/i18n/locale'
 import type { WeekRow } from '@/server/schedule/views'
 import { formatDay } from './schedule-format'
 
-/** The text badge on a class row: Cancelled, Missed or Make-up (with the date it replaces, when known). */
+/** The text badges on a class row: Cancelled, Missed, Make-up and Online. */
 export async function RowBadge({
   badge,
   replacesDate,
+  online,
   locale,
 }: {
-  badge: NonNullable<WeekRow['badge']>
+  badge: WeekRow['badge']
   replacesDate: string | null
+  online: boolean
   locale: Locale
 }) {
   const t = await getTranslations('schedule.badge')
-  if (badge === 'cancelled') return <Badge variant="destructive">{t('cancelled')}</Badge>
-  if (badge === 'missed') return <Badge variant="secondary">{t('missed')}</Badge>
   return (
-    <Badge variant="outline">
-      {replacesDate ? t('makeUpFor', { date: formatDay(replacesDate, locale, 'short') }) : t('makeUp')}
-    </Badge>
+    <>
+      {badge === 'cancelled' && <Badge variant="destructive">{t('cancelled')}</Badge>}
+      {badge === 'missed' && <Badge variant="secondary">{t('missed')}</Badge>}
+      {badge === 'makeUp' && (
+        <Badge variant="outline">
+          {replacesDate ? t('makeUpFor', { date: formatDay(replacesDate, locale, 'short') }) : t('makeUp')}
+        </Badge>
+      )}
+      {online && badge !== 'cancelled' && <Badge variant="outline">{t('online')}</Badge>}
+    </>
   )
 }

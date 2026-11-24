@@ -41,6 +41,9 @@ export function MakeUpFields({
   const t = useTranslations('schedule.makeUp')
   const tCommon = useTranslations('common')
   const invalid = (field: string) => isInvalidField(state, field) || undefined
+  const [online, setOnline] = useState(false)
+  const [meetingUrl, setMeetingUrl] = useState('')
+  const [campus, setCampus] = useState(false)
   return (
     <FieldGroup className="gap-4">
       <Field data-invalid={invalid('date')}>
@@ -91,11 +94,51 @@ export function MakeUpFields({
           aria-invalid={invalid('room')}
         />
       </Field>
-      <label htmlFor={`${idPrefix}-campus`} className="flex items-start gap-3">
+      <label htmlFor={`${idPrefix}-online`} className="flex items-start gap-3">
+        <input
+          id={`${idPrefix}-online`}
+          name="online"
+          type="checkbox"
+          checked={online}
+          onChange={(e) => setOnline(e.target.checked)}
+          aria-describedby={`${idPrefix}-online-hint`}
+          className="mt-0.5 size-5 shrink-0 accent-primary"
+        />
+        <span className="flex flex-col gap-0.5">
+          <span className="font-medium">{t('online')}</span>
+          <span id={`${idPrefix}-online-hint`} className="text-sm text-muted-foreground">
+            {t('onlineHint')}
+          </span>
+        </span>
+      </label>
+      {online && (
+        <Field data-invalid={invalid('meetingUrl')}>
+          <FieldLabel htmlFor={`${idPrefix}-meetingUrl`}>{t('meetingUrl')}</FieldLabel>
+          <Input
+            id={`${idPrefix}-meetingUrl`}
+            name="meetingUrl"
+            type="url"
+            inputMode="url"
+            maxLength={2048}
+            required
+            value={meetingUrl}
+            onChange={(e) => setMeetingUrl(e.target.value)}
+            placeholder={t('meetingUrlPlaceholder')}
+            aria-invalid={invalid('meetingUrl')}
+          />
+        </Field>
+      )}
+      <label
+        htmlFor={`${idPrefix}-campus`}
+        className="flex items-start gap-3 has-disabled:cursor-not-allowed has-disabled:opacity-60"
+      >
         <input
           id={`${idPrefix}-campus`}
           name="requireOnCampus"
           type="checkbox"
+          checked={!online && campus}
+          onChange={(e) => setCampus(e.target.checked)}
+          disabled={online}
           aria-describedby={`${idPrefix}-campus-hint`}
           className="mt-0.5 size-5 shrink-0 accent-primary"
         />

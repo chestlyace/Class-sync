@@ -218,7 +218,7 @@ function ClassRow({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="font-mono text-sm tabular-nums">{time}</span>
           <span className="font-medium">{row.courseTitle}</span>
-          {row.badge && <RowBadge badge={row.badge} replacesDate={row.replacesDate} locale={locale} />}
+          <RowBadge badge={row.badge} replacesDate={row.replacesDate} online={occ.online} locale={locale} />
         </div>
         <span className="text-sm text-muted-foreground">{details.join(' · ')}</span>
       </div>

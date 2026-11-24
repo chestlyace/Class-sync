@@ -93,6 +93,12 @@ export function localDateOf(at: Date, timeZone: string): string {
   return `${String(w.year).padStart(4, '0')}-${pad2(w.month)}-${pad2(w.day)}`
 }
 
+/** Minutes after local midnight of an instant in `timeZone`. */
+export function localMinuteOf(at: Date, timeZone: string): number {
+  const w = wallParts(at.getTime(), timeZone)
+  return w.hour * 60 + w.minute
+}
+
 /**
  * The instant at `minute` minutes after local midnight of `date` ("YYYY-MM-DD") in `timeZone`.
  * `minute` runs 0-1440; 1440 is the next local midnight (the wall parser rejects hour 24, so it is

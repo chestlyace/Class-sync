@@ -116,6 +116,7 @@ describe('class schedule push events', () => {
     endsAt: new Date('2026-11-10T09:00:00Z'),
     room: 'B2',
     requireOnCampus: false,
+    online: false,
     status: null,
     source: { kind: 'slot', slotId: 's1' },
     ...over,
@@ -127,6 +128,7 @@ describe('class schedule push events', () => {
     startsAt: o.startsAt,
     endsAt: o.endsAt,
     occurrences: [o],
+    online: o.online,
     status: null,
   })
 

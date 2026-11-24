@@ -14,6 +14,7 @@ import {
   type WindowState,
 } from '@/server/attendance/sessions'
 import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
+import { cn } from '@/lib/utils'
 import { isSessionOver, SESSION_MAX_HOURS } from '@/server/attendance/rules'
 import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
@@ -48,7 +49,7 @@ export default async function AttendanceSessionPage({
     return { ...data, live, linkPath }
   })
   if (!view.ok) return <ErrorState code={view.code} />
-  const { session, course, students, live, linkPath } = view.data
+  const { session, course, students, joinedOnline, live, linkPath } = view.data
   const checkInLink = linkPath ? await absoluteLink(linkPath) : null
   const gridHref = `/courses/${encodeURIComponent(course.id)}/attendance`
   const time = (date: Date) => formatSessionDate(date, locale, config.timeZone, 'time')
@@ -139,6 +140,20 @@ export default async function AttendanceSessionPage({
                       checked={student.checkedEnd}
                       describe={describeCheck}
                     />
+                    {joinedOnline && (
+                      <span
+                        title={student.joinedOnlineAt ? t('joinedAt', { time: time(student.joinedOnlineAt) }) : undefined}
+                        className={cn(
+                          'inline-flex items-center gap-1',
+                          student.joinedOnlineAt ? 'font-medium' : 'text-muted-foreground',
+                        )}
+                      >
+                        {t('joinedOnline')}
+                        {student.joinedOnlineAt && (
+                          <span className="font-mono text-xs tabular-nums">{time(student.joinedOnlineAt)}</span>
+                        )}
+                      </span>
+                    )}
                     <span className="inline-flex w-28 items-center gap-1 font-medium">
                       {t(`status.${statusKey}`)}
                       {student.override && (

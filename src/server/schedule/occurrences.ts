@@ -15,6 +15,8 @@ export type Occurrence = {
   endsAt: Date
   room: string | null
   requireOnCampus: boolean
+  /** True when the slot or extra has a Google Meet link. The URL itself never reaches student-facing code. */
+  online: boolean
   status: ClassStatus | null
   source:
     | { kind: 'slot'; slotId: string }
@@ -29,6 +31,8 @@ export type Sitting = {
   startsAt: Date
   endsAt: Date
   occurrences: Occurrence[]
+  /** A sitting is online when any of its classes is: students at home can check in to that part. */
+  online: boolean
   status: 'missed' | 'taught' | null
 }
 
@@ -69,6 +73,7 @@ export function expandOccurrences(input: {
         endsAt: instantAt(date, slot.endMinute, timeZone),
         room: slot.room,
         requireOnCampus: slot.requireOnCampus,
+        online: slot.meetingUrl !== null,
         status: statusByKey.get(`${slot.id}:${date}`) ?? null,
         source: { kind: 'slot', slotId: slot.id },
       })
@@ -86,6 +91,7 @@ export function expandOccurrences(input: {
       endsAt: extra.endsAt,
       room: extra.room,
       requireOnCampus: extra.requireOnCampus,
+      online: extra.meetingUrl !== null,
       status: extra.status,
       source: {
         kind: 'extra',
@@ -128,6 +134,7 @@ export function buildSittings(occurrences: Occurrence[]): Sitting[] {
         startsAt: head.startsAt,
         endsAt: new Date(currentEnd),
         occurrences: current,
+        online: current.some((o) => o.online),
         status: shared === 'missed' || shared === 'taught' ? shared : null,
       })
     }
