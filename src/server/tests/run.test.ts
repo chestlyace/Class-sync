@@ -623,6 +623,30 @@ describe('running a test (lecturer)', () => {
     expect(logs.map((l) => l.kind)).toEqual(['ended_left'])
   })
 
+  it('letBackIn rejects when the test ends after its first check but before its transaction', async () => {
+    const { lecturer, algo, carol } = await setup()
+    const q = await insertTest(lecturer, algo.id)
+    setClock(T0)
+    await startTest(lecturer, q.test.id)
+    const left = await join(q.test.id, carol, at(1))
+    await close(left.id, 'left', at(4), 3)
+
+    setClock(at(8))
+    // The other tab's end lands later than the instant this call captured for its first check.
+    const raced = racing(lecturer, 'transaction', async () => {
+      setClock(at(9))
+      await endTestForEveryone(lecturer, q.test.id)
+    })
+    await expect(letBackIn(raced, left.id)).rejects.toMatchObject({
+      code: 'CONFLICT',
+      details: { reason: 'test_over' },
+    })
+    const [stored] = await db.select().from(testAttempt).where(eq(testAttempt.id, left.id))
+    expect(stored.closedReason).toBe('left')
+    const logs = await db.select().from(testLog).where(eq(testLog.attemptId, left.id))
+    expect(logs.map((l) => l.kind)).toEqual(['ended_left'])
+  })
+
   it('getAttemptLog lists exits, ending and reopening in order', async () => {
     const { lecturer, algo, carol } = await setup()
     const q = await insertTest(lecturer, algo.id)
