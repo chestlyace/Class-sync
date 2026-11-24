@@ -56,7 +56,7 @@ export const adminAction = pgTable(
     ),
     check(
       'admin_action_one_target_check',
-      sql`(${t.action} = 'broadcast_send' and ${t.targetUserId} is null and ${t.targetSchoolId} is null) or ((${t.targetUserId} is null) <> (${t.targetSchoolId} is null))`,
+      sql`case when ${t.action} = 'broadcast_send' then ${t.targetUserId} is null and ${t.targetSchoolId} is null else (${t.targetUserId} is null) <> (${t.targetSchoolId} is null) end`,
     ),
     index('admin_action_at_idx').on(t.at),
   ],

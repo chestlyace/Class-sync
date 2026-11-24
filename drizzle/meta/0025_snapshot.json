@@ -1,5 +1,5 @@
 {
-  "id": "fe0f3873-fcff-4136-a7e8-0717aa410a0e",
+  "id": "9f7cc118-af1b-45d8-9f9e-800c32bb34e2",
   "prevId": "b19c87d3-5faf-4f14-a42c-38485c150702",
   "version": "7",
   "dialect": "postgresql",
@@ -113,7 +113,7 @@
         },
         "admin_action_one_target_check": {
           "name": "admin_action_one_target_check",
-          "value": "(\"admin_action\".\"action\" = 'broadcast_send' and \"admin_action\".\"target_user_id\" is null and \"admin_action\".\"target_school_id\" is null) or ((\"admin_action\".\"target_user_id\" is null) <> (\"admin_action\".\"target_school_id\" is null))"
+          "value": "case when \"admin_action\".\"action\" = 'broadcast_send' then \"admin_action\".\"target_user_id\" is null and \"admin_action\".\"target_school_id\" is null else (\"admin_action\".\"target_user_id\" is null) <> (\"admin_action\".\"target_school_id\" is null) end"
         }
       },
       "isRLSEnabled": false
