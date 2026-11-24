@@ -220,7 +220,12 @@ describe('broadcast service', () => {
     setBroadcastQueueForTests(async () => {
       throw new Error('queue down')
     })
-    await expect(createBroadcast(ctxFor(db, admin), data, 'SEND')).rejects.toThrow('queue down')
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await expect(createBroadcast(ctxFor(db, admin), data, 'SEND')).rejects.toMatchObject({
+      code: 'CONFLICT',
+      details: { reason: 'not_started' },
+    })
+    expect(logged).toHaveBeenCalled()
     expect(await recipientsOf(data.id)).toHaveLength(1)
 
     setBroadcastQueueForTests(async (id) => {

@@ -99,15 +99,32 @@ async function savedBroadcast(ctx: Ctx, id: string): Promise<{ id: string; recip
     .select({ n: count() })
     .from(broadcastRecipient)
     .where(and(eq(broadcastRecipient.broadcastId, id), eq(broadcastRecipient.status, 'pending')))
-  if (row?.status === 'sending' && (pending?.n ?? 0) > 0) await enqueueBroadcast(id)
+  if (row?.status === 'sending' && (pending?.n ?? 0) > 0) await startSending(id)
   return { id, recipients: await recipientCount(ctx, id) }
 }
 
 /**
+/**
+ * Queues the sending job of a broadcast that is already saved. When the queue fails, the broadcast
+ * stays saved with its rows pending: the admin is told to press Send again (the same id re-queues
+ * it), and the daily run picks up any broadcast left like this for more than 10 minutes.
+ */
+async function startSending(id: string): Promise<void> {
+  try {
+    await enqueueBroadcast(id)
+  } catch (error) {
+    console.error('[broadcasts] saved broadcast could not be queued', { broadcastId: id }, error)
+    throw new AppError('CONFLICT', 'The broadcast was saved but sending did not start. Send it again to start it.', {
+      reason: 'not_started',
+    })
+  }
+}
+
  * Saves a broadcast with its recipients and the audit row in one transaction, then queues the
  * sending job. Sending the same id again returns the saved broadcast and never sends twice (a
  * double click or a retried request is safe); it only queues the job again if the first request
- * failed to queue it and rows are still pending. The recipient list is a snapshot: people
+ * failed to queue it and rows are still pending (a failed queueing throws CONFLICT with
+ * `details.reason = 'not_started'`, and the broadcast stays saved). The recipient list is a snapshot: people
  * who sign up or opt out later are not added or removed here (the job still skips opted-out,
  * suspended and deleted accounts when it reaches them).
  */
@@ -175,7 +192,7 @@ export async function createBroadcast(
   })
 
   if (created === null) return savedBroadcast(ctx, data.id)
-  await enqueueBroadcast(data.id)
+  await startSending(data.id)
   return { id: data.id, recipients: created }
 }
 

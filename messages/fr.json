@@ -2958,9 +2958,12 @@
         "sendButton": "Envoyer à {count, plural, one {# personne} other {# personnes}}…",
         "sendFailed": "L'envoi d'e-mails n'est pas configuré : rien n'a été envoyé.",
         "sentNotice": "Envoi en cours à {count, plural, one {# personne} other {# personnes}}. Suivez-le dans l'historique ci-dessous.",
+        "notStarted": "L'annonce est enregistrée, mais l'envoi n'a pas démarré. Appuyez de nouveau sur Envoyer maintenant pour le lancer.",
+        "unexpected": "Un problème est survenu. Votre message est conservé : réessayez.",
+        "testNotAllowed": "Votre adresse ne figure pas dans EMAIL_ALLOWLIST sur ce déploiement : le test n'a pas été envoyé.",
         "confirm": {
           "title": "Envoyer cette annonce ?",
-          "description": "Elle part maintenant à {audience} : {count, plural, one {# personne} other {# personnes}}. Impossible de la rappeler une fois envoyée.",
+          "description": "Elle part maintenant {audience, select, lecturers {aux enseignants} students {aux étudiants} other {à tout le monde}} : {count, plural, one {# personne} other {# personnes}}. Impossible de la rappeler une fois envoyée.",
           "wordLabel": "Tapez ENVOYER pour confirmer",
           "submit": "Envoyer maintenant"
         }

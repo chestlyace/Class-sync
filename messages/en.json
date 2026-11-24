@@ -2958,9 +2958,12 @@
         "sendButton": "Send to {count, plural, one {# person} other {# people}}…",
         "sendFailed": "Email sending isn't set up, so nothing was sent.",
         "sentNotice": "Sending to {count, plural, one {# person} other {# people}}. Follow it in the history below.",
+        "notStarted": "The announcement is saved, but sending didn't start. Press Send now again to start it.",
+        "unexpected": "Something went wrong. Your message is still here: try again.",
+        "testNotAllowed": "Your address isn't in EMAIL_ALLOWLIST on this deployment, so the test wasn't sent.",
         "confirm": {
           "title": "Send this announcement?",
-          "description": "This sends it now to {audience}: {count, plural, one {# person} other {# people}}. It can't be recalled once it is sent.",
+          "description": "This sends it now to {audience, select, lecturers {lecturers} students {students} other {everyone}}: {count, plural, one {# person} other {# people}}. It can't be recalled once it is sent.",
           "wordLabel": "Type SEND to confirm",
           "submit": "Send now"
         }

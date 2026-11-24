@@ -17,6 +17,14 @@ type Fields = { subjectEn: string; bodyEn: string; subjectFr: string; bodyFr: st
 
 const EMPTY: Fields = { subjectEn: '', bodyEn: '', subjectFr: '', bodyFr: '' }
 
+/** What the form shows when an action throws instead of answering: the draft and its id stay as they are. */
+const UNEXPECTED = { ok: false, code: 'CONFLICT', details: { reason: 'unexpected' } } as const satisfies ActionResult<never>
+
+/** Why a CONFLICT happened, when the service said (`not_started`, `not_allowed`) or the call threw (`unexpected`). */
+function reasonOf(state: ActionResult<unknown> | null): unknown {
+  return state && !state.ok ? state.details?.reason : undefined
+}
+
 /** The words that confirm a send, in either language (the service checks again). */
 const CONFIRMATION_WORDS = ['SEND', 'ENVOYER']
 
@@ -127,8 +135,17 @@ export function BroadcastForm({
   const [testPending, startTest] = useTransition()
 
   const [sendState, sendDispatch, sendPending] = useActionState(
-    async (_prev: ActionResult<unknown> | null, data: FormData) => {
-      const result = await createBroadcastAction({ id: draftId, audience, ...fields }, String(data.get('confirmation') ?? ''))
+    async (
+      _prev: ActionResult<{ id: string; recipients: number }> | null,
+      data: FormData,
+    ): Promise<ActionResult<{ id: string; recipients: number }>> => {
+      let result: ActionResult<{ id: string; recipients: number }>
+      try {
+        result = await createBroadcastAction({ id: draftId, audience, ...fields }, String(data.get('confirmation') ?? ''))
+      } catch {
+        // The request may have saved the broadcast: keep the same id, so pressing Send again never sends twice.
+        return UNEXPECTED
+      }
       if (result.ok) {
         setOpen(false)
         setWord('')
@@ -158,7 +175,11 @@ export function BroadcastForm({
   function sendTest() {
     setTestState(null)
     startTest(async () => {
-      setTestState(await sendTestBroadcastAction(fields))
+      try {
+        setTestState(await sendTestBroadcastAction(fields))
+      } catch {
+        setTestState(UNEXPECTED)
+      }
     })
   }
 
@@ -234,7 +255,17 @@ export function BroadcastForm({
             {t('testSent')}
           </p>
         )}
-        <ActionError state={testState} overrides={{ CONFLICT: t('testFailed') }} />
+        <ActionError
+          state={testState}
+          overrides={{
+            CONFLICT:
+              reasonOf(testState) === 'unexpected'
+                ? t('unexpected')
+                : reasonOf(testState) === 'not_allowed'
+                  ? t('testNotAllowed')
+                  : t('testFailed'),
+          }}
+        />
         {sentTo !== null && (
           <p role="status" className="text-sm font-medium">
             {t('sentNotice', { count: sentTo })}
@@ -253,7 +284,7 @@ export function BroadcastForm({
           <DialogHeader>
             <DialogTitle>{t('confirm.title')}</DialogTitle>
             <DialogDescription>
-              {t('confirm.description', { audience: t(`audiences.${audience}`), count: recipients })}
+              {t('confirm.description', { audience, count: recipients })}
             </DialogDescription>
           </DialogHeader>
           <form action={sendDispatch} className="flex flex-col gap-3">
@@ -269,7 +300,17 @@ export function BroadcastForm({
                 spellCheck={false}
               />
             </Field>
-            <ActionError state={sendState} overrides={{ CONFLICT: t('sendFailed') }} />
+            <ActionError
+              state={sendState}
+              overrides={{
+                CONFLICT:
+                  reasonOf(sendState) === 'unexpected'
+                    ? t('unexpected')
+                    : reasonOf(sendState) === 'not_started'
+                      ? t('notStarted')
+                      : t('sendFailed'),
+              }}
+            />
             <DialogFooter>
               <DialogClose asChild>
                 <Button type="button" size="lg" variant="outline">
