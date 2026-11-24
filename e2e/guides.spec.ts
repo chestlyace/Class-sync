@@ -1,12 +1,13 @@
 import { expect, test } from '@playwright/test'
-import { EN, expectNoHorizontalScroll, signUp, userPages } from './helpers'
+import { EN, expectNoHorizontalScroll, PASSWORD, signUp, userPages } from './helpers'
 
 /**
  * The in-app guides: the welcome tour starts by itself on a new account and never again once
- * closed; Help starts any guide, which follows the user from page to page. English UI; one fresh
- * lecturer per project, with the guides on (the other scenarios turn them off).
+ * closed, on any device (it is remembered on the account); Settings → Guides starts any guide,
+ * which follows the user from page to page. English UI; one fresh lecturer per project, with the
+ * guides on (the other scenarios turn them off).
  */
-test('welcome tour, then the class-and-course guide from Help', async ({
+test('welcome tour, then the class-and-course guide from Settings', async ({
   browser,
   baseURL,
   viewport,
@@ -35,17 +36,30 @@ test('welcome tour, then the class-and-course guide from Help', async ({
       await expect(card).toHaveCount(0)
     })
 
-    await test.step('once closed, it does not come back', async () => {
+    await test.step('once closed, it does not come back, even in another browser', async () => {
       await page.reload()
       await page.waitForTimeout(1500)
       await expect(card).toHaveCount(0)
+      // A second browser signed in to the same account: still no welcome tour.
+      const other = await newUserPage({ locale: 'en-US' }, { guides: true })
+      await other.goto('/sign-in')
+      await other.getByLabel(EN.email, { exact: true }).fill(`e2e-${run}-guide@example.test`)
+      await other.getByLabel(EN.password, { exact: true }).fill(PASSWORD)
+      await other.getByRole('button', { name: 'Sign in', exact: true }).click()
+      await expect(other).toHaveURL(/\/dashboard$/)
+      await other.waitForTimeout(1500)
+      await expect(other.getByTestId('guide-card')).toHaveCount(0)
     })
 
-    await test.step('Help lists the guides and starts one, which follows the user to the next page', async () => {
-      await page.getByRole('button', { name: 'Help and guides' }).click()
-      const dialog = page.getByRole('dialog', { name: 'Guides' })
-      await expect(dialog.getByRole('button', { name: /Take attendance/ })).toBeVisible()
-      await dialog.getByRole('button', { name: /Create a class and a course/ }).click()
+    await test.step('Settings lists the guides and starts one, which follows the user to the next page', async () => {
+      // No Help button in the nav any more.
+      await expect(page.getByRole('button', { name: 'Help and guides' })).toHaveCount(0)
+      await page.goto('/settings')
+      const guides = page.getByRole('region', { name: 'Guides' })
+      await expect(guides.getByRole('button', { name: /Take attendance/ })).toBeVisible()
+      await expect(guides.getByRole('button', { name: /Welcome tour.*Replay/ })).toBeVisible()
+      await guides.getByRole('button', { name: /Create a class and a course/ }).click()
+      await expect(page).toHaveURL(/\/dashboard$/)
       await expect(card.getByRole('heading', { name: 'Open New class' })).toBeVisible()
       await card.getByRole('button', { name: 'Open it' }).click()
       await expect(page).toHaveURL(/\/classes\/new$/)

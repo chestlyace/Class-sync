@@ -73,7 +73,7 @@ export const GUIDES: readonly Guide[] = [
       { id: 'menu', route: 'dashboard', target: tour('nav') },
       { id: 'create', route: 'dashboard', target: tour('new-course') },
       { id: 'checklist', route: 'dashboard', target: '[data-testid="setup-checklist"]', optional: true },
-      { id: 'help', route: 'dashboard', target: tour('help') },
+      { id: 'help', route: 'dashboard', target: tour('settings') },
     ],
   },
   {
@@ -164,7 +164,7 @@ export const GUIDES: readonly Guide[] = [
       { id: 'menu', route: 'dashboard', target: tour('nav') },
       { id: 'join', route: 'dashboard', target: tour('join-class') },
       { id: 'checklist', route: 'dashboard', target: '[data-testid="setup-checklist"]', optional: true },
-      { id: 'help', route: 'dashboard', target: tour('help') },
+      { id: 'help', route: 'dashboard', target: tour('settings') },
     ],
   },
   {

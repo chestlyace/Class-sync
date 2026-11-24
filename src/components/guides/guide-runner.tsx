@@ -15,10 +15,11 @@ import {
   startOf,
   stepOnPage,
 } from './guides'
-import { addSeen, guidesOff, onGuideRequest, readSeen } from './guide-storage'
+import { markGuideSeenAction } from '@/app/(app)/guide-actions'
+import { guidesOff, onGuideRequest } from './guide-storage'
 
-/** sessionStorage: the guide in progress, so a reload keeps the user's place. */
-const ACTIVE_KEY = 'clasync:guide'
+/** sessionStorage, per user: the guide in progress, so a reload keeps the user's place. */
+const activeKey = (userId: string) => `clasync:guide:${userId}`
 /** Pause before a first-visit guide starts, so the page has settled. */
 const AUTO_START_MS = 700
 /** Longest wait for a page the guide sent the user to, before showing the card again. */
@@ -47,13 +48,25 @@ function write(key: string, value: unknown): void {
 
 /**
  * Runs the in-app guides for the signed-in area: one guide at a time, kept across pages and
- * reloads; the welcome and course guides start by themselves the first time (unless `autoStart`
- * is off, e.g. while the email is unverified). Help (HelpButton) starts any guide again.
+ * reloads. The welcome and course guides start by themselves once per account (unless `autoStart`
+ * is off, e.g. while the email is unverified): `seen` is what the account has finished or closed,
+ * and ending a guide adds to it on the server. The Guides section in Settings starts any guide again.
  *
  * Rendered next to the page, never around it: its state changes must not reach the page's
  * Suspense boundaries while they stream in and hydrate.
  */
-export function GuideRunner({ role, userId, autoStart }: { role: Role; userId: string; autoStart: boolean }) {
+export function GuideRunner({
+  role,
+  userId,
+  autoStart,
+  seen: initialSeen,
+}: {
+  role: Role
+  userId: string
+  autoStart: boolean
+  /** Guides this account has finished or closed (from the database). */
+  seen: string[]
+}) {
   const t = useTranslations('guides')
   const pathname = usePathname()
   const router = useRouter()
@@ -61,6 +74,9 @@ export function GuideRunner({ role, userId, autoStart }: { role: Role; userId: s
   const [active, setActive] = useState<Active | null>(null)
   const [navigating, setNavigating] = useState(false)
   const lastCourse = useRef<string | null>(null)
+  // Ended guides are added here at once, so one never starts by itself again on this visit,
+  // whatever the server says before the next page load.
+  const seen = useRef<Set<string>>(new Set(initialSeen))
   // Read by the first-visit timer: a guide started from Help meanwhile wins.
   const activeRef = useRef<Active | null>(null)
   useEffect(() => {
@@ -70,7 +86,7 @@ export function GuideRunner({ role, userId, autoStart }: { role: Role; userId: s
   // Browser storage is only there after hydration.
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect -- reading browser storage once, after hydration */
-    const saved = read<Active | null>(ACTIVE_KEY, null)
+    const saved = read<Active | null>(activeKey(userId), null)
     const guide = saved && findGuide(saved.guideId)
     if (saved && guide && guide.role === role && saved.index >= 0 && saved.index < guide.steps.length) setActive(saved)
     setReady(true)
@@ -78,8 +94,8 @@ export function GuideRunner({ role, userId, autoStart }: { role: Role; userId: s
   }, [userId, role])
 
   useEffect(() => {
-    if (ready) write(ACTIVE_KEY, active)
-  }, [ready, active])
+    if (ready) write(activeKey(userId), active)
+  }, [ready, active, userId])
 
   const guide = active ? findGuide(active.guideId) : undefined
 
@@ -133,7 +149,7 @@ export function GuideRunner({ role, userId, autoStart }: { role: Role; userId: s
   // First visit to a page with its own guide: start it, once.
   useEffect(() => {
     if (!ready || !autoStart || active || guidesOff()) return
-    const g = autoGuideFor(role, pathname, readSeen(userId))
+    const g = autoGuideFor(role, pathname, seen.current)
     if (!g) return
     const timer = setTimeout(() => {
       if (!activeRef.current) start(g.id)
@@ -144,9 +160,13 @@ export function GuideRunner({ role, userId, autoStart }: { role: Role; userId: s
   }, [ready, autoStart, pathname])
 
   const end = useCallback(() => {
-    if (active) addSeen(userId, active.guideId)
+    if (active && !seen.current.has(active.guideId)) {
+      seen.current.add(active.guideId)
+      // Best effort: if it fails, the guide may start by itself once more on another visit.
+      void markGuideSeenAction(active.guideId)
+    }
     setActive(null)
-  }, [active, userId])
+  }, [active])
 
   const moveTo = useCallback(
     (index: number, dir: 1 | -1) => {

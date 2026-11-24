@@ -1,7 +1,6 @@
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { Logo } from '@/components/logo'
-import { HelpButton } from '@/components/guides/help-button'
 import { buttonVariants } from '@/components/ui/button'
 import { initials } from '@/lib/person-name'
 import { isPreviewDeployment } from '@/server/core/config'
@@ -15,17 +14,8 @@ type Section = { href: string; label: string }
 /**
  * Floating pill nav with the EN/FR toggle; signed-in users also get the phone bottom nav.
  * `sections` adds in-page links and a "Get started" button for signed-out visitors (landing page).
- * `guides` adds the Help button, in the signed-in area where GuideRunner runs the guides.
  */
-export async function SiteNav({
-  user,
-  sections,
-  guides = false,
-}: {
-  user: SessionUser | null
-  sections?: Section[]
-  guides?: boolean
-}) {
+export async function SiteNav({ user, sections }: { user: SessionUser | null; sections?: Section[] }) {
   const t = await getTranslations()
   return (
     <>
@@ -64,7 +54,6 @@ export async function SiteNav({
             </ul>
           )}
           <div className="flex items-center gap-1">
-            {user && guides && <HelpButton role={user.role} userId={user.id} />}
             <LanguageSwitcher />
             {user ? (
               <>
@@ -73,6 +62,7 @@ export async function SiteNav({
                 </span>
                 <Link
                   href="/settings"
+                  data-tour="settings"
                   title={t('nav.settings')}
                   className="flex size-10 shrink-0 items-center justify-center rounded-full bg-foreground font-mono text-[13px] font-semibold text-background outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
