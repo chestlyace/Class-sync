@@ -103,11 +103,19 @@ export function createModelSuggester(model: LanguageModel, modelId: string): Ass
         output: Output.object({ schema }),
         system: buildSystemPrompt(),
         messages: [{ role: 'user', content: buildUserContent(input) }],
-        temperature: 0,
+        // No temperature: Haiku 5.5 answers a non-default sampling parameter with a 400.
         maxOutputTokens: MAX_OUTPUT_TOKENS,
-        // Always the forced JSON tool: Bedrock's native structured output (output_config.format) is
-        // incompatible with PDF citations, which buildUserContent turns on for PDFs.
-        providerOptions: { amazonBedrock: { structuredOutputMode: 'jsonTool' } },
+        providerOptions: {
+          amazonBedrock: {
+            // Always the forced JSON tool: Bedrock's native structured output (output_config.format)
+            // is incompatible with PDF citations, which buildUserContent turns on for PDFs.
+            structuredOutputMode: 'jsonTool',
+            // Haiku 5.5 thinks by default; the provider sends `thinking: {type: 'disabled'}` to
+            // Converse, so the whole output budget goes to the transcript and the JSON. Accepted
+            // only at effort high or below; we send no effort (the model's default is medium).
+            reasoningConfig: { type: 'disabled' },
+          },
+        },
         abortSignal: opts?.signal ?? AbortSignal.timeout(TIMEOUT_MS),
       })
       output = result.output
