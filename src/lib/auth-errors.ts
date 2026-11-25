@@ -1,6 +1,9 @@
 /** Maps a Better Auth error code to a message key (relative to the root of messages/*.json). */
 const AUTH_ERROR_KEYS: Record<string, string> = {
   INVALID_EMAIL_OR_PASSWORD: 'auth.errors.invalidCredentials',
+  // Signing in with a WhatsApp number: wrong password and a number nobody has proven answer alike.
+  INVALID_PHONE_NUMBER_OR_PASSWORD: 'auth.errors.invalidCredentials',
+  INVALID_PHONE_NUMBER: 'auth.errors.invalidCredentials',
   USER_ALREADY_EXISTS: 'auth.errors.userExists',
   USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: 'auth.errors.userExists',
   PASSWORD_TOO_SHORT: 'auth.errors.passwordTooShort',
@@ -8,7 +11,6 @@ const AUTH_ERROR_KEYS: Record<string, string> = {
   INVALID_EMAIL: 'auth.errors.invalidEmail',
   INVALID_TOKEN: 'auth.errors.invalidToken',
   TOKEN_EXPIRED: 'auth.errors.invalidToken',
-  EMAIL_NOT_VERIFIED: 'auth.errors.emailNotVerified',
   ACCOUNT_SUSPENDED: 'auth.errors.accountSuspended',
   // Disconnecting Google needs a recent sign-in.
   SESSION_NOT_FRESH: 'auth.errors.signInAgain',

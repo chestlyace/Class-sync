@@ -5,6 +5,7 @@ import { supportEmail } from '@/lib/contact'
 import { safeNextPath } from '@/lib/next-path'
 import { oauthResumePath } from '@/lib/oauth-resume'
 import { isGoogleSignInEnabled } from '@/server/auth/google'
+import { whatsAppVerificationEnabled } from '@/server/whatsapp/config'
 import { redirectIfSignedIn } from '../redirect-if-signed-in'
 import { SignInForm } from './sign-in-form'
 
@@ -37,6 +38,8 @@ export default async function SignInPage({ searchParams }: PageProps<'/sign-in'>
         next={next}
         supportEmail={supportEmail()}
         google={isGoogleSignInEnabled()}
+        // A number typed into the field is routed to phone sign-in either way; this only changes the label.
+        whatsApp={whatsAppVerificationEnabled()}
         // A Google sign-in that failed comes back here with `error` (and `next`, kept).
         googleError={googleErrorKey(search.error)}
       />
