@@ -288,15 +288,23 @@ describe('marking short answers', () => {
   it('suggestMarks logs test corrections and refuses with reason cap before calling the provider', async () => {
     const s = await scenario()
     const seen: SuggestInput[] = []
-    setMarkSuggesterForTests(async (input) => {
+    setMarkSuggesterForTests(async (input, opts) => {
       seen.push(input)
+      opts?.onUsage?.({ inputTokens: 300, outputTokens: 40 })
       return fakeSuggester(input)
     })
     setClock(at(40))
     expect(await suggestMarks(s.lecturer, s.q2.id)).toEqual({ suggested: 2, failed: false })
     expect(seen).toHaveLength(1)
     expect(await db.select().from(aiUsage)).toMatchObject([
-      { purpose: 'test_correction', lecturerId: s.lecturer.user.id, submissionId: null, ok: true },
+      {
+        purpose: 'test_correction',
+        lecturerId: s.lecturer.user.id,
+        submissionId: null,
+        ok: true,
+        inputTokens: 300,
+        outputTokens: 40,
+      },
     ])
 
     // A call already logged this month uses the shared cap: q3 is refused without another call.

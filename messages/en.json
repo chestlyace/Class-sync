@@ -1100,6 +1100,10 @@
         "assignments": "New assignment",
         "classSoon": "Class starts soon"
       }
+    },
+    "guides": {
+      "title": "Guides",
+      "description": "Short tours that point at the buttons you need. Start one at any time: it walks you through the real pages."
     }
   },
   "unsubscribe": {
@@ -3576,10 +3580,6 @@
   },
   "guides": {
     "common": {
-      "help": "Help and guides",
-      "helpTitle": "Guides",
-      "helpDescription": "Short tours that point at the buttons you need. Start one at any time: it walks you through the real pages.",
-      "close": "Close",
       "seen": "Already seen",
       "progress": "{n} of {total}",
       "next": "Next",
@@ -3591,7 +3591,9 @@
       "awayTitle": "The guide is on another page",
       "awayBody": "You left the page this step is about. Go back to carry on, or end the guide.",
       "awayNoLink": "You left the page this step is about. Open it again to carry on, or end the guide.",
-      "goBack": "Go back"
+      "goBack": "Go back",
+      "start": "Start",
+      "replay": "Replay"
     },
     "items": {
       "lecturerWelcome": {
@@ -3600,7 +3602,7 @@
         "steps": {
           "hello": {
             "title": "Welcome to Clasync",
-            "body": "This short tour shows you around. Close it at any time: every guide stays under Help, the ? at the top."
+            "body": "This short tour shows you around. Close it at any time: you'll find every guide in Settings."
           },
           "menu": {
             "title": "Your menu",
@@ -3616,7 +3618,7 @@
           },
           "help": {
             "title": "Guides, any time",
-            "body": "Open Help for step-by-step guides: creating a class and a course, taking attendance, setting up the CA, making a test for the CA and giving an assignment."
+            "body": "Your guides are in Settings, under your initials: creating a class and a course, taking attendance, setting up the CA, making a test for the CA and giving an assignment."
           }
         }
       },
@@ -3815,7 +3817,7 @@
         "steps": {
           "hello": {
             "title": "Welcome to Clasync",
-            "body": "This short tour shows you around. Close it at any time: every guide stays under Help, the ? at the top."
+            "body": "This short tour shows you around. Close it at any time: you'll find every guide in Settings."
           },
           "menu": {
             "title": "Your menu",
@@ -3831,7 +3833,7 @@
           },
           "help": {
             "title": "Guides, any time",
-            "body": "Open Help for step-by-step guides: joining a class, checking in and taking a test."
+            "body": "Your guides are in Settings, under your initials: joining a class, checking in and taking a test."
           }
         }
       },

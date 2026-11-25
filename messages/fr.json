@@ -1100,6 +1100,10 @@
         "assignments": "Nouveau devoir",
         "classSoon": "Le cours commence bientôt"
       }
+    },
+    "guides": {
+      "title": "Guides",
+      "description": "De courtes visites qui vous montrent les boutons utiles. Lancez-en une à tout moment : elle vous accompagne dans les vraies pages."
     }
   },
   "unsubscribe": {
@@ -3576,10 +3580,6 @@
   },
   "guides": {
     "common": {
-      "help": "Aide et guides",
-      "helpTitle": "Guides",
-      "helpDescription": "De courtes visites qui vous montrent les boutons utiles. Lancez-en une à tout moment : elle vous accompagne dans les vraies pages.",
-      "close": "Fermer",
       "seen": "Déjà vu",
       "progress": "{n} sur {total}",
       "next": "Suivant",
@@ -3591,7 +3591,9 @@
       "awayTitle": "Le guide est sur une autre page",
       "awayBody": "Vous avez quitté la page de cette étape. Revenez-y pour continuer, ou fermez le guide.",
       "awayNoLink": "Vous avez quitté la page de cette étape. Rouvrez-la pour continuer, ou fermez le guide.",
-      "goBack": "Y revenir"
+      "goBack": "Y revenir",
+      "start": "Lancer",
+      "replay": "Revoir"
     },
     "items": {
       "lecturerWelcome": {
@@ -3600,7 +3602,7 @@
         "steps": {
           "hello": {
             "title": "Bienvenue sur Clasync",
-            "body": "Cette courte visite vous fait faire le tour. Fermez-la quand vous voulez : tous les guides restent dans l'Aide, le ? en haut."
+            "body": "Cette courte visite vous fait faire le tour. Fermez-la quand vous voulez : tous les guides sont dans les Paramètres."
           },
           "menu": {
             "title": "Votre menu",
@@ -3616,7 +3618,7 @@
           },
           "help": {
             "title": "Des guides, à tout moment",
-            "body": "Ouvrez l'Aide pour des guides pas à pas : créer une classe et un cours, faire l'appel, régler le CC, préparer un test pour le CC et donner un devoir."
+            "body": "Vos guides sont dans les Paramètres, sous vos initiales : créer une classe et un cours, faire l'appel, régler le CC, préparer un test pour le CC et donner un devoir."
           }
         }
       },
@@ -3815,7 +3817,7 @@
         "steps": {
           "hello": {
             "title": "Bienvenue sur Clasync",
-            "body": "Cette courte visite vous fait faire le tour. Fermez-la quand vous voulez : tous les guides restent dans l'Aide, le ? en haut."
+            "body": "Cette courte visite vous fait faire le tour. Fermez-la quand vous voulez : tous les guides sont dans les Paramètres."
           },
           "menu": {
             "title": "Votre menu",
@@ -3831,7 +3833,7 @@
           },
           "help": {
             "title": "Des guides, à tout moment",
-            "body": "Ouvrez l'Aide pour des guides pas à pas : rejoindre une classe, pointer et passer un test."
+            "body": "Vos guides sont dans les Paramètres, sous vos initiales : rejoindre une classe, pointer et passer un test."
           }
         }
       },

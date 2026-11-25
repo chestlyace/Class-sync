@@ -27,9 +27,11 @@ import { getClassReminders } from '@/server/push/preferences'
 import { listMyDevices } from '@/server/push/subscriptions'
 import { getSchool, type School } from '@/server/schools/service'
 import { getWhatsAppSettings } from '@/server/whatsapp/link'
+import { listSeenGuides } from '@/server/guides/service'
 import { loadPage } from '../load-page'
 import { AiAssistantsSection, type AppRow, type TokenRow } from './ai-assistants'
 import { AnnouncementsSwitch } from './announcements'
+import { GuidesSettings } from './guides'
 import { NotificationsSettings } from './notifications'
 import { WhatsAppSettings } from './whatsapp'
 import {
@@ -105,17 +107,18 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
   const isLecturer = user.role === 'lecturer'
 
   const data = await loadPage(async (ctx) => {
-    const [classes, signIn, devices, announcements, whatsapp] = await Promise.all([
+    const [classes, signIn, devices, announcements, whatsapp, seenGuides] = await Promise.all([
       listMyClasses(ctx),
       listSignInMethods(ctx),
       listMyDevices(ctx),
       announcementsEnabled(ctx),
       getWhatsAppSettings(ctx),
+      listSeenGuides(ctx),
     ])
     if (!isLecturer) {
       // Only students have the class reminder switch.
       const classReminders = await getClassReminders(ctx)
-      return { classes, signIn, devices, announcements, whatsapp, classReminders, schools: [] as SchoolGroup[], tokens: [], apps: [] }
+      return { classes, signIn, devices, announcements, whatsapp, seenGuides, classReminders, schools: [] as SchoolGroup[], tokens: [], apps: [] }
     }
     const schoolIds = [...new Set(classes.map((c) => c.schoolId))]
     const [schools, tokens, apps] = await Promise.all([
@@ -129,6 +132,7 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
       devices,
       announcements,
       whatsapp,
+      seenGuides,
       classReminders: null,
       schools: schools.map((school) => ({ school, classes: classes.filter((c) => c.schoolId === school.id) })),
       tokens,
@@ -136,7 +140,7 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
     }
   })
   if (!data.ok) return <ErrorState code={data.code} />
-  const { classes, signIn, devices, announcements, whatsapp, classReminders, schools, tokens, apps } = data.data
+  const { classes, signIn, devices, announcements, whatsapp, seenGuides, classReminders, schools, tokens, apps } = data.data
   const day = dayFormatter(locale)
 
   return (
@@ -178,6 +182,16 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
         <SectionHeading id="preferences">{t('preferences.title')}</SectionHeading>
         <Panel>
           <LanguageSwitch locale={locale} />
+        </Panel>
+      </section>
+
+      <section aria-labelledby="guides" className="flex scroll-mt-24 flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <SectionHeading id="guides">{t('guides.title')}</SectionHeading>
+          <p className="text-sm text-muted-foreground">{t('guides.description')}</p>
+        </div>
+        <Panel>
+          <GuidesSettings role={user.role} seen={seenGuides} />
         </Panel>
       </section>
 

@@ -1,6 +1,7 @@
 import type { Event } from '@sentry/nextjs'
 import { describe, expect, it } from 'vitest'
 import {
+  isExpectedAuthLog,
   isNextRequestErrorLog,
   isNodeWarningLog,
   withoutResetToken,
@@ -31,6 +32,28 @@ describe('isNodeWarningLog', () => {
     expect(isNodeWarningLog(['Warning: something we logged'])).toBe(false)
     expect(isNodeWarningLog([new Error('(node:8) ExperimentalWarning: x')])).toBe(false)
     expect(isNodeWarningLog([])).toBe(false)
+  })
+})
+
+describe('isExpectedAuthLog', () => {
+  const ESC = String.fromCharCode(27)
+
+  it("spots Better Auth's log of a Google sign-in with no Clasync account, with or without colours", () => {
+    expect(isExpectedAuthLog(['2026-11-24T13:43:31.560Z ERROR [Better Auth]: signup_disabled'])).toBe(true)
+    expect(
+      isExpectedAuthLog([
+        `${ESC}[2m2026-11-24T13:43:31.560Z${ESC}[0m ${ESC}[31mERROR${ESC}[0m ${ESC}[1m[Better Auth]:${ESC}[0m signup_disabled`,
+      ]),
+    ).toBe(true)
+  })
+
+  it('keeps every other Better Auth error and our own logs', () => {
+    expect(isExpectedAuthLog(['2026-11-24T13:43:31.560Z ERROR [Better Auth]: State not found', new Error('x')])).toBe(false)
+    expect(isExpectedAuthLog(['2026-11-24T13:43:31.560Z ERROR [Better Auth]: unable_to_create_user'])).toBe(false)
+    expect(isExpectedAuthLog(['2026-11-24T13:43:31.560Z ERROR [Better Auth]: signup_disabled', 'extra'])).toBe(false)
+    expect(isExpectedAuthLog(['[auth] signup_disabled'])).toBe(false)
+    expect(isExpectedAuthLog([new Error('signup_disabled')])).toBe(false)
+    expect(isExpectedAuthLog([])).toBe(false)
   })
 })
 

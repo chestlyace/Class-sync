@@ -1,5 +1,5 @@
 {
-  "id": "79d15077-2329-4598-9c00-450e6a2f062f",
+  "id": "c4d4c4e2-1962-43dd-8103-28a5873e65ff",
   "prevId": "91cb0b52-f7fc-4a69-a903-3f88ce6d30ef",
   "version": "7",
   "dialect": "postgresql",
@@ -2764,6 +2764,60 @@
           "value": "\"course_roster_adjustment\".\"kind\" in ('include', 'exclude')"
         }
       },
+      "isRLSEnabled": false
+    },
+    "public.user_guide_seen": {
+      "name": "user_guide_seen",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "guide_id": {
+          "name": "guide_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "seen_at": {
+          "name": "seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_guide_seen_user_id_user_id_fk": {
+          "name": "user_guide_seen_user_id_user_id_fk",
+          "tableFrom": "user_guide_seen",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "user_guide_seen_user_id_guide_id_pk": {
+          "name": "user_guide_seen_user_id_guide_id_pk",
+          "columns": [
+            "user_id",
+            "guide_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.school": {
@@ -7094,12 +7148,6 @@
           "notNull": true,
           "default": false
         },
-        "meeting_url": {
-          "name": "meeting_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "replaces_slot_id": {
           "name": "replaces_slot_id",
           "type": "text",
@@ -7211,10 +7259,6 @@
         "class_extra_status_check": {
           "name": "class_extra_status_check",
           "value": "\"class_extra\".\"status\" is null or \"class_extra\".\"status\" in ('cancelled', 'missed', 'taught')"
-        },
-        "class_extra_online_campus_check": {
-          "name": "class_extra_online_campus_check",
-          "value": "\"class_extra\".\"meeting_url\" is null or \"class_extra\".\"require_on_campus\" = false"
         }
       },
       "isRLSEnabled": false
@@ -7306,12 +7350,6 @@
           "notNull": true,
           "default": false
         },
-        "meeting_url": {
-          "name": "meeting_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "starts_on": {
           "name": "starts_on",
           "type": "date",
@@ -7398,10 +7436,6 @@
         "class_slot_dates_check": {
           "name": "class_slot_dates_check",
           "value": "\"class_slot\".\"ends_on\" >= \"class_slot\".\"starts_on\""
-        },
-        "class_slot_online_campus_check": {
-          "name": "class_slot_online_campus_check",
-          "value": "\"class_slot\".\"meeting_url\" is null or \"class_slot\".\"require_on_campus\" = false"
         }
       },
       "isRLSEnabled": false
@@ -7441,65 +7475,6 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.online_class_join": {
-      "name": "online_class_join",
-      "schema": "",
-      "columns": {
-        "occurrence_key": {
-          "name": "occurrence_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "student_id": {
-          "name": "student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "first_joined_at": {
-          "name": "first_joined_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "last_joined_at": {
-          "name": "last_joined_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "online_class_join_student_id_user_id_fk": {
-          "name": "online_class_join_student_id_user_id_fk",
-          "tableFrom": "online_class_join",
-          "tableTo": "user",
-          "columnsFrom": [
-            "student_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "online_class_join_occurrence_key_student_id_pk": {
-          "name": "online_class_join_occurrence_key_student_id_pk",
-          "columns": [
-            "occurrence_key",
-            "student_id"
-          ]
-        }
-      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
