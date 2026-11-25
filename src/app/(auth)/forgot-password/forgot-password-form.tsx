@@ -8,13 +8,8 @@ import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field
 import { Input } from '@/components/ui/input'
 import { authClient } from '@/lib/auth-client'
 import { authErrorKey } from '@/lib/auth-errors'
+import { formatWait } from '@/lib/format-wait'
 import { RESET_RESEND_SECONDS } from '@/lib/password-reset'
-
-/** "1:05" for 65 seconds. */
-export function formatWait(seconds: number): string {
-  const s = Math.max(0, Math.ceil(seconds))
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-}
 
 /**
  * Asks the server to email a reset link. The confirmation never reveals whether the address exists.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toE164 } from './phone'
+import { maskPhone, toE164 } from './phone'
 
 describe('toE164', () => {
   it('adds the Cameroon prefix to a bare 9-digit mobile number', () => {
@@ -26,5 +26,17 @@ describe('toE164', () => {
     expect(toE164('abc')).toBeNull()
     expect(toE164('')).toBeNull()
     expect(toE164('+1234567890123456')).toBeNull()
+  })
+})
+
+describe('maskPhone', () => {
+  it('keeps only the last two digits', () => {
+    expect(maskPhone('+237612345412')).toBe('+••••••••••12')
+    expect(maskPhone('+33612345678')).toBe('+•••••••••78')
+  })
+
+  it('never shows more than two digits, whatever it is given', () => {
+    expect(maskPhone('+237 6')).toBe('+••76')
+    expect(maskPhone('')).toBe('+•')
   })
 })

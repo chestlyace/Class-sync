@@ -12,7 +12,10 @@ import { Input } from '@/components/ui/input'
 import { authClient } from '@/lib/auth-client'
 import { authErrorKey } from '@/lib/auth-errors'
 import { needsFullNavigation } from '@/lib/oauth-resume'
+import { toE164 } from '@/lib/phone'
+import { requestPhoneCode, verifyWhatsAppHref } from '@/lib/phone-code'
 import type { Locale } from '@/i18n/locale'
+import { VerificationChoice, type VerifyMethod } from './verification-choice'
 
 const roles = [
   { value: 'student', icon: GraduationCap },
@@ -23,17 +26,20 @@ const roles = [
  * `next`: a same-site path (already checked with safeNextPath) to open once signed in.
  * `google`: offer "Continue with Google" right under the role. `googleError`: the message key of a
  * Google sign-up that came back failed (googleErrorKey of the page's `error` parameter).
+ * `whatsapp`: offer "verify by WhatsApp" next to email (WhatsApp codes are on and today's budget has room).
  */
 export function SignUpForm({
   defaultLocale,
   next = null,
   google = false,
   googleError = null,
+  whatsapp = false,
 }: {
   defaultLocale: Locale
   next?: string | null
   google?: boolean
   googleError?: string | null
+  whatsapp?: boolean
 }) {
   const t = useTranslations('auth.signUp')
   const tGoogle = useTranslations('auth.google')
@@ -48,6 +54,9 @@ export function SignUpForm({
   const [pending, setPending] = useState(false)
   const [googleMessage, setGoogleMessage] = useState<string | null>(() => (googleError ? tRoot(googleError) : null))
   const [googlePending, setGooglePending] = useState(false)
+  const [method, setMethod] = useState<VerifyMethod>('email')
+  const [alerts, setAlerts] = useState(true)
+  const [phoneError, setPhoneError] = useState(false)
 
   /**
    * Sign up with Google: the role (and language) chosen above ride along in the OAuth state and
@@ -89,13 +98,21 @@ export function SignUpForm({
     }
     const form = new FormData(event.currentTarget)
     const email = String(form.get('email') ?? '')
+    const password = String(form.get('password') ?? '')
+    const byWhatsApp = whatsapp && method === 'whatsapp'
+    const phone = byWhatsApp ? toE164(String(form.get('phone') ?? '')) : null
+    if (byWhatsApp && !phone) {
+      setPhoneError(true)
+      return
+    }
+    setPhoneError(false)
     setPending(true)
     setError(null)
     try {
       const { data, error: authError } = await authClient.signUp.email({
         name: String(form.get('name') ?? ''),
         email,
-        password: String(form.get('password') ?? ''),
+        password,
         role,
         locale,
         // Where the verification link lands (it then asks to sign in, keeping `next`).
@@ -105,23 +122,45 @@ export function SignUpForm({
         setError(tRoot(authErrorKey(authError.code, authError.status)))
         return
       }
-      // No session token means the account must be verified by email first.
+      // A session straight from sign-up means no verification is required here.
       if (data?.token && next && needsFullNavigation(next)) {
         // e.g. resuming an assistant's authorization: a route handler, not a page.
         window.location.assign(next)
-      } else if (data?.token) {
+        return
+      }
+      if (data?.token) {
         router.push(next ?? '/')
         router.refresh()
-      } else {
-        const query = new URLSearchParams({ email })
-        if (next) query.set('next', next)
-        router.push(`/verify-email?${query}`)
+        return
       }
+      // Sign-up does not sign anyone in: do it here, with the same credentials. When that fails (an email
+      // that already has an account under another password, say) the answer is the same "check your inbox"
+      // page, so nothing says whether the address was new.
+      const { error: signInError } = await authClient.signIn.email({ email, password })
+      if (signInError) {
+        goToVerifyEmail(email)
+        return
+      }
+      if (phone) {
+        const result = await requestPhoneCode(phone)
+        // A refused or limited code goes back to the number step, with the reason.
+        router.push(verifyWhatsAppHref(result.ok ? phone : null, { alerts, next, error: result.ok ? null : (result.code ?? 'ERROR') }))
+        return
+      }
+      // The account chose email: the link is requested here (sign-up itself sends nothing).
+      await authClient.sendVerificationEmail({ email, ...(next ? { callbackURL: next } : {}) }).catch(() => undefined)
+      goToVerifyEmail(email)
     } catch {
       setError(tRoot('common.genericError'))
     } finally {
       setPending(false)
     }
+  }
+
+  function goToVerifyEmail(email: string) {
+    const query = new URLSearchParams({ email })
+    if (next) query.set('next', next)
+    router.push(`/verify-email?${query}`)
   }
 
   return (
@@ -187,6 +226,18 @@ export function SignUpForm({
           <PasswordInput id="password" name="password" autoComplete="new-password" minLength={8} required />
           <FieldDescription>{t('passwordHint')}</FieldDescription>
         </Field>
+        {whatsapp && (
+          <VerificationChoice
+            method={method}
+            onMethodChange={(m) => {
+              setMethod(m)
+              setPhoneError(false)
+            }}
+            alerts={alerts}
+            onAlertsChange={setAlerts}
+            phoneError={phoneError}
+          />
+        )}
         <FieldSet>
           <FieldLegend variant="label">{t('language')}</FieldLegend>
           <div className="grid grid-cols-2 gap-1 rounded-full bg-[#ebebef] p-1">

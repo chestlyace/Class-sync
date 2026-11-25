@@ -4,6 +4,7 @@ import { isLocale } from '@/i18n/locale'
 import { googleErrorKey } from '@/lib/auth-errors'
 import { safeNextPath } from '@/lib/next-path'
 import { isGoogleSignInEnabled } from '@/server/auth/google'
+import { whatsAppCodesOpen } from '@/server/auth/phone-verification'
 import { redirectIfSignedIn } from '../redirect-if-signed-in'
 import { SignUpForm } from './sign-up-form'
 
@@ -29,6 +30,7 @@ export default async function SignUpPage({ searchParams }: PageProps<'/sign-up'>
         defaultLocale={isLocale(locale) ? locale : 'en'}
         next={next}
         google={isGoogleSignInEnabled()}
+        whatsapp={await whatsAppCodesOpen()}
         // A Google sign-up that failed comes back here with `error` (and `next`, kept).
         googleError={googleErrorKey(search.error)}
       />

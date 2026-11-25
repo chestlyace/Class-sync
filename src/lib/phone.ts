@@ -12,3 +12,13 @@ export function toE164(raw: string): string | null {
   else candidate = compact
   return /^\+\d{8,15}$/.test(candidate) ? candidate : null
 }
+
+/**
+ * A number for showing on screen without giving it away: the `+`, then bullets, then the last two
+ * digits (`+237612345412` becomes `+••••••••••12`). Anything that is not a number gets all bullets.
+ */
+export function maskPhone(e164: string): string {
+  const digits = e164.replace(/\D/g, '')
+  if (digits.length <= 2) return `+${'•'.repeat(Math.max(digits.length, 1))}`
+  return `+${'•'.repeat(digits.length - 2)}${digits.slice(-2)}`
+}
