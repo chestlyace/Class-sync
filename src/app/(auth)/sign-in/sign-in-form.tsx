@@ -89,7 +89,8 @@ export function SignInForm({
         result = await authClient.signIn.email({
           email: identifier,
           password,
-          // An unverified account gets a fresh verification email: its link comes back here too.
+          // Echoed back as the answer's `url` (handled below). Signing in sends no email, verified or not:
+          // an unverified account gets a limited session, and the verify banner offers a link or a WhatsApp code.
           ...(next ? { callbackURL: next } : {}),
         })
       } else {

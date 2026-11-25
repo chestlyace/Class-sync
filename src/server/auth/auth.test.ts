@@ -258,6 +258,24 @@ describe('auth: an account is verified by its email or its WhatsApp number', () 
     expect((await userByEmail('limited@example.com')).emailVerified).toBe(false)
   })
 
+  it('says in the sign-in answer whether the account is verified, by email or by WhatsApp (sign-up reads it)', async () => {
+    const verifiedOf = async (res: Response) => {
+      const { user: u } = (await res.json()) as { user: { emailVerified?: unknown; phoneNumberVerified?: unknown } }
+      return { emailVerified: u.emailVerified, phoneNumberVerified: u.phoneNumberVerified }
+    }
+    await signUp('answer-pending@example.com')
+    expect(await verifiedOf(await post('/sign-in/email', { email: 'answer-pending@example.com', password: PASSWORD }))).toEqual({
+      emailVerified: false,
+      phoneNumberVerified: false,
+    })
+    await signUp('answer-wa@example.com')
+    await db.update(user).set({ phoneNumber: '+237677005601', phoneNumberVerified: true }).where(eq(user.email, 'answer-wa@example.com'))
+    expect(await verifiedOf(await post('/sign-in/email', { email: 'answer-wa@example.com', password: PASSWORD }))).toEqual({
+      emailVerified: false,
+      phoneNumberVerified: true,
+    })
+  })
+
   it('still refuses a wrong password', async () => {
     await signUp('wrong@example.com')
     const res = await post('/sign-in/email', { email: 'wrong@example.com', password: 'not-the-password-1' })

@@ -14,3 +14,13 @@ export function verifyEmailHref(email: string, options: { next?: string | null; 
 export function emailNotSent(value: unknown): boolean {
   return value === '0'
 }
+
+/**
+ * True when the user in a sign-in answer is already verified, by email or by WhatsApp: the sign-up page then
+ * has nothing to verify (someone signed up again with their own account's email and password). Client-safe.
+ */
+export function isAlreadyVerified(user: unknown): boolean {
+  if (!user || typeof user !== 'object') return false
+  const u = user as { emailVerified?: unknown; phoneNumberVerified?: unknown }
+  return u.emailVerified === true || u.phoneNumberVerified === true
+}

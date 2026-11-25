@@ -14,7 +14,7 @@ import { authErrorKey } from '@/lib/auth-errors'
 import { needsFullNavigation } from '@/lib/oauth-resume'
 import { toE164 } from '@/lib/phone'
 import { requestPhoneCode, verifyWhatsAppHref } from '@/lib/phone-code'
-import { verifyEmailHref } from '@/lib/verify-email'
+import { isAlreadyVerified, verifyEmailHref } from '@/lib/verify-email'
 import type { Locale } from '@/i18n/locale'
 import { VerificationChoice, type VerifyMethod } from './verification-choice'
 
@@ -137,9 +137,26 @@ export function SignUpForm({
       // Sign-up does not sign anyone in: do it here, with the same credentials. When that fails (an email
       // that already has an account under another password, say) the answer is the same "check your inbox"
       // page, so nothing says whether the address was new.
-      const { error: signInError } = await authClient.signIn.email({ email, password })
+      const { data: signedIn, error: signInError } = await authClient.signIn.email({ email, password })
       if (signInError) {
         goToVerifyEmail(email)
+        return
+      }
+      // Someone "signing up" again with the email and password of their own, already verified account (by
+      // email or WhatsApp) is simply signed in: there is nothing to verify, so no email or code is sent.
+      if (isAlreadyVerified(signedIn?.user)) {
+        // An assistant's authorization in progress continues where the server says (as on the sign-in page).
+        const resume = signedIn as { redirect?: boolean; url?: string } | null
+        if (resume?.redirect && resume.url) {
+          window.location.assign(resume.url)
+          return
+        }
+        if (next && needsFullNavigation(next)) {
+          window.location.assign(next)
+          return
+        }
+        router.push(next ?? '/')
+        router.refresh()
         return
       }
       if (phone) {
