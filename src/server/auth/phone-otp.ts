@@ -155,6 +155,15 @@ export async function hitCodeLimits(db: Db, input: CodeLimitInput): Promise<void
   })
 }
 
+/**
+ * Counts one request against the IP's hourly limit and nothing else. For a password-reset request that cannot
+ * lead to a message (no account holds the number, or the number is outside WHATSAPP_ALLOWLIST): it must still be
+ * rate-limited per IP, but must not spend the number's or the platform's code budget. Never throws, never answers.
+ */
+export async function hitIpLimit(db: Db, ip: string | null, at: Date = now()): Promise<void> {
+  await hitRateLimit(db, ipKey(ip), IP_RULE, at)
+}
+
 export type SendVerificationCodeInput = {
   phone: string
   code: string

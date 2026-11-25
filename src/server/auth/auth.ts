@@ -23,9 +23,9 @@ import * as schema from '@/server/db/schema'
 import { sendEmail } from '@/server/email/send'
 import { ResetPasswordEmail } from '@/server/email/templates/reset-password'
 import { emailSubject, VerifyEmail } from '@/server/email/templates/verify-email'
-import { whatsAppVerificationEnabled } from '@/server/whatsapp/config'
+import { isAllowedWhatsAppNumber, whatsAppVerificationEnabled } from '@/server/whatsapp/config'
 import { googleCredentials, signupFieldsFromOAuthState } from './google'
-import { checkCodeLimits, CodeLimitedError, hitCodeLimits, sendVerificationCode } from './phone-otp'
+import { checkCodeLimits, CodeLimitedError, hitCodeLimits, hitIpLimit, sendVerificationCode } from './phone-otp'
 import { assertValidSignup, assertValidUserUpdate, cleanName } from './signup-rules'
 
 type CreateAuthOptions = {
@@ -82,8 +82,10 @@ const codeRequesters = new WeakMap<object, string>()
  * - The number is put into E.164 form; the plugin then sees only that form.
  * - `send-otp` needs a session: an anonymous visitor can never make Clasync message anyone. It also refuses
  *   (NUMBER_TAKEN) a number another account has already proven, so nobody can spam a proven holder.
- * - Every request is claimed against the number, the account and the IP, and the platform's daily budget, in one
- *   transaction (`hitCodeLimits`), whether or not an account holds the number.
+ * - Only a request that can lead to a message spends the number's and the platform's daily budget (claimed with the
+ *   account and IP limits in one transaction, `hitCodeLimits`): a `send-otp` for a number outside WHATSAPP_ALLOWLIST is
+ *   refused (NUMBER_NOT_ALLOWED), and a reset for a number no account has proven (or outside the allowlist) counts
+ *   against the IP only, so anonymous probing cannot use up the day's codes.
  * - A limited `send-otp` fails with PHONE_CODE_LIMITED and `retryAfter`. A limited password-reset request
  *   answers exactly like a normal one (`{ status: true }`), so the answer never says whether the number has an
  *   account, and it never reaches the plugin: no new code is stored, so a code sent a moment ago stays valid.
@@ -102,8 +104,20 @@ async function guardCodeRequest(
   if (!phone) throw new APIError('BAD_REQUEST', { message: 'Invalid phone number', code: 'INVALID_PHONE_NUMBER' })
 
   const isReset = ctx.path === RESET_OTP_PATH
+  const headers = ctx.request?.headers ?? ctx.headers
+  const ip = headers ? (headers.get(CLIENT_IP_HEADER) ?? forwardedClientIp(headers)) : null
   let userId: string | null = null
-  if (!isReset) {
+  if (isReset) {
+    const [holder] = await database
+      .select({ id: schema.user.id })
+      .from(schema.user)
+      .where(and(eq(schema.user.phoneNumber, phone), eq(schema.user.phoneNumberVerified, true)))
+    if (!holder || !isAllowedWhatsAppNumber(phone)) {
+      // Nothing can be sent: same answer as always, no budget spent, the IP still counted.
+      await hitIpLimit(database, ip)
+      return { status: true }
+    }
+  } else {
     const session = await getSessionFromCtx(ctx)
     if (!session) throw new APIError('UNAUTHORIZED', { message: 'Sign in first', code: 'UNAUTHORIZED' })
     userId = session.user.id
@@ -112,9 +126,11 @@ async function guardCodeRequest(
       .from(schema.user)
       .where(and(eq(schema.user.phoneNumber, phone), eq(schema.user.phoneNumberVerified, true), ne(schema.user.id, userId)))
     if (holder) throw new APIError('BAD_REQUEST', { message: 'This number is already used by another account', code: 'NUMBER_TAKEN' })
+    // Nothing would be sent to it: say so instead of pretending, and spend nothing.
+    if (!isAllowedWhatsAppNumber(phone)) {
+      throw new APIError('BAD_REQUEST', { message: 'WhatsApp codes are not available for this number yet', code: 'NUMBER_NOT_ALLOWED' })
+    }
   }
-  const headers = ctx.request?.headers ?? ctx.headers
-  const ip = headers ? (headers.get(CLIENT_IP_HEADER) ?? forwardedClientIp(headers)) : null
   const input = { phone, userId, ip, purpose: isReset ? ('reset' as const) : ('verify' as const) }
 
   const verdict = await checkCodeLimits(database, input)

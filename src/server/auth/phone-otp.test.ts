@@ -371,6 +371,55 @@ describe('auth: WhatsApp code routes', () => {
     expect(sent).toHaveLength(1)
   })
 
+  const globalClaims = async () =>
+    (await db.select().from(rateLimit).where(like(rateLimit.key, 'otp:global:%'))).reduce((sum, r) => sum + r.count, 0)
+
+  it('does not spend the daily budget on resets that cannot send a message', async () => {
+    const before = await globalClaims()
+    for (let i = 0; i < 250; i++) {
+      // Five IPs, 50 requests each: under the per-IP limit, so every one reaches the guard.
+      const res = await post('/phone-number/request-password-reset', { phoneNumber: `+2376771${String(i).padStart(5, '0')}` }, { ip: `10.9.0.${Math.floor(i / 50)}` })
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ status: true })
+    }
+    await settle()
+    expect(sent).toEqual([])
+    expect(await globalClaims()).toBe(before)
+    expect(await codesAvailableToday(db)).toBe(true)
+    // They were still counted against their IPs.
+    const [ipRow] = await db.select().from(rateLimit).where(eq(rateLimit.key, 'otp:ip:10.9.0.0'))
+    expect(ipRow.count).toBe(50)
+  }, 30_000)
+
+  it('spends one unit of the daily budget on a reset for a verified holder', async () => {
+    const holder = await makeUser(db, { role: 'student' })
+    const phone = '+237677000009'
+    await db.update(user).set({ phoneNumber: phone, phoneNumberVerified: true }).where(eq(user.id, holder.id))
+    const before = await globalClaims()
+    const res = await post('/phone-number/request-password-reset', { phoneNumber: phone })
+    expect(res.status).toBe(200)
+    await vi.waitFor(() => expect(sent).toHaveLength(1))
+    expect(await globalClaims()).toBe(before + 1)
+  })
+
+  it('spends nothing on numbers outside WHATSAPP_ALLOWLIST: a reset answers as usual, a sign-up request is refused', async () => {
+    vi.stubEnv('WHATSAPP_ALLOWLIST', '+237677999999')
+    const holder = await makeUser(db, { role: 'student' })
+    const phone = '+237677000010'
+    await db.update(user).set({ phoneNumber: phone, phoneNumberVerified: true }).where(eq(user.id, holder.id))
+    const before = await globalClaims()
+    const reset = await post('/phone-number/request-password-reset', { phoneNumber: phone })
+    expect(reset.status).toBe(200)
+    expect(await reset.json()).toEqual({ status: true })
+    const send = await post('/phone-number/send-otp', { phoneNumber: '+237677000011' }, { signedIn: true })
+    expect(send.status).toBe(400)
+    expect(((await send.json()) as { code?: string }).code).toBe('NUMBER_NOT_ALLOWED')
+    await settle()
+    expect(sent).toEqual([])
+    expect(await globalClaims()).toBe(before)
+    expect(await db.select().from(rateLimit).where(like(rateLimit.key, '%+237677000011%'))).toEqual([])
+  })
+
   it('uses the visitor language cookie when no account holds the number', async () => {
     const res = await post(
       '/phone-number/send-otp',
