@@ -129,7 +129,10 @@ export const onlineClassJoin = pgTable(
     firstJoinedAt: timestamp('first_joined_at', { withTimezone: true }).notNull(),
     lastJoinedAt: timestamp('last_joined_at', { withTimezone: true }).notNull(),
   },
-  (t) => [primaryKey({ columns: [t.occurrenceKey, t.studentId] })],
+  (t) => [
+    primaryKey({ columns: [t.occurrenceKey, t.studentId] }),
+    index('online_class_join_student_id_idx').on(t.studentId),
+  ],
 )
 
 /** Per-user notification switches. No row means everything is on. */

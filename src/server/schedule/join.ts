@@ -3,7 +3,8 @@ import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
 import { onlineClassJoin } from '@/server/db/schema'
 import { isOnCourseRoster } from '@/server/courses/service'
-import { JOIN_LEAD_MS, loadOnlineOccurrence } from './queries'
+import { JOIN_LEAD_MS } from './join-window'
+import { loadOnlineOccurrence } from './queries'
 
 export type JoinClassResult = { kind: 'redirect'; url: string } | { kind: 'notice'; reason: 'notOpen' | 'ended' }
 

@@ -14,9 +14,9 @@ import {
 import { createSession, openWindow } from '@/server/attendance/sessions'
 import { addDays, localDateOf } from '@/server/lib/local-time'
 import { buildSittings, parseOccurrenceKey, type Occurrence, type Sitting } from './occurrences'
+import { JOIN_LEAD_MS } from './join-window'
 import {
   ATTENDANCE_LEAD_MS,
-  JOIN_LEAD_MS,
   loadOccurrences,
   loadSittingByKey,
   meetingUrlsFor,

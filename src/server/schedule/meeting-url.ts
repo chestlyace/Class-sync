@@ -12,7 +12,7 @@ function invalid(): never {
 }
 
 /**
- * A trimmed Google Meet URL, or null when there is no link. Anything else is a validation error on
+ * A normalised Google Meet URL, or null when there is no link. Anything else is a validation error on
  * `meetingUrl`, so every caller of the schedule services gets the same rule, not just the form.
  */
 export function parseMeetingUrl(value: string | null | undefined): string | null {
@@ -36,5 +36,6 @@ export function parseMeetingUrl(value: string | null | undefined): string | null
   ) {
     invalid()
   }
-  return trimmed
+  // URL drops tabs and newlines; keeping the pasted text would break the Location header on Join.
+  return url.href
 }

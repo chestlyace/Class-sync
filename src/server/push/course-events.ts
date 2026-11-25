@@ -213,16 +213,43 @@ export async function pushClassReinstated(db: Db, occ: Occurrence): Promise<void
   )
 }
 
-/** A class moved from one time to another. */
+/** A class moved from one time to another, possibly changing between in person and online. */
 export async function pushClassMoved(db: Db, from: Occurrence, to: Occurrence): Promise<void> {
+  const changedToOnline = from.online !== to.online
+  const kind: PushKind = !changedToOnline ? 'classMoved' : to.online ? 'classWentOnline' : 'classWentOnCampus'
   await queuePush('class-moved', () =>
-    toRoster(db, from.courseId, 'classMoved', (courseTitle) => ({
+    toRoster(db, from.courseId, kind, (courseTitle) => ({
       courseTitle,
-      day: from.startsAt,
+      // The new day matters for a format change; the old one is only in the "moved" text.
+      day: changedToOnline ? to.startsAt : from.startsAt,
       newDay: to.startsAt,
       startsAt: to.startsAt,
+      room: to.room,
       url: '/dashboard',
-      tag: classTag(from.key, 'classMoved'),
+      tag: classTag(from.key, kind),
+    })),
+  )
+}
+
+/**
+ * A weekly slot changed between online and in person. With a `day` the message names the affected
+ * class; without one it stays general.
+ */
+export async function pushClassModeChanged(
+  db: Db,
+  courseId: string,
+  online: boolean,
+  options: { day?: Date; room?: string | null; key?: string } = {},
+): Promise<void> {
+  const kind: PushKind = online ? 'classWentOnline' : 'classWentOnCampus'
+  await queuePush(online ? 'class-went-online' : 'class-went-on-campus', () =>
+    toRoster(db, courseId, kind, (courseTitle) => ({
+      courseTitle,
+      day: options.day,
+      startsAt: options.day,
+      room: options.room,
+      url: '/dashboard',
+      tag: options.key ? classTag(options.key, kind) : `class-mode-${courseId}`,
     })),
   )
 }

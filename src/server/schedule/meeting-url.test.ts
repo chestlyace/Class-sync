@@ -18,6 +18,10 @@ describe('parseMeetingUrl', () => {
     )
   })
 
+  it('stores the URL as the parser normalised it, not as pasted', () => {
+    expect(parseMeetingUrl('https://meet.google.com/abc\ndef-ghij')).toBe('https://meet.google.com/abcdef-ghij')
+  })
+
   it('refuses other hosts, protocols and crafted URLs', () => {
     for (const bad of [
       'http://meet.google.com/abc-defg-hij',

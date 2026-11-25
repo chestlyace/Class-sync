@@ -13,8 +13,6 @@ import {
 
 /** Attendance opened this long before a sitting starts still counts for it. */
 export const ATTENDANCE_LEAD_MS = 30 * 60_000
-/** Students can join an online class from this long before it starts until it ends. */
-export const JOIN_LEAD_MS = 15 * 60_000
 
 /**
  * The classes of the given courses between two local dates (inclusive): weekly slots whose term overlaps the range

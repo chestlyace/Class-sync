@@ -506,9 +506,19 @@ describe('date changes', () => {
       startsAt: local(8),
       endsAt: local(10),
     })
-    // The existing cancellation push is reused; no new "now online" notification.
-    expect(pushes.map((p) => p.kind)).toContain('classMoved')
+    // The roster is told this class is now online, not just given the old "moved" text.
+    expect(pushes.map((p) => p.kind)).toEqual(['classWentOnline', 'classWentOnline'])
     await expect(moveClassOnline(fx.lecturer, key, url)).rejects.toMatchObject({ code: 'VALIDATION' })
+  })
+
+  it('opens the sitting the online replacement joins, not the replacement key', async () => {
+    const first = await seedSlot({ endMinute: 9 * 60 })
+    const second = await seedSlot({ startMinute: 9 * 60 + 30, endMinute: 10 * 60 + 30 })
+
+    const newKey = await moveClassOnline(fx.lecturer, `slot:${second.id}:${MONDAY}`, 'https://meet.google.com/abc-defg-hij')
+
+    // The cancelled class was the second of a back-to-back sitting: its replacement keeps the first key.
+    expect(newKey).toBe(`slot:${first.id}:${MONDAY}`)
   })
 
   it('only the lecturer of the course can change its dates', async () => {

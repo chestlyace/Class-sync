@@ -1,9 +1,8 @@
 import { Video } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
-import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
 import { config } from '@/server/core/config'
-import { JOIN_LEAD_MS } from '@/server/schedule/queries'
+import { JOIN_LEAD_MS } from '@/server/schedule/join-window'
 import { formatTime } from './schedule-format'
 
 /** The student's only route to a meeting URL. The label tells them when it becomes usable. */
@@ -35,9 +34,10 @@ export async function JoinClass({
     )
   }
   return (
-    <Link href={href} className={buttonVariants({ size: 'sm' })} aria-label={label}>
+    // A plain anchor: <Link> would prefetch this write-only route and record joins nobody made.
+    <a href={href} className={buttonVariants({ size: 'sm' })} aria-label={label}>
       <Video aria-hidden="true" data-icon="inline-start" />
       {t('join')}
-    </Link>
+    </a>
   )
 }

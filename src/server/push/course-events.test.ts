@@ -8,6 +8,7 @@ import {
   pushClassCancelled,
   pushClassMakeUp,
   pushClassMissedQuestion,
+  pushClassModeChanged,
   pushClassMoved,
   pushClassReinstated,
   pushClassSoon,
@@ -172,6 +173,40 @@ describe('class schedule push events', () => {
     await pushClassMakeUp(db, to)
     expect(items(2)[0].payload).toMatchObject({ kind: 'classMakeUp', tag: 'class-extra:e1-classMakeUp' })
     expect(items(2)[0].payload.body).toBe('Make-up class on Thu 12 Nov at 14:30 \u00b7 B2.')
+  })
+
+  it('moving a class online says so, and moving it back says campus', async () => {
+    const from = occ(fx.courseA)
+    const online = occ(fx.courseA, { key: 'extra:online', online: true })
+    await pushClassMoved(db, from, online)
+    expect(items(0)[0].payload).toMatchObject({
+      kind: 'classWentOnline',
+      tag: 'class-slot:s1:2026-11-10-classWentOnline',
+    })
+    expect(items(0)[0].payload.body).toBe(
+      'The class on Tue 10 Nov at 08:00 is now online. Open the dashboard for the Google Meet link.',
+    )
+
+    await pushClassMoved(db, online, from)
+    expect(items(1)[0].payload).toMatchObject({
+      kind: 'classWentOnCampus',
+      tag: 'class-extra:online-classWentOnCampus',
+    })
+    expect(items(1)[0].payload.body).toBe('The class on Tue 10 Nov at 08:00 is back on campus · B2.')
+  })
+
+  it('a whole slot changing format gets a general push without a day', async () => {
+    await pushClassModeChanged(db, fx.courseA, true)
+    expect(items(0)[0].payload).toMatchObject({
+      kind: 'classWentOnline',
+      url: '/dashboard',
+      tag: `class-mode-${fx.courseA}`,
+    })
+    expect(items(0)[0].payload.body).toBe('The class is now online. Open the dashboard for the Google Meet link.')
+
+    await pushClassModeChanged(db, fx.courseA, false, { room: 'B2' })
+    expect(items(1)[0].payload).toMatchObject({ kind: 'classWentOnCampus', tag: `class-mode-${fx.courseA}` })
+    expect(items(1)[0].payload.body).toBe('The class is back on campus · B2.')
   })
 
   it('reinstated goes to roster students under the cancellation tag', async () => {

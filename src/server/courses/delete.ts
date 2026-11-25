@@ -1,4 +1,4 @@
-import { and, count, countDistinct, eq, inArray, notExists, notInArray, sql } from 'drizzle-orm'
+import { and, count, countDistinct, eq, inArray, like, notExists, notInArray, or, sql } from 'drizzle-orm'
 import { AppError } from '@/server/core/errors'
 import type { Ctx } from '@/server/core/context'
 import type { Db } from '@/server/db'
@@ -6,10 +6,12 @@ import {
   assignment,
   assignmentAttachment,
   attendanceSession,
+  classExtra,
   classSlot,
   course,
   courseTest,
   file,
+  onlineClassJoin,
   participationEvent,
   resource,
   resourcePlacement,
@@ -143,6 +145,18 @@ export async function deleteCoursesInTx(tx: Db, courseIds: string[]): Promise<st
             ),
           )
           .returning({ fileId: resource.fileId })
+
+  // Join rows have no class FK: their keys point at slots and extras, so remove them by those ids.
+  const [slots, extras] = await Promise.all([
+    tx.select({ id: classSlot.id }).from(classSlot).where(inArray(classSlot.courseId, courseIds)),
+    tx.select({ id: classExtra.id }).from(classExtra).where(inArray(classExtra.courseId, courseIds)),
+  ])
+  const joinKeys = [
+    ...slots.map((s) => like(onlineClassJoin.occurrenceKey, `slot:${s.id}:%`)),
+    ...extras.map((e) => eq(onlineClassJoin.occurrenceKey, `extra:${e.id}`)),
+  ]
+  const joins = or(...joinKeys)
+  if (joins) await tx.delete(onlineClassJoin).where(joins)
 
   await tx.delete(course).where(inArray(course.id, courseIds))
 

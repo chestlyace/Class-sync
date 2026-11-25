@@ -22,6 +22,8 @@ export type PushKind =
   | 'classCancelled'
   | 'classReinstated'
   | 'classMoved'
+  | 'classWentOnline'
+  | 'classWentOnCampus'
   | 'classMakeUp'
   | 'classMissedQuestion'
   | 'timetableChanged'
@@ -112,6 +114,7 @@ export function pushPayload(kind: PushKind, locale: Locale, vars: PushVars): Pus
     newDay: formatDay(vars.newDay, locale),
     room,
     hasRoom: room ? 'yes' : 'no',
+    hasDay: vars.day ? 'yes' : 'no',
   })
   const title =
     kind === 'test'

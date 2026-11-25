@@ -1,14 +1,14 @@
-import { and, asc, eq, gt, gte, inArray, lt, lte, notInArray } from 'drizzle-orm'
+import { and, asc, eq, gt, gte, inArray, like, lt, lte, notInArray } from 'drizzle-orm'
 import { z } from 'zod'
 import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
 import { requireRole } from '@/server/core/guards'
-import { class_, classDateStatus, classExtra, classSlot, course, school } from '@/server/db/schema'
+import { class_, classDateStatus, classExtra, classSlot, course, onlineClassJoin, school } from '@/server/db/schema'
 import { requireCourseOwner } from '@/server/courses/service'
-import { addDays, localDateOf } from '@/server/lib/local-time'
-import { pushTimetableChanged } from '@/server/push/course-events'
+import { addDays, instantAt, isoWeekday, localDateOf } from '@/server/lib/local-time'
+import { pushClassModeChanged, pushTimetableChanged } from '@/server/push/course-events'
 import { getSchool } from '@/server/schools/service'
 import { parseMeetingUrl } from './meeting-url'
 import { enqueueCourseDay } from './notices'
@@ -120,6 +120,16 @@ function toView(row: SlotRow): SlotView {
 
 const today = () => localDateOf(now(), config.timeZone)
 
+/** Online/in-person is decided by the link, not by the pasted URL text. */
+const modeOf = (slot: { meetingUrl: string | null }) => (slot.meetingUrl === null ? 'campus' : 'online')
+
+/** The first occurrence of this slot from today on, for a notification's day and time. */
+function firstUpcomingStart(slot: Pick<SlotRow, 'startsOn' | 'endsOn' | 'weekday' | 'startMinute'>, todayDate: string) {
+  const first = slot.startsOn > todayDate ? slot.startsOn : todayDate
+  const date = addDays(first, (slot.weekday - isoWeekday(first) + 7) % 7)
+  return date > slot.endsOn ? null : instantAt(date, slot.startMinute, config.timeZone)
+}
+
 function forbidden(): never {
   throw new AppError('FORBIDDEN', 'Only the lecturer of this course can do this')
 }
@@ -175,10 +185,25 @@ async function findOverlaps(ctx: Ctx, input: SlotInput, exclude: string[]): Prom
   return rows
 }
 
-/** After a write: tell the roster (only when upcoming dates changed) and requeue today's notices. */
-async function afterWrite(ctx: Ctx, courseId: string, touchesUpcoming: boolean) {
+type WriteNotice = {
+  /** Dates, time or room changed: the existing generic "timetable changed" push. */
+  timetable: boolean
+  /** The class went online or back to campus, if it did. */
+  mode?: 'online' | 'campus'
+  day?: Date | null
+  room?: string | null
+}
+
+/** After a write: tell the roster what changed and requeue today's notices. */
+async function afterWrite(ctx: Ctx, courseId: string, notice: WriteNotice) {
   const at = now()
-  if (touchesUpcoming) await pushTimetableChanged(ctx.db, courseId, at)
+  if (notice.timetable) await pushTimetableChanged(ctx.db, courseId, at)
+  if (notice.mode) {
+    await pushClassModeChanged(ctx.db, courseId, notice.mode === 'online', {
+      day: notice.day ?? undefined,
+      room: notice.room,
+    })
+  }
   await enqueueCourseDay(ctx.db, courseId, localDateOf(at, config.timeZone), at)
 }
 
@@ -207,7 +232,7 @@ export async function createSlot(
     .values({ ...data, courseId, createdBy: ctx.user.id })
     .returning()
   const overlaps = await findOverlaps(ctx, data, [row.id])
-  await afterWrite(ctx, courseId, data.endsOn >= today())
+  await afterWrite(ctx, courseId, { timetable: data.endsOn >= today() })
   return { slot: toView(row), overlaps }
 }
 
@@ -224,18 +249,19 @@ export async function updateSlot(
   const todayDate = today()
   const hasPast = old.startsOn < todayDate
   const sameWeekday = data.weekday === old.weekday
-  // A link-only edit must keep the slot id: today's join links, joins and reminder records all use it.
-  const onlineOnlyEdit =
+  // Only the link changed: no dates, time, room or campus rule moved with it.
+  const linkOnlyEdit =
     data.meetingUrl !== old.meetingUrl &&
-    !data.requireOnCampus &&
+    data.requireOnCampus === old.requireOnCampus &&
     data.weekday === old.weekday &&
     data.startMinute === old.startMinute &&
     data.endMinute === old.endMinute &&
     data.room === old.room &&
     data.startsOn === old.startsOn &&
     data.endsOn === old.endsOn
+  const modeChanged = modeOf(data) !== modeOf(old)
 
-  if (!hasPast || onlineOnlyEdit) {
+  if (!hasPast) {
     // Edit in place. Dated statuses survive only on the same weekday and inside the new term.
     const row = await ctx.db.transaction(async (tx) => {
       const [updated] = await tx.update(classSlot).set(data).where(eq(classSlot.id, old.id)).returning()
@@ -251,11 +277,18 @@ export async function updateSlot(
       return updated
     })
     const overlaps = await findOverlaps(ctx, data, [row.id])
-    await afterWrite(ctx, row.courseId, !hasPast) // a link-only edit changes no dates, so the roster is not told
+    const nextStart = firstUpcomingStart(row, todayDate)
+    await afterWrite(ctx, row.courseId, {
+      // A pure link edit gets the specific online/campus push instead of the generic one.
+      timetable: !linkOnlyEdit,
+      mode: modeChanged && nextStart ? modeOf(data) : undefined,
+      day: nextStart,
+      room: data.room,
+    })
     return { slot: toView(row), overlaps }
   }
 
-  // The slot has history: end it yesterday and carry on from today in a new slot.
+  // The slot has history: end it yesterday and carry on from today in a new slot, so past classes keep their format.
   const newStart = data.startsOn > todayDate ? data.startsOn : todayDate
   if (newStart > data.endsOn) {
     throw new AppError('VALIDATION', 'The term must not end before today', { fields: ['endsOn'] })
@@ -288,6 +321,21 @@ export async function updateSlot(
             lte(classExtra.replacesDate, data.endsOn),
           ),
         )
+      // Joins already recorded today belong to the same class, only its key changes.
+      const oldPrefix = `slot:${old.id}:`
+      const joins = await tx.select().from(onlineClassJoin).where(like(onlineClassJoin.occurrenceKey, `${oldPrefix}%`))
+      for (const join of joins) {
+        const date = join.occurrenceKey.slice(oldPrefix.length)
+        if (!isDate(date) || date < newStart || date > data.endsOn) continue
+        await tx
+          .delete(onlineClassJoin)
+          .where(
+            and(eq(onlineClassJoin.occurrenceKey, join.occurrenceKey), eq(onlineClassJoin.studentId, join.studentId)),
+          )
+        await tx
+          .insert(onlineClassJoin)
+          .values({ ...join, occurrenceKey: `slot:${created.id}:${date}` })
+      }
     }
     await tx
       .delete(classDateStatus)
@@ -295,7 +343,13 @@ export async function updateSlot(
     return created
   })
   const overlaps = await findOverlaps(ctx, { ...data, startsOn: newStart }, [row.id, old.id])
-  await afterWrite(ctx, row.courseId, true)
+  const nextStart = firstUpcomingStart(row, todayDate)
+  await afterWrite(ctx, row.courseId, {
+    timetable: !linkOnlyEdit,
+    mode: modeChanged && nextStart ? modeOf(data) : undefined,
+    day: nextStart,
+    room: data.room,
+  })
   return { slot: toView(row), overlaps }
 }
 
@@ -319,5 +373,5 @@ export async function removeSlot(ctx: Ctx, slotId: string): Promise<void> {
   } else {
     await ctx.db.delete(classSlot).where(eq(classSlot.id, slot.id))
   }
-  await afterWrite(ctx, slot.courseId, true)
+  await afterWrite(ctx, slot.courseId, { timetable: true })
 }

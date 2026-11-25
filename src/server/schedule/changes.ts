@@ -11,7 +11,7 @@ import { addDays, instantAt, localDateOf, localMinuteOf } from '@/server/lib/loc
 import { pushClassCancelled, pushClassMakeUp, pushClassMoved, pushClassReinstated } from '@/server/push/course-events'
 import { parseMeetingUrl } from './meeting-url'
 import { enqueueCourseDay } from './notices'
-import { parseOccurrenceKey, type Occurrence } from './occurrences'
+import { buildSittings, parseOccurrenceKey, type Occurrence } from './occurrences'
 import { loadOccurrences, loadSittingByKey } from './queries'
 import { assertOnlineRules, requireCampusLocation } from './timetable'
 
@@ -157,6 +157,15 @@ async function loadExtraOccurrence(ctx: Ctx, courseId: string, date: string, ext
   return occ
 }
 
+/** The key of the sitting an occurrence now belongs to, which is not always the occurrence's own key. */
+async function sittingKeyOf(ctx: Ctx, courseId: string, date: string, occurrenceKey: string): Promise<string> {
+  const sitting = buildSittings(await loadOccurrences(ctx.db, [courseId], date, date)).find((s) =>
+    s.occurrences.some((o) => o.key === occurrenceKey),
+  )
+  if (!sitting) throw new Error(`The sitting for ${occurrenceKey} could not be loaded`)
+  return sitting.key
+}
+
 /** The slot an occurrence belongs to; null for an extra. */
 const slotIdOf = (occ: Occurrence) => (occ.source.kind === 'slot' ? occ.source.slotId : null)
 
@@ -250,7 +259,8 @@ export async function moveClassOnline(ctx: Ctx, occurrenceKey: string, meetingUr
     meetingUrl: url,
   })
   if (!extraId) throw new Error(`The online replacement for ${occurrenceKey} could not be created`)
-  return `extra:${extraId}`
+  // A back-to-back sitting starts with an earlier class, so the extra's own key may not open the page.
+  return sittingKeyOf(ctx, occ.courseId, occ.date, `extra:${extraId}`)
 }
 
 /** Brings a cancelled future class back and tells the roster it is back on. */

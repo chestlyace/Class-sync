@@ -3409,6 +3409,8 @@
     "classCancelled": "The class on {day} at {start} is cancelled.",
     "classReinstated": "The class on {day} at {start} is back on.",
     "classMoved": "The class on {day} moved to {newDay} at {start}.",
+    "classWentOnline": "The class{hasDay, select, yes { on {day} at {start}} other {}} is now online. Open the dashboard for the Google Meet link.",
+    "classWentOnCampus": "The class{hasDay, select, yes { on {day} at {start}} other {}} is back on campus{hasRoom, select, yes { · {room}} other {}}.",
     "classMakeUp": "Make-up class on {newDay} at {start}{hasRoom, select, yes { · {room}} other {}}.",
     "classMissedQuestion": "No attendance was taken on {day}. Was the class missed?",
     "timetableChanged": "The class timetable changed.",

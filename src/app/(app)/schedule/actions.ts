@@ -91,7 +91,7 @@ export async function moveOnlineAction(key: string, data: FormData): Promise<Act
   return toActionResult(async () => {
     const newKey = await moveClassOnline(await getCtx(), requireId(key, 'key'), formString(data, 'meetingUrl'))
     revalidateSchedule()
-    // The old key is now cancelled: stay on the class the lecturer just created instead of an error page.
+    // The old key is now cancelled: open the sitting its online replacement joined, not the cancelled class.
     redirect(`/schedule/class/${encodeURIComponent(newKey)}`)
   })
 }
