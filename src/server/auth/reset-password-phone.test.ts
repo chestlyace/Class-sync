@@ -60,7 +60,8 @@ describe('resetPasswordByWhatsAppAndSignIn', () => {
       async sendTemplate(_to, msg) {
         messages += 1
         codes.push(msg.bodyParams[0]!)
-        return { messageId: `wamid.${messages}` }
+        // Unique across the whole file: provider_message_id is unique, and rows from earlier tests stay.
+        return { messageId: `wamid.${crypto.randomUUID()}` }
       },
       async sendText() {
         return { messageId: 'text' }
@@ -246,7 +247,9 @@ describe('resetPasswordByWhatsAppAndSignIn', () => {
     expect(await requestCode(unproven.phone)).toEqual({ status: 200, body: { status: true } })
     await settle()
     expect(messages).toBe(0)
-    expect(await db.select().from(whatsappMessage)).toEqual([])
+    // Earlier tests in this file sent codes to other numbers; none may exist for these two.
+    const rows = await db.select({ eventKey: whatsappMessage.eventKey }).from(whatsappMessage)
+    expect(rows.filter((r) => r.eventKey.startsWith(`otp:${stranger}:`) || r.eventKey.startsWith(`otp:${unproven.phone}:`))).toEqual([])
     expect(await db.select().from(verification).where(eq(verification.identifier, `phone-number-otp-${stranger}`))).toEqual([])
 
     const known = await account()

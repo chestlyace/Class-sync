@@ -279,7 +279,7 @@ describe('admin read models', () => {
     // createdAt desc: the second lecturer signed up three days ago.
     expect(lecturers.rows.map((r) => r.id)).toEqual([admin.id, lec2.id])
     expect(Object.keys(lecturers.rows[0]).sort()).toEqual(
-      ['createdAt', 'email', 'emailVerified', 'id', 'isAdmin', 'lastSeenAt', 'lastSignInAt', 'name', 'role', 'suspendedAt'].sort(),
+      ['createdAt', 'email', 'emailVerified', 'id', 'isAdmin', 'lastSeenAt', 'lastSignInAt', 'name', 'phoneNumberVerified', 'role', 'suspendedAt'].sort(),
     )
   })
 
