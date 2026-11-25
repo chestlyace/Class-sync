@@ -83,7 +83,11 @@
       "description": "Nous avons envoyé un lien de vérification à {email}. Ouvrez-le pour activer votre compte.",
       "descriptionNoEmail": "Nous vous avons envoyé un lien de vérification. Ouvrez-le pour activer votre compte.",
       "hint": "Vous ne le trouvez pas ? Regardez dans vos courriers indésirables.",
-      "backToSignIn": "Retour à la connexion"
+      "backToSignIn": "Retour à la connexion",
+      "notSent": "L'e-mail de vérification n'a pas pu être envoyé. Réessayez.",
+      "notSentTo": "L'e-mail de vérification n'a pas pu être envoyé à {email}. Réessayez.",
+      "sendAgain": "Renvoyer",
+      "sentAgain": "Envoyé. Consultez votre boîte mail."
     },
     "whatsapp": {
       "verifyHow": "Comment voulez-vous vérifier votre compte ?",

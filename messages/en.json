@@ -83,7 +83,11 @@
       "description": "We sent a verification link to {email}. Open it to activate your account.",
       "descriptionNoEmail": "We sent you a verification link. Open it to activate your account.",
       "hint": "Can't find it? Check your spam folder.",
-      "backToSignIn": "Back to sign in"
+      "backToSignIn": "Back to sign in",
+      "notSent": "We couldn't send the verification email. Try again.",
+      "notSentTo": "We couldn't send the verification email to {email}. Try again.",
+      "sendAgain": "Send again",
+      "sentAgain": "Sent. Check your inbox."
     },
     "whatsapp": {
       "verifyHow": "How do you want to verify your account?",

@@ -14,6 +14,7 @@ import { authErrorKey } from '@/lib/auth-errors'
 import { needsFullNavigation } from '@/lib/oauth-resume'
 import { toE164 } from '@/lib/phone'
 import { requestPhoneCode, verifyWhatsAppHref } from '@/lib/phone-code'
+import { verifyEmailHref } from '@/lib/verify-email'
 import type { Locale } from '@/i18n/locale'
 import { VerificationChoice, type VerifyMethod } from './verification-choice'
 
@@ -148,8 +149,12 @@ export function SignUpForm({
         return
       }
       // The account chose email: the link is requested here (sign-up itself sends nothing).
-      await authClient.sendVerificationEmail({ email, ...(next ? { callbackURL: next } : {}) }).catch(() => undefined)
-      goToVerifyEmail(email)
+      // The person is signed in either way: when the send fails, the next page says so and offers another try.
+      const sent = await authClient
+        .sendVerificationEmail({ email, ...(next ? { callbackURL: next } : {}) })
+        .then(({ error: sendError }) => !sendError)
+        .catch(() => false)
+      goToVerifyEmail(email, sent)
     } catch {
       setError(tRoot('common.genericError'))
     } finally {
@@ -157,10 +162,8 @@ export function SignUpForm({
     }
   }
 
-  function goToVerifyEmail(email: string) {
-    const query = new URLSearchParams({ email })
-    if (next) query.set('next', next)
-    router.push(`/verify-email?${query}`)
+  function goToVerifyEmail(email: string, sent = true) {
+    router.push(verifyEmailHref(email, { next, sent }))
   }
 
   return (
