@@ -105,7 +105,7 @@
       "or": "ou",
       "orEmail": "ou avec votre e-mail",
       "noAccount": "Ce compte Google n'a pas encore de compte Clasync. Créez-en un : indiquez si vous êtes enseignant ou étudiant, puis continuez avec Google.",
-      "notLinked": "Un compte existe déjà avec cet e-mail. Connectez-vous avec votre mot de passe, puis associez Google dans les Paramètres.",
+      "notLinked": "Un compte existe déjà avec cet e-mail, mais son adresse n'est pas encore confirmée : Google ne peut donc pas s'y connecter. Connectez-vous avec votre mot de passe et nous vous enverrons un lien de confirmation, ou utilisez Mot de passe oublié ? pour en choisir un nouveau, ce qui confirme aussi l'adresse. Ensuite, Continuer avec Google fonctionnera.",
       "linkedElsewhere": "Ce compte Google est déjà associé à un autre compte Clasync.",
       "cancelled": "La connexion avec Google a été annulée.",
       "failed": "La connexion avec Google n'a pas abouti. Réessayez."

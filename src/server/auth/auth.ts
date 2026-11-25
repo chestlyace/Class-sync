@@ -237,6 +237,9 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
         // Signing in with Google under the email of an existing account joins that account, but
         // only once its email is verified: otherwise someone could register another person's
         // address with a password and keep access after the owner arrives through Google.
+        // Refused attempts come back with `error=account_not_linked` (auth.google.notLinked tells
+        // the user to confirm the address first). Google itself is deliberately not a trusted
+        // provider: it reports verified emails anyway, and trusting it would not lift this rule.
         requireLocalEmailVerified: true,
         // Linking from Settings (signed in) may use a Google account with another address, e.g. a
         // personal Gmail for an account made with a school email.
