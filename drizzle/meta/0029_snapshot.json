@@ -1,6 +1,6 @@
 {
-  "id": "ba92508a-e089-4e5e-b492-c8211e01ffe5",
-  "prevId": "833650ea-3a1f-4168-b3c2-5adef68e4948",
+  "id": "dfbe32ab-c307-4388-b242-2f6939c0ceb4",
+  "prevId": "8ba0b418-a457-493b-8ab9-1e12ce3a21e9",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1853,6 +1853,19 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "phone_number": {
+          "name": "phone_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "phone_number_verified": {
+          "name": "phone_number_verified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         }
       },
       "indexes": {
@@ -1888,6 +1901,13 @@
           "nullsNotDistinct": false,
           "columns": [
             "unsubscribe_token"
+          ]
+        },
+        "user_phone_number_unique": {
+          "name": "user_phone_number_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "phone_number"
           ]
         }
       },

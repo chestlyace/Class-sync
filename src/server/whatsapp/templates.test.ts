@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildTemplate } from './templates'
+import { buildTemplate, buildVerificationTemplate } from './templates'
 
 // 14:30 in Africa/Douala (UTC+1) on Monday 16 November 2026.
 const at = new Date('2026-11-16T13:30:00Z')
@@ -64,5 +64,16 @@ describe('buildTemplate', () => {
     const msg = buildTemplate('testStarted', { testTitle: 'A\n\n  B\tC', courseTitle: 'x'.repeat(500), code: 'Z' }, 'en')
     expect(msg.bodyParams[0]).toBe('A B C')
     expect(msg.bodyParams[1]).toHaveLength(150)
+  })
+})
+
+describe('buildVerificationTemplate', () => {
+  it('puts the code in the body and in the copy-code button', () => {
+    expect(buildVerificationTemplate('123456', 'fr')).toEqual({
+      name: 'verification_code',
+      language: 'fr',
+      bodyParams: ['123456'],
+      buttonPath: '123456',
+    })
   })
 })

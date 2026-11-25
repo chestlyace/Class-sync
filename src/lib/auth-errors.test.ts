@@ -9,7 +9,7 @@ function lookup(key: string, messages: unknown = en): unknown {
 
 describe('authErrorKey', () => {
   it('maps known Better Auth codes to existing message keys', () => {
-    for (const code of ['INVALID_EMAIL_OR_PASSWORD', 'USER_ALREADY_EXISTS', 'PASSWORD_TOO_SHORT', 'EMAIL_NOT_VERIFIED', 'VALIDATION']) {
+    for (const code of ['INVALID_EMAIL_OR_PASSWORD', 'USER_ALREADY_EXISTS', 'INVALID_PHONE_NUMBER_OR_PASSWORD', 'PASSWORD_TOO_SHORT', 'VALIDATION']) {
       expect(typeof lookup(authErrorKey(code)), code).toBe('string')
     }
   })
@@ -22,6 +22,13 @@ describe('authErrorKey', () => {
       'Trop de tentatives. Patientez un instant puis réessayez.',
     )
     expect(authErrorKey('INVALID_EMAIL_OR_PASSWORD', 401)).toBe('auth.errors.invalidCredentials')
+  })
+
+  it('maps EMAIL_NOT_VERIFIED_FOR_LINK to "confirm your email first", in both languages', () => {
+    const key = authErrorKey('EMAIL_NOT_VERIFIED_FOR_LINK')
+    expect(key).toBe('settings.signInMethods.confirmEmailFirst')
+    expect(typeof lookup(key)).toBe('string')
+    expect(typeof lookup(key, fr)).toBe('string')
   })
 
   it('maps ACCOUNT_SUSPENDED to the suspended-account message, in both languages', () => {

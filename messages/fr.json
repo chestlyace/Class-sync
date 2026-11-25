@@ -43,6 +43,7 @@
       "title": "Content de vous revoir",
       "description": "Connectez-vous pour accéder à Clasync.",
       "email": "Adresse e-mail",
+      "emailOrPhone": "E-mail ou numéro WhatsApp",
       "password": "Mot de passe",
       "forgotPassword": "Mot de passe oublié ?",
       "passwordReset": "Votre mot de passe a été modifié. Connectez-vous avec votre nouveau mot de passe.",
@@ -64,6 +65,11 @@
       "resend": "Renvoyer",
       "resendIn": "Renvoyer dans {time}",
       "resent": "Nous avons envoyé un autre lien. Seul le plus récent est utile.",
+      "whatsapp": "Recevoir un code sur WhatsApp",
+      "emailInstead": "Recevoir plutôt un lien par e-mail",
+      "whatsappDescription": "Saisissez le numéro WhatsApp de votre compte Clasync. Nous y enverrons un code à 6 chiffres pour choisir un nouveau mot de passe.",
+      "whatsappSentDescription": "Si ce numéro correspond à un compte, nous avons envoyé un code à 6 chiffres sur WhatsApp au",
+      "whatsappWrongCode": "Ce code n'est pas le bon, ou il a expiré. Vérifiez-le, ou demandez un nouveau code.",
       "backToSignIn": "Retour à la connexion"
     },
     "resetPassword": {
@@ -83,7 +89,52 @@
       "description": "Nous avons envoyé un lien de vérification à {email}. Ouvrez-le pour activer votre compte.",
       "descriptionNoEmail": "Nous vous avons envoyé un lien de vérification. Ouvrez-le pour activer votre compte.",
       "hint": "Vous ne le trouvez pas ? Regardez dans vos courriers indésirables.",
-      "backToSignIn": "Retour à la connexion"
+      "backToSignIn": "Retour à la connexion",
+      "notSent": "L'e-mail de vérification n'a pas pu être envoyé. Réessayez.",
+      "notSentTo": "L'e-mail de vérification n'a pas pu être envoyé à {email}. Réessayez.",
+      "sendAgain": "Renvoyer",
+      "sentAgain": "Envoyé. Consultez votre boîte mail."
+    },
+    "whatsapp": {
+      "verifyHow": "Comment voulez-vous vérifier votre compte ?",
+      "byEmail": "Par e-mail",
+      "byEmailHint": "Nous vous envoyons un lien à ouvrir.",
+      "byWhatsApp": "Par WhatsApp",
+      "byWhatsAppHint": "Nous vous envoyons un code à 6 chiffres.",
+      "phone": "Numéro WhatsApp",
+      "phoneHint": "Un numéro camerounais n'a pas besoin d'indicatif. Pour un autre pays, commencez par + et l'indicatif du pays, comme +33.",
+      "phoneRequired": "Saisissez votre numéro WhatsApp, avec l'indicatif du pays s'il n'est pas camerounais.",
+      "alerts": "M'envoyer aussi les alertes de cours sur WhatsApp",
+      "alertsHint": "Présence, tests, résultats et devoirs. Répondez STOP à tout moment pour les arrêter.",
+      "instead": "Vérifier avec WhatsApp à la place",
+      "sendCode": "Envoyer le code",
+      "sending": "Envoi…",
+      "numberTitle": "Vérifier avec WhatsApp",
+      "numberDescription": "Saisissez le numéro de votre compte WhatsApp. Nous y enverrons un code à 6 chiffres.",
+      "codeTitle": "Saisissez votre code",
+      "codeDescription": "Nous avons envoyé un code à 6 chiffres sur WhatsApp au",
+      "codeLabel": "Code à 6 chiffres",
+      "verify": "Vérifier",
+      "verifying": "Vérification…",
+      "resend": "Renvoyer",
+      "resendIn": "Renvoyer dans {time}",
+      "resent": "Nous avons envoyé un nouveau code. Seul le plus récent est valable.",
+      "canResend": "Vous pouvez demander un nouveau code.",
+      "otherNumber": "Utiliser un autre numéro",
+      "useEmail": "Utiliser l'e-mail à la place",
+      "errors": {
+        "INVALID_OTP": "Ce code n'est pas correct. Vérifiez-le et réessayez.",
+        "OTP_EXPIRED": "Ce code a expiré. Demandez-en un nouveau.",
+        "TOO_MANY_ATTEMPTS": "Trop de codes erronés. Demandez un nouveau code.",
+        "NUMBER_TAKEN": "Ce numéro est déjà utilisé par un autre compte Clasync.",
+        "UNAUTHORIZED": "Votre session a pris fin. Reconnectez-vous pour continuer.",
+        "invalidNumber": "Saisissez un numéro de téléphone valide, avec l'indicatif du pays s'il n'est pas camerounais.",
+        "numberNotAllowed": "Les codes WhatsApp ne sont pas encore disponibles pour ce numéro. Vérifiez plutôt par e-mail.",
+        "codeLimited": "Trop de codes ont été demandés aujourd'hui. Réessayez plus tard, ou vérifiez plutôt par e-mail.",
+        "codeWait": "Un code vient d'être envoyé. Vous pourrez en demander un autre à la fin du minuteur.",
+        "unavailable": "La vérification par WhatsApp n'est pas disponible pour le moment. Vérifiez plutôt par e-mail.",
+        "emailFailed": "L'e-mail n'a pas pu être envoyé. Veuillez réessayer."
+      }
     },
     "errors": {
       "invalidCredentials": "Adresse e-mail ou mot de passe incorrect.",
@@ -91,7 +142,6 @@
       "passwordTooShort": "Votre mot de passe est trop court (8 caractères minimum).",
       "passwordTooLong": "Votre mot de passe est trop long.",
       "invalidEmail": "Veuillez saisir une adresse e-mail valide.",
-      "emailNotVerified": "Veuillez vérifier votre adresse e-mail avant de vous connecter. Nous venons de vous envoyer un nouveau lien de vérification.",
       "tooManyAttempts": "Trop de tentatives. Patientez un instant puis réessayez.",
       "accountSuspended": "Ce compte est suspendu.",
       "accountSuspendedContact": "Contactez {email}.",
@@ -105,7 +155,7 @@
       "or": "ou",
       "orEmail": "ou avec votre e-mail",
       "noAccount": "Ce compte Google n'a pas encore de compte Clasync. Créez-en un : indiquez si vous êtes enseignant ou étudiant, puis continuez avec Google.",
-      "notLinked": "Un compte existe déjà avec cet e-mail. Connectez-vous avec votre mot de passe, puis associez Google dans les Paramètres.",
+      "notLinked": "Un compte existe déjà avec cet e-mail, mais son adresse n'est pas encore confirmée : Google ne peut donc pas s'y connecter. Connectez-vous avec votre mot de passe et nous vous enverrons un lien de confirmation, ou utilisez Mot de passe oublié ? pour en choisir un nouveau, ce qui confirme aussi l'adresse. Ensuite, Continuer avec Google fonctionnera.",
       "linkedElsewhere": "Ce compte Google est déjà associé à un autre compte Clasync.",
       "cancelled": "La connexion avec Google a été annulée.",
       "failed": "La connexion avec Google n'a pas abouti. Réessayez."
@@ -303,7 +353,7 @@
   },
   "errors": {
     "UNAUTHENTICATED": "Veuillez vous connecter pour continuer.",
-    "EMAIL_UNVERIFIED": "Veuillez vérifier votre adresse e-mail pour continuer.",
+    "EMAIL_UNVERIFIED": "Vérifiez d'abord votre compte Clasync.",
     "FORBIDDEN": "Vous n'avez pas l'autorisation d'effectuer cette action.",
     "NOT_FOUND": "Nous n'avons pas trouvé ce que vous cherchez.",
     "VALIDATION": "Certaines informations saisies ne sont pas valides.",
@@ -400,6 +450,14 @@
       "at": "Remis le {date} à {time}.",
       "next": "Votre résultat apparaîtra sur la page du test dès qu'il sera disponible.",
       "cta": "Ouvrir le test",
+      "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :"
+    },
+    "passwordChangedWhatsApp": {
+      "subject": "Votre mot de passe Clasync a été modifié",
+      "greeting": "Bonjour,",
+      "body": "Votre mot de passe Clasync a été modifié par WhatsApp (numéro se terminant par {digits}).",
+      "warning": "Si ce n'était pas vous, réinitialisez votre mot de passe par e-mail avec le bouton ci-dessous, et contactez {support}.",
+      "cta": "Réinitialiser mon mot de passe par e-mail",
       "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :"
     }
   },
@@ -900,8 +958,9 @@
       "editName": "Modifier le nom",
       "save": "Enregistrer",
       "nameRequired": "Saisissez votre nom.",
-      "verified": "E-mail vérifié",
-      "unverified": "E-mail pas encore vérifié"
+      "verified": "Compte vérifié",
+      "unverified": "Compte pas encore vérifié",
+      "emailUnverified": "E-mail non vérifié"
     },
     "preferences": {
       "title": "Préférences",
@@ -986,7 +1045,8 @@
       "disconnect": "Dissocier",
       "disconnecting": "Dissociation…",
       "onlyMethod": "Vous vous connectez avec Google : il ne peut pas être dissocié.",
-      "connectHint": "Associez-le pour vous connecter en un clic. Le compte Google peut avoir une autre adresse e-mail."
+      "connectHint": "Associez-le pour vous connecter en un clic. Le compte Google peut avoir une autre adresse e-mail.",
+      "confirmEmailFirst": "Confirmez d'abord votre adresse e-mail : vous pourrez ensuite associer Google ici."
     },
     "password": {
       "title": "Mot de passe",
@@ -1083,6 +1143,23 @@
       "title": "Annonces de Clasync par e-mail",
       "hint": "Les nouveautés et changements envoyés par l'équipe Clasync. Les e-mails sur votre compte, comme la connexion et la réinitialisation du mot de passe, arrivent toujours."
     },
+    "whatsappNumber": {
+      "title": "Numéro WhatsApp",
+      "description": "Il sert à vérifier votre compte, à vous connecter et à réinitialiser votre mot de passe.",
+      "none": "Aucun numéro WhatsApp sur ce compte.",
+      "verified": "Vérifié",
+      "notVerified": "Non vérifié",
+      "emailNotVerified": "E-mail non vérifié",
+      "add": "Ajouter un numéro",
+      "change": "Changer de numéro",
+      "remove": "Supprimer",
+      "removing": "Suppression…",
+      "cancel": "Annuler",
+      "sameNumber": "C'est déjà votre numéro.",
+      "saved": "Votre numéro WhatsApp est enregistré.",
+      "removed": "Votre numéro WhatsApp a été supprimé.",
+      "removeNeedsEmail": "Vérifiez d'abord votre e-mail, pour pouvoir toujours vous connecter."
+    },
     "whatsapp": {
       "title": "WhatsApp",
       "description": "Recevez vos alertes Clasync les plus importantes sur WhatsApp.",
@@ -1178,7 +1255,7 @@
       "checkedIn": "Pointé",
       "alreadyCheckedIn": "Vous avez déjà pointé",
       "forbidden": "Vous n'êtes pas sur la liste de ce cours, vous ne pouvez donc pas pointer ici.",
-      "emailUnverified": "Vérifiez votre adresse e-mail avant de pointer.",
+      "emailUnverified": "Vérifiez votre compte Clasync avant de pointer.",
       "refusal": {
         "closed": "Ce pointage est fermé.",
         "too_many_attempts": "Trop de codes erronés pour ce pointage. Demandez à votre enseignant de vous marquer présent.",
@@ -2659,7 +2736,8 @@
     },
     "badges": {
       "admin": "Admin",
-      "unverified": "Non vérifié",
+      "unverified": "E-mail non vérifié",
+      "whatsappVerified": "WhatsApp vérifié",
       "suspended": "Suspendu"
     },
     "overview": {
@@ -2894,7 +2972,8 @@
         "notConfigured": "WhatsApp n'est pas configuré ici.",
         "sent": "Envoyés, sur {cap}",
         "skippedCap": "Ignorés à cause du plafond",
-        "failed": "Échecs"
+        "failed": "Échecs",
+        "codes": "Codes de vérification ce mois-ci"
       }
     },
     "ai": {
@@ -3090,7 +3169,7 @@
       "tests": "Pendant un test : quand vous quittez la page du test et pendant combien de temps, pour que votre enseignant le voie.",
       "location": "Lors d'un pointage de présence uniquement : votre position à ce moment-là, pour confirmer que vous êtes à l'école. Clasync ne suit pas votre position le reste du temps.",
       "signIns": "Quand vous vous connectez : l'adresse IP et le navigateur de cette session, pour protéger votre compte.",
-      "whatsapp": "Si vous connectez WhatsApp : votre numéro WhatsApp, pour vous envoyer vos alertes de classe."
+      "whatsapp": "Si vous connectez WhatsApp ou vérifiez votre compte avec : votre numéro WhatsApp, pour vous envoyer vos alertes de classe et, si vous le choisissez, vérifier votre compte, vous connecter et vous aider à le récupérer."
     },
     "access": {
       "title": "Qui peut les voir",
@@ -3111,7 +3190,7 @@
       "ai": "Quand un enseignant demande des notes suggérées pour un test, les réponses rédigées et leur question sont envoyées à Amazon Bedrock dans l'Union européenne, sans le nom, le matricule ni l'e-mail de l'étudiant. Les réponses ne servent pas à entraîner des modèles d'IA. L'enseignant décide de chaque note.",
       "aiAssignments": "Quand un enseignant demande à Clasync de suggérer des notes pour un devoir, la réponse et les fichiers de l'étudiant sont envoyés à Amazon Bedrock, dans l'Union européenne, pour produire une suggestion. Clasync n'ajoute ni le nom, ni le matricule, ni l'e-mail de l'étudiant ; tout ce qui est écrit dans le travail lui-même est envoyé tel quel. Le travail ne sert pas à entraîner des modèles d'IA. L'enseignant décide de chaque note.",
       "google": "Google, uniquement si vous choisissez Continuer avec Google.",
-      "whatsapp": "Si vous connectez WhatsApp, vos alertes passent par Amazon Web Services (AWS) et Meta (WhatsApp), qui voient votre numéro et le message."
+      "whatsapp": "Si vous connectez WhatsApp ou vérifiez votre compte avec, vos alertes et vos codes passent par Amazon Web Services (AWS) et Meta (WhatsApp), qui voient votre numéro et le message."
     },
     "assistants": {
       "title": "Les assistants IA connectés par les enseignants",
@@ -3128,7 +3207,7 @@
       "announcements": "Vous pouvez ne plus recevoir les annonces par e-mail grâce au lien en bas de chacune ou à l'interrupteur dans les Paramètres. Les e-mails concernant votre compte, comme la vérification et la réinitialisation du mot de passe, continuent.",
       "delete": "Pour obtenir une copie de vos données ou faire supprimer votre compte, écrivez à <email>{address}</email>. La suppression d'un compte supprime aussi ses données.",
       "keep": "Clasync conserve vos données tant que votre compte existe.",
-      "whatsapp": "Pour arrêter les alertes WhatsApp et supprimer votre numéro, envoyez STOP sur WhatsApp ou touchez Déconnecter dans les Paramètres."
+      "whatsapp": "Pour arrêter les alertes WhatsApp, envoyez STOP sur WhatsApp ou touchez Déconnecter dans les Paramètres. Vous pouvez aussi supprimer le numéro de connexion dans les Paramètres, une fois votre e-mail vérifié."
     },
     "changes": {
       "title": "Modifications de cette page",

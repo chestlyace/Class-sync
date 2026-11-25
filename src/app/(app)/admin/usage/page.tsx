@@ -49,10 +49,11 @@ export default async function AdminUsagePage() {
       <section aria-labelledby="whatsapp" className="flex flex-col gap-4">
         <SectionHeading id="whatsapp">{t('usage.whatsapp.title')}</SectionHeading>
         {whatsapp ? (
-          <StatGrid className="sm:grid-cols-3 lg:grid-cols-3">
+          <StatGrid className="sm:grid-cols-4 lg:grid-cols-4">
             <Stat label={t('usage.whatsapp.sent', { cap: f.number(whatsapp.cap) })} value={f.number(whatsapp.sent)} />
             <Stat label={t('usage.whatsapp.skippedCap')} value={f.number(whatsapp.skippedCap)} />
             <Stat label={t('usage.whatsapp.failed')} value={f.number(whatsapp.failed)} />
+            <Stat label={t('usage.whatsapp.codes')} value={f.number(whatsapp.codes)} />
           </StatGrid>
         ) : (
           <Panel>

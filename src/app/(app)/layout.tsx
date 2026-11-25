@@ -4,6 +4,7 @@ import { GuideRunner } from '@/components/guides/guide-runner'
 import { SiteNav } from '@/components/site-nav'
 import { VerifyBanner } from '@/components/verify-banner'
 import { isAdminPath, REQUEST_PATH_HEADER, safeNextPath } from '@/lib/next-path'
+import { whatsAppCodesOpen } from '@/server/auth/phone-verification'
 import { getCtx, getSessionUser } from '@/server/auth/session'
 import { isAdmin } from '@/server/core/admin'
 import { isVerificationPending } from '@/server/core/guards'
@@ -28,7 +29,7 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
     <>
       <SiteNav user={user} />
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-10 px-4 pt-8 pb-32 sm:pt-12 md:pb-20">
-        {pending && <VerifyBanner email={user.email} />}
+        {pending && <VerifyBanner email={user.email} whatsapp={await whatsAppCodesOpen()} />}
         {children}
       </main>
       {/* Next to the page, not around it. Guides start by themselves only once the email is verified. */}

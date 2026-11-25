@@ -25,7 +25,7 @@ The feature is disabled unless the email and key are both present. Restart the a
 
 ## Database
 
-Deploy migration `0029_online_meet_cache.sql` with `npm run db:migrate`. It adds `auto_meet` to `class_slot`/`class_extra` and the `class_meeting` cache. Each generated link is cached by occurrence key; changing a class's time, weekday, term or online mode clears the affected future cache rows so the next read creates a fresh event.
+Deploy migration `0029_online_classes_meet.sql` with `npm run db:migrate`. It adds `meeting_url` and `auto_meet` to `class_slot`/`class_extra`, the `online_class_join` table and the `class_meeting` cache. Each generated link is cached by occurrence key; changing a class's time, weekday, term or online mode clears the affected future cache rows so the next read creates a fresh event.
 
 ## What users see
 

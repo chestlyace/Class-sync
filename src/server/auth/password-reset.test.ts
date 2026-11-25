@@ -269,11 +269,14 @@ describe('auth: password reset with email verification on', () => {
     sent.length = 0
   })
 
-  it('verifies the address, so an account that never verified can sign in after a reset', async () => {
+  it('verifies the address, so an account that never verified is verified after a reset', async () => {
     const email = 'never-verified@example.com'
     const signUpRes = await post(auth, '/sign-up/email', { name: 'Not Verified', email, password: OLD_PASSWORD, role: 'student', locale: 'en' })
     expect(signUpRes.status).toBe(200)
-    expect((await post(auth, '/sign-in/email', { email, password: OLD_PASSWORD })).status).toBe(403)
+    // An unverified account can sign in with a limited session; the reset is what proves the address.
+    expect((await post(auth, '/sign-in/email', { email, password: OLD_PASSWORD })).status).toBe(200)
+    const [before] = await db.select({ emailVerified: user.emailVerified }).from(user).where(eq(user.email, email))
+    expect(before?.emailVerified).toBe(false)
 
     expect((await post(auth, '/request-password-reset', { email })).status).toBe(200)
     await until(() => sent.some((s) => s.subject === 'Reset your Clasync password'))

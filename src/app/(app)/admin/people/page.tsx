@@ -152,6 +152,7 @@ export default async function AdminPeoplePage({ searchParams }: PageProps<'/admi
                         <span className="font-semibold wrap-anywhere">{person.name}</span>
                         {person.isAdmin && <Badge variant="outline">{t('badges.admin')}</Badge>}
                         {!person.emailVerified && <Badge variant="outline">{t('badges.unverified')}</Badge>}
+                        {person.phoneNumberVerified && <Badge variant="outline">{t('badges.whatsappVerified')}</Badge>}
                         {person.suspendedAt && <Badge variant="outline">{t('badges.suspended')}</Badge>}
                       </span>
                       <span className="text-sm break-all text-[#48484a]">{person.email}</span>

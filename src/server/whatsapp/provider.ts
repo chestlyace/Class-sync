@@ -7,6 +7,7 @@ export type TemplateName =
   | 'results_released'
   | 'assignment_published'
   | 'class_soon_lecturer'
+  | 'verification_code'
 
 export type TemplateMessage = {
   name: TemplateName
