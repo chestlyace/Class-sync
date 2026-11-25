@@ -28,12 +28,16 @@ export function isNodeWarningLog(args: unknown[]): boolean {
 
 // Better Auth's logger writes "<ISO time> ERROR [Better Auth]: <message>" (ANSI colours when the
 // terminal has them). Only outcomes the app already handles for the user belong here.
-const BETTER_AUTH_EXPECTED = /^\S+ ERROR \[Better Auth\]: signup_disabled$/
+const BETTER_AUTH_EXPECTED = /^\S+ ERROR \[Better Auth\]: (?:signup_disabled|account_not_linked)$/
 
 /**
- * True for Better Auth's log of a Google sign-in by someone with no Clasync account. Sign-up through
- * Google is off on purpose (disableImplicitSignUp), and the sign-in page explains it to the visitor,
- * so it isn't a failure. It was filling CLASYNC-13 and CLASYNC-17.
+ * True for Better Auth's log of a Google sign-in it refused on purpose, which the sign-in and
+ * sign-up pages explain to the visitor:
+ * - `signup_disabled`: no Clasync account for that Google account (disableImplicitSignUp); was
+ *   filling CLASYNC-13.
+ * - `account_not_linked`: an account with that email exists but its address isn't confirmed, so
+ *   Google isn't joined to it (requireLocalEmailVerified); was filling CLASYNC-17.
+ * Other link failures (`unable_to_link_account`, …) are still reported.
  */
 export function isExpectedAuthLog(args: unknown[]): boolean {
   return (

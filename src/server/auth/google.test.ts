@@ -199,6 +199,22 @@ describe('auth: Google sign-in', () => {
     expect(await googleAccountOf(squatter.id)).toHaveLength(0)
   })
 
+  it('joins the account once its address is confirmed, as the account_not_linked message says', async () => {
+    await post('/sign-up/email', { name: 'Late', email: 'late@gmail.com', password: 'correct-horse-9', role: 'student' })
+    const late = await userByEmail('late@gmail.com')
+    profile = { sub: 'g-late', email: 'late@gmail.com', name: 'Late' }
+
+    const refused = await viaGoogle('/sign-in/social', { callbackURL: '/', errorCallbackURL: '/sign-in' })
+    expect(refused.headers.get('location')).toBe('/sign-in?error=account_not_linked')
+
+    // What the confirmation link (or a password reset) does to the account.
+    await db.update(user).set({ emailVerified: true }).where(eq(user.id, late.id))
+    const res = await viaGoogle('/sign-in/social', { callbackURL: '/', errorCallbackURL: '/sign-in' })
+    expect(res.headers.get('location')).toBe('/')
+    expect(cookiesOf(res)).toContain('session_token')
+    expect(await googleAccountOf(late.id)).toHaveLength(1)
+  })
+
   it('refuses a suspended account', async () => {
     const student = await userByEmail('new@gmail.com')
     await db.update(user).set({ suspendedAt: new Date() }).where(eq(user.id, student.id))

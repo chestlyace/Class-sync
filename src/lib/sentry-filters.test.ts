@@ -40,6 +40,8 @@ describe('isExpectedAuthLog', () => {
 
   it("spots Better Auth's log of a Google sign-in with no Clasync account, with or without colours", () => {
     expect(isExpectedAuthLog(['2026-11-24T13:43:31.560Z ERROR [Better Auth]: signup_disabled'])).toBe(true)
+    // CLASYNC-17: a Google sign-in for an existing account whose email isn't confirmed yet.
+    expect(isExpectedAuthLog(['2026-11-25T09:31:12.182Z ERROR [Better Auth]: account_not_linked'])).toBe(true)
     expect(
       isExpectedAuthLog([
         `${ESC}[2m2026-11-24T13:43:31.560Z${ESC}[0m ${ESC}[31mERROR${ESC}[0m ${ESC}[1m[Better Auth]:${ESC}[0m signup_disabled`,
@@ -50,6 +52,8 @@ describe('isExpectedAuthLog', () => {
   it('keeps every other Better Auth error and our own logs', () => {
     expect(isExpectedAuthLog(['2026-11-24T13:43:31.560Z ERROR [Better Auth]: State not found', new Error('x')])).toBe(false)
     expect(isExpectedAuthLog(['2026-11-24T13:43:31.560Z ERROR [Better Auth]: unable_to_create_user'])).toBe(false)
+    expect(isExpectedAuthLog(['2026-11-24T13:43:31.560Z ERROR [Better Auth]: unable_to_link_account'])).toBe(false)
+    expect(isExpectedAuthLog(['2026-11-24T13:43:31.560Z ERROR [Better Auth]: account_not_linked', 'extra'])).toBe(false)
     expect(isExpectedAuthLog(['2026-11-24T13:43:31.560Z ERROR [Better Auth]: signup_disabled', 'extra'])).toBe(false)
     expect(isExpectedAuthLog(['[auth] signup_disabled'])).toBe(false)
     expect(isExpectedAuthLog([new Error('signup_disabled')])).toBe(false)
