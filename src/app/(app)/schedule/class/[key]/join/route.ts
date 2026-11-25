@@ -35,6 +35,17 @@ export async function GET(
     if (err instanceof AppError && err.code === 'NOT_FOUND') {
       return new Response(null, { status: 404, headers })
     }
+    // A generated link cannot be created until the platform's Google credentials are installed.
+    if (
+      err instanceof AppError &&
+      err.code === 'VALIDATION' &&
+      err.details?.reason === 'meet_generation_unavailable'
+    ) {
+      return new Response(null, {
+        status: 303,
+        headers: { ...headers, Location: '/dashboard?join=unavailable' },
+      })
+    }
     throw err
   }
 }

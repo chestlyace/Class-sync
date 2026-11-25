@@ -118,6 +118,7 @@ describe('class schedule push events', () => {
     room: 'B2',
     requireOnCampus: false,
     online: false,
+    autoMeet: false,
     status: null,
     source: { kind: 'slot', slotId: 's1' },
     ...over,

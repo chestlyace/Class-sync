@@ -4,6 +4,7 @@ import { AppError } from '@/server/core/errors'
 import { onlineClassJoin } from '@/server/db/schema'
 import { isOnCourseRoster } from '@/server/courses/service'
 import { JOIN_LEAD_MS } from './join-window'
+import { resolveMeetingUrl } from './meetings'
 import { loadOnlineOccurrence } from './queries'
 
 export type JoinClassResult = { kind: 'redirect'; url: string } | { kind: 'notice'; reason: 'notOpen' | 'ended' }
@@ -14,15 +15,21 @@ function notFound(): never {
 }
 
 /**
- * The only way a student gets a meeting URL: check everything on the server, record the tap, then hand the URL back.
- * The course owner may always open their own link, but no join is recorded for them.
+ * The only way a student gets a meeting URL: check everything on the server, generate it on first need, record the
+ * tap, then hand the URL back. The course owner may always open their own link, but no join is recorded for them.
  */
 export async function joinOnlineClass(ctx: Ctx, key: string): Promise<JoinClassResult> {
   const found = await loadOnlineOccurrence(ctx.db, key)
   if (!found) notFound()
   const { occurrence, courseId, lecturerId, meetingUrl } = found
 
-  if (ctx.user.id === lecturerId) return { kind: 'redirect', url: meetingUrl }
+  const open = async (): Promise<JoinClassResult> => {
+    const url = await resolveMeetingUrl(ctx, occurrence, meetingUrl)
+    if (!url) notFound()
+    return { kind: 'redirect', url }
+  }
+
+  if (ctx.user.id === lecturerId) return open()
   if (ctx.user.role !== 'student' || occurrence.status === 'cancelled') notFound()
   if (!(await isOnCourseRoster(ctx.db, courseId, ctx.user.id))) notFound()
 
@@ -30,6 +37,8 @@ export async function joinOnlineClass(ctx: Ctx, key: string): Promise<JoinClassR
   if (at.getTime() < occurrence.startsAt.getTime() - JOIN_LEAD_MS) return { kind: 'notice', reason: 'notOpen' }
   if (at.getTime() > occurrence.endsAt.getTime()) return { kind: 'notice', reason: 'ended' }
 
+  const result = await open()
+  if (result.kind !== 'redirect') return result
   await ctx.db
     .insert(onlineClassJoin)
     .values({ occurrenceKey: key, studentId: ctx.user.id, firstJoinedAt: at, lastJoinedAt: at })
@@ -37,5 +46,5 @@ export async function joinOnlineClass(ctx: Ctx, key: string): Promise<JoinClassR
       target: [onlineClassJoin.occurrenceKey, onlineClassJoin.studentId],
       set: { lastJoinedAt: at },
     })
-  return { kind: 'redirect', url: meetingUrl }
+  return result
 }

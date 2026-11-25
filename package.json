@@ -46,6 +46,7 @@
     "cn": "^0.5.2",
     "drizzle-orm": "^0.45.4",
     "exceljs": "^4.4.0",
+    "googleapis": "^190.0.0",
     "lucide-react": "^1.70.0",
     "mcp-handler": "^2.3.1",
     "next": "16.4.5",

@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { toActionResult, type ActionResult } from '@/lib/action-result'
-import { formString } from '@/lib/form-data'
 import { getCtx } from '@/server/auth/session'
 import { AppError } from '@/server/core/errors'
 import {
@@ -16,7 +15,7 @@ import {
 } from '@/server/schedule/changes'
 import { createSlot, removeSlot, updateSlot, type SlotOverlap } from '@/server/schedule/timetable'
 import { startClassAttendance } from '@/server/schedule/views'
-import { parseCheckbox, parseMakeUpForm, parseSlotForm } from './schedule-form'
+import { parseCheckbox, parseMakeUpForm, parseOnlineForm, parseSlotForm } from './schedule-form'
 
 export type SlotSaved = { overlaps: SlotOverlap[] }
 
@@ -86,10 +85,15 @@ export async function undoCancelAction(key: string): Promise<ActionResult<null>>
   })
 }
 
-/** "Move online" on a lecturer's class page: the service validates the Meet link and reuses the make-up flow. */
+/** "Move online" on a lecturer's class page: pasted link or generated link, reusing the make-up flow. */
 export async function moveOnlineAction(key: string, data: FormData): Promise<ActionResult<never>> {
   return toActionResult(async () => {
-    const newKey = await moveClassOnline(await getCtx(), requireId(key, 'key'), formString(data, 'meetingUrl'))
+    const online = parseOnlineForm(data)
+    const newKey = await moveClassOnline(
+      await getCtx(),
+      requireId(key, 'key'),
+      online.autoMeet ? { autoMeet: true } : online.meetingUrl,
+    )
     revalidateSchedule()
     // The old key is now cancelled: open the sitting its online replacement joined, not the cancelled class.
     redirect(`/schedule/class/${encodeURIComponent(newKey)}`)

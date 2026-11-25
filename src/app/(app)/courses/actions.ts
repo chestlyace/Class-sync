@@ -14,6 +14,7 @@ import {
   type IncludeCandidate,
 } from '@/server/courses/service'
 import { deleteCourse } from '@/server/courses/delete'
+import { parseCheckbox, parseSlotForm } from '../schedule/schedule-form'
 
 const MAX_STUDENT_QUERY_LENGTH = 100
 
@@ -45,6 +46,8 @@ export async function createCourseAction(
       title: formString(data, 'title'),
       code: formString(data, 'code'),
       semester,
+      // The tick adds the first weekly class in the same submit; no trip to the timetable needed.
+      ...(parseCheckbox(data, 'online') ? { firstSlot: parseSlotForm(data) } : {}),
     })
     redirect(`/courses/${encodeURIComponent(course.id)}`)
   })

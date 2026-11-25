@@ -49,9 +49,9 @@ export default async function DashboardPage({ searchParams }: PageProps<'/dashbo
   const { join } = await searchParams
   const t = await getTranslations('dashboard')
   const joinNotice =
-    join === 'not-open' || join === 'ended' ? (
+    join === 'not-open' || join === 'ended' || join === 'unavailable' ? (
       <Panel role="status" className="flex items-center text-sm">
-        {join === 'not-open' ? t('joinNotOpen') : t('joinEnded')}
+        {join === 'not-open' ? t('joinNotOpen') : join === 'ended' ? t('joinEnded') : t('joinUnavailable')}
       </Panel>
     ) : null
   const rawLocale = await getLocale()

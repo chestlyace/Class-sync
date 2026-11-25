@@ -21,6 +21,7 @@ function slot(over: Partial<SlotRow> = {}): SlotRow {
     room: 'A1',
     requireOnCampus: false,
     meetingUrl: null,
+    autoMeet: false,
     startsOn: '2026-11-01',
     endsOn: '2026-12-31',
     createdBy: 'u1',
@@ -38,6 +39,7 @@ function extra(over: Partial<ExtraRow> = {}): ExtraRow {
     room: null,
     requireOnCampus: false,
     meetingUrl: null,
+    autoMeet: false,
     replacesSlotId: null,
     replacesDate: null,
     status: null,
@@ -169,6 +171,7 @@ function occ(key: string, start: string, end: string, status: 'cancelled' | 'mis
     room: null,
     requireOnCampus: false,
     online: false,
+    autoMeet: false,
     status,
     source: { kind: 'slot' as const, slotId: 's' },
   }

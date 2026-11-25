@@ -21,6 +21,7 @@ import { NativeSelect } from '@/components/ui/native-select'
 import type { ActionResult } from '@/lib/action-result'
 import { submitWith } from '@/lib/form-submit'
 import { addMakeUpAction } from './actions'
+import { OnlineFields } from './online-fields'
 import { ScheduleError } from './schedule-error'
 
 export type CourseOption = { id: string; title: string; className: string; schoolName: string }
@@ -33,16 +34,19 @@ export function MakeUpFields({
   idPrefix,
   defaults,
   state,
+  autoMeetAvailable,
 }: {
   idPrefix: string
   defaults: MakeUpDefaults
   state: ActionResult<unknown> | null
+  autoMeetAvailable: boolean
 }) {
   const t = useTranslations('schedule.makeUp')
   const tCommon = useTranslations('common')
   const invalid = (field: string) => isInvalidField(state, field) || undefined
   const [online, setOnline] = useState(false)
   const [meetingUrl, setMeetingUrl] = useState('')
+  const [autoMeet, setAutoMeet] = useState(false)
   const [campus, setCampus] = useState(false)
   return (
     <FieldGroup className="gap-4">
@@ -94,40 +98,17 @@ export function MakeUpFields({
           aria-invalid={invalid('room')}
         />
       </Field>
-      <label htmlFor={`${idPrefix}-online`} className="flex items-start gap-3">
-        <input
-          id={`${idPrefix}-online`}
-          name="online"
-          type="checkbox"
-          checked={online}
-          onChange={(e) => setOnline(e.target.checked)}
-          aria-describedby={`${idPrefix}-online-hint`}
-          className="mt-0.5 size-5 shrink-0 accent-primary"
-        />
-        <span className="flex flex-col gap-0.5">
-          <span className="font-medium">{t('online')}</span>
-          <span id={`${idPrefix}-online-hint`} className="text-sm text-muted-foreground">
-            {t('onlineHint')}
-          </span>
-        </span>
-      </label>
-      {online && (
-        <Field data-invalid={invalid('meetingUrl')}>
-          <FieldLabel htmlFor={`${idPrefix}-meetingUrl`}>{t('meetingUrl')}</FieldLabel>
-          <Input
-            id={`${idPrefix}-meetingUrl`}
-            name="meetingUrl"
-            type="url"
-            inputMode="url"
-            maxLength={2048}
-            required
-            value={meetingUrl}
-            onChange={(e) => setMeetingUrl(e.target.value)}
-            placeholder={t('meetingUrlPlaceholder')}
-            aria-invalid={invalid('meetingUrl')}
-          />
-        </Field>
-      )}
+      <OnlineFields
+        idPrefix={idPrefix}
+        state={state}
+        online={online}
+        setOnline={setOnline}
+        autoMeet={autoMeet}
+        setAutoMeet={setAutoMeet}
+        meetingUrl={meetingUrl}
+        setMeetingUrl={setMeetingUrl}
+        autoMeetAvailable={autoMeetAvailable}
+      />
       <label
         htmlFor={`${idPrefix}-campus`}
         className="flex items-start gap-3 has-disabled:cursor-not-allowed has-disabled:opacity-60"
@@ -159,12 +140,14 @@ function MakeUpForm({
   courseId,
   replaces,
   defaults,
+  autoMeetAvailable,
   onDone,
 }: {
   courses: CourseOption[]
   courseId?: string
   replaces?: string
   defaults: MakeUpDefaults
+  autoMeetAvailable: boolean
   onDone: () => void
 }) {
   const t = useTranslations('schedule.makeUp')
@@ -193,7 +176,7 @@ function MakeUpForm({
           </NativeSelect>
         </Field>
       )}
-      <MakeUpFields idPrefix="make-up" defaults={defaults} state={state} />
+      <MakeUpFields idPrefix="make-up" defaults={defaults} state={state} autoMeetAvailable={autoMeetAvailable} />
       <ScheduleError state={state} />
       <DialogFooter>
         <DialogClose asChild>
@@ -218,6 +201,7 @@ export function MakeUpDialog({
   replaces,
   replacesLabel,
   defaults,
+  autoMeetAvailable,
   trigger,
 }: {
   open: boolean
@@ -228,6 +212,7 @@ export function MakeUpDialog({
   /** "Replaces Networks of Mon 3 Nov." */
   replacesLabel?: string
   defaults: MakeUpDefaults
+  autoMeetAvailable: boolean
   /** The button that opens the dialog; focus returns to it on close. */
   trigger?: React.ReactNode
 }) {
@@ -247,6 +232,7 @@ export function MakeUpDialog({
             courseId={courseId}
             replaces={replaces}
             defaults={defaults}
+            autoMeetAvailable={autoMeetAvailable}
             onDone={() => onOpenChange(false)}
           />
         ) : (
@@ -258,7 +244,15 @@ export function MakeUpDialog({
 }
 
 /** The Schedule page's "Make-up class" button. */
-export function MakeUpButton({ courses, today }: { courses: CourseOption[]; today: string }) {
+export function MakeUpButton({
+  courses,
+  today,
+  autoMeetAvailable,
+}: {
+  courses: CourseOption[]
+  today: string
+  autoMeetAvailable: boolean
+}) {
   const t = useTranslations('schedule.makeUp')
   const [open, setOpen] = useState(false)
   return (
@@ -267,6 +261,7 @@ export function MakeUpButton({ courses, today }: { courses: CourseOption[]; toda
       onOpenChange={setOpen}
       courses={courses}
       defaults={{ date: today, start: '', end: '', room: '' }}
+      autoMeetAvailable={autoMeetAvailable}
       trigger={
         <Button type="button">
           <CalendarPlus aria-hidden="true" data-icon="inline-start" />

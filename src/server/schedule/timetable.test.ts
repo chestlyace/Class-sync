@@ -5,7 +5,7 @@ import { config } from '@/server/core/config'
 import { createClass } from '@/server/classes/service'
 import { createCourse } from '@/server/courses/service'
 import type { Db } from '@/server/db'
-import { classDateStatus, classSlot, onlineClassJoin, pushSubscription } from '@/server/db/schema'
+import { classDateStatus, classMeeting, classSlot, onlineClassJoin, pushSubscription } from '@/server/db/schema'
 import { setEmailDbForTests } from '@/server/email/db'
 import { setAfterResponseForTests } from '@/server/lib/after-response'
 import { instantAt } from '@/server/lib/local-time'
@@ -258,20 +258,19 @@ describe('timetable service', () => {
     const { slot } = await updateSlot(fx.lecturer, old.id, input({ meetingUrl: 'https://meet.google.com/abc-defg-hij' }))
     await flush()
 
-    expect(slot.id).not.toBe(old.id)
+    expect(slot.id).toBe(old.id)
     expect(slot.meetingUrl).toBe('https://meet.google.com/abc-defg-hij')
-    const [ended] = await db.select().from(classSlot).where(eq(classSlot.id, old.id))
-    expect(ended.meetingUrl).toBeNull()
+    expect(await db.select().from(classSlot)).toHaveLength(1)
     expect((await db.select().from(classDateStatus)).map((s) => [s.slotId, s.date])).toEqual([
       [old.id, '2026-11-09'],
-      [slot.id, MONDAY],
-      [slot.id, '2026-11-23'],
+      [old.id, MONDAY],
+      [old.id, '2026-11-23'],
     ])
     expect(
       (await db.select().from(onlineClassJoin))
         .map((j) => j.occurrenceKey)
         .sort(),
-    ).toEqual([`slot:${old.id}:2026-11-09`, `slot:${slot.id}:${MONDAY}`].sort())
+    ).toEqual([`slot:${old.id}:2026-11-09`, `slot:${old.id}:${MONDAY}`].sort())
     expect(pushes.map((p) => p.kind).sort()).toEqual(['classWentOnline', 'classWentOnline'])
   })
 
@@ -294,6 +293,26 @@ describe('timetable service', () => {
     await flush()
     expect(pushes.map((p) => p.kind)).toEqual(['classWentOnCampus'])
     expect((await db.select().from(classSlot))[0].id).toBe(slot.id)
+  })
+
+  it('clears cached generated links when an online slot stops generating', async () => {
+    const slot = await seedSlot(fx.bio.id, { startsOn: '2026-11-23', autoMeet: true })
+    const key = `slot:${slot.id}:2026-11-23`
+    await db.insert(classMeeting).values({
+      occurrenceKey: key,
+      meetingUrl: 'https://meet.google.com/auto-meet-link',
+      calendarEventId: 'clasync-event',
+    })
+
+    const { slot: updated } = await updateSlot(
+      fx.lecturer,
+      slot.id,
+      input({ startsOn: '2026-11-23', autoMeet: false }),
+    )
+
+    expect(updated.id).toBe(slot.id)
+    expect(updated.autoMeet).toBe(false)
+    expect(await db.select().from(classMeeting)).toEqual([])
   })
 
   it('changing the campus rule as well as the link is not treated as a pure link edit', async () => {

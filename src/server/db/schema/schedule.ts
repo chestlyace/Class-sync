@@ -32,8 +32,10 @@ export const classSlot = pgTable(
     endMinute: smallint('end_minute').notNull(),
     room: text('room'),
     requireOnCampus: boolean('require_on_campus').notNull().default(false),
-    /** A Google Meet link. Non-null means the class is online (it may still have a room too). */
+    /** A pasted Google Meet link. Non-null means the class is online (it may still have a room too). */
     meetingUrl: text('meeting_url'),
+    /** Generate a fresh Google Meet link for each occurrence on first need, then cache it. */
+    autoMeet: boolean('auto_meet').notNull().default(false),
     startsOn: date('starts_on', { mode: 'string' }).notNull(),
     endsOn: date('ends_on', { mode: 'string' }).notNull(),
     createdBy: text('created_by')
@@ -49,7 +51,10 @@ export const classSlot = pgTable(
       sql`${t.startMinute} >= 0 and ${t.startMinute} < ${t.endMinute} and ${t.endMinute} <= 1440`,
     ),
     check('class_slot_dates_check', sql`${t.endsOn} >= ${t.startsOn}`),
-    check('class_slot_online_campus_check', sql`${t.meetingUrl} is null or ${t.requireOnCampus} = false`),
+    check(
+      'class_slot_online_campus_check',
+      sql`(${t.meetingUrl} is null and ${t.autoMeet} = false) or ${t.requireOnCampus} = false`,
+    ),
   ],
 )
 
@@ -87,8 +92,10 @@ export const classExtra = pgTable(
     endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
     room: text('room'),
     requireOnCampus: boolean('require_on_campus').notNull().default(false),
-    /** A Google Meet link. Non-null means the class is online (it may still have a room too). */
+    /** A pasted Google Meet link. Non-null means the class is online (it may still have a room too). */
     meetingUrl: text('meeting_url'),
+    /** Generate a Google Meet link for this one-off class on first need, then cache it. */
+    autoMeet: boolean('auto_meet').notNull().default(false),
     replacesSlotId: text('replaces_slot_id').references(() => classSlot.id, { onDelete: 'set null' }),
     replacesDate: date('replaces_date', { mode: 'string' }),
     status: text('status', { enum: CLASS_STATUSES }),
@@ -103,7 +110,10 @@ export const classExtra = pgTable(
     // A slot implies a date. A date alone stays as history once the slot is deleted (FK sets the slot to null).
     check('class_extra_replaces_check', sql`${t.replacesSlotId} is null or ${t.replacesDate} is not null`),
     check('class_extra_status_check', sql`${t.status} is null or ${t.status} in ('cancelled', 'missed', 'taught')`),
-    check('class_extra_online_campus_check', sql`${t.meetingUrl} is null or ${t.requireOnCampus} = false`),
+    check(
+      'class_extra_online_campus_check',
+      sql`(${t.meetingUrl} is null and ${t.autoMeet} = false) or ${t.requireOnCampus} = false`,
+    ),
   ],
 )
 
@@ -134,6 +144,18 @@ export const onlineClassJoin = pgTable(
     index('online_class_join_student_id_idx').on(t.studentId),
   ],
 )
+
+/**
+ * A Google Meet link generated for one dated class. Occurrence keys are not rows, so the link is cached here and
+ * cleaned up with its slot/extra by key. The Calendar event is owned by the platform's service account.
+ */
+export const classMeeting = pgTable('class_meeting', {
+  occurrenceKey: text('occurrence_key').primaryKey(),
+  meetingUrl: text('meeting_url').notNull(),
+  calendarEventId: text('calendar_event_id').notNull(),
+  lecturerEmail: text('lecturer_email'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
 
 /** Per-user notification switches. No row means everything is on. */
 export const notificationPreference = pgTable('notification_preference', {

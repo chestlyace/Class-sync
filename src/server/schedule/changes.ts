@@ -1,5 +1,4 @@
 import { and, eq, isNull } from 'drizzle-orm'
-import { z } from 'zod'
 import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import type { Ctx } from '@/server/core/context'
@@ -7,64 +6,16 @@ import { AppError } from '@/server/core/errors'
 import { classDateStatus, classExtra, classSlot } from '@/server/db/schema'
 import { requireCourseOwner } from '@/server/courses/service'
 import { isUniqueViolation } from '@/server/lib/db-errors'
-import { addDays, instantAt, localDateOf, localMinuteOf } from '@/server/lib/local-time'
+import { instantAt, localDateOf, localMinuteOf } from '@/server/lib/local-time'
 import { pushClassCancelled, pushClassMakeUp, pushClassMoved, pushClassReinstated } from '@/server/push/course-events'
-import { parseMeetingUrl } from './meeting-url'
 import { enqueueCourseDay } from './notices'
 import { buildSittings, parseOccurrenceKey, type Occurrence } from './occurrences'
 import { loadOccurrences, loadSittingByKey } from './queries'
-import { assertOnlineRules, requireCampusLocation } from './timetable'
+import { requireCampusLocation } from './timetable'
 
-export type MakeUpInput = {
-  date: string
-  startMinute: number
-  endMinute: number
-  room: string | null
-  requireOnCampus: boolean
-  meetingUrl: string | null
-}
+import { parseMakeUpInput, parseOnlineFields, type MakeUpInput, type ParsedMakeUp } from './slot-input'
 
-const isDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && addDays(value, 0) === value
-const minute = z.number().int().min(0).max(1440)
-
-const makeUpSchema = z
-  .object({
-    date: z.string().refine(isDate, 'Invalid date'),
-    startMinute: minute,
-    endMinute: minute,
-    // Empty means "no room".
-    room: z
-      .string()
-      .trim()
-      .max(60)
-      .nullish()
-      .transform((r) => r || null),
-    requireOnCampus: z.boolean(),
-    meetingUrl: z.string().nullish(),
-    replaces: z.string().optional(),
-  })
-  .superRefine((value, ctx) => {
-    if (value.startMinute >= value.endMinute) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['endMinute'],
-        message: 'A class must end after it starts',
-      })
-    }
-  })
-
-type ParsedMakeUp = z.output<typeof makeUpSchema>
-
-function parseMakeUp(input: unknown): ParsedMakeUp {
-  const result = makeUpSchema.safeParse(input)
-  if (!result.success) {
-    const fields = [...new Set(result.error.issues.map((i) => i.path.join('.')))]
-    throw new AppError('VALIDATION', 'Invalid input', { fields })
-  }
-  const data = { ...result.data, meetingUrl: parseMeetingUrl(result.data.meetingUrl) }
-  assertOnlineRules(data)
-  return data
-}
+export { type MakeUpInput } from './slot-input'
 
 function forbidden(): never {
   throw new AppError('FORBIDDEN', 'Only the lecturer of this course can do this')
@@ -145,6 +96,7 @@ function extraValues(
     room: data.room,
     requireOnCampus: data.requireOnCampus,
     meetingUrl: data.meetingUrl,
+    autoMeet: data.autoMeet,
     replacesSlotId: replaces?.slotId ?? null,
     replacesDate: replaces?.date ?? null,
     createdBy: ctx.user.id,
@@ -180,7 +132,7 @@ export async function cancelClass(ctx: Ctx, occurrenceKey: string, makeUp?: Make
   const alreadySet = () =>
     new AppError('VALIDATION', 'This class is already cancelled or answered', { reason: 'already_set' })
   if (occ.status !== null) throw alreadySet()
-  const data = makeUp ? parseMakeUp(makeUp) : null
+  const data = makeUp ? parseMakeUpInput(makeUp) : null
   if (data && instantAt(data.date, data.endMinute, config.timeZone).getTime() <= now().getTime()) {
     throw new AppError('VALIDATION', 'A class can only move to a time that has not ended', { fields: ['date'] })
   }
@@ -235,12 +187,20 @@ export async function cancelClass(ctx: Ctx, occurrenceKey: string, makeUp?: Make
 
 /**
  * Moves one future class online by reusing the cancel-with-make-up flow: the old date is cancelled and
- * replaced by an extra at the same time with the lecturer's Google Meet link. Returns the replacement's
- * occurrence key so the caller can leave the cancelled class page.
+ * replaced by an extra at the same time, with either a pasted link or a generated one. Returns the replacement's
+ * occurrence key so the caller can leave the cancelled class page. A string input keeps the paste-only form working.
  */
-export async function moveClassOnline(ctx: Ctx, occurrenceKey: string, meetingUrl: string): Promise<string> {
-  const url = parseMeetingUrl(meetingUrl)
-  if (url === null) {
+export async function moveClassOnline(
+  ctx: Ctx,
+  occurrenceKey: string,
+  online: string | { meetingUrl?: string | null; autoMeet?: boolean },
+): Promise<string> {
+  const mode =
+    typeof online === 'string'
+      ? { meetingUrl: online, autoMeet: false, requireOnCampus: false }
+      : { ...online, requireOnCampus: false }
+  const { meetingUrl, autoMeet } = parseOnlineFields(mode)
+  if (meetingUrl === null && !autoMeet) {
     throw new AppError('VALIDATION', 'A Google Meet link is required', { fields: ['meetingUrl'] })
   }
   const { occ } = await requireOwnedOccurrence(ctx, occurrenceKey)
@@ -256,7 +216,8 @@ export async function moveClassOnline(ctx: Ctx, occurrenceKey: string, meetingUr
     endMinute,
     room: occ.room,
     requireOnCampus: false,
-    meetingUrl: url,
+    meetingUrl,
+    autoMeet,
   })
   if (!extraId) throw new Error(`The online replacement for ${occurrenceKey} could not be created`)
   // A back-to-back sitting starts with an earlier class, so the extra's own key may not open the page.
@@ -292,7 +253,7 @@ export async function addMakeUp(
   input: MakeUpInput & { replaces?: string },
 ): Promise<Occurrence> {
   const owned = await requireCourseOwner(ctx, courseId)
-  const data = parseMakeUp(input)
+  const data = parseMakeUpInput(input)
   await requireCampusLocation(ctx, owned.schoolId, data)
 
   let replaces: { slotId: string | null; date: string } | null = null

@@ -15,6 +15,7 @@ import type { ActionResult } from '@/lib/action-result'
 import { submitWith } from '@/lib/form-submit'
 import type { SlotOverlap } from '@/server/schedule/timetable'
 import { createSlotAction, removeSlotAction, updateSlotAction, type SlotSaved } from '../../../schedule/actions'
+import { OnlineFields } from '../../../schedule/online-fields'
 import { ScheduleError } from '../../../schedule/schedule-error'
 import { minutesToTime } from '../../../schedule/schedule-format'
 
@@ -26,6 +27,7 @@ export type SlotFormValues = {
   room: string
   requireOnCampus: boolean
   meetingUrl: string
+  autoMeet: boolean
   startsOn: string
   endsOn: string
 }
@@ -40,6 +42,7 @@ function SlotForm({
   initial,
   hasCampusLocation,
   weekdays,
+  autoMeetAvailable,
   onSaved,
   onCancel,
 }: {
@@ -48,14 +51,16 @@ function SlotForm({
   hasCampusLocation: boolean
   /** Monday first: index 0 is weekday 1. */
   weekdays: string[]
+  autoMeetAvailable: boolean
   onSaved: (saved: SlotSaved) => void
   onCancel?: () => void
 }) {
   const t = useTranslations('schedule.timetable')
   const tCommon = useTranslations('common')
   const formRef = useRef<HTMLFormElement>(null)
-  const [online, setOnline] = useState(initial.meetingUrl !== '')
+  const [online, setOnline] = useState(initial.meetingUrl !== '' || initial.autoMeet)
   const [meetingUrl, setMeetingUrl] = useState(initial.meetingUrl)
+  const [autoMeet, setAutoMeet] = useState(initial.autoMeet)
   const [campus, setCampus] = useState(initial.requireOnCampus)
   const [state, dispatch, pending] = useActionState(async (_prev: ActionResult<SlotSaved> | null, data: FormData) => {
     const result =
@@ -67,6 +72,7 @@ function SlotForm({
         formRef.current?.reset()
         setOnline(false)
         setMeetingUrl('')
+        setAutoMeet(false)
         setCampus(false)
       }
       onSaved(result.data)
@@ -163,43 +169,17 @@ function SlotForm({
           {t('termHint')}
         </FieldDescription>
 
-        <label
-          htmlFor={id('online')}
-          className="flex items-start gap-3 has-disabled:cursor-not-allowed has-disabled:opacity-60"
-        >
-          <input
-            id={id('online')}
-            name="online"
-            type="checkbox"
-            checked={online}
-            onChange={(e) => setOnline(e.target.checked)}
-            aria-describedby={id('online-hint')}
-            className="mt-0.5 size-5 shrink-0 accent-primary"
-          />
-          <span className="flex flex-col gap-0.5">
-            <span className="font-medium">{t('online')}</span>
-            <span id={id('online-hint')} className="text-sm text-muted-foreground">
-              {t('onlineHint')}
-            </span>
-          </span>
-        </label>
-        {online && (
-          <Field data-invalid={invalid('meetingUrl')}>
-            <FieldLabel htmlFor={id('meetingUrl')}>{t('meetingUrl')}</FieldLabel>
-            <Input
-              id={id('meetingUrl')}
-              name="meetingUrl"
-              type="url"
-              inputMode="url"
-              maxLength={2048}
-              required
-              value={meetingUrl}
-              onChange={(e) => setMeetingUrl(e.target.value)}
-              placeholder={t('meetingUrlPlaceholder')}
-              aria-invalid={invalid('meetingUrl')}
-            />
-          </Field>
-        )}
+        <OnlineFields
+          idPrefix={id('online')}
+          state={state}
+          online={online}
+          setOnline={setOnline}
+          autoMeet={autoMeet}
+          setAutoMeet={setAutoMeet}
+          meetingUrl={meetingUrl}
+          setMeetingUrl={setMeetingUrl}
+          autoMeetAvailable={autoMeetAvailable}
+        />
         <label
           htmlFor={id('campus')}
           className="flex items-start gap-3 has-disabled:cursor-not-allowed has-disabled:opacity-60"
@@ -293,12 +273,14 @@ export function TimetableEditor({
   defaults,
   hasCampusLocation,
   weekdays,
+  autoMeetAvailable,
 }: {
   courseId: string
   slots: SlotListItem[]
   defaults: SlotFormValues
   hasCampusLocation: boolean
   weekdays: string[]
+  autoMeetAvailable: boolean
 }) {
   const t = useTranslations('schedule.timetable')
   // Held here, not in the row: an edit can replace the slot (and its row) with a new one.
@@ -323,7 +305,7 @@ export function TimetableEditor({
                         <span className="font-medium">{slot.dayLabel}</span>
                         <span className="font-mono text-sm tabular-nums">{time}</span>
                         {slot.requireOnCampus && <Badge variant="secondary">{t('onCampus')}</Badge>}
-                        {slot.meetingUrl !== '' && <Badge variant="outline">{t('online')}</Badge>}
+                        {(slot.meetingUrl !== '' || slot.autoMeet) && <Badge variant="outline">{t('online')}</Badge>}
                       </div>
                       <span className="text-sm text-muted-foreground">
                         {[slot.room, slot.termLabel].filter(Boolean).join(' · ')}
@@ -361,6 +343,7 @@ export function TimetableEditor({
                         initial={slot}
                         hasCampusLocation={hasCampusLocation}
                         weekdays={weekdays}
+                        autoMeetAvailable={autoMeetAvailable}
                         onSaved={(saved) => {
                           setEditing(null)
                           setNotice(saved)
@@ -387,6 +370,7 @@ export function TimetableEditor({
             initial={defaults}
             hasCampusLocation={hasCampusLocation}
             weekdays={weekdays}
+            autoMeetAvailable={autoMeetAvailable}
             onSaved={setNotice}
           />
         </Panel>

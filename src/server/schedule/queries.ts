@@ -1,7 +1,15 @@
 import { and, eq, gte, inArray, lt, lte } from 'drizzle-orm'
 import { config } from '@/server/core/config'
 import type { Db } from '@/server/db'
-import { attendanceSession, attendanceWindow, classDateStatus, classExtra, classSlot, course } from '@/server/db/schema'
+import {
+  attendanceSession,
+  attendanceWindow,
+  classDateStatus,
+  classExtra,
+  classMeeting,
+  classSlot,
+  course,
+} from '@/server/db/schema'
 import { addDays, instantAt, localDateOf } from '@/server/lib/local-time'
 import {
   buildSittings,
@@ -135,18 +143,18 @@ export async function sittingsWithAttendance(db: Db, sittings: Sitting[]): Promi
 }
 
 /**
- * The occurrence behind a key, with the meeting URL and the course's owner. This is only for server-side
- * gating: `Occurrence` itself never carries the URL into page or week data.
+ * The occurrence behind a key, its pasted URL (if any) and the course's owner. This is only for server-side
+ * gating; generation happens after the caller checks who is asking. `Occurrence` never carries a URL into pages.
  */
 export async function loadOnlineOccurrence(
   db: Db,
   key: string,
-): Promise<{ occurrence: Occurrence; courseId: string; lecturerId: string; meetingUrl: string } | null> {
+): Promise<{ occurrence: Occurrence; courseId: string; lecturerId: string; meetingUrl: string | null } | null> {
   const parsed = parseOccurrenceKey(key)
   if (!parsed) return null
 
   let courseId: string
-  let meetingUrl: string | null
+  let meetingUrl: string | null = null
   let date: string
   if (parsed.kind === 'slot') {
     const [slot] = await db
@@ -167,21 +175,20 @@ export async function loadOnlineOccurrence(
     meetingUrl = extra.meetingUrl
     date = localDateOf(extra.startsAt, config.timeZone)
   }
-  if (meetingUrl === null) return null
 
   const [owned] = await db.select({ lecturerId: course.lecturerId }).from(course).where(eq(course.id, courseId))
   if (!owned) return null
   const occurrence = (await loadOccurrences(db, [courseId], date, date)).find((o) => o.key === key)
-  if (!occurrence) return null
+  if (!occurrence?.online) return null
   return { occurrence, courseId, lecturerId: owned.lecturerId, meetingUrl }
 }
 
-/** Occurrence key → meeting URL, for the course owner's class page only. */
+/** Occurrence key → meeting URL, for the course owner's class page only. Includes cached generated links. */
 export async function meetingUrlsFor(db: Db, occurrences: Occurrence[]): Promise<Map<string, string>> {
   const urls = new Map<string, string>()
   const slotIds = [...new Set(occurrences.flatMap((o) => (o.source.kind === 'slot' ? [o.source.slotId] : [])))]
   const extraIds = occurrences.flatMap((o) => (o.source.kind === 'extra' ? [o.source.extraId] : []))
-  const [slots, extras] = await Promise.all([
+  const [slots, extras, generated] = await Promise.all([
     slotIds.length === 0
       ? []
       : db
@@ -194,9 +201,21 @@ export async function meetingUrlsFor(db: Db, occurrences: Occurrence[]): Promise
           .select({ id: classExtra.id, meetingUrl: classExtra.meetingUrl })
           .from(classExtra)
           .where(inArray(classExtra.id, extraIds)),
+    occurrences.length === 0
+      ? []
+      : db
+          .select({ key: classMeeting.occurrenceKey, meetingUrl: classMeeting.meetingUrl })
+          .from(classMeeting)
+          .where(
+            inArray(
+              classMeeting.occurrenceKey,
+              occurrences.map((o) => o.key),
+            ),
+          ),
   ])
   const bySlot = new Map(slots.map((s) => [s.id, s.meetingUrl]))
   const byExtra = new Map(extras.map((e) => [e.id, e.meetingUrl]))
+  for (const row of generated) urls.set(row.key, row.meetingUrl)
   for (const o of occurrences) {
     const url = o.source.kind === 'slot' ? bySlot.get(o.source.slotId) : byExtra.get(o.source.extraId)
     if (url) urls.set(o.key, url)

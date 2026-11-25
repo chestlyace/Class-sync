@@ -252,6 +252,8 @@
       "codePlaceholder": "ex. INF 214",
       "semester": "Semestre",
       "semesterOption": "Semestre {n}",
+      "firstSlot": "Créer le premier cours en ligne (recommandé)",
+      "firstSlotHint": "Ajoute un cours hebdomadaire en ligne maintenant, sans ouvrir l’emploi du temps.",
       "submit": "Créer le cours",
       "submitting": "Création…"
     },
@@ -807,6 +809,7 @@
     "thisWeek": "Cette semaine",
     "joinNotOpen": "Le lien Google Meet s'ouvre 15 minutes avant le début du cours.",
     "joinEnded": "Le cours est terminé : son lien Google Meet n'est plus disponible.",
+    "joinUnavailable": "Le lien Google Meet n'est pas encore disponible. Réessayez plus tard ou demandez à votre enseignant.",
     "newSchool": "Nouvel établissement",
     "newClass": "Nouvelle classe",
     "newCourse": "Nouveau cours",
@@ -3428,6 +3431,15 @@
     "previousWeekLabel": "Semaine précédente",
     "followingWeekLabel": "Semaine suivante",
     "backToThisWeek": "Cette semaine",
+    "online": {
+      "title": "Cours en ligne",
+      "hint": "Les étudiants rejoignent sur Google Meet. La présence sur le campus est désactivée.",
+      "auto": "Générer un lien Meet pour chaque cours",
+      "autoHint": "Clasync crée un nouveau lien Google Meet dès le premier besoin, puis le réutilise.",
+      "autoUnavailable": "Les liens automatiques ne sont pas encore configurés. Collez un lien Google Meet.",
+      "meetingUrl": "Lien Google Meet",
+      "meetingUrlPlaceholder": "https://meet.google.com/abc-defg-hij"
+    },
     "noClasses": "Aucun cours cette semaine.",
     "empty": {
       "title": "Pas encore d’emploi du temps",

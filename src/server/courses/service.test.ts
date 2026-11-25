@@ -1,11 +1,14 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { eq } from 'drizzle-orm'
+import { setNowForTests } from '@/server/core/clock'
 import { config, setConfigForTests } from '@/server/core/config'
 import type { Ctx } from '@/server/core/context'
 import type { Db } from '@/server/db'
-import { class_, classLecturer, classStudent, course, courseRosterAdjustment, school } from '@/server/db/schema'
+import { class_, classLecturer, classSlot, classStudent, course, courseRosterAdjustment, school } from '@/server/db/schema'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
 import { createSchool } from '@/server/schools/service'
+import { setScheduleQueueForTests } from '@/server/schedule/queue'
 import {
   createClass,
   joinClassAsLecturer,
@@ -113,6 +116,61 @@ describe('courses service', () => {
       await expect(
         createCourse(lecturer, { classId: cls.id, ...input } as Parameters<typeof createCourse>[1]),
       ).rejects.toMatchObject({ code: 'VALIDATION' })
+    }
+  })
+
+  it('createCourse can add the first online weekly slot in the same submit', async () => {
+    setNowForTests(() => new Date('2026-11-16T07:00:00Z'))
+    setScheduleQueueForTests({ send: vi.fn(async () => {}) })
+    try {
+      const { lecturer, cls } = await setup()
+      const made = await createCourse(lecturer, {
+        classId: cls.id,
+        title: 'Networks',
+        semester: 1,
+        firstSlot: {
+          weekday: 1,
+          startMinute: 8 * 60,
+          endMinute: 10 * 60,
+          room: 'B2',
+          requireOnCampus: false,
+          meetingUrl: null,
+          autoMeet: true,
+          startsOn: '2026-11-01',
+          endsOn: '2026-12-31',
+        },
+      })
+      const slots = await db.select().from(classSlot).where(eq(classSlot.courseId, made.id))
+      expect(slots).toHaveLength(1)
+      expect(slots[0]).toMatchObject({
+        weekday: 1,
+        startMinute: 480,
+        endMinute: 600,
+        room: 'B2',
+        meetingUrl: null,
+        autoMeet: true,
+      })
+
+      await expect(
+        createCourse(lecturer, {
+          classId: cls.id,
+          title: 'Invalid online class',
+          semester: 1,
+          firstSlot: {
+            weekday: 1,
+            startMinute: 480,
+            endMinute: 600,
+            room: null,
+            requireOnCampus: true,
+            meetingUrl: 'https://meet.google.com/abc-defg-hij',
+            startsOn: '2026-11-01',
+            endsOn: '2026-12-31',
+          },
+        }),
+      ).rejects.toMatchObject({ code: 'VALIDATION', details: { fields: ['requireOnCampus'] } })
+    } finally {
+      setScheduleQueueForTests(null)
+      setNowForTests(null)
     }
   })
 

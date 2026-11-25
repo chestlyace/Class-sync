@@ -35,6 +35,8 @@ You need **Node 24** (npm 11) and a **local PostgreSQL** server.
    AUTH_REQUIRE_EMAIL_VERIFICATION=false
    ```
 
+   For automatic Google Meet links, follow [docs/google-meet-setup.md](docs/google-meet-setup.md). Without it, online classes use links pasted by the lecturer.
+
 4. Apply the migrations. `drizzle-kit` reads `DATABASE_URL` from the shell, so pass it explicitly:
 
    ```bash

@@ -3,7 +3,6 @@
 import { Video } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useActionState, useState } from 'react'
-import { isInvalidField } from '@/components/action-error'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -15,22 +14,30 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
 import type { ActionResult } from '@/lib/action-result'
 import { submitWith } from '@/lib/form-submit'
 import { moveOnlineAction } from './actions'
+import { OnlineFields } from './online-fields'
 import { ScheduleError } from './schedule-error'
 
 /**
  * Moves one future in-person class online. The original date is cancelled and replaced by an online class at the
  * same time, so the lecturer keeps using the make-up flow they already know.
  */
-export function MoveOnlineButton({ occurrenceKey, when }: { occurrenceKey: string; when: string }) {
+export function MoveOnlineButton({
+  occurrenceKey,
+  when,
+  autoMeetAvailable,
+}: {
+  occurrenceKey: string
+  when: string
+  autoMeetAvailable: boolean
+}) {
   const t = useTranslations('schedule.classPage')
-  const tMakeUp = useTranslations('schedule.makeUp')
   const tCommon = useTranslations('common')
   const [open, setOpen] = useState(false)
+  const [autoMeet, setAutoMeet] = useState(false)
+  const [meetingUrl, setMeetingUrl] = useState('')
   const [state, dispatch, pending] = useActionState(
     async (_prev: ActionResult<never> | null, data: FormData) => moveOnlineAction(occurrenceKey, data),
     null,
@@ -50,22 +57,18 @@ export function MoveOnlineButton({ occurrenceKey, when }: { occurrenceKey: strin
           <DialogDescription>{t('moveOnlineBody', { when })}</DialogDescription>
         </DialogHeader>
         <form onSubmit={submitWith(dispatch)} noValidate className="flex flex-col gap-4">
-          <FieldGroup>
-            <Field data-invalid={isInvalidField(state, 'meetingUrl') || undefined}>
-              <FieldLabel htmlFor="move-online-url">{tMakeUp('meetingUrl')}</FieldLabel>
-              <Input
-                id="move-online-url"
-                name="meetingUrl"
-                type="url"
-                inputMode="url"
-                maxLength={2048}
-                required
-                placeholder={tMakeUp('meetingUrlPlaceholder')}
-                aria-invalid={isInvalidField(state, 'meetingUrl') || undefined}
-              />
-              <FieldDescription>{t('meetingUrlHint')}</FieldDescription>
-            </Field>
-          </FieldGroup>
+          <OnlineFields
+            idPrefix="move-online"
+            state={state}
+            online
+            setOnline={() => {}}
+            autoMeet={autoMeet}
+            setAutoMeet={setAutoMeet}
+            meetingUrl={meetingUrl}
+            setMeetingUrl={setMeetingUrl}
+            autoMeetAvailable={autoMeetAvailable}
+            alwaysOnline
+          />
           <ScheduleError state={state} />
           <DialogFooter>
             <DialogClose asChild>

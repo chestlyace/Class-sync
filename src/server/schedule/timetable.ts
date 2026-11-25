@@ -1,5 +1,4 @@
 import { and, asc, eq, gt, gte, inArray, like, lt, lte, notInArray } from 'drizzle-orm'
-import { z } from 'zod'
 import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import type { Ctx } from '@/server/core/context'
@@ -10,22 +9,20 @@ import { requireCourseOwner } from '@/server/courses/service'
 import { addDays, instantAt, isoWeekday, localDateOf } from '@/server/lib/local-time'
 import { pushClassModeChanged, pushTimetableChanged } from '@/server/push/course-events'
 import { getSchool } from '@/server/schools/service'
-import { parseMeetingUrl } from './meeting-url'
+import { cachedMeetingKeysForSlot, deleteCachedMeetings } from './meetings'
+import { parseOccurrenceKey } from './occurrences'
+import {
+  assertOnlineRules,
+  isDate,
+  parseSlotInput,
+  type ParsedSlot,
+  type SlotInput,
+} from './slot-input'
 import { enqueueCourseDay } from './notices'
 
-export type SlotInput = {
-  weekday: number
-  startMinute: number
-  endMinute: number
-  room: string | null
-  requireOnCampus: boolean
-  /** Trimmed Google Meet URL, or null when the class is in person. */
-  meetingUrl: string | null
-  startsOn: string
-  endsOn: string
-}
+export { assertOnlineRules, isDate, MAX_TERM_DAYS, type SlotInput } from './slot-input'
 
-export type SlotView = SlotInput & { id: string; courseId: string }
+export type SlotView = ParsedSlot & { id: string; courseId: string }
 
 export type SlotOverlap = {
   courseId: string
@@ -39,70 +36,6 @@ export type SlotOverlap = {
 
 type SlotRow = typeof classSlot.$inferSelect
 
-const MAX_TERM_DAYS = 366
-
-const isDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && addDays(value, 0) === value
-
-const daysBetween = (from: string, to: string) => {
-  const ms = (d: string) => {
-    const [y, m, day] = d.split('-').map(Number)
-    return Date.UTC(y, m - 1, day)
-  }
-  return Math.round((ms(to) - ms(from)) / 86_400_000)
-}
-
-const date = z.string().refine(isDate, 'Invalid date')
-const minute = z.number().int().min(0).max(1440)
-
-const slotSchema = z
-  .object({
-    weekday: z.number().int().min(1).max(7),
-    startMinute: minute,
-    endMinute: minute,
-    // Empty means "no room".
-    room: z
-      .string()
-      .trim()
-      .max(60)
-      .nullish()
-      .transform((r) => r || null),
-    requireOnCampus: z.boolean(),
-    meetingUrl: z.string().nullish(),
-    startsOn: date,
-    endsOn: date,
-  })
-  .superRefine((slot, ctx) => {
-    if (slot.startMinute >= slot.endMinute) {
-      ctx.addIssue({ code: 'custom', path: ['endMinute'], message: 'A class must end after it starts' })
-    }
-    if (isDate(slot.startsOn) && isDate(slot.endsOn)) {
-      if (slot.endsOn < slot.startsOn) {
-        ctx.addIssue({ code: 'custom', path: ['endsOn'], message: 'The term must not end before it starts' })
-      } else if (daysBetween(slot.startsOn, slot.endsOn) > MAX_TERM_DAYS) {
-        ctx.addIssue({ code: 'custom', path: ['endsOn'], message: 'The term is too long' })
-      }
-    }
-  })
-
-function parseInput(input: unknown): SlotInput {
-  const result = slotSchema.safeParse(input)
-  if (!result.success) {
-    const fields = [...new Set(result.error.issues.map((i) => i.path.join('.')))]
-    throw new AppError('VALIDATION', 'Invalid input', { fields })
-  }
-  return { ...result.data, meetingUrl: parseMeetingUrl(result.data.meetingUrl) }
-}
-
-/** An online class can never also require the student's location, in the form or from any other caller. */
-export function assertOnlineRules(data: { meetingUrl: string | null; requireOnCampus: boolean }): void {
-  if (data.meetingUrl !== null && data.requireOnCampus) {
-    throw new AppError('VALIDATION', 'An online class cannot require students on campus', {
-      fields: ['requireOnCampus'],
-      reason: 'online_and_campus',
-    })
-  }
-}
-
 function toView(row: SlotRow): SlotView {
   return {
     id: row.id,
@@ -113,6 +46,7 @@ function toView(row: SlotRow): SlotView {
     room: row.room,
     requireOnCampus: row.requireOnCampus,
     meetingUrl: row.meetingUrl,
+    autoMeet: row.autoMeet,
     startsOn: row.startsOn,
     endsOn: row.endsOn,
   }
@@ -120,8 +54,9 @@ function toView(row: SlotRow): SlotView {
 
 const today = () => localDateOf(now(), config.timeZone)
 
-/** Online/in-person is decided by the link, not by the pasted URL text. */
-const modeOf = (slot: { meetingUrl: string | null }) => (slot.meetingUrl === null ? 'campus' : 'online')
+/** Online/in-person is decided by the mode, not by the pasted URL text. */
+const modeOf = (slot: { meetingUrl: string | null; autoMeet?: boolean }) =>
+  slot.meetingUrl !== null || slot.autoMeet === true ? 'online' : 'campus'
 
 /** The first occurrence of this slot from today on, for a notification's day and time. */
 function firstUpcomingStart(slot: Pick<SlotRow, 'startsOn' | 'endsOn' | 'weekday' | 'startMinute'>, todayDate: string) {
@@ -223,7 +158,7 @@ export async function createSlot(
   input: SlotInput,
 ): Promise<{ slot: SlotView; overlaps: SlotOverlap[] }> {
   const owned = await requireCourseOwner(ctx, courseId)
-  const data = parseInput(input)
+  const data = parseSlotInput(input)
   assertOnlineRules(data)
   await requireCampusLocation(ctx, owned.schoolId, data)
 
@@ -242,29 +177,40 @@ export async function updateSlot(
   input: SlotInput,
 ): Promise<{ slot: SlotView; overlaps: SlotOverlap[] }> {
   const { slot: old, owned } = await requireOwnedSlot(ctx, slotId)
-  const data = parseInput(input)
+  const data = parseSlotInput(input)
   assertOnlineRules(data)
   await requireCampusLocation(ctx, owned.schoolId, data)
 
   const todayDate = today()
   const hasPast = old.startsOn < todayDate
   const sameWeekday = data.weekday === old.weekday
-  // Only the link changed: no dates, time, room or campus rule moved with it.
-  const linkOnlyEdit =
-    data.meetingUrl !== old.meetingUrl &&
-    data.requireOnCampus === old.requireOnCampus &&
-    data.weekday === old.weekday &&
-    data.startMinute === old.startMinute &&
-    data.endMinute === old.endMinute &&
+  const scheduleChanged =
+    data.weekday !== old.weekday ||
+    data.startMinute !== old.startMinute ||
+    data.endMinute !== old.endMinute ||
+    data.startsOn !== old.startsOn ||
+    data.endsOn !== old.endsOn
+  // Only the link or the online mode changed: no dates, time, room or campus rule moved with it.
+  const modeOnlyEdit =
+    (data.meetingUrl !== old.meetingUrl || data.autoMeet !== old.autoMeet) &&
+    !scheduleChanged &&
     data.room === old.room &&
-    data.startsOn === old.startsOn &&
-    data.endsOn === old.endsOn
+    data.requireOnCampus === old.requireOnCampus
   const modeChanged = modeOf(data) !== modeOf(old)
 
-  if (!hasPast) {
+  // Dates, time, weekday, room or campus rule moving on a slot with history creates a new slot from today; changing
+  // only how students join does not, so today's joins and a cancelled today keep pointing at the same class.
+  if (!hasPast || modeOnlyEdit) {
     // Edit in place. Dated statuses survive only on the same weekday and inside the new term.
     const row = await ctx.db.transaction(async (tx) => {
       const [updated] = await tx.update(classSlot).set(data).where(eq(classSlot.id, old.id)).returning()
+      if ((old.autoMeet || data.autoMeet) && (scheduleChanged || data.autoMeet !== old.autoMeet)) {
+        const staleKeys = (await cachedMeetingKeysForSlot(tx, old.id)).filter((key) => {
+          const parsed = parseOccurrenceKey(key)
+          return parsed?.kind === 'slot' && parsed.date >= todayDate
+        })
+        await deleteCachedMeetings(tx, staleKeys)
+      }
       const stale = await tx.select().from(classDateStatus).where(eq(classDateStatus.slotId, old.id))
       const drop = stale
         .filter((s) => !sameWeekday || s.date < data.startsOn || s.date > data.endsOn)
@@ -280,7 +226,7 @@ export async function updateSlot(
     const nextStart = firstUpcomingStart(row, todayDate)
     await afterWrite(ctx, row.courseId, {
       // A pure link edit gets the specific online/campus push instead of the generic one.
-      timetable: !linkOnlyEdit,
+      timetable: !modeOnlyEdit,
       mode: modeChanged && nextStart ? modeOf(data) : undefined,
       day: nextStart,
       room: data.room,
@@ -300,6 +246,14 @@ export async function updateSlot(
       .update(classSlot)
       .set({ endsOn: old.endsOn < yesterday ? old.endsOn : yesterday })
       .where(eq(classSlot.id, old.id))
+    // Future dates move to a new slot key; their cached links must follow the new schedule.
+    if (old.autoMeet || data.autoMeet) {
+      const movedKeys = (await cachedMeetingKeysForSlot(tx, old.id)).filter((key) => {
+        const parsed = parseOccurrenceKey(key)
+        return parsed?.kind === 'slot' && parsed.date >= newStart
+      })
+      await deleteCachedMeetings(tx, movedKeys)
+    }
     const [created] = await tx
       .insert(classSlot)
       .values({ ...data, startsOn: newStart, courseId: old.courseId, createdBy: ctx.user.id })
@@ -345,7 +299,7 @@ export async function updateSlot(
   const overlaps = await findOverlaps(ctx, { ...data, startsOn: newStart }, [row.id, old.id])
   const nextStart = firstUpcomingStart(row, todayDate)
   await afterWrite(ctx, row.courseId, {
-    timetable: !linkOnlyEdit,
+    timetable: !modeOnlyEdit,
     mode: modeChanged && nextStart ? modeOf(data) : undefined,
     day: nextStart,
     room: data.room,
@@ -369,9 +323,17 @@ export async function removeSlot(ctx: Ctx, slotId: string): Promise<void> {
       await tx
         .delete(classDateStatus)
         .where(and(eq(classDateStatus.slotId, slot.id), gte(classDateStatus.date, todayDate)))
+      const staleKeys = (await cachedMeetingKeysForSlot(tx, slot.id)).filter((key) => {
+        const parsed = parseOccurrenceKey(key)
+        return parsed?.kind === 'slot' && parsed.date >= todayDate
+      })
+      await deleteCachedMeetings(tx, staleKeys)
     })
   } else {
-    await ctx.db.delete(classSlot).where(eq(classSlot.id, slot.id))
+    await ctx.db.transaction(async (tx) => {
+      await tx.delete(classSlot).where(eq(classSlot.id, slot.id))
+      await deleteCachedMeetings(tx, await cachedMeetingKeysForSlot(tx, slot.id))
+    })
   }
   await afterWrite(ctx, slot.courseId, { timetable: true })
 }

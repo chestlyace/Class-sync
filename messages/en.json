@@ -252,6 +252,8 @@
       "codePlaceholder": "e.g. SWE 214",
       "semester": "Semester",
       "semesterOption": "Semester {n}",
+      "firstSlot": "Create first online slot (Recommended)",
+      "firstSlotHint": "Adds a weekly online class now, so you don't have to open the timetable.",
       "submit": "Create course",
       "submitting": "Creating…"
     },
@@ -807,6 +809,7 @@
     "thisWeek": "This week",
     "joinNotOpen": "The Google Meet link opens 15 minutes before the class starts.",
     "joinEnded": "The class has ended, so its Google Meet link is no longer available.",
+    "joinUnavailable": "The Google Meet link is not available yet. Try again later or ask your lecturer.",
     "newSchool": "New school",
     "newClass": "New class",
     "newCourse": "New course",
@@ -3428,6 +3431,15 @@
     "previousWeekLabel": "Previous week",
     "followingWeekLabel": "Next week",
     "backToThisWeek": "This week",
+    "online": {
+      "title": "Online class",
+      "hint": "Students join on Google Meet. On-campus check-in is turned off.",
+      "auto": "Generate a Meet link for each class",
+      "autoHint": "Clasync creates a fresh Google Meet link when the class is first needed, then reuses it.",
+      "autoUnavailable": "Automatic links are not set up yet. Paste a Google Meet link instead.",
+      "meetingUrl": "Google Meet link",
+      "meetingUrlPlaceholder": "https://meet.google.com/abc-defg-hij"
+    },
     "noClasses": "No classes this week.",
     "empty": {
       "title": "No timetable yet",

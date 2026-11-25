@@ -13,6 +13,7 @@ import {
 } from '@/server/courses/service'
 import { createSession, openWindow } from '@/server/attendance/sessions'
 import { addDays, localDateOf } from '@/server/lib/local-time'
+import { ensureGeneratedMeetingUrl } from './meetings'
 import { buildSittings, parseOccurrenceKey, type Occurrence, type Sitting } from './occurrences'
 import { JOIN_LEAD_MS } from './join-window'
 import {
@@ -239,7 +240,8 @@ export async function getClassSitting(
 }> {
   const { sitting, course } = await requireOwnedSitting(ctx, sittingKey)
   const urls = await meetingUrlsFor(ctx.db, sitting.occurrences)
-  const online = sitting.occurrences.find((o) => urls.has(o.key)) ?? null
+  const online = sitting.occurrences.find((o) => o.online) ?? null
+  const meetingUrl = online ? urls.get(online.key) ?? (await ensureGeneratedMeetingUrl(ctx, online)) : null
   const future = now()
   const movable = sitting.occurrences.find(
     (o) => !o.online && o.status === null && o.startsAt.getTime() > future.getTime(),
@@ -249,7 +251,7 @@ export async function getClassSitting(
     course,
     room: sitting.occurrences[0].room,
     sessionId: await sittingSessionId(ctx, sitting),
-    meetingUrl: online ? urls.get(online.key) ?? null : null,
+    meetingUrl,
     onlineOccurrenceKey: online?.key ?? null,
     movableOccurrence: movable
       ? { key: movable.key, startsAt: movable.startsAt, endsAt: movable.endsAt, room: movable.room }

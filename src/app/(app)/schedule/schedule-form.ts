@@ -31,15 +31,29 @@ function parseWeekday(data: FormData): number {
   return Number(raw)
 }
 
+/** Online fields shared by every class form: one mode only, and a checked Online box needs a way to get a link. */
+export function parseOnlineForm(data: FormData): { online: boolean; autoMeet: boolean; meetingUrl: string } {
+  const autoMeet = parseCheckbox(data, 'autoMeet')
+  const meetingUrl = formString(data, 'meetingUrl')
+  // A pasted link is enough on its own (older forms and direct callers); the checkbox only matters when nothing is pasted.
+  if (!parseCheckbox(data, 'online') && !autoMeet && meetingUrl === '') {
+    return { online: false, autoMeet: false, meetingUrl: '' }
+  }
+  if (!autoMeet && meetingUrl === '') invalid('meetingUrl')
+  return { online: true, autoMeet, meetingUrl }
+}
+
 /** The timetable slot form. Dates and the room go through as typed: the service validates them. */
 export function parseSlotForm(data: FormData): SlotInput {
+  const online = parseOnlineForm(data)
   return {
     weekday: parseWeekday(data),
     startMinute: parseTimeField(data, 'startMinute'),
     endMinute: parseTimeField(data, 'endMinute'),
     room: formString(data, 'room'),
     requireOnCampus: parseCheckbox(data, 'requireOnCampus'),
-    meetingUrl: formString(data, 'meetingUrl'),
+    meetingUrl: online.meetingUrl,
+    ...(online.autoMeet ? { autoMeet: true } : {}),
     startsOn: formString(data, 'startsOn'),
     endsOn: formString(data, 'endsOn'),
   }
@@ -47,13 +61,15 @@ export function parseSlotForm(data: FormData): SlotInput {
 
 /** The make-up form; `replaces` (a sitting's key) only when the form carries one. */
 export function parseMakeUpForm(data: FormData): MakeUpInput & { replaces?: string } {
+  const online = parseOnlineForm(data)
   const input: MakeUpInput & { replaces?: string } = {
     date: formString(data, 'date'),
     startMinute: parseTimeField(data, 'startMinute'),
     endMinute: parseTimeField(data, 'endMinute'),
     room: formString(data, 'room'),
     requireOnCampus: parseCheckbox(data, 'requireOnCampus'),
-    meetingUrl: formString(data, 'meetingUrl'),
+    meetingUrl: online.meetingUrl,
+    ...(online.autoMeet ? { autoMeet: true } : {}),
   }
   const replaces = formString(data, 'replaces')
   if (replaces !== '') input.replaces = replaces

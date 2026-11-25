@@ -511,6 +511,15 @@ describe('date changes', () => {
     await expect(moveClassOnline(fx.lecturer, key, url)).rejects.toMatchObject({ code: 'VALIDATION' })
   })
 
+  it('can move a class online with a generated link instead of a pasted one', async () => {
+    const slot = await seedSlot()
+    const newKey = await moveClassOnline(fx.lecturer, `slot:${slot.id}:${MONDAY}`, { autoMeet: true })
+
+    const [extra] = await db.select().from(classExtra)
+    expect(newKey).toBe(`extra:${extra.id}`)
+    expect(extra).toMatchObject({ meetingUrl: null, autoMeet: true, requireOnCampus: false })
+  })
+
   it('opens the sitting the online replacement joins, not the replacement key', async () => {
     const first = await seedSlot({ endMinute: 9 * 60 })
     const second = await seedSlot({ startMinute: 9 * 60 + 30, endMinute: 10 * 60 + 30 })
