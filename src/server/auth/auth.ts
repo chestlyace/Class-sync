@@ -17,6 +17,7 @@ import { toE164 } from '@/lib/phone'
 import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import { AppError } from '@/server/core/errors'
+import { isVerificationPending } from '@/server/core/guards'
 import { db, type Db } from '@/server/db'
 import * as schema from '@/server/db/schema'
 import { sendEmail } from '@/server/email/send'
@@ -171,8 +172,12 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
       before: createAuthMiddleware(async (ctx) => {
         if (ctx.path !== '/oauth2/consent' || (ctx.body as { accept?: unknown } | undefined)?.accept !== true) return
         const session = await getSessionFromCtx(ctx)
-        const u = session?.user as { role?: unknown; emailVerified?: boolean } | undefined
-        if (!u || u.role !== 'lecturer' || (config.requireEmailVerification && !u.emailVerified)) {
+        const u = session?.user as { role?: unknown; emailVerified?: boolean; phoneNumberVerified?: boolean } | undefined
+        if (
+          !u ||
+          u.role !== 'lecturer' ||
+          isVerificationPending({ emailVerified: u.emailVerified === true, phoneNumberVerified: u.phoneNumberVerified === true })
+        ) {
           throw new APIError('FORBIDDEN', { message: "Clasync's assistant connection is for lecturers", code: 'LECTURERS_ONLY' })
         }
       }),
@@ -180,7 +185,15 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
     database: drizzleAdapter(database, { provider: 'pg', schema }),
     emailAndPassword: {
       enabled: true,
-      requireEmailVerification: config.requireEmailVerification,
+      // An unverified account may sign in: it gets a limited session (the verify banner, and
+      // `requireVerified` keeps it from creating or joining anything) that the sign-in and
+      // sign-up pages use to attach a WhatsApp number or send a verification email. Whether an
+      // account counts as verified is `isAccountVerified`, not Better Auth's own gate.
+      requireEmailVerification: false,
+      // No session at sign-up: the person proves an email or a WhatsApp number first. This also
+      // makes a sign-up with an address already in use answer exactly like a new one (no leak).
+      // With verification switched off (local development) the account opens straight away.
+      autoSignIn: !config.requireEmailVerification,
       resetPasswordTokenExpiresIn: RESET_LINK_TTL_SECONDS,
       // A changed password must end every session, including one an attacker may already hold.
       revokeSessionsOnPasswordReset: true,
@@ -259,10 +272,10 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
       // Students often read mail days later, on patchy data. The link only confirms the address
       // (it does not sign anyone in), so a long life costs little.
       expiresIn: VERIFY_LINK_TTL_SECONDS,
-      sendOnSignUp: config.requireEmailVerification,
-      // An unverified user who signs in (e.g. after the first link expired) gets a fresh link,
-      // instead of being stuck with no way to verify.
-      sendOnSignIn: config.requireEmailVerification,
+      // Never sent on its own: the person chooses email or WhatsApp at sign-up, and the verify
+      // banner (and the admin) ask for a link when one is wanted.
+      sendOnSignUp: false,
+      sendOnSignIn: false,
       sendVerificationEmail: async ({ user, url }) => {
         // additionalFields are not reflected in this callback's user type.
         const rawLocale = (user as { locale?: unknown }).locale

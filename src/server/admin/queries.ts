@@ -168,6 +168,7 @@ export type PersonRow = {
   email: string
   role: Role
   emailVerified: boolean
+  phoneNumberVerified: boolean
   createdAt: Date
   lastSignInAt: Date | null
   lastSeenAt: Date | null
@@ -184,6 +185,7 @@ const personColumns = {
   email: user.email,
   role: user.role,
   emailVerified: user.emailVerified,
+  phoneNumberVerified: user.phoneNumberVerified,
   createdAt: user.createdAt,
   lastSignInAt: user.lastSignInAt,
   lastSeenAt: user.lastSeenAt,

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { config, setConfigForTests } from './config'
-import { isVerificationPending, requireAdmin, requireRole, requireVerified } from './guards'
+import { isAccountVerified, isVerificationPending, requireAdmin, requireRole, requireVerified } from './guards'
 import type { Ctx, SessionUser } from './context'
 import type { Db } from '../db'
 import { AppError } from './errors'
@@ -12,6 +12,7 @@ const baseUser: SessionUser = {
   role: 'lecturer',
   locale: 'en',
   emailVerified: true,
+  phoneNumberVerified: false,
 }
 
 function ctx(overrides: Partial<SessionUser> = {}): Ctx {
@@ -45,6 +46,17 @@ describe('guards', () => {
     expect(isVerificationPending(ctx().user)).toBe(false)
     setConfigForTests({ requireEmailVerification: false })
     expect(isVerificationPending(ctx({ emailVerified: false }).user)).toBe(false)
+  })
+
+  it('counts a verified WhatsApp number as a verified account, with or without a verified email', () => {
+    setConfigForTests({ requireEmailVerification: true })
+    expect(isAccountVerified({ emailVerified: false, phoneNumberVerified: true })).toBe(true)
+    expect(isAccountVerified({ emailVerified: true, phoneNumberVerified: false })).toBe(true)
+    expect(isAccountVerified({ emailVerified: false, phoneNumberVerified: false })).toBe(false)
+    expect(isVerificationPending(ctx({ emailVerified: false, phoneNumberVerified: true }).user)).toBe(false)
+    expect(isVerificationPending(ctx({ emailVerified: false, phoneNumberVerified: false }).user)).toBe(true)
+    expect(() => requireVerified(ctx({ emailVerified: false, phoneNumberVerified: true }))).not.toThrow()
+    expect(() => requireRole(ctx({ emailVerified: false, phoneNumberVerified: true }), 'lecturer')).not.toThrow()
   })
 
   it('requireRole throws FORBIDDEN when a student calls a lecturer action', () => {

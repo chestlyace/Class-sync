@@ -179,6 +179,7 @@ export async function resolveMcpCaller(req: Request, deps?: McpAuthDeps): Promis
       role: user.role,
       locale: user.locale,
       emailVerified: user.emailVerified,
+      phoneNumberVerified: user.phoneNumberVerified,
     })
     .from(user)
     .where(eq(user.id, verified.userId))
@@ -195,6 +196,7 @@ export async function resolveMcpCaller(req: Request, deps?: McpAuthDeps): Promis
     role: 'lecturer',
     locale: isLocale(row.locale) ? row.locale : 'en',
     emailVerified: row.emailVerified,
+    phoneNumberVerified: row.phoneNumberVerified,
   }
   if (isVerificationPending(sessionUser)) return jsonRpcError(403, 'Verify your email address in Clasync first')
 

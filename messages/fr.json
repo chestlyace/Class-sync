@@ -2651,7 +2651,8 @@
     },
     "badges": {
       "admin": "Admin",
-      "unverified": "Non vérifié",
+      "unverified": "E-mail non vérifié",
+      "whatsappVerified": "WhatsApp vérifié",
       "suspended": "Suspendu"
     },
     "overview": {
