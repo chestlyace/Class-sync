@@ -5,7 +5,7 @@ import { db } from '@/server/db'
 import { user, whatsappLink, whatsappPreference } from '@/server/db/schema'
 import { whatsAppVerificationEnabled } from '@/server/whatsapp/config'
 import { auth } from './auth'
-import { codesAvailableToday } from './phone-otp'
+import { codesAvailableToday, resetCodesAvailableToday } from './phone-otp'
 
 export type VerifyWhatsAppInput = { phone: string; code: string; alerts: boolean }
 export type VerifyWhatsAppCodeError = 'INVALID_OTP' | 'OTP_EXPIRED' | 'TOO_MANY_ATTEMPTS' | 'NUMBER_TAKEN' | 'UNAUTHORIZED'
@@ -64,8 +64,16 @@ export async function verifyWhatsAppCode(input: VerifyWhatsAppInput, headers: He
 
 /**
  * Whether pages should offer verification by WhatsApp now: WhatsApp codes are switched on and today's
- * platform budget of codes still has room. Pages pass the answer to their client components as a boolean.
+ * platform budget of verification codes still has room. Pages pass the answer to their client components as a boolean.
  */
 export async function whatsAppCodesOpen(): Promise<boolean> {
   return whatsAppVerificationEnabled() && (await codesAvailableToday(db))
+}
+
+/**
+ * The same for "Forgot password": WhatsApp codes are switched on and today's budget of password-reset codes,
+ * which is kept apart from the verification one, still has room.
+ */
+export async function whatsAppResetCodesOpen(): Promise<boolean> {
+  return whatsAppVerificationEnabled() && (await resetCodesAvailableToday(db))
 }

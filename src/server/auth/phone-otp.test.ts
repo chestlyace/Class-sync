@@ -8,7 +8,7 @@ import { setWhatsAppProviderForTests, type TemplateMessage } from '@/server/what
 import { makeUser } from '@/test/factories'
 import { createTestDb } from '@/test/db'
 import { createAuth } from './auth'
-import { checkCodeLimits, codesAvailableToday, CodeLimitedError, hitCodeLimits, sendVerificationCode } from './phone-otp'
+import { checkCodeLimits, codesAvailableToday, CodeLimitedError, hitCodeLimits, resetCodesAvailableToday, sendVerificationCode } from './phone-otp'
 
 const AT = new Date('2026-11-25T12:00:00Z')
 const secondsAfter = (s: number) => new Date(AT.getTime() + s * 1000)
@@ -108,6 +108,28 @@ describe('code limits', () => {
     expect(await checkCodeLimits(db, { phone: phoneN(99), userId: stu.id, ip: null, at: nextDay })).toEqual({ ok: true })
   })
 
+  it('stops a 3rd distinct number in a day for an account that is not verified yet', async () => {
+    const pending = await makeUser(db, { role: 'student', emailVerified: false, phoneNumberVerified: false })
+    await claimCodes(db, [1, 2].map(phoneN), pending.id)
+    const third = { phone: phoneN(3), userId: pending.id, ip: null, at: secondsAfter(70) }
+    expect(await checkCodeLimits(db, third)).toMatchObject({ ok: false, reason: 'account_numbers' })
+    await expect(hitCodeLimits(db, third)).rejects.toMatchObject({ reason: 'account_numbers' })
+    // One of its two numbers again (past its minute): fine.
+    expect(await checkCodeLimits(db, { ...third, phone: phoneN(1) })).toEqual({ ok: true })
+    // Once verified (by email or WhatsApp), it gets the usual five.
+    await db.update(user).set({ emailVerified: true }).where(eq(user.id, pending.id))
+    expect(await checkCodeLimits(db, third)).toEqual({ ok: true })
+    await hitCodeLimits(db, third)
+  })
+
+  it('lets only 2 of many parallel requests from an unverified account to different numbers through', async () => {
+    const pending = await makeUser(db, { role: 'student', emailVerified: false, phoneNumberVerified: false })
+    const results = await Promise.allSettled(
+      Array.from({ length: 8 }, (_, i) => hitCodeLimits(db, { phone: phoneN(i + 1), userId: pending.id, ip: null, at: AT })),
+    )
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(2)
+  })
+
   it('lets only 5 of many parallel requests from one account to different numbers through', async () => {
     const stu = await makeUser(db, { role: 'student' })
     const results = await Promise.allSettled(
@@ -133,8 +155,8 @@ describe('code limits', () => {
     expect(await checkCodeLimits(db, { ...sixtyFirst, ip: '203.0.113.10' })).toEqual({ ok: true })
   })
 
-  it('stops the 201st code of the day for everyone, and lets codesAvailableToday say so', async () => {
-    await db.insert(rateLimit).values({ key: 'otp:global:2026-11-25', windowStart: AT, count: 199 })
+  it('stops the 101st verification code of the day for everyone, and lets codesAvailableToday say so', async () => {
+    await db.insert(rateLimit).values({ key: 'otp:global:verify:2026-11-25', windowStart: AT, count: 99 })
     expect(await codesAvailableToday(db, secondsAfter(5))).toBe(true)
     const input = { phone: phoneN(500), userId: null, ip: null, at: secondsAfter(5) }
     expect(await checkCodeLimits(db, input)).toEqual({ ok: true })
@@ -143,15 +165,34 @@ describe('code limits', () => {
     const next = { ...input, phone: phoneN(501), at: secondsAfter(6) }
     expect(await checkCodeLimits(db, next)).toMatchObject({ ok: false, reason: 'global' })
     await expect(hitCodeLimits(db, next)).rejects.toMatchObject({ reason: 'global' })
-    // A refused claim leaves nothing behind: the day's count stays at 200.
-    const [counter] = await db.select().from(rateLimit).where(eq(rateLimit.key, 'otp:global:2026-11-25'))
-    expect(counter.count).toBe(200)
+    // A refused claim leaves nothing behind: the day's count stays at 100.
+    const [counter] = await db.select().from(rateLimit).where(eq(rateLimit.key, 'otp:global:verify:2026-11-25'))
+    expect(counter.count).toBe(100)
     // Yesterday's codes do not count today.
     expect(await codesAvailableToday(db, new Date(AT.getTime() + 24 * 3600 * 1000))).toBe(true)
   })
 
+  it('keeps 50 password-reset codes a day apart, so used-up verification codes never hide "Forgot password"', async () => {
+    await db.insert(rateLimit).values({ key: 'otp:global:verify:2026-11-25', windowStart: AT, count: 100 })
+    expect(await codesAvailableToday(db, AT)).toBe(false)
+    expect(await resetCodesAvailableToday(db, AT)).toBe(true)
+    const reset = { phone: phoneN(700), userId: null, ip: null, purpose: 'reset' as const, at: AT }
+    expect(await checkCodeLimits(db, reset)).toEqual({ ok: true })
+    await hitCodeLimits(db, reset)
+
+    await db.update(rateLimit).set({ count: 49 }).where(eq(rateLimit.key, 'otp:global:reset:2026-11-25'))
+    await hitCodeLimits(db, { ...reset, phone: phoneN(701) })
+    expect(await resetCodesAvailableToday(db, AT)).toBe(false)
+    const fifty1st = { ...reset, phone: phoneN(702) }
+    expect(await checkCodeLimits(db, fifty1st)).toMatchObject({ ok: false, reason: 'global' })
+    await expect(hitCodeLimits(db, fifty1st)).rejects.toMatchObject({ reason: 'global' })
+    // And the other way round: used-up reset codes leave verification alone.
+    await db.update(rateLimit).set({ count: 0 }).where(eq(rateLimit.key, 'otp:global:verify:2026-11-25'))
+    expect(await checkCodeLimits(db, { phone: phoneN(703), userId: null, ip: null, at: AT })).toEqual({ ok: true })
+  })
+
   it('lets only the last free slot of the day go to one of many parallel requests', async () => {
-    await db.insert(rateLimit).values({ key: 'otp:global:2026-11-25', windowStart: AT, count: 195 })
+    await db.insert(rateLimit).values({ key: 'otp:global:verify:2026-11-25', windowStart: AT, count: 95 })
     const results = await Promise.allSettled(
       Array.from({ length: 10 }, (_, i) => hitCodeLimits(db, { phone: phoneN(600 + i), userId: null, ip: null, at: AT })),
     )
@@ -248,6 +289,8 @@ describe('auth: WhatsApp code routes', () => {
       .map((c) => c.split(';')[0])
       .join('; ')
     userId = ((await res.json()) as { user: { id: string } }).user.id
+    // Verified, so it may ask for codes to the usual five numbers a day (an unverified account gets two).
+    await db.update(user).set({ emailVerified: true }).where(eq(user.id, userId))
     return () => setConfigForTests({ requireEmailVerification: original })
   })
 
@@ -386,6 +429,7 @@ describe('auth: WhatsApp code routes', () => {
     expect(sent).toEqual([])
     expect(await globalClaims()).toBe(before)
     expect(await codesAvailableToday(db)).toBe(true)
+    expect(await resetCodesAvailableToday(db)).toBe(true)
     // They were still counted against their IPs.
     const [ipRow] = await db.select().from(rateLimit).where(eq(rateLimit.key, 'otp:ip:10.9.0.0'))
     expect(ipRow.count).toBe(50)
