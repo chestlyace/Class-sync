@@ -9,10 +9,13 @@ import { googleErrorKey } from '@/lib/auth-errors'
 import { initials } from '@/lib/person-name'
 import { mcpResourceUrl, resolveAppOrigin } from '@/server/auth/auth'
 import { isGoogleSignInEnabled } from '@/server/auth/google'
+import { getPhoneNumberState } from '@/server/auth/phone-number'
+import { whatsAppCodesOpen } from '@/server/auth/phone-verification'
 import { getSessionUser } from '@/server/auth/session'
 import { listSignInMethods } from '@/server/auth/sign-in-methods'
 import { announcementsEnabled } from '@/server/broadcasts/unsubscribe'
 import { isAdmin } from '@/server/core/admin'
+import { isAccountVerified } from '@/server/core/guards'
 import { listMyClasses, type ClassSummary } from '@/server/classes/service'
 import { config } from '@/server/core/config'
 import {
@@ -34,6 +37,7 @@ import { AnnouncementsSwitch } from './announcements'
 import { GuidesSettings } from './guides'
 import { NotificationsSettings } from './notifications'
 import { WhatsAppSettings } from './whatsapp'
+import { WhatsAppNumberCard } from './whatsapp-number-card'
 import {
   AddMatriculeForm,
   ChangePasswordForm,
@@ -107,18 +111,19 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
   const isLecturer = user.role === 'lecturer'
 
   const data = await loadPage(async (ctx) => {
-    const [classes, signIn, devices, announcements, whatsapp, seenGuides] = await Promise.all([
+    const [classes, signIn, devices, announcements, whatsapp, seenGuides, phoneState] = await Promise.all([
       listMyClasses(ctx),
       listSignInMethods(ctx),
       listMyDevices(ctx),
       announcementsEnabled(ctx),
       getWhatsAppSettings(ctx),
       listSeenGuides(ctx),
+      getPhoneNumberState(ctx),
     ])
     if (!isLecturer) {
       // Only students have the class reminder switch.
       const classReminders = await getClassReminders(ctx)
-      return { classes, signIn, devices, announcements, whatsapp, seenGuides, classReminders, schools: [] as SchoolGroup[], tokens: [], apps: [] }
+      return { classes, signIn, devices, announcements, whatsapp, seenGuides, phoneState, classReminders, schools: [] as SchoolGroup[], tokens: [], apps: [] }
     }
     const schoolIds = [...new Set(classes.map((c) => c.schoolId))]
     const [schools, tokens, apps] = await Promise.all([
@@ -133,6 +138,7 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
       announcements,
       whatsapp,
       seenGuides,
+      phoneState,
       classReminders: null,
       schools: schools.map((school) => ({ school, classes: classes.filter((c) => c.schoolId === school.id) })),
       tokens,
@@ -140,7 +146,10 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
     }
   })
   if (!data.ok) return <ErrorState code={data.code} />
-  const { classes, signIn, devices, announcements, whatsapp, seenGuides, classReminders, schools, tokens, apps } = data.data
+  const { classes, signIn, devices, announcements, whatsapp, seenGuides, phoneState, classReminders, schools, tokens, apps } = data.data
+  // Add and Change need WhatsApp codes to be on; a number the account already has can always be seen and removed.
+  const codesOpen = await whatsAppCodesOpen()
+  const accountVerified = isAccountVerified(user)
   const day = dayFormatter(locale)
 
   return (
@@ -158,7 +167,8 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
           <span className="text-xl font-semibold break-words">{user.name}</span>
           <span className="break-all text-[#48484a]">{user.email}</span>
           <span className="font-mono text-[11px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
-            {isLecturer ? t('lecturer') : t('student')} · {user.emailVerified ? t('account.verified') : t('account.unverified')}
+            {isLecturer ? t('lecturer') : t('student')} · {accountVerified ? t('account.verified') : t('account.unverified')}
+            {accountVerified && !user.emailVerified ? ` · ${t('account.emailUnverified')}` : ''}
           </span>
         </div>
         <NameForm initialName={user.name} />
@@ -210,6 +220,23 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
           </div>
         </Panel>
       </section>
+
+      {(codesOpen || phoneState.phone) && (
+        <section aria-labelledby="whatsapp-number" className="flex scroll-mt-24 flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <SectionHeading id="whatsapp-number">{t('whatsappNumber.title')}</SectionHeading>
+            <p className="text-sm text-muted-foreground">{t('whatsappNumber.description')}</p>
+          </div>
+          <Panel>
+            <WhatsAppNumberCard
+              phone={phoneState.phone}
+              verified={phoneState.verified}
+              emailVerified={phoneState.emailVerified}
+              canChange={codesOpen}
+            />
+          </Panel>
+        </section>
+      )}
 
       {whatsapp.available && (
         <section aria-labelledby="whatsapp" className="flex scroll-mt-24 flex-col gap-4">

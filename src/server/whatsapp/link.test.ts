@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import {
+  user,
   whatsappConnectCode,
   whatsappLink,
   whatsappPreference,
@@ -248,6 +249,54 @@ describe("WhatsApp linking", () => {
 describe("maskPhone", () => {
   it("hides the middle digits", () => {
     expect(maskPhone("+237612345412")).toBe("+237 6•• ••• 412");
+  });
+});
+
+describe("WhatsApp linking and the account's sign-in number", () => {
+  async function join(db: Awaited<ReturnType<typeof createTestDb>>, u: Awaited<ReturnType<typeof makeUser>>, from = PHONE) {
+    const { code } = await createConnectCode(ctxFor(db, u));
+    await handleInboundMessage(db, { from, text: `JOIN ${code}`, at: new Date() });
+  }
+  async function numberOf(db: Awaited<ReturnType<typeof createTestDb>>, id: string) {
+    const [r] = await db.select().from(user).where(eq(user.id, id));
+    return { phoneNumber: r.phoneNumber, phoneNumberVerified: r.phoneNumberVerified };
+  }
+
+  it("join by an account with no number makes it the verified sign-in number", async () => {
+    const db = await createTestDb();
+    const u = await makeUser(db);
+    await join(db, u);
+    expect(await numberOf(db, u.id)).toEqual({ phoneNumber: PHONE, phoneNumberVerified: true });
+  });
+
+  it("join never overwrites a number the account already has", async () => {
+    const db = await createTestDb();
+    const u = await makeUser(db);
+    await db.update(user).set({ phoneNumber: "+237699000001", phoneNumberVerified: false }).where(eq(user.id, u.id));
+    await join(db, u);
+    expect(await numberOf(db, u.id)).toEqual({ phoneNumber: "+237699000001", phoneNumberVerified: false });
+    expect(await db.select().from(whatsappLink)).toHaveLength(1);
+  });
+
+  it("join with a number another account holds leaves both numbers as they were", async () => {
+    const db = await createTestDb();
+    const a = await makeUser(db);
+    const b = await makeUser(db);
+    await db.update(user).set({ phoneNumber: PHONE, phoneNumberVerified: false }).where(eq(user.id, a.id));
+    await join(db, b);
+    expect(await numberOf(db, a.id)).toEqual({ phoneNumber: PHONE, phoneNumberVerified: false });
+    expect(await numberOf(db, b.id)).toEqual({ phoneNumber: null, phoneNumberVerified: false });
+    // The class alerts link still follows the message, as before.
+    expect((await db.select().from(whatsappLink))[0]).toMatchObject({ userId: b.id, phone: PHONE });
+  });
+
+  it("STOP removes only the whatsapp_link, not the account's number", async () => {
+    const db = await createTestDb();
+    const u = await makeUser(db);
+    await join(db, u);
+    await handleInboundMessage(db, { from: PHONE, text: "STOP", at: new Date() });
+    expect(await db.select().from(whatsappLink)).toHaveLength(0);
+    expect(await numberOf(db, u.id)).toEqual({ phoneNumber: PHONE, phoneNumberVerified: true });
   });
 });
 

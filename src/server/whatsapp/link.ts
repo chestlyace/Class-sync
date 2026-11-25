@@ -1,5 +1,5 @@
 import { randomInt } from "node:crypto";
-import { and, eq, gt, isNotNull, isNull, ne } from "drizzle-orm";
+import { and, eq, gt, isNotNull, isNull, ne, notExists } from "drizzle-orm";
 import { createTranslator } from "next-intl";
 import { localesOf } from "@/server/assignments/queries";
 import { AppError } from "@/server/core/errors";
@@ -8,6 +8,7 @@ import type { Db } from "@/server/db";
 import {
   classStudent,
   course,
+  user,
   whatsappConnectCode,
   whatsappLink,
   whatsappPreference,
@@ -174,6 +175,23 @@ export async function handleInboundMessage(
       .insert(whatsappPreference)
       .values({ userId: used.userId })
       .onConflictDoNothing();
+    // Sending the code from this number also proves it is theirs: it becomes the account's sign-in
+    // number, but only when the account has none and no other account holds it. Never an overwrite,
+    // never a takeover (the number column is unique, so the check and the update are one statement).
+    const holder = tx
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.phoneNumber, msg.from));
+    await tx
+      .update(user)
+      .set({ phoneNumber: msg.from, phoneNumberVerified: true })
+      .where(
+        and(
+          eq(user.id, used.userId),
+          isNull(user.phoneNumber),
+          notExists(holder),
+        ),
+      );
     return used.userId;
   });
 

@@ -953,8 +953,9 @@
       "editName": "Modifier le nom",
       "save": "Enregistrer",
       "nameRequired": "Saisissez votre nom.",
-      "verified": "E-mail vérifié",
-      "unverified": "E-mail pas encore vérifié"
+      "verified": "Compte vérifié",
+      "unverified": "Compte pas encore vérifié",
+      "emailUnverified": "E-mail non vérifié"
     },
     "preferences": {
       "title": "Préférences",
@@ -1135,6 +1136,23 @@
     "announcements": {
       "title": "Annonces de Clasync par e-mail",
       "hint": "Les nouveautés et changements envoyés par l'équipe Clasync. Les e-mails sur votre compte, comme la connexion et la réinitialisation du mot de passe, arrivent toujours."
+    },
+    "whatsappNumber": {
+      "title": "Numéro WhatsApp",
+      "description": "Il sert à vérifier votre compte, à vous connecter et à réinitialiser votre mot de passe.",
+      "none": "Aucun numéro WhatsApp sur ce compte.",
+      "verified": "Vérifié",
+      "notVerified": "Non vérifié",
+      "emailNotVerified": "E-mail non vérifié",
+      "add": "Ajouter un numéro",
+      "change": "Changer de numéro",
+      "remove": "Supprimer",
+      "removing": "Suppression…",
+      "cancel": "Annuler",
+      "sameNumber": "C'est déjà votre numéro.",
+      "saved": "Votre numéro WhatsApp est enregistré.",
+      "removed": "Votre numéro WhatsApp a été supprimé.",
+      "removeNeedsEmail": "Vérifiez d'abord votre e-mail, pour pouvoir toujours vous connecter."
     },
     "whatsapp": {
       "title": "WhatsApp",
@@ -3142,7 +3160,7 @@
       "tests": "Pendant un test : quand vous quittez la page du test et pendant combien de temps, pour que votre enseignant le voie.",
       "location": "Lors d'un pointage de présence uniquement : votre position à ce moment-là, pour confirmer que vous êtes à l'école. Clasync ne suit pas votre position le reste du temps.",
       "signIns": "Quand vous vous connectez : l'adresse IP et le navigateur de cette session, pour protéger votre compte.",
-      "whatsapp": "Si vous connectez WhatsApp : votre numéro WhatsApp, pour vous envoyer vos alertes de classe."
+      "whatsapp": "Si vous connectez WhatsApp ou vérifiez votre compte avec : votre numéro WhatsApp, pour vous envoyer vos alertes de classe et, si vous le choisissez, vérifier votre compte, vous connecter et vous aider à le récupérer."
     },
     "access": {
       "title": "Qui peut les voir",
@@ -3163,7 +3181,7 @@
       "ai": "Quand un enseignant demande des notes suggérées pour un test, les réponses rédigées et leur question sont envoyées à Amazon Bedrock dans l'Union européenne, sans le nom, le matricule ni l'e-mail de l'étudiant. Les réponses ne servent pas à entraîner des modèles d'IA. L'enseignant décide de chaque note.",
       "aiAssignments": "Quand un enseignant demande à Clasync de suggérer des notes pour un devoir, la réponse et les fichiers de l'étudiant sont envoyés à Amazon Bedrock, dans l'Union européenne, pour produire une suggestion. Clasync n'ajoute ni le nom, ni le matricule, ni l'e-mail de l'étudiant ; tout ce qui est écrit dans le travail lui-même est envoyé tel quel. Le travail ne sert pas à entraîner des modèles d'IA. L'enseignant décide de chaque note.",
       "google": "Google, uniquement si vous choisissez Continuer avec Google.",
-      "whatsapp": "Si vous connectez WhatsApp, vos alertes passent par Amazon Web Services (AWS) et Meta (WhatsApp), qui voient votre numéro et le message."
+      "whatsapp": "Si vous connectez WhatsApp ou vérifiez votre compte avec, vos alertes et vos codes passent par Amazon Web Services (AWS) et Meta (WhatsApp), qui voient votre numéro et le message."
     },
     "assistants": {
       "title": "Les assistants IA connectés par les enseignants",
@@ -3180,7 +3198,7 @@
       "announcements": "Vous pouvez ne plus recevoir les annonces par e-mail grâce au lien en bas de chacune ou à l'interrupteur dans les Paramètres. Les e-mails concernant votre compte, comme la vérification et la réinitialisation du mot de passe, continuent.",
       "delete": "Pour obtenir une copie de vos données ou faire supprimer votre compte, écrivez à <email>{address}</email>. La suppression d'un compte supprime aussi ses données.",
       "keep": "Clasync conserve vos données tant que votre compte existe.",
-      "whatsapp": "Pour arrêter les alertes WhatsApp et supprimer votre numéro, envoyez STOP sur WhatsApp ou touchez Déconnecter dans les Paramètres."
+      "whatsapp": "Pour arrêter les alertes WhatsApp, envoyez STOP sur WhatsApp ou touchez Déconnecter dans les Paramètres. Vous pouvez aussi supprimer le numéro de connexion dans les Paramètres, une fois votre e-mail vérifié."
     },
     "changes": {
       "title": "Modifications de cette page",
