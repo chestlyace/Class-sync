@@ -2,15 +2,15 @@ import { apiKey } from '@better-auth/api-key'
 import { cimd } from '@better-auth/cimd'
 import { fetchClientMetadataResource } from '@better-auth/cimd/node'
 import { mcp } from '@better-auth/mcp'
-import { betterAuth } from 'better-auth'
+import { betterAuth, type GenericEndpointContext } from 'better-auth'
 import { and, eq, gte, like, ne } from 'drizzle-orm'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { APIError, createAuthMiddleware, getOAuthState, getSessionFromCtx } from 'better-auth/api'
 import { nextCookies } from 'better-auth/next-js'
 import { jwt, phoneNumber } from 'better-auth/plugins'
 import { waitUntil } from '@vercel/functions'
-import { CLIENT_IP_HEADER } from '@/lib/client-ip'
-import { isLocale } from '@/i18n/locale'
+import { CLIENT_IP_HEADER, forwardedClientIp } from '@/lib/client-ip'
+import { isLocale, LOCALE_COOKIE, resolveLocale } from '@/i18n/locale'
 import { safeNextPath } from '@/lib/next-path'
 import { RESET_RESEND_SECONDS } from '@/lib/password-reset'
 import { toE164 } from '@/lib/phone'
@@ -23,7 +23,9 @@ import * as schema from '@/server/db/schema'
 import { sendEmail } from '@/server/email/send'
 import { ResetPasswordEmail } from '@/server/email/templates/reset-password'
 import { emailSubject, VerifyEmail } from '@/server/email/templates/verify-email'
+import { whatsAppVerificationEnabled } from '@/server/whatsapp/config'
 import { googleCredentials, signupFieldsFromOAuthState } from './google'
+import { checkCodeLimits, CodeLimitedError, hitCodeLimits, sendVerificationCode } from './phone-otp'
 import { assertValidSignup, assertValidUserUpdate, cleanName } from './signup-rules'
 
 type CreateAuthOptions = {
@@ -59,9 +61,82 @@ const VERIFY_LINK_TTL_SECONDS = 7 * 24 * 60 * 60
 const RESET_LINK_TTL_SECONDS = 24 * 60 * 60
 
 
-/** Sends a WhatsApp code to a phone number. Replaced by the real sender in a later task; until then it refuses. */
-async function sendVerificationCode(): Promise<void> {
-  throw new Error('WhatsApp codes are not wired up yet')
+const PHONE_CODE_LIMITED_MESSAGE = 'Too many codes requested. Please wait before asking for another.'
+const SEND_OTP_PATH = '/phone-number/send-otp'
+const RESET_OTP_PATH = '/phone-number/request-password-reset'
+
+/**
+ * Runs before the plugin's two "send me a code" routes. Everything that decides whether Clasync may send a
+ * WhatsApp message is here and not in the send callbacks, because the plugin runs those in the background
+ * (a throw there never reaches the caller) and only for numbers that have an account.
+ *
+ * - Off unless WhatsApp codes are enabled (404).
+ * - The number is put into E.164 form; the plugin then sees only that form.
+ * - `send-otp` needs a session: an anonymous visitor can never make Clasync message anyone.
+ * - Every request is counted against the number, the account and the IP, whether or not an account holds the number.
+ * - A limited `send-otp` fails with PHONE_CODE_LIMITED and `retryAfter`. A limited password-reset request
+ *   answers exactly like a normal one (`{ status: true }`), so the answer never says whether the number has an
+ *   account, and it never reaches the plugin: no new code is stored, so a code sent a moment ago stays valid.
+ */
+async function guardCodeRequest(
+  database: Db,
+  ctx: Parameters<Parameters<typeof createAuthMiddleware>[0]>[0],
+): Promise<{ context: { body: { phoneNumber: string } } } | { status: true } | undefined> {
+  if (!whatsAppVerificationEnabled()) {
+    throw new APIError('NOT_FOUND', { message: 'Verification by WhatsApp is not available', code: 'WHATSAPP_CODES_OFF' })
+  }
+  const raw = (ctx.body as { phoneNumber?: unknown } | undefined)?.phoneNumber
+  // Not a string: leave it to the route's own validation, which refuses it before anything is sent.
+  if (typeof raw !== 'string') return undefined
+  const phone = toE164(raw)
+  if (!phone) throw new APIError('BAD_REQUEST', { message: 'Invalid phone number', code: 'INVALID_PHONE_NUMBER' })
+
+  const isReset = ctx.path === RESET_OTP_PATH
+  let userId: string | null = null
+  if (!isReset) {
+    const session = await getSessionFromCtx(ctx)
+    if (!session) throw new APIError('UNAUTHORIZED', { message: 'Sign in first', code: 'UNAUTHORIZED' })
+    userId = session.user.id
+  }
+  const headers = ctx.request?.headers ?? ctx.headers
+  const ip = headers ? (headers.get(CLIENT_IP_HEADER) ?? forwardedClientIp(headers)) : null
+  const input = { phone, userId, ip }
+
+  const verdict = await checkCodeLimits(database, input)
+  let limited = verdict.ok ? null : verdict
+  if (!limited) {
+    try {
+      await hitCodeLimits(database, input)
+    } catch (error) {
+      if (!(error instanceof CodeLimitedError)) throw error
+      limited = { ok: false, reason: error.reason, retryAfter: error.retryAfter }
+    }
+  }
+  if (limited) {
+    if (isReset) return { status: true }
+    throw new APIError(
+      'TOO_MANY_REQUESTS',
+      { message: PHONE_CODE_LIMITED_MESSAGE, code: 'PHONE_CODE_LIMITED', retryAfter: limited.retryAfter },
+      { 'Retry-After': String(limited.retryAfter) },
+    )
+  }
+  return { context: { body: { phoneNumber: phone } } }
+}
+
+/**
+ * The plugin's send callback for sign-up verification and password reset. Language: the account that holds
+ * the number, else the visitor's language cookie, else English.
+ */
+async function deliverPhoneCode(database: Db, data: { phoneNumber: string; code: string }, ctx?: GenericEndpointContext): Promise<void> {
+  // Signing in with a number that is not proven yet must stay silent: it is not a request for a code.
+  if (ctx?.path === '/sign-in/phone-number') return
+  const [holder] = await database
+    .select({ locale: schema.user.locale })
+    .from(schema.user)
+    .where(eq(schema.user.phoneNumber, data.phoneNumber))
+  const locale = resolveLocale({ userLocale: holder?.locale, cookie: ctx?.getCookie(LOCALE_COOKIE) })
+  const session = ctx?.path === SEND_OTP_PATH ? await getSessionFromCtx(ctx).catch(() => null) : null
+  await sendVerificationCode(database, { phone: data.phoneNumber, code: data.code, locale, userId: session?.user.id ?? null })
 }
 
 /** The OAuth provider's client CRUD routes, closed over HTTP (see `disabledPaths`). */
@@ -168,8 +243,9 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
       ipAddress: { ipAddressHeaders: [CLIENT_IP_HEADER, 'x-forwarded-for'] },
     },
     hooks: {
-      // Only a verified lecturer can allow an assistant (denying stays open to everyone).
+      // Phone-code requests are guarded here; only a verified lecturer can allow an assistant (denying stays open to everyone).
       before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path === SEND_OTP_PATH || ctx.path === RESET_OTP_PATH) return guardCodeRequest(database, ctx)
         if (ctx.path !== '/oauth2/consent' || (ctx.body as { accept?: unknown } | undefined)?.accept !== true) return
         const session = await getSessionFromCtx(ctx)
         const u = session?.user as { role?: unknown; emailVerified?: boolean; phoneNumberVerified?: boolean } | undefined
@@ -398,8 +474,8 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
         allowedAttempts: PHONE_CODE_ATTEMPTS,
         requireVerification: true,
         phoneNumberValidator: (phone) => toE164(phone) === phone,
-        sendOTP: sendVerificationCode,
-        sendPasswordResetOTP: sendVerificationCode,
+        sendOTP: (data, ctx) => deliverPhoneCode(database, data, ctx),
+        sendPasswordResetOTP: (data, ctx) => deliverPhoneCode(database, data, ctx),
       }),
       // Must stay last: lets Server Actions set the session cookie.
       ...(options.nextCookies === false ? [] : [nextCookies()]),

@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { config, setConfigForTests } from '@/server/core/config'
 import { createTestDb } from '@/test/db'
 import { createAuth } from './auth'
@@ -42,7 +42,16 @@ describe('auth: phone-number plugin', () => {
     expect(((await res.json()) as { code?: string }).code).toBe('PHONE_NUMBER_CANNOT_BE_SET')
   })
 
+  afterEach(() => vi.unstubAllEnvs())
+
   it('refuses a code request for a number that is not in E.164 form', async () => {
+    // The guard answers 404 while WhatsApp codes are off, so switch them on first.
+    vi.stubEnv('WHATSAPP_AWS_REGION', 'eu-north-1')
+    vi.stubEnv('WHATSAPP_AWS_ROLE_ARN', 'arn:aws:iam::1:role/x')
+    vi.stubEnv('WHATSAPP_PHONE_NUMBER_ID', 'phone-number-id-1')
+    vi.stubEnv('WHATSAPP_DISPLAY_NUMBER', '+15558903752')
+    vi.stubEnv('WHATSAPP_SNS_TOPIC_ARN', 'arn:aws:sns:eu-north-1:1:topic')
+    vi.stubEnv('WHATSAPP_OTP_ENABLED', 'true')
     const res = await post('/phone-number/send-otp', { phoneNumber: '677123456' })
     expect(res.status).toBe(400)
     expect(((await res.json()) as { code?: string }).code).toBe('INVALID_PHONE_NUMBER')

@@ -442,7 +442,8 @@ export async function getAiAndMcp(ctx: Ctx, at: Date, credits: () => Promise<Cre
 // ---------------------------------------------------------------------------------------------
 // Health
 
-export type WhatsAppUsage = { month: string; sent: number; cap: number; skippedCap: number; failed: number }
+/** `codes` is the verification codes sent this month: they sit outside the cap (`sent`) but cost money too. */
+export type WhatsAppUsage = { month: string; sent: number; cap: number; skippedCap: number; failed: number; codes: number }
 
 /** This month's WhatsApp messages against the cap. Null when WhatsApp is not set up here. Counts only, no numbers or text. */
 export async function getWhatsAppUsage(ctx: Ctx, at: Date, env: Record<string, string | undefined> = process.env): Promise<WhatsAppUsage | null> {

@@ -2887,7 +2887,8 @@
         "notConfigured": "WhatsApp is not configured here.",
         "sent": "Sent, of {cap}",
         "skippedCap": "Skipped for the cap",
-        "failed": "Failed"
+        "failed": "Failed",
+        "codes": "Verification codes this month"
       }
     },
     "ai": {
