@@ -7,12 +7,13 @@ import { and, eq, gte, like, ne } from 'drizzle-orm'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { APIError, createAuthMiddleware, getOAuthState, getSessionFromCtx } from 'better-auth/api'
 import { nextCookies } from 'better-auth/next-js'
-import { jwt } from 'better-auth/plugins'
+import { jwt, phoneNumber } from 'better-auth/plugins'
 import { waitUntil } from '@vercel/functions'
 import { CLIENT_IP_HEADER } from '@/lib/client-ip'
 import { isLocale } from '@/i18n/locale'
 import { safeNextPath } from '@/lib/next-path'
 import { RESET_RESEND_SECONDS } from '@/lib/password-reset'
+import { toE164 } from '@/lib/phone'
 import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import { AppError } from '@/server/core/errors'
@@ -48,11 +49,19 @@ const SIGN_UP_RULE = { window: 60, max: 30 }
 // inbox is stopped by the per-address cooldown below instead.
 const RESET_REQUEST_RULE = { window: 60, max: 100 }
 const RESET_COOLDOWN_MS = RESET_RESEND_SECONDS * 1000
+// WhatsApp codes: 6 digits, valid 10 minutes, 3 wrong tries per code.
+const PHONE_CODE_TTL_SECONDS = 10 * 60
+const PHONE_CODE_ATTEMPTS = 3
 const VERIFY_LINK_TTL_SECONDS = 7 * 24 * 60 * 60
 // Students read mail days later and may be on a patchy connection; a day is still short enough
 // that a stolen link has little time to be used.
 const RESET_LINK_TTL_SECONDS = 24 * 60 * 60
 
+
+/** Sends a WhatsApp code to a phone number. Replaced by the real sender in a later task; until then it refuses. */
+async function sendVerificationCode(): Promise<void> {
+  throw new Error('WhatsApp codes are not wired up yet')
+}
 
 /** The OAuth provider's client CRUD routes, closed over HTTP (see `disabledPaths`). */
 export const OAUTH_CLIENT_MANAGEMENT_PATHS = [
@@ -278,6 +287,10 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
         '/sign-in/social': SIGN_IN_RULE,
         '/sign-up/email': SIGN_UP_RULE,
         '/request-password-reset': RESET_REQUEST_RULE,
+        // The phone plugin's own 10 per minute per IP would lock out a class sharing one public IP.
+        // Abuse is bounded per code and per number instead (3 tries, 10 minutes).
+        '/phone-number/*': SIGN_UP_RULE,
+        '/sign-in/phone-number': SIGN_IN_RULE,
       },
     },
     user: {
@@ -362,6 +375,18 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
         maximumNameLength: 60,
         startingCharactersConfig: { charactersLength: 8 },
         rateLimit: { enabled: true, timeWindow: 60_000, maxRequests: 120 },
+      }),
+      // Verify, sign in and reset a password with a code sent on WhatsApp. Numbers are E.164 only
+      // (src/lib/phone.ts normalises what people type before it reaches the API). The plugin refuses a
+      // sign-up body that carries a phone number: a number becomes verified only through a code.
+      phoneNumber({
+        otpLength: 6,
+        expiresIn: PHONE_CODE_TTL_SECONDS,
+        allowedAttempts: PHONE_CODE_ATTEMPTS,
+        requireVerification: true,
+        phoneNumberValidator: (phone) => toE164(phone) === phone,
+        sendOTP: sendVerificationCode,
+        sendPasswordResetOTP: sendVerificationCode,
       }),
       // Must stay last: lets Server Actions set the session cookie.
       ...(options.nextCookies === false ? [] : [nextCookies()]),

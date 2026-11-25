@@ -22,6 +22,9 @@ export const user = pgTable(
     // Announcement emails: not Better Auth fields. A set date means the person opted out.
     announcementsOptOutAt: timestamp('announcements_opt_out_at', { withTimezone: true }),
     unsubscribeToken: text('unsubscribe_token').unique(),
+    // Better Auth's phone-number plugin fields: an E.164 number, set only once a WhatsApp code proved it.
+    phoneNumber: text('phone_number').unique(),
+    phoneNumberVerified: boolean('phone_number_verified').notNull().default(false),
   },
   (t) => [
     check('user_role_check', sql`${t.role} in ('lecturer', 'student')`),

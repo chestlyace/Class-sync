@@ -94,3 +94,11 @@ export function buildTemplate(kind: WhatsAppKind, data: TemplateData[WhatsAppKin
     }
   }
 }
+
+/**
+ * The sign-in code message. Meta's copy-code button takes the code itself as its parameter, which is
+ * what `buttonPath` carries, so it is not URL-encoded or prefixed with anything.
+ */
+export function buildVerificationTemplate(code: string, locale: Locale): TemplateMessage {
+  return { name: 'verification_code', language: locale, bodyParams: [code], buttonPath: code }
+}
