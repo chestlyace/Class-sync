@@ -57,6 +57,7 @@ export default async function AdminPersonPage({ params }: PageProps<'/admin/peop
         <div className="-mt-1 flex flex-wrap gap-2">
           {person.isAdmin && <Badge variant="outline">{t('badges.admin')}</Badge>}
           {!person.emailVerified && <Badge variant="outline">{t('badges.unverified')}</Badge>}
+          {person.phoneNumberVerified && <Badge variant="outline">{t('badges.whatsappVerified')}</Badge>}
           {suspended && <Badge variant="outline">{t('badges.suspended')}</Badge>}
         </div>
       </div>

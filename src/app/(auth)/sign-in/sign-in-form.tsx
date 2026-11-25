@@ -12,23 +12,29 @@ import { PasswordInput } from '@/components/password-input'
 import { authClient } from '@/lib/auth-client'
 import { authErrorKey } from '@/lib/auth-errors'
 import { needsFullNavigation } from '@/lib/oauth-resume'
+import { toE164 } from '@/lib/phone'
 
 /**
  * `next`: a same-site path (already checked with safeNextPath) to open after signing in.
  * `supportEmail`: the address a suspended account is told to contact (none: no contact line).
  * `google`: offer "Continue with Google". `googleError`: the message key of a Google sign-in that
  * came back failed (googleErrorKey of the page's `error` parameter).
+ * `whatsApp`: WhatsApp codes are on, so the field is labelled "Email or WhatsApp number". Whatever the label, a value
+ * without an `@` is signed in as a WhatsApp number (it fails with the usual wrong-credentials message when no
+ * account has proven that number).
  */
 export function SignInForm({
   next = null,
   supportEmail,
   google = false,
   googleError = null,
+  whatsApp = false,
 }: {
   next?: string | null
   supportEmail?: string
   google?: boolean
   googleError?: string | null
+  whatsApp?: boolean
 }) {
   const t = useTranslations('auth.signIn')
   const tGoogle = useTranslations('auth.google')
@@ -76,12 +82,28 @@ export function SignInForm({
     setPending(true)
     setError(null)
     try {
-      const { data, error: authError } = await authClient.signIn.email({
-        email: String(form.get('email') ?? ''),
-        password: String(form.get('password') ?? ''),
-        // An unverified account gets a fresh verification email: its link comes back here too.
-        ...(next ? { callbackURL: next } : {}),
-      })
+      const identifier = String(form.get('identifier') ?? '').trim()
+      const password = String(form.get('password') ?? '')
+      let result
+      if (identifier.includes('@')) {
+        result = await authClient.signIn.email({
+          email: identifier,
+          password,
+          // Echoed back as the answer's `url` (handled below). Signing in sends no email, verified or not:
+          // an unverified account gets a limited session, and the verify banner offers a link or a WhatsApp code.
+          ...(next ? { callbackURL: next } : {}),
+        })
+      } else {
+        // The server compares E.164 numbers only: normalise what was typed (677123456 is +237677123456).
+        const phone = toE164(identifier)
+        if (!phone) {
+          // Said like any wrong sign-in: it tells nothing about which numbers have accounts.
+          setError(messageFor('auth.errors.invalidCredentials'))
+          return
+        }
+        result = await authClient.signIn.phoneNumber({ phoneNumber: phone, password })
+      }
+      const { data, error: authError } = result
       if (authError) {
         // The signed authorization query expired (about 10 minutes): restart it, which brings
         // the user back here with a fresh one.
@@ -94,8 +116,10 @@ export function SignInForm({
       }
       // An assistant's authorization in progress: the server answers with where it continues
       // (the consent page, or the assistant itself when already allowed).
-      if (data?.redirect && data.url) {
-        window.location.assign(data.url)
+      // (The OAuth provider adds this to either sign-in's answer; the phone route's own type does not list it.)
+      const resume = data as { redirect?: boolean; url?: string } | null
+      if (resume?.redirect && resume.url) {
+        window.location.assign(resume.url)
         return
       }
       if (next && needsFullNavigation(next)) {
@@ -115,8 +139,8 @@ export function SignInForm({
     <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
       <FieldGroup>
         <Field>
-          <FieldLabel htmlFor="email">{t('email')}</FieldLabel>
-          <Input id="email" name="email" type="email" autoComplete="email" required />
+          <FieldLabel htmlFor="identifier">{whatsApp ? t('emailOrPhone') : t('email')}</FieldLabel>
+          <Input id="identifier" name="identifier" type="text" inputMode="email" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} required />
         </Field>
         <Field>
           <FieldLabel htmlFor="password">{t('password')}</FieldLabel>

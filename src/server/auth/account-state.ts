@@ -48,7 +48,7 @@ export async function resolveSessionUser(
   at: Date,
 ): Promise<SessionUser | null> {
   if (!raw) return null
-  const { id, name, email, role, locale, emailVerified } = raw
+  const { id, name, email, role, locale, emailVerified, phoneNumberVerified } = raw
   if (role !== 'lecturer' && role !== 'student') return null
   if (typeof id !== 'string') return null
   if ((await checkAccount(db, id, at)).suspended) return null
@@ -59,5 +59,6 @@ export async function resolveSessionUser(
     role,
     locale: isLocale(locale) ? locale : 'en',
     emailVerified: emailVerified === true,
+    phoneNumberVerified: phoneNumberVerified === true,
   }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { RESET_RESEND_SECONDS } from '@/lib/password-reset'
-import { formatWait } from './forgot-password-form'
+import { formatWait } from '@/lib/format-wait'
 
 describe('formatWait', () => {
   it('shows minutes and seconds the way a countdown reads', () => {

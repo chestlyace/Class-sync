@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isAllowedWhatsAppNumber, normalizePhone, whatsAppConfig } from './config'
+import { isAllowedWhatsAppNumber, normalizePhone, whatsAppConfig, whatsAppVerificationEnabled } from './config'
 
 const full = {
   WHATSAPP_AWS_REGION: 'eu-west-1',
@@ -82,5 +82,24 @@ describe('normalizePhone', () => {
     expect(normalizePhone('12')).toBeNull()
     expect(normalizePhone('1234567890123456')).toBeNull()
     expect(normalizePhone('abc')).toBeNull()
+  })
+})
+
+describe('whatsAppVerificationEnabled', () => {
+  it('is off without WHATSAPP_OTP_ENABLED, even with the full config', () => {
+    expect(whatsAppVerificationEnabled(full)).toBe(false)
+    expect(whatsAppVerificationEnabled({ ...full, WHATSAPP_OTP_ENABLED: 'false' })).toBe(false)
+  })
+
+  it('is off on staging', () => {
+    expect(whatsAppVerificationEnabled({ ...full, WHATSAPP_OTP_ENABLED: 'true', APP_ENV: 'staging' })).toBe(false)
+  })
+
+  it('is off when WhatsApp itself is not configured', () => {
+    expect(whatsAppVerificationEnabled({ WHATSAPP_OTP_ENABLED: 'true' })).toBe(false)
+  })
+
+  it('is on with the full config and WHATSAPP_OTP_ENABLED=true', () => {
+    expect(whatsAppVerificationEnabled({ ...full, WHATSAPP_OTP_ENABLED: 'true' })).toBe(true)
   })
 })

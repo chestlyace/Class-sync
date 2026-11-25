@@ -10,6 +10,8 @@ export type SessionUser = {
   role: Role
   locale: Locale
   emailVerified: boolean
+  /** A WhatsApp code proved the account's number. `emailVerified` keeps meaning "email proven". */
+  phoneNumberVerified: boolean
 }
 
 export type Ctx = { db: Db; user: SessionUser }

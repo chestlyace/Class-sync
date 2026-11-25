@@ -1,6 +1,5 @@
 import { config } from '@/server/core/config'
 import type { Locale } from '@/server/core/context'
-import type { WhatsAppKind } from '@/server/db/schema'
 import type { TemplateMessage } from './provider'
 
 /** What each kind of template needs. Button paths match the student-facing links the push notifications use. */
@@ -44,8 +43,8 @@ function formatDue(date: Date, locale: Locale): string {
 const path = (...parts: string[]) => parts.map((p, i) => (i === 0 ? p : encodeURIComponent(p))).join('/')
 
 /** The approved template (name, language, body parameters and button path) for one alert. */
-export function buildTemplate<K extends WhatsAppKind>(kind: K, data: TemplateData[K], locale: Locale): TemplateMessage
-export function buildTemplate(kind: WhatsAppKind, data: TemplateData[WhatsAppKind], locale: Locale): TemplateMessage {
+export function buildTemplate<K extends keyof TemplateData>(kind: K, data: TemplateData[K], locale: Locale): TemplateMessage
+export function buildTemplate(kind: keyof TemplateData, data: TemplateData[keyof TemplateData], locale: Locale): TemplateMessage {
   switch (kind) {
     case 'checkinOpen': {
       const d = data as TemplateData['checkinOpen']
@@ -93,4 +92,12 @@ export function buildTemplate(kind: WhatsAppKind, data: TemplateData[WhatsAppKin
       }
     }
   }
+}
+
+/**
+ * The sign-in code message. Meta's copy-code button takes the code itself as its parameter, which is
+ * what `buttonPath` carries, so it is not URL-encoded or prefixed with anything.
+ */
+export function buildVerificationTemplate(code: string, locale: Locale): TemplateMessage {
+  return { name: 'verification_code', language: locale, bodyParams: [code], buttonPath: code }
 }

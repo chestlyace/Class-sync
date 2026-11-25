@@ -279,7 +279,7 @@ describe('admin read models', () => {
     // createdAt desc: the second lecturer signed up three days ago.
     expect(lecturers.rows.map((r) => r.id)).toEqual([admin.id, lec2.id])
     expect(Object.keys(lecturers.rows[0]).sort()).toEqual(
-      ['createdAt', 'email', 'emailVerified', 'id', 'isAdmin', 'lastSeenAt', 'lastSignInAt', 'name', 'role', 'suspendedAt'].sort(),
+      ['createdAt', 'email', 'emailVerified', 'id', 'isAdmin', 'lastSeenAt', 'lastSignInAt', 'name', 'phoneNumberVerified', 'role', 'suspendedAt'].sort(),
     )
   })
 
@@ -340,7 +340,7 @@ describe('admin read models', () => {
       WHATSAPP_SNS_TOPIC_ARN: 'arn:aws:sns:eu-west-1:123456789012:test',
     }
     const usage = await getWhatsAppUsage(adminCtx, at, env)
-    expect(usage).toMatchObject({ sent: 0, skippedCap: 0, failed: 0 })
+    expect(usage).toMatchObject({ sent: 0, skippedCap: 0, failed: 0, codes: 0 })
     expect(usage?.month).toBe(at.toISOString().slice(0, 7))
     await expect(getWhatsAppUsage(ctxFor(db, s1), at, env)).rejects.toMatchObject({ code: 'NOT_FOUND' })
   })
