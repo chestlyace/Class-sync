@@ -44,16 +44,28 @@ describe('auth: phone-number plugin', () => {
 
   afterEach(() => vi.unstubAllEnvs())
 
-  it('refuses a code request for a number that is not in E.164 form', async () => {
-    // The guard answers 404 while WhatsApp codes are off, so switch them on first.
+  function enableCodes() {
     vi.stubEnv('WHATSAPP_AWS_REGION', 'eu-north-1')
     vi.stubEnv('WHATSAPP_AWS_ROLE_ARN', 'arn:aws:iam::1:role/x')
     vi.stubEnv('WHATSAPP_PHONE_NUMBER_ID', 'phone-number-id-1')
     vi.stubEnv('WHATSAPP_DISPLAY_NUMBER', '+15558903752')
     vi.stubEnv('WHATSAPP_SNS_TOPIC_ARN', 'arn:aws:sns:eu-north-1:1:topic')
     vi.stubEnv('WHATSAPP_OTP_ENABLED', 'true')
-    const res = await post('/phone-number/send-otp', { phoneNumber: '677123456' })
+  }
+
+  it('refuses a code request for a number that is not in E.164 form', async () => {
+    // The guard answers 404 while WhatsApp codes are off, so switch them on first.
+    enableCodes()
+    // '12ab' cannot be turned into a number; a bare local number such as 677123456 is normalised instead.
+    const res = await post('/phone-number/send-otp', { phoneNumber: '12ab' })
     expect(res.status).toBe(400)
     expect(((await res.json()) as { code?: string }).code).toBe('INVALID_PHONE_NUMBER')
+  })
+
+  it('normalises a local number, then refuses an anonymous code request', async () => {
+    enableCodes()
+    const res = await post('/phone-number/send-otp', { phoneNumber: '677123456' })
+    expect(res.status).toBe(401)
+    expect(((await res.json()) as { code?: string }).code).toBe('UNAUTHORIZED')
   })
 })

@@ -64,6 +64,14 @@ const RESET_LINK_TTL_SECONDS = 24 * 60 * 60
 const PHONE_CODE_LIMITED_MESSAGE = 'Too many codes requested. Please wait before asking for another.'
 const SEND_OTP_PATH = '/phone-number/send-otp'
 const RESET_OTP_PATH = '/phone-number/request-password-reset'
+const SIGN_IN_PHONE_PATH = '/sign-in/phone-number'
+
+/**
+ * The account that claimed a code in the before hook, for the send callback that runs later in the background
+ * (so it never has to look the session up again). Keyed by the request; a server-side call without a request
+ * falls back to the session the hook cached on the shared context.
+ */
+const codeRequesters = new WeakMap<object, string>()
 
 /**
  * Runs before the plugin's two "send me a code" routes. Everything that decides whether Clasync may send a
@@ -72,8 +80,10 @@ const RESET_OTP_PATH = '/phone-number/request-password-reset'
  *
  * - Off unless WhatsApp codes are enabled (404).
  * - The number is put into E.164 form; the plugin then sees only that form.
- * - `send-otp` needs a session: an anonymous visitor can never make Clasync message anyone.
- * - Every request is counted against the number, the account and the IP, whether or not an account holds the number.
+ * - `send-otp` needs a session: an anonymous visitor can never make Clasync message anyone. It also refuses
+ *   (NUMBER_TAKEN) a number another account has already proven, so nobody can spam a proven holder.
+ * - Every request is claimed against the number, the account and the IP, and the platform's daily budget, in one
+ *   transaction (`hitCodeLimits`), whether or not an account holds the number.
  * - A limited `send-otp` fails with PHONE_CODE_LIMITED and `retryAfter`. A limited password-reset request
  *   answers exactly like a normal one (`{ status: true }`), so the answer never says whether the number has an
  *   account, and it never reaches the plugin: no new code is stored, so a code sent a moment ago stays valid.
@@ -97,10 +107,15 @@ async function guardCodeRequest(
     const session = await getSessionFromCtx(ctx)
     if (!session) throw new APIError('UNAUTHORIZED', { message: 'Sign in first', code: 'UNAUTHORIZED' })
     userId = session.user.id
+    const [holder] = await database
+      .select({ id: schema.user.id })
+      .from(schema.user)
+      .where(and(eq(schema.user.phoneNumber, phone), eq(schema.user.phoneNumberVerified, true), ne(schema.user.id, userId)))
+    if (holder) throw new APIError('BAD_REQUEST', { message: 'This number is already used by another account', code: 'NUMBER_TAKEN' })
   }
   const headers = ctx.request?.headers ?? ctx.headers
   const ip = headers ? (headers.get(CLIENT_IP_HEADER) ?? forwardedClientIp(headers)) : null
-  const input = { phone, userId, ip }
+  const input = { phone, userId, ip, purpose: isReset ? ('reset' as const) : ('verify' as const) }
 
   const verdict = await checkCodeLimits(database, input)
   let limited = verdict.ok ? null : verdict
@@ -120,7 +135,34 @@ async function guardCodeRequest(
       { 'Retry-After': String(limited.retryAfter) },
     )
   }
+  if (userId && ctx.request) codeRequesters.set(ctx.request, userId)
   return { context: { body: { phoneNumber: phone } } }
+}
+
+/**
+ * Runs before the plugin's phone sign-in. The plugin answers "not verified" (and stores a fresh code, replacing
+ * one the number's owner may be about to use) for any caller who knows an unproven number, whatever password they
+ * send. So only a number an account has proven reaches it; anything else gets the same 401 as a wrong password.
+ */
+async function guardPhoneSignIn(
+  database: Db,
+  ctx: Parameters<Parameters<typeof createAuthMiddleware>[0]>[0],
+): Promise<{ context: { body: Record<string, unknown> } } | undefined> {
+  const body = ctx.body as Record<string, unknown> | undefined
+  const raw = body?.phoneNumber
+  // Not a string: the route's own validation refuses it.
+  if (!body || typeof raw !== 'string') return undefined
+  const phone = toE164(raw)
+  // Not a valid number: the plugin's validator refuses it with INVALID_PHONE_NUMBER, which says nothing about accounts.
+  if (!phone) return undefined
+  const [holder] = await database
+    .select({ id: schema.user.id })
+    .from(schema.user)
+    .where(and(eq(schema.user.phoneNumber, phone), eq(schema.user.phoneNumberVerified, true)))
+  if (!holder) {
+    throw new APIError('UNAUTHORIZED', { message: 'Invalid phone number or password', code: 'INVALID_PHONE_NUMBER_OR_PASSWORD' })
+  }
+  return { context: { body: { ...body, phoneNumber: phone } } }
 }
 
 /**
@@ -129,14 +171,18 @@ async function guardCodeRequest(
  */
 async function deliverPhoneCode(database: Db, data: { phoneNumber: string; code: string }, ctx?: GenericEndpointContext): Promise<void> {
   // Signing in with a number that is not proven yet must stay silent: it is not a request for a code.
-  if (ctx?.path === '/sign-in/phone-number') return
+  if (ctx?.path === SIGN_IN_PHONE_PATH) return
   const [holder] = await database
     .select({ locale: schema.user.locale })
     .from(schema.user)
     .where(eq(schema.user.phoneNumber, data.phoneNumber))
   const locale = resolveLocale({ userLocale: holder?.locale, cookie: ctx?.getCookie(LOCALE_COOKIE) })
-  const session = ctx?.path === SEND_OTP_PATH ? await getSessionFromCtx(ctx).catch(() => null) : null
-  await sendVerificationCode(database, { phone: data.phoneNumber, code: data.code, locale, userId: session?.user.id ?? null })
+  // The account that asked, as the before hook claimed the limits for it (never looked up again here).
+  const userId =
+    ctx?.path === SEND_OTP_PATH
+      ? ((ctx.request && codeRequesters.get(ctx.request)) ?? (ctx.context.session as { user?: { id?: string } } | null)?.user?.id ?? null)
+      : null
+  await sendVerificationCode(database, { phone: data.phoneNumber, code: data.code, locale, userId })
 }
 
 /** The OAuth provider's client CRUD routes, closed over HTTP (see `disabledPaths`). */
@@ -246,6 +292,7 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
       // Phone-code requests are guarded here; only a verified lecturer can allow an assistant (denying stays open to everyone).
       before: createAuthMiddleware(async (ctx) => {
         if (ctx.path === SEND_OTP_PATH || ctx.path === RESET_OTP_PATH) return guardCodeRequest(database, ctx)
+        if (ctx.path === SIGN_IN_PHONE_PATH) return guardPhoneSignIn(database, ctx)
         if (ctx.path !== '/oauth2/consent' || (ctx.body as { accept?: unknown } | undefined)?.accept !== true) return
         const session = await getSessionFromCtx(ctx)
         const u = session?.user as { role?: unknown; emailVerified?: boolean; phoneNumberVerified?: boolean } | undefined

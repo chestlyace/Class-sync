@@ -1,9 +1,9 @@
-import { eq } from 'drizzle-orm'
+import { eq, like } from 'drizzle-orm'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CLIENT_IP_HEADER } from '@/lib/client-ip'
 import { config, setConfigForTests } from '@/server/core/config'
 import type { Db } from '@/server/db'
-import { user, whatsappMessage, whatsappMonthUsage } from '@/server/db/schema'
+import { rateLimit, user, verification, whatsappMessage, whatsappMonthUsage } from '@/server/db/schema'
 import { setWhatsAppProviderForTests, type TemplateMessage } from '@/server/whatsapp/provider'
 import { makeUser } from '@/test/factories'
 import { createTestDb } from '@/test/db'
@@ -36,17 +36,9 @@ afterEach(() => {
   vi.unstubAllEnvs()
 })
 
-async function insertCodeRows(db: Db, n: number, createdAt: Date, userId: string | null = null, firstPhone = 1) {
-  await db.insert(whatsappMessage).values(
-    Array.from({ length: n }, (_, i) => ({
-      userId,
-      kind: 'verificationCode' as const,
-      eventKey: `otp:${phoneN(firstPhone + i)}:${createdAt.toISOString()}`,
-      template: 'verification_code',
-      status: 'sent' as const,
-      createdAt,
-    })),
-  )
+/** Claims one code for each of `phones` as `userId`, one second apart. */
+async function claimCodes(db: Db, phones: string[], userId: string | null, ip: string | null = null) {
+  for (const [i, phone] of phones.entries()) await hitCodeLimits(db, { phone, userId, ip, at: secondsAfter(i) })
 }
 
 describe('code limits', () => {
@@ -83,21 +75,48 @@ describe('code limits', () => {
     }
     const sixth = await checkCodeLimits(db, { ...base, at: secondsAfter(5 * 61) })
     expect(sixth).toMatchObject({ ok: false, reason: 'number_day' })
+    // The claim itself refuses too, so a request that raced past the check is still stopped.
+    await expect(hitCodeLimits(db, { ...base, at: secondsAfter(5 * 61) })).rejects.toMatchObject({ reason: 'number_day' })
+  })
+
+  it('keeps password-reset limits apart from sign-up ones, so a spammed number can still reset', async () => {
+    const base = { phone: phoneN(1), userId: null, ip: '10.0.0.1' }
+    for (let i = 0; i < 5; i++) await hitCodeLimits(db, { ...base, at: secondsAfter(i * 61) })
+    const at = secondsAfter(5 * 61)
+    expect(await checkCodeLimits(db, { ...base, at })).toMatchObject({ ok: false, reason: 'number_day' })
+    expect(await checkCodeLimits(db, { ...base, at, purpose: 'reset' })).toEqual({ ok: true })
+    await hitCodeLimits(db, { ...base, at, purpose: 'reset' })
+    // The reset has its own minute.
+    expect(await checkCodeLimits(db, { ...base, at: secondsAfter(5 * 61 + 5), purpose: 'reset' })).toMatchObject({ ok: false, reason: 'cooldown' })
   })
 
   it('stops a 6th distinct number for one account in a day, but not a number it already used', async () => {
     const stu = await makeUser(db, { role: 'student' })
-    await insertCodeRows(db, 5, AT, stu.id)
-    const fresh = await checkCodeLimits(db, { phone: phoneN(99), userId: stu.id, ip: null, at: secondsAfter(10) })
+    await claimCodes(db, [1, 2, 3, 4, 5].map(phoneN), stu.id)
+    const fresh = await checkCodeLimits(db, { phone: phoneN(99), userId: stu.id, ip: null, at: secondsAfter(70) })
     expect(fresh).toMatchObject({ ok: false, reason: 'account_numbers' })
-    expect((fresh as { retryAfter: number }).retryAfter).toBe(12 * 3600 - 10)
-    // One of its five numbers again: fine.
-    expect(await checkCodeLimits(db, { phone: phoneN(1), userId: stu.id, ip: null, at: secondsAfter(10) })).toEqual({ ok: true })
+    expect((fresh as { retryAfter: number }).retryAfter).toBe(12 * 3600 - 70)
+    await expect(hitCodeLimits(db, { phone: phoneN(99), userId: stu.id, ip: null, at: secondsAfter(70) })).rejects.toMatchObject({
+      reason: 'account_numbers',
+    })
+    // One of its five numbers again (past its minute): fine.
+    expect(await checkCodeLimits(db, { phone: phoneN(1), userId: stu.id, ip: null, at: secondsAfter(70) })).toEqual({ ok: true })
     // Another account is not affected, and neither is the same account the next day.
     const other = await makeUser(db, { role: 'student' })
-    expect(await checkCodeLimits(db, { phone: phoneN(99), userId: other.id, ip: null, at: secondsAfter(10) })).toEqual({ ok: true })
+    expect(await checkCodeLimits(db, { phone: phoneN(99), userId: other.id, ip: null, at: secondsAfter(70) })).toEqual({ ok: true })
     const nextDay = new Date(AT.getTime() + 24 * 3600 * 1000)
     expect(await checkCodeLimits(db, { phone: phoneN(99), userId: stu.id, ip: null, at: nextDay })).toEqual({ ok: true })
+  })
+
+  it('lets only 5 of many parallel requests from one account to different numbers through', async () => {
+    const stu = await makeUser(db, { role: 'student' })
+    const results = await Promise.allSettled(
+      Array.from({ length: 12 }, (_, i) => hitCodeLimits(db, { phone: phoneN(i + 1), userId: stu.id, ip: null, at: AT })),
+    )
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(5)
+    for (const r of results) {
+      if (r.status === 'rejected') expect(r.reason).toMatchObject({ reason: 'account_numbers' })
+    }
   })
 
   it('allows 60 codes an hour from one IP to different numbers and stops the 61st', async () => {
@@ -108,22 +127,35 @@ describe('code limits', () => {
     }
     const sixtyFirst = { phone: phoneN(61), userId: null, ip: '203.0.113.9', at: AT }
     expect(await checkCodeLimits(db, sixtyFirst)).toMatchObject({ ok: false, reason: 'ip' })
+    // The claim refuses too: parallel requests that all passed the check cannot all get through.
+    await expect(hitCodeLimits(db, sixtyFirst)).rejects.toMatchObject({ reason: 'ip' })
     // Another IP is not affected.
     expect(await checkCodeLimits(db, { ...sixtyFirst, ip: '203.0.113.10' })).toEqual({ ok: true })
   })
 
   it('stops the 201st code of the day for everyone, and lets codesAvailableToday say so', async () => {
-    await insertCodeRows(db, 199, AT)
+    await db.insert(rateLimit).values({ key: 'otp:global:2026-11-25', windowStart: AT, count: 199 })
     expect(await codesAvailableToday(db, secondsAfter(5))).toBe(true)
-    expect(await checkCodeLimits(db, { phone: phoneN(500), userId: null, ip: null, at: secondsAfter(5) })).toEqual({ ok: true })
-    await insertCodeRows(db, 1, AT, null, 300)
-    expect(await codesAvailableToday(db, secondsAfter(5))).toBe(false)
-    expect(await checkCodeLimits(db, { phone: phoneN(500), userId: null, ip: null, at: secondsAfter(5) })).toMatchObject({
-      ok: false,
-      reason: 'global',
-    })
+    const input = { phone: phoneN(500), userId: null, ip: null, at: secondsAfter(5) }
+    expect(await checkCodeLimits(db, input)).toEqual({ ok: true })
+    await hitCodeLimits(db, input)
+    expect(await codesAvailableToday(db, secondsAfter(6))).toBe(false)
+    const next = { ...input, phone: phoneN(501), at: secondsAfter(6) }
+    expect(await checkCodeLimits(db, next)).toMatchObject({ ok: false, reason: 'global' })
+    await expect(hitCodeLimits(db, next)).rejects.toMatchObject({ reason: 'global' })
+    // A refused claim leaves nothing behind: the day's count stays at 200.
+    const [counter] = await db.select().from(rateLimit).where(eq(rateLimit.key, 'otp:global:2026-11-25'))
+    expect(counter.count).toBe(200)
     // Yesterday's codes do not count today.
     expect(await codesAvailableToday(db, new Date(AT.getTime() + 24 * 3600 * 1000))).toBe(true)
+  })
+
+  it('lets only the last free slot of the day go to one of many parallel requests', async () => {
+    await db.insert(rateLimit).values({ key: 'otp:global:2026-11-25', windowStart: AT, count: 195 })
+    const results = await Promise.allSettled(
+      Array.from({ length: 10 }, (_, i) => hitCodeLimits(db, { phone: phoneN(600 + i), userId: null, ip: null, at: AT })),
+    )
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(5)
   })
 })
 
@@ -280,14 +312,37 @@ describe('auth: WhatsApp code routes', () => {
     expect(sent).toHaveLength(1)
   })
 
-  it('stays silent when a sign-in uses a number that is not proven yet', async () => {
+  it('does not let an anonymous sign-in replace or reveal a code pending verification', async () => {
     const phone = '+237677000004'
     await db.update(user).set({ phoneNumber: phone, phoneNumberVerified: false }).where(eq(user.id, userId))
-    const res = await post('/sign-in/phone-number', { phoneNumber: phone, password: PASSWORD })
+    const asked = await post('/phone-number/send-otp', { phoneNumber: phone }, { signedIn: true })
+    expect(asked.status).toBe(200)
+    await vi.waitFor(() => expect(sent).toHaveLength(1))
+    const identifier = `phone-number-otp-${phone}`
+    const before = await db.select().from(verification).where(eq(verification.identifier, identifier))
+    expect(before).toHaveLength(1)
+
+    // Anyone who knows the number can try: the answer is the generic wrong-password one, and nothing is stored or sent.
+    const res = await post('/sign-in/phone-number', { phoneNumber: phone, password: 'not-the-password-1' })
     expect(res.status).toBe(401)
+    expect(((await res.json()) as { code?: string }).code).toBe('INVALID_PHONE_NUMBER_OR_PASSWORD')
+    await settle()
+    const after = await db.select().from(verification).where(eq(verification.identifier, identifier))
+    expect(after.map((r) => r.value)).toEqual(before.map((r) => r.value))
+    expect(sent).toHaveLength(1)
+    await db.update(user).set({ phoneNumber: null }).where(eq(user.id, userId))
+  })
+
+  it('refuses a number another account has already proven, before counting or sending anything', async () => {
+    const holder = await makeUser(db, { role: 'student' })
+    const phone = '+237677000008'
+    await db.update(user).set({ phoneNumber: phone, phoneNumberVerified: true }).where(eq(user.id, holder.id))
+    const res = await post('/phone-number/send-otp', { phoneNumber: phone }, { signedIn: true })
+    expect(res.status).toBe(400)
+    expect(((await res.json()) as { code?: string }).code).toBe('NUMBER_TAKEN')
     await settle()
     expect(sent).toEqual([])
-    await db.update(user).set({ phoneNumber: null }).where(eq(user.id, userId))
+    expect(await db.select().from(rateLimit).where(like(rateLimit.key, `%${phone}%`))).toEqual([])
   })
 
   it('answers a password-reset request the same for every number, and sends only for a verified holder', async () => {
