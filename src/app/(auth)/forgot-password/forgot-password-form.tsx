@@ -1,5 +1,6 @@
 'use client'
 
+import { MessageCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
@@ -10,13 +11,23 @@ import { authClient } from '@/lib/auth-client'
 import { authErrorKey } from '@/lib/auth-errors'
 import { formatWait } from '@/lib/format-wait'
 import { RESET_RESEND_SECONDS } from '@/lib/password-reset'
+import { WhatsAppResetForm } from './whatsapp-reset-form'
 
 /**
  * Asks the server to email a reset link. The confirmation never reveals whether the address exists.
  * "Send again" opens once the server's per-address wait has passed, with the time left shown, so
- * pressing it always sends.
+ * pressing it always sends. When WhatsApp codes are open (`whatsAppEnabled`), a second choice resets
+ * with a code sent on WhatsApp instead.
  */
-export function ForgotPasswordForm({ next = null, googleEnabled = false }: { next?: string | null; googleEnabled?: boolean }) {
+export function ForgotPasswordForm({
+  next = null,
+  googleEnabled = false,
+  whatsAppEnabled = false,
+}: {
+  next?: string | null
+  googleEnabled?: boolean
+  whatsAppEnabled?: boolean
+}) {
   const t = useTranslations('auth.forgotPassword')
   const tRoot = useTranslations()
   const [sentTo, setSentTo] = useState<string | null>(null)
@@ -24,6 +35,7 @@ export function ForgotPasswordForm({ next = null, googleEnabled = false }: { nex
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(0)
+  const [method, setMethod] = useState<'email' | 'whatsapp'>('email')
 
   useEffect(() => {
     if (secondsLeft <= 0) return
@@ -69,6 +81,10 @@ export function ForgotPasswordForm({ next = null, googleEnabled = false }: { nex
 
   const signInHref = next ? `/sign-in?next=${encodeURIComponent(next)}` : '/sign-in'
 
+  if (method === 'whatsapp' && whatsAppEnabled) {
+    return <WhatsAppResetForm next={next} signInHref={signInHref} onUseEmail={() => setMethod('email')} />
+  }
+
   if (sentTo !== null) {
     return (
       <>
@@ -113,6 +129,12 @@ export function ForgotPasswordForm({ next = null, googleEnabled = false }: { nex
         <Button type="submit" size="lg" pending={pending} className="mt-1 h-13 text-base">
           {pending ? t('submitting') : t('submit')}
         </Button>
+        {whatsAppEnabled ? (
+          <Button type="button" variant="outline" size="lg" onClick={() => setMethod('whatsapp')}>
+            <MessageCircle aria-hidden="true" />
+            {t('whatsapp')}
+          </Button>
+        ) : null}
       </form>
       <Link href={signInHref} className="self-start text-sm text-primary underline-offset-4 hover:underline">
         {t('backToSignIn')}

@@ -11,6 +11,7 @@ import { jwt, phoneNumber } from 'better-auth/plugins'
 import { waitUntil } from '@vercel/functions'
 import { CLIENT_IP_HEADER, forwardedClientIp } from '@/lib/client-ip'
 import { isLocale, LOCALE_COOKIE, resolveLocale } from '@/i18n/locale'
+import { supportEmail } from '@/lib/contact'
 import { safeNextPath } from '@/lib/next-path'
 import { RESET_RESEND_SECONDS } from '@/lib/password-reset'
 import { toE164 } from '@/lib/phone'
@@ -21,11 +22,13 @@ import { isVerificationPending } from '@/server/core/guards'
 import { db, type Db } from '@/server/db'
 import * as schema from '@/server/db/schema'
 import { sendEmail } from '@/server/email/send'
+import { PasswordChangedWhatsAppEmail } from '@/server/email/templates/password-changed-whatsapp'
 import { ResetPasswordEmail } from '@/server/email/templates/reset-password'
 import { emailSubject, VerifyEmail } from '@/server/email/templates/verify-email'
 import { isAllowedWhatsAppNumber, whatsAppVerificationEnabled } from '@/server/whatsapp/config'
 import { googleCredentials, signupFieldsFromOAuthState } from './google'
 import { checkCodeLimits, CodeLimitedError, hitCodeLimits, hitIpLimit, sendVerificationCode } from './phone-otp'
+import { isPhoneReset } from './phone-reset-scope'
 import { assertValidSignup, assertValidUserUpdate, cleanName } from './signup-rules'
 
 type CreateAuthOptions = {
@@ -275,6 +278,34 @@ async function withdrawResetLink(database: Db, token: string): Promise<void> {
 export function createAuth(database: Db, options: CreateAuthOptions = {}) {
   const origin = resolveAppOrigin(options.baseURL)
   const google = options.google === undefined ? googleCredentials() : options.google
+
+  /**
+   * "Your password was changed using WhatsApp (number ending 47)": goes to the account's email, and only
+   * when that email is verified (an unverified address may belong to someone else). A failed send is logged
+   * and never undoes the reset, which has already happened.
+   */
+  async function sendPasswordChangedNotice(user: { email: string; emailVerified?: boolean | null; phoneNumber?: string | null }) {
+    if (!user.emailVerified) return
+    try {
+      // additionalFields are not reflected in this callback's user type.
+      const rawLocale = (user as { locale?: unknown }).locale
+      const locale = isLocale(rawLocale) ? rawLocale : 'en'
+      await sendEmail({
+        to: user.email,
+        subject: emailSubject('passwordChangedWhatsApp', locale),
+        kind: 'passwordChangedWhatsApp',
+        react: PasswordChangedWhatsAppEmail({
+          lastDigits: (user.phoneNumber ?? '').replace(/\D/g, '').slice(-2),
+          url: `${origin}/forgot-password`,
+          support: supportEmail(),
+          locale,
+        }),
+      })
+    } catch (error) {
+      console.error('[auth] password changed notice failed', error)
+    }
+  }
+
   return betterAuth({
     baseURL: origin,
     ...(options.secret ? { secret: options.secret } : {}),
@@ -375,7 +406,15 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
       // verification (a lost or bounced verification email) can sign in straight away. Safe against
       // someone who registered another person's address: the reset replaced their password and
       // ended their sessions.
-      onPasswordReset: async ({ user }) => {
+      // A reset by WhatsApp code proves the number, not the email: it never marks the email verified.
+      // It tells the owner by email instead (when that email is verified), so a reset through a
+      // reassigned SIM does not go unnoticed. Here, not in the reset service, so a direct call to the
+      // plugin's route cannot skip the notice.
+      onPasswordReset: async ({ user }, request) => {
+        if (isPhoneReset(request)) {
+          await sendPasswordChangedNotice(user)
+          return
+        }
         if (user.emailVerified) return
         await database.update(schema.user).set({ emailVerified: true, updatedAt: now() }).where(eq(schema.user.id, user.id))
       },

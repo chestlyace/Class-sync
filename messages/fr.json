@@ -65,6 +65,11 @@
       "resend": "Renvoyer",
       "resendIn": "Renvoyer dans {time}",
       "resent": "Nous avons envoyé un autre lien. Seul le plus récent est utile.",
+      "whatsapp": "Recevoir un code sur WhatsApp",
+      "emailInstead": "Recevoir plutôt un lien par e-mail",
+      "whatsappDescription": "Saisissez le numéro WhatsApp de votre compte Clasync. Nous y enverrons un code à 6 chiffres pour choisir un nouveau mot de passe.",
+      "whatsappSentDescription": "Si ce numéro correspond à un compte, nous avons envoyé un code à 6 chiffres sur WhatsApp au",
+      "whatsappWrongCode": "Ce code n'est pas le bon, ou il a expiré. Vérifiez-le, ou demandez un nouveau code.",
       "backToSignIn": "Retour à la connexion"
     },
     "resetPassword": {
@@ -443,6 +448,14 @@
       "at": "Remis le {date} à {time}.",
       "next": "Votre résultat apparaîtra sur la page du test dès qu'il sera disponible.",
       "cta": "Ouvrir le test",
+      "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :"
+    },
+    "passwordChangedWhatsApp": {
+      "subject": "Votre mot de passe Clasync a été modifié",
+      "greeting": "Bonjour,",
+      "body": "Votre mot de passe Clasync a été modifié par WhatsApp (numéro se terminant par {digits}).",
+      "warning": "Si ce n'était pas vous, réinitialisez votre mot de passe par e-mail avec le bouton ci-dessous, et contactez {support}.",
+      "cta": "Réinitialiser mon mot de passe par e-mail",
       "fallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :"
     }
   },
