@@ -69,6 +69,7 @@ const SEND_OTP_PATH = '/phone-number/send-otp'
 const RESET_OTP_PATH = '/phone-number/request-password-reset'
 const SIGN_IN_PHONE_PATH = '/sign-in/phone-number'
 const LINK_SOCIAL_PATH = '/link-social'
+const UPDATE_USER_PATH = '/update-user'
 
 /**
  * The account that claimed a code in the before hook, for the send callback that runs later in the background
@@ -201,6 +202,18 @@ async function guardLinkSocial(database: Db, ctx: Parameters<Parameters<typeof c
 }
 
 /**
+ * Runs before `/update-user`. The sign-in number changes only through a WhatsApp code (or a JOIN message),
+ * and is removed only through Settings, which refuses while it is the account's only proof. The plugin
+ * itself refuses a new number here but lets `phoneNumber: null` through, so both fields are refused outright.
+ */
+function guardUserUpdate(ctx: Parameters<Parameters<typeof createAuthMiddleware>[0]>[0]): void {
+  const body = ctx.body as Record<string, unknown> | undefined
+  if (body && typeof body === 'object' && ('phoneNumber' in body || 'phoneNumberVerified' in body)) {
+    throw new APIError('BAD_REQUEST', { message: 'The WhatsApp number cannot be changed here', code: 'PHONE_NUMBER_CANNOT_BE_UPDATED' })
+  }
+}
+
+/**
  * The plugin's send callback for sign-up verification and password reset. Language: the account that holds
  * the number, else the visitor's language cookie, else English.
  */
@@ -229,6 +242,9 @@ export const OAUTH_CLIENT_MANAGEMENT_PATHS = [
   '/oauth2/get-clients',
   '/oauth2/client/rotate-secret',
 ]
+
+/** The phone plugin's routes that check a code, closed over HTTP (see `disabledPaths`). */
+export const PHONE_CODE_CHECK_PATHS = ['/phone-number/verify', '/phone-number/reset-password']
 
 /** Scopes an assistant can be granted. Read tools need `clasync:read`, draft tools `clasync:write`. */
 export const MCP_OAUTH_SCOPES = ['openid', 'profile', 'email', 'offline_access', 'clasync:read', 'clasync:write']
@@ -370,6 +386,9 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
     // The OAuth provider's client-management routes are closed too: assistants register through
     // dynamic registration or a metadata document, and nobody (students included) manages clients
     // over HTTP. The consent page reads clients through src/server/mcp/connections.ts.
+    // The phone plugin's code-checking routes are closed as well: Clasync calls them only through
+    // `auth.api` (phone-verification.ts, reset-password-phone.ts), which add the rules the bare routes
+    // lack (no passwordless sign-in from a code, one "wrong code" answer whether or not a number has an account).
     disabledPaths: [
       '/token',
       '/api-key/create',
@@ -378,6 +397,7 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
       '/api-key/list',
       '/api-key/get',
       ...OAUTH_CLIENT_MANAGEMENT_PATHS,
+      ...PHONE_CODE_CHECK_PATHS,
     ],
     advanced: {
       // Sending mail must not hold the response open: otherwise a real address takes measurably
@@ -395,6 +415,7 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
         if (ctx.path === SEND_OTP_PATH || ctx.path === RESET_OTP_PATH) return guardCodeRequest(database, ctx)
         if (ctx.path === SIGN_IN_PHONE_PATH) return guardPhoneSignIn(database, ctx)
         if (ctx.path === LINK_SOCIAL_PATH) return guardLinkSocial(database, ctx)
+        if (ctx.path === UPDATE_USER_PATH) return guardUserUpdate(ctx)
         if (ctx.path !== '/oauth2/consent' || (ctx.body as { accept?: unknown } | undefined)?.accept !== true) return
         const session = await getSessionFromCtx(ctx)
         const u = session?.user as { role?: unknown; emailVerified?: boolean; phoneNumberVerified?: boolean } | undefined

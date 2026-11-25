@@ -86,6 +86,17 @@ describe('auth: user updates', () => {
     expect(row.name).toBe('Stu Dent')
   })
 
+  it('refuses to set or remove the WhatsApp number through /update-user', async () => {
+    await db.update(user).set({ phoneNumber: '+237677005501', phoneNumberVerified: true }).where(eq(user.id, userId))
+    const removal = await post('/update-user', { phoneNumber: null })
+    expect(removal.status).toBe(400)
+    expect(((await removal.json()) as { code?: string }).code).toBe('PHONE_NUMBER_CANNOT_BE_UPDATED')
+    expect((await post('/update-user', { phoneNumberVerified: false })).status).toBe(400)
+    expect((await post('/update-user', { phoneNumber: '+237677005502' })).status).toBe(400)
+    expect(await dbUser()).toMatchObject({ phoneNumber: '+237677005501', phoneNumberVerified: true })
+    await db.update(user).set({ phoneNumber: null, phoneNumberVerified: false }).where(eq(user.id, userId))
+  })
+
   it('refuses a sign-up whose name carries a link, with its own error code', async () => {
     const res = await post(
       '/sign-up/email',

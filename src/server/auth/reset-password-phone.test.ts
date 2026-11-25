@@ -276,23 +276,19 @@ describe('resetPasswordByWhatsAppAndSignIn', () => {
     expect(await canSignIn(email, NEW_PASSWORD)).toBe(true)
   })
 
-  it('treats a call straight to the plugin route as a WhatsApp reset too: email stays unverified, a verified email is told', async () => {
-    const plain = await account()
-    const verified = await account({ emailVerified: true })
-    for (const who of [plain, verified]) {
-      codes = []
-      const code = await issuedCode(who.phone)
-      const res = await auth.handler(
-        new Request(`${BASE}/api/auth/phone-number/reset-password`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', origin: BASE },
-          body: JSON.stringify({ phoneNumber: who.phone, otp: code, newPassword: NEW_PASSWORD }),
-        }),
-      )
-      expect(res.status).toBe(200)
-    }
-    const [plainRow] = await db.select().from(user).where(eq(user.id, plain.id))
-    expect(plainRow.emailVerified).toBe(false)
-    expect(sent.map((s) => s.to)).toEqual([verified.email])
+  it('does not take a code at the plugin route over HTTP: only the reset service checks it', async () => {
+    const { email, phone } = await account()
+    const code = await issuedCode(phone)
+    const res = await auth.handler(
+      new Request(`${BASE}/api/auth/phone-number/reset-password`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin: BASE },
+        body: JSON.stringify({ phoneNumber: phone, otp: code, newPassword: NEW_PASSWORD }),
+      }),
+    )
+    expect(res.status).toBe(404)
+    expect(await canSignIn(email, OLD_PASSWORD)).toBe(true)
+    // The code was not spent: the page's own path still works with it.
+    expect(await resetPasswordByWhatsAppAndSignIn(auth, { phone, code, newPassword: NEW_PASSWORD, headers: headers() })).toEqual({ status: 'signed-in' })
   })
 })

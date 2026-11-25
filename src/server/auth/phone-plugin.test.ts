@@ -68,4 +68,14 @@ describe('auth: phone-number plugin', () => {
     expect(res.status).toBe(401)
     expect(((await res.json()) as { code?: string }).code).toBe('UNAUTHORIZED')
   })
+
+  it('closes the routes that check a code over HTTP (Clasync calls them only through auth.api)', async () => {
+    enableCodes()
+    const verify = await post('/phone-number/verify', { phoneNumber: '+237677123456', code: '123456' })
+    expect(verify.status).toBe(404)
+    const reset = await post('/phone-number/reset-password', { phoneNumber: '+237677123456', otp: '123456', newPassword: 'a-brand-new-pass-7' })
+    expect(reset.status).toBe(404)
+    // A trailing slash is the same route.
+    expect((await post('/phone-number/verify/', { phoneNumber: '+237677123456', code: '123456' })).status).toBe(404)
+  })
 })
