@@ -184,6 +184,50 @@ describe('weeks', () => {
       canOpenCheckIn: false,
     })
   })
+
+  it('marks online classes and opens the student join button only in the join window', async () => {
+    const online = await seedSlot(fx.bio.id, { meetingUrl: 'https://meet.google.com/abc-defg-hij' })
+
+    setNowForTests(() => local(7, 44))
+    expect((await studentWeek(fx.alice, MONDAY))[0]).toMatchObject({ joinWindow: 'upcoming' })
+    setNowForTests(() => local(7, 45))
+    const open = (await studentWeek(fx.alice, MONDAY))[0]
+    expect(open).toMatchObject({ joinWindow: 'open' })
+    expect(open.occurrence.online).toBe(true)
+    setNowForTests(() => local(10, 1))
+    expect((await studentWeek(fx.alice, MONDAY))[0].joinWindow).toBeNull()
+
+    await db.insert(classDateStatus).values({
+      slotId: online.id,
+      date: MONDAY,
+      status: 'cancelled',
+      setBy: fx.lecturer.user.id,
+    })
+    setNowForTests(() => local(8, 0))
+    expect((await studentWeek(fx.alice, MONDAY))[0].joinWindow).toBeNull()
+    // The meeting URL never appears in week data.
+    expect(JSON.stringify(await studentWeek(fx.alice, MONDAY))).not.toContain('meet.google.com')
+  })
+
+  it('a mixed sitting starts check-in without the campus rule', async () => {
+    const slot = await seedSlot(fx.bio.id, { requireOnCampus: true })
+    await db.insert(classExtra).values({
+      courseId: fx.bio.id,
+      startsAt: local(10, 15),
+      endsAt: local(10, 45),
+      room: null,
+      meetingUrl: 'https://meet.google.com/abc-defg-hij',
+      createdBy: fx.lecturer.user.id,
+    })
+    setNowForTests(() => local(8, 5))
+
+    // The fixture's school has no campus location, so the old "first occurrence" rule would have thrown.
+    await expect(startClassAttendance(fx.lecturer, `slot:${slot.id}:${MONDAY}`)).resolves.toMatchObject({
+      courseId: fx.bio.id,
+    })
+    const [session] = await db.select().from(attendanceSession)
+    expect(session.requireOnCampus).toBe(false)
+  })
 })
 
 describe('needsAnswer', () => {

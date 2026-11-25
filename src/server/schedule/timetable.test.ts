@@ -5,7 +5,8 @@ import { config } from '@/server/core/config'
 import { createClass } from '@/server/classes/service'
 import { createCourse } from '@/server/courses/service'
 import type { Db } from '@/server/db'
-import { classDateStatus, classSlot } from '@/server/db/schema'
+import { classDateStatus, classMeeting, classSlot, onlineClassJoin, pushSubscription } from '@/server/db/schema'
+import { setEmailDbForTests } from '@/server/email/db'
 import { setAfterResponseForTests } from '@/server/lib/after-response'
 import { instantAt } from '@/server/lib/local-time'
 import { setPushClientForTests } from '@/server/push/send'
@@ -20,9 +21,14 @@ const tz = config.timeZone
 const MONDAY = '2026-11-16'
 const local = (hh: number, mm = 0) => instantAt(MONDAY, hh * 60 + mm, tz)
 
+const flush = async () => {
+  while (tasks.length) await Promise.all(tasks.splice(0))
+}
+
 let db: Db
 let fx: Awaited<ReturnType<typeof setupCourse>>
 let queued: NoticeMessage[]
+let pushes: { kind: string; tag: string }[]
 let tasks: Promise<void>[]
 
 const input = (over: Partial<SlotInput> = {}): SlotInput => ({
@@ -31,6 +37,7 @@ const input = (over: Partial<SlotInput> = {}): SlotInput => ({
   endMinute: 10 * 60,
   room: 'B2',
   requireOnCampus: false,
+  meetingUrl: null,
   startsOn: '2026-09-01',
   endsOn: '2026-12-31',
   ...over,
@@ -57,6 +64,7 @@ async function seedSlot(courseId: string, over: Partial<typeof classSlot.$inferI
 
 beforeEach(async () => {
   db = await createTestDb()
+  setEmailDbForTests(db)
   fx = await setupCourse(db)
   setNowForTests(() => local(6))
   queued = []
@@ -65,7 +73,13 @@ beforeEach(async () => {
       queued.push(message)
     },
   })
-  setPushClientForTests({ async send() {} })
+  pushes = []
+  setPushClientForTests({
+    async send(sub, body) {
+      const { kind, tag } = JSON.parse(body)
+      pushes.push({ kind, tag })
+    },
+  })
   tasks = []
   setAfterResponseForTests((task) => {
     tasks.push(task())
@@ -76,6 +90,7 @@ afterEach(async () => {
   await Promise.all(tasks)
   setScheduleQueueForTests(null)
   setPushClientForTests(null)
+  setEmailDbForTests(null)
   setAfterResponseForTests(null)
   setNowForTests(null)
 })
@@ -174,6 +189,144 @@ describe('timetable service', () => {
 
     expect(slot).toMatchObject({ id: future.id, startsOn: '2026-11-30', room: null })
     expect(await db.select().from(classSlot)).toHaveLength(1)
+  })
+
+  it('validates a Google Meet link and never allows online plus on-campus check-in', async () => {
+    await expect(
+      createSlot(fx.lecturer, fx.bio.id, input({ meetingUrl: 'https://zoom.us/abc' })),
+    ).rejects.toMatchObject({ code: 'VALIDATION', details: { fields: ['meetingUrl'] } })
+    await expect(
+      createSlot(
+        fx.lecturer,
+        fx.bio.id,
+        input({ meetingUrl: 'https://meet.google.com/abc-defg-hij', requireOnCampus: true }),
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION', details: { reason: 'online_and_campus' } })
+    expect(await db.select().from(classSlot)).toEqual([])
+
+    const { slot } = await createSlot(
+      fx.lecturer,
+      fx.bio.id,
+      input({ meetingUrl: '  https://meet.google.com/abc-defg-hij  ' }),
+    )
+    expect(slot.meetingUrl).toBe('https://meet.google.com/abc-defg-hij')
+    // The database agrees with the service: a link cannot be combined with campus-only check-in.
+    await expect(
+      db.insert(classSlot).values({
+        courseId: fx.bio.id,
+        weekday: 2,
+        startMinute: 480,
+        endMinute: 600,
+        room: null,
+        requireOnCampus: true,
+        meetingUrl: 'https://meet.google.com/abc-defg-hij',
+        startsOn: '2026-09-01',
+        endsOn: '2026-12-31',
+        createdBy: fx.lecturer.user.id,
+      }),
+    ).rejects.toThrow()
+    expect(await db.select().from(classSlot)).toHaveLength(1)
+  })
+
+  it('a link-only edit with history keeps past classes as they were and carries today’s joins', async () => {
+    const old = await seedSlot(fx.bio.id)
+    const statuses = [
+      { slotId: old.id, date: '2026-11-09', status: 'cancelled' as const, setBy: fx.lecturer.user.id },
+      { slotId: old.id, date: MONDAY, status: 'cancelled' as const, setBy: fx.lecturer.user.id },
+      { slotId: old.id, date: '2026-11-23', status: 'cancelled' as const, setBy: fx.lecturer.user.id },
+    ]
+    await db.insert(classDateStatus).values(statuses)
+    await db.insert(onlineClassJoin).values([
+      {
+        occurrenceKey: `slot:${old.id}:2026-11-09`,
+        studentId: fx.alice.user.id,
+        firstJoinedAt: local(7, 50),
+        lastJoinedAt: local(7, 55),
+      },
+      {
+        occurrenceKey: `slot:${old.id}:${MONDAY}`,
+        studentId: fx.bob.user.id,
+        firstJoinedAt: local(7, 50),
+        lastJoinedAt: local(7, 55),
+      },
+    ])
+    await db.insert(pushSubscription).values([
+      { userId: fx.alice.user.id, endpoint: 'https://push.example/alice', p256dh: 'p', auth: 'a', label: 'Phone' },
+      { userId: fx.bob.user.id, endpoint: 'https://push.example/bob', p256dh: 'p', auth: 'a', label: 'Phone' },
+    ])
+
+    const { slot } = await updateSlot(fx.lecturer, old.id, input({ meetingUrl: 'https://meet.google.com/abc-defg-hij' }))
+    await flush()
+
+    expect(slot.id).toBe(old.id)
+    expect(slot.meetingUrl).toBe('https://meet.google.com/abc-defg-hij')
+    expect(await db.select().from(classSlot)).toHaveLength(1)
+    expect((await db.select().from(classDateStatus)).map((s) => [s.slotId, s.date])).toEqual([
+      [old.id, '2026-11-09'],
+      [old.id, MONDAY],
+      [old.id, '2026-11-23'],
+    ])
+    expect(
+      (await db.select().from(onlineClassJoin))
+        .map((j) => j.occurrenceKey)
+        .sort(),
+    ).toEqual([`slot:${old.id}:2026-11-09`, `slot:${old.id}:${MONDAY}`].sort())
+    expect(pushes.map((p) => p.kind).sort()).toEqual(['classWentOnline', 'classWentOnline'])
+  })
+
+  it('a slot without history edits in place and tells students when it changes format', async () => {
+    const slot = await seedSlot(fx.bio.id, { startsOn: '2026-11-23' })
+    await db.insert(pushSubscription).values([
+      { userId: fx.alice.user.id, endpoint: 'https://push.example/alice', p256dh: 'p', auth: 'a', label: 'Phone' },
+    ])
+
+    await updateSlot(
+      fx.lecturer,
+      slot.id,
+      input({ startsOn: '2026-11-23', meetingUrl: 'https://meet.google.com/abc-defg-hij' }),
+    )
+    await flush()
+    expect(pushes.map((p) => p.kind)).toEqual(['classWentOnline'])
+
+    pushes.length = 0
+    await updateSlot(fx.lecturer, slot.id, input({ startsOn: '2026-11-23', meetingUrl: null }))
+    await flush()
+    expect(pushes.map((p) => p.kind)).toEqual(['classWentOnCampus'])
+    expect((await db.select().from(classSlot))[0].id).toBe(slot.id)
+  })
+
+  it('clears cached generated links when an online slot stops generating', async () => {
+    const slot = await seedSlot(fx.bio.id, { startsOn: '2026-11-23', autoMeet: true })
+    const key = `slot:${slot.id}:2026-11-23`
+    await db.insert(classMeeting).values({
+      occurrenceKey: key,
+      meetingUrl: 'https://meet.google.com/auto-meet-link',
+      calendarEventId: 'clasync-event',
+    })
+
+    const { slot: updated } = await updateSlot(
+      fx.lecturer,
+      slot.id,
+      input({ startsOn: '2026-11-23', autoMeet: false }),
+    )
+
+    expect(updated.id).toBe(slot.id)
+    expect(updated.autoMeet).toBe(false)
+    expect(await db.select().from(classMeeting)).toEqual([])
+  })
+
+  it('changing the campus rule as well as the link is not treated as a pure link edit', async () => {
+    const old = await seedSlot(fx.bio.id, { requireOnCampus: true })
+
+    const { slot } = await updateSlot(
+      fx.lecturer,
+      old.id,
+      input({ meetingUrl: 'https://meet.google.com/abc-defg-hij', requireOnCampus: false }),
+    )
+
+    expect(slot.id).not.toBe(old.id)
+    const [ended] = await db.select().from(classSlot).where(eq(classSlot.id, old.id))
+    expect(ended).toMatchObject({ meetingUrl: null, requireOnCampus: true })
   })
 
   it('removing a slot with past dates keeps its history', async () => {

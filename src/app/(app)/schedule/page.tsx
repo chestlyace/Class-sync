@@ -10,6 +10,7 @@ import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import { listLecturerCourses, type CourseSummary } from '@/server/courses/service'
 import { addDays, localDateOf, weekStartOf } from '@/server/lib/local-time'
+import { isMeetGenerationConfigured } from '@/server/schedule/google-meet'
 import { listSlots } from '@/server/schedule/timetable'
 import { lecturerWeek, needsAnswer, type WeekRow } from '@/server/schedule/views'
 import type { Sitting } from '@/server/schedule/occurrences'
@@ -53,6 +54,7 @@ export default async function SchedulePage({ searchParams }: PageProps<'/schedul
   })
   if (!view.ok) return <ErrorState code={view.code} />
   const { courses, rows, answers, hasSlots } = view.data
+  const autoMeetAvailable = isMeetGenerationConfigured()
 
   const currentWeek = weekStartOf(today)
   const range = formatWeekRange(weekStart, addDays(weekStart, 6), locale)
@@ -96,7 +98,11 @@ export default async function SchedulePage({ searchParams }: PageProps<'/schedul
         eyebrow={t('eyebrow')}
         title={t('title')}
         description={t('description')}
-        actions={courses.length > 0 ? <MakeUpButton courses={courseOptions} today={today} /> : undefined}
+        actions={
+          courses.length > 0 ? (
+            <MakeUpButton courses={courseOptions} today={today} autoMeetAvailable={autoMeetAvailable} />
+          ) : undefined
+        }
       />
 
       <section aria-labelledby="schedule-week" className="flex flex-col gap-4">
@@ -145,7 +151,14 @@ export default async function SchedulePage({ searchParams }: PageProps<'/schedul
                 </h3>
                 <ul className="flex min-w-0 flex-1 flex-col gap-4">
                   {dayRows.map((row) => (
-                    <ClassRow key={row.occurrence.key} row={row} locale={locale} at={at} span={span} />
+                    <ClassRow
+                      key={row.occurrence.key}
+                      row={row}
+                      locale={locale}
+                      at={at}
+                      span={span}
+                      autoMeetAvailable={autoMeetAvailable}
+                    />
                   ))}
                 </ul>
               </li>
@@ -178,7 +191,7 @@ export default async function SchedulePage({ searchParams }: PageProps<'/schedul
         )}
       </section>
 
-      <NeedsAnswerList items={items} />
+      <NeedsAnswerList items={items} autoMeetAvailable={autoMeetAvailable} />
     </>
   )
 }
@@ -199,11 +212,13 @@ function ClassRow({
   locale,
   at,
   span,
+  autoMeetAvailable,
 }: {
   row: WeekRow
   locale: Locale
   at: Date
   span: (from: Date, to: Date) => string
+  autoMeetAvailable: boolean
 }) {
   const { occurrence: occ } = row
   const time = span(occ.startsAt, occ.endsAt)
@@ -218,7 +233,7 @@ function ClassRow({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="font-mono text-sm tabular-nums">{time}</span>
           <span className="font-medium">{row.courseTitle}</span>
-          {row.badge && <RowBadge badge={row.badge} replacesDate={row.replacesDate} locale={locale} />}
+          <RowBadge badge={row.badge} replacesDate={row.replacesDate} online={occ.online} locale={locale} />
         </div>
         <span className="text-sm text-muted-foreground">{details.join(' · ')}</span>
       </div>
@@ -236,6 +251,7 @@ function ClassRow({
           end: formatTime(occ.endsAt, config.timeZone),
           room: occ.room ?? '',
         }}
+        autoMeetAvailable={autoMeetAvailable}
       />
     </li>
   )

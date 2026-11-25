@@ -121,6 +121,27 @@ describe('pushPayload', () => {
       )
     })
 
+    it('classWentOnline and classWentOnCampus, with and without a day', () => {
+      expect(body('classWentOnline', 'en')).toBe(
+        'The class on Tue 10 Nov at 08:00 is now online. Open the dashboard for the Google Meet link.',
+      )
+      expect(body('classWentOnline', 'fr')).toBe(
+        'Le cours du mar. 10 nov. à 08:00 est désormais en ligne. Ouvrez le tableau de bord pour le lien Google Meet.',
+      )
+      expect(body('classWentOnline', 'en', { day: undefined, startsAt: undefined })).toBe(
+        'The class is now online. Open the dashboard for the Google Meet link.',
+      )
+      expect(body('classWentOnCampus', 'en', { room: 'B2' })).toBe(
+        'The class on Tue 10 Nov at 08:00 is back on campus · B2.',
+      )
+      expect(body('classWentOnCampus', 'fr', { room: null })).toBe(
+        'Le cours du mar. 10 nov. à 08:00 redevient sur le campus.',
+      )
+      expect(body('classWentOnCampus', 'en', { day: undefined, startsAt: undefined })).toBe(
+        'The class is back on campus.',
+      )
+    })
+
     it('classMakeUp, with and without a room', () => {
       const v = { startsAt: base.newDay }
       expect(body('classMakeUp', 'en', { ...v, room: 'A1' })).toBe('Make-up class on Thu 12 Nov at 14:30 \u00b7 A1.')

@@ -1,13 +1,19 @@
 import { and, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
+import { now } from '@/server/core/clock'
+import { config } from '@/server/core/config'
 import { AppError } from '@/server/core/errors'
 import type { Ctx } from '@/server/core/context'
 import { requireRole } from '@/server/core/guards'
 import type { Db } from '@/server/db'
-import { class_, classStudent, course, courseRosterAdjustment, school, user } from '@/server/db/schema'
+import { class_, classSlot, classStudent, course, courseRosterAdjustment, school, user } from '@/server/db/schema'
 import { isClassLecturer, type RosterEntry } from '@/server/classes/service'
+import { addDays, instantAt, isoWeekday, localDateOf } from '@/server/lib/local-time'
 import { containsPattern } from '@/server/lib/like'
+import { pushClassModeChanged, pushTimetableChanged } from '@/server/push/course-events'
 import { applyDefaultCaTemplate } from '@/server/performance/template-settings'
+import { assertOnlineRules, parseSlotInput, type SlotInput } from '@/server/schedule/slot-input'
+import { enqueueCourseDay } from '@/server/schedule/notices'
 import { courseRosterQuery, isOnCourseRoster as isOnRoster, rosteredCourseIds } from './roster'
 
 export type CourseSummary = {
@@ -105,29 +111,78 @@ async function loadSummary(db: Db, courseId: string): Promise<SummaryRow | undef
   return row
 }
 
-export async function createCourse(
-  ctx: Ctx,
-  input: { classId: string; title: string; code?: string; semester: 1 | 2 | 3 },
-): Promise<CourseSummary> {
+export type CreateCourseInput = {
+  classId: string
+  title: string
+  code?: string
+  semester: 1 | 2 | 3
+  /** The course-creation form can add the first weekly class, so the lecturer need not visit the timetable. */
+  firstSlot?: SlotInput
+}
+
+export async function createCourse(ctx: Ctx, input: CreateCourseInput): Promise<CourseSummary> {
   requireRole(ctx, 'lecturer')
   const data = parseCreateInput(input)
   // Same error for "no such class" and "not your class": ids are not probed.
   if (!(await isClassLecturer(ctx.db, data.classId, ctx.user.id))) {
     throw new AppError('FORBIDDEN', 'Only a lecturer of this class can create a course in it')
   }
-  const [created] = await ctx.db
-    .insert(course)
-    .values({
-      classId: data.classId,
-      lecturerId: ctx.user.id,
-      title: data.title,
-      code: data.code,
-      semester: data.semester,
-    })
-    .returning({ id: course.id })
-  // My default CA template, if I chose one; otherwise the course keeps the app's defaults.
-  await applyDefaultCaTemplate(ctx.db, ctx.user, created.id)
-  const row = await loadSummary(ctx.db, created.id)
+  const slot = input.firstSlot ? parseSlotInput(input.firstSlot) : null
+  if (slot) assertOnlineRules(slot)
+
+  const [cls] = await ctx.db
+    .select({ schoolId: class_.schoolId })
+    .from(class_)
+    .where(eq(class_.id, data.classId))
+  if (!cls) throw new AppError('FORBIDDEN', 'Only a lecturer of this class can create a course in it')
+  if (slot?.requireOnCampus) {
+    const [sch] = await ctx.db
+      .select({ latitude: school.latitude, longitude: school.longitude })
+      .from(school)
+      .where(eq(school.id, cls.schoolId))
+    if (!sch || sch.latitude === null || sch.longitude === null) {
+      throw new AppError('VALIDATION', 'The school has no campus location', { reason: 'no_campus_location' })
+    }
+  }
+
+  // Course and first class commit together: a valid course is never left without the slot the form promised.
+  const courseId = await ctx.db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(course)
+      .values({
+        classId: data.classId,
+        lecturerId: ctx.user.id,
+        title: data.title,
+        code: data.code,
+        semester: data.semester,
+      })
+      .returning({ id: course.id })
+    // My default CA template, if I chose one; otherwise the course keeps the app's defaults.
+    await applyDefaultCaTemplate(tx, ctx.user, created.id)
+    if (slot) {
+      await tx.insert(classSlot).values({ ...slot, courseId: created.id, createdBy: ctx.user.id })
+    }
+    return created.id
+  })
+
+  if (slot) {
+    const at = now()
+    const todayDate = localDateOf(at, config.timeZone)
+    await pushTimetableChanged(ctx.db, courseId, at)
+    if (slot.meetingUrl !== null || slot.autoMeet) {
+      const first = slot.startsOn > todayDate ? slot.startsOn : todayDate
+      const date = addDays(first, (slot.weekday - isoWeekday(first) + 7) % 7)
+      if (date <= slot.endsOn) {
+        await pushClassModeChanged(ctx.db, courseId, true, {
+          day: instantAt(date, slot.startMinute, config.timeZone),
+          room: slot.room,
+        })
+      }
+    }
+    await enqueueCourseDay(ctx.db, courseId, todayDate, at)
+  }
+
+  const row = await loadSummary(ctx.db, courseId)
   if (!row) throw new Error('Course vanished after creation')
   return toSummary(row)
 }
