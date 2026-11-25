@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { toActionResult, type ActionResult } from '@/lib/action-result'
 import { formString } from '@/lib/form-data'
 import { parsePosition } from '@/lib/position'
+import { removePhoneNumber } from '@/server/auth/phone-number'
 import { getCtx } from '@/server/auth/session'
 import { setAnnouncementsEnabled } from '@/server/broadcasts/unsubscribe'
 import { addMyMatricule } from '@/server/classes/service'
@@ -22,6 +23,15 @@ import { setSchoolLocation } from '@/server/schools/service'
 export async function addMatriculeAction(_prev: ActionResult<null> | null, data: FormData): Promise<ActionResult<null>> {
   return toActionResult(async () => {
     await addMyMatricule(await getCtx(), formString(data, 'classId'), formString(data, 'matricule'))
+    revalidatePath('/settings')
+    return null
+  })
+}
+
+/** Takes the WhatsApp sign-in number off the account. The service refuses while the email is unverified (CONFLICT). */
+export async function removePhoneNumberAction(): Promise<ActionResult<null>> {
+  return toActionResult(async () => {
+    await removePhoneNumber(await getCtx())
     revalidatePath('/settings')
     return null
   })

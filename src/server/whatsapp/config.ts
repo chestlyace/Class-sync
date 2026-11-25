@@ -69,3 +69,8 @@ export function normalizePhone(raw: string): string | null {
   const digits = raw.trim().replace(/^\+/, '')
   return /^\d{8,15}$/.test(digits) ? `+${digits}` : null
 }
+
+/** Whether WhatsApp codes may be sent for sign-up verification, sign-in and password reset: WhatsApp is configured and WHATSAPP_OTP_ENABLED=true (set only once Meta approves the verification_code template). */
+export function whatsAppVerificationEnabled(env: Env = process.env): boolean {
+  return env.WHATSAPP_OTP_ENABLED?.trim().toLowerCase() === 'true' && whatsAppConfig(env) !== null
+}

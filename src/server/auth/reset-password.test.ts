@@ -27,7 +27,7 @@ describe('resetPasswordAndSignIn', () => {
   let auth: ReturnType<typeof createAuth>
 
   beforeAll(async () => {
-    // As in production: an unverified account can only sign in once the reset verified it.
+    // As in production: the reset is what proves the address of an account that never verified.
     setConfigForTests({ requireEmailVerification: true })
     db = await createTestDb()
     auth = createAuth(db, { baseURL: BASE, secret: 'test-secret-test-secret-test-secret-123', nextCookies: false })

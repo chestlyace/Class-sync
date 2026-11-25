@@ -1,13 +1,24 @@
+import type { ReactElement } from 'react'
+import { render } from '@react-email/render'
 import { and, eq } from 'drizzle-orm'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { config, setConfigForTests } from '@/server/core/config'
 import type { Ctx } from '@/server/core/context'
 import type { Db } from '@/server/db'
-import { account, user } from '@/server/db/schema'
+import { account, session, user, whatsappConnectCode, whatsappLink } from '@/server/db/schema'
+import { handleInboundMessage } from '@/server/whatsapp/link'
 import { createTestDb } from '@/test/db'
 import { createAuth } from './auth'
 import { googleCredentials, isGoogleSignInEnabled, signupFieldsFromOAuthState } from './google'
 import { listSignInMethods } from './sign-in-methods'
+
+// Capture emails (the reset link below) instead of sending them.
+const sentEmails = vi.hoisted(() => [] as { to: string; react: ReactElement }[])
+vi.mock('@/server/email/send', () => ({
+  sendEmail: vi.fn(async (args: { to: string; react: ReactElement }) => {
+    sentEmails.push({ to: args.to, react: args.react })
+  }),
+}))
 
 const BASE = 'http://localhost:3000'
 const GOOGLE = { clientId: 'test-client.apps.googleusercontent.com', clientSecret: 'test-secret' }
@@ -280,5 +291,83 @@ describe('auth: Google sign-in', () => {
     const res = await post('/unlink-account', { accountId: google.id }, cookiesOf(signIn))
     expect(res.status).toBe(200)
     expect(await googleAccountOf(me.id)).toHaveLength(0)
+  })
+
+  it('refuses to connect Google while the account email is not verified', async () => {
+    await post('/sign-up/email', { name: 'Pending', email: 'pending@school.cm', password: 'correct-horse-9', role: 'student' })
+    const me = await userByEmail('pending@school.cm')
+    const signIn = await post('/sign-in/email', { email: 'pending@school.cm', password: 'correct-horse-9' })
+    expect(signIn.status).toBe(200)
+    const res = await post('/link-social', { provider: 'google', callbackURL: '/settings', errorCallbackURL: '/settings' }, cookiesOf(signIn))
+    expect(res.status).toBe(403)
+    expect(await res.json()).toMatchObject({ code: 'EMAIL_NOT_VERIFIED_FOR_LINK' })
+    expect(await googleAccountOf(me.id)).toHaveLength(0)
+  })
+
+  it('takes back what a squatter added when the owner resets the password by email', async () => {
+    const email = 'owner@school.cm'
+    const phone = '+237677004401'
+    // Someone registers the owner's address and signs in with the limited session an unverified account gets.
+    await post('/sign-up/email', { name: 'Squatter', email, password: 'squatter-pass-1', role: 'student' })
+    const squatted = await userByEmail(email)
+    const squatterSession = await post('/sign-in/email', { email, password: 'squatter-pass-1' })
+    expect(squatterSession.status).toBe(200)
+    // A Google account they linked (before linking needed a verified email) ...
+    await db.insert(account).values({
+      id: 'acc-squatter-google',
+      accountId: 'g-squatter',
+      providerId: 'google',
+      userId: squatted.id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    // ... and their own WhatsApp number, proven by sending JOIN from it.
+    await db.insert(whatsappConnectCode).values({ code: 'SQUAT1', userId: squatted.id, expiresAt: new Date(Date.now() + 600_000) })
+    await handleInboundMessage(db, { from: phone, text: 'JOIN SQUAT1', at: new Date() })
+    // A JOIN code still waiting to be used would bring the number back.
+    await db.insert(whatsappConnectCode).values({ code: 'SQUAT2', userId: squatted.id, expiresAt: new Date(Date.now() + 600_000) })
+    const before = await userByEmail(email)
+    expect(before).toMatchObject({ phoneNumber: phone, phoneNumberVerified: true, emailVerified: false })
+
+    // The owner uses "Forgot password" with the emailed link.
+    sentEmails.length = 0
+    expect((await post('/request-password-reset', { email })).status).toBe(200)
+    for (let i = 0; i < 50 && sentEmails.length === 0; i++) await new Promise((r) => setTimeout(r, 20))
+    const text = await render(sentEmails[0]!.react, { plainText: true })
+    const token = /reset-password\?token=([\w-]+)/.exec(text)![1]!
+    expect((await post('/reset-password', { newPassword: 'owner-new-pass-2', token })).status).toBe(200)
+
+    const after = await userByEmail(email)
+    expect(after).toMatchObject({ emailVerified: true, phoneNumber: null, phoneNumberVerified: false })
+    const logins = await db.select().from(account).where(eq(account.userId, squatted.id))
+    expect(logins.map((a) => a.providerId)).toEqual(['credential'])
+    expect(await db.select().from(whatsappLink).where(eq(whatsappLink.userId, squatted.id))).toEqual([])
+    expect(await db.select().from(whatsappConnectCode).where(eq(whatsappConnectCode.userId, squatted.id))).toEqual([])
+    expect(await db.select().from(session).where(eq(session.userId, squatted.id))).toEqual([])
+
+    // The squatter's Google account no longer signs in to it, nor does their number or old password.
+    profile = { sub: 'g-squatter', email: 'squatter@gmail.com', name: 'Squatter' }
+    const viaSquatterGoogle = await viaGoogle('/sign-in/social', { callbackURL: '/', errorCallbackURL: '/sign-in' })
+    expect(viaSquatterGoogle.headers.get('location')).toBe('/sign-in?error=signup_disabled')
+    expect(cookiesOf(viaSquatterGoogle)).not.toContain('session_token')
+    expect((await post('/sign-in/phone-number', { phoneNumber: phone, password: 'owner-new-pass-2' })).status).toBe(401)
+    expect((await post('/sign-in/email', { email, password: 'squatter-pass-1' })).status).toBe(401)
+    expect((await post('/sign-in/email', { email, password: 'owner-new-pass-2' })).status).toBe(200)
+  })
+
+  it('leaves an already verified account untouched by an email reset', async () => {
+    const me = await userByEmail('student@school.cm')
+    profile = { sub: 'g-personal-2', email: 'personal2@gmail.com', name: 'School' }
+    const signIn = await post('/sign-in/email', { email: 'student@school.cm', password: 'correct-horse-9' })
+    await viaGoogle('/link-social', { callbackURL: '/settings', errorCallbackURL: '/settings' }, cookiesOf(signIn))
+    await db.update(user).set({ phoneNumber: '+237677004402', phoneNumberVerified: true }).where(eq(user.id, me.id))
+    sentEmails.length = 0
+    expect((await post('/request-password-reset', { email: 'student@school.cm' })).status).toBe(200)
+    for (let i = 0; i < 50 && sentEmails.length === 0; i++) await new Promise((r) => setTimeout(r, 20))
+    const text = await render(sentEmails[0]!.react, { plainText: true })
+    const token = /reset-password\?token=([\w-]+)/.exec(text)![1]!
+    expect((await post('/reset-password', { newPassword: 'another-pass-3', token })).status).toBe(200)
+    expect(await googleAccountOf(me.id)).toHaveLength(1)
+    expect(await userByEmail('student@school.cm')).toMatchObject({ phoneNumber: '+237677004402', phoneNumberVerified: true })
   })
 })

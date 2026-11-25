@@ -46,11 +46,11 @@ export async function releaseClaim(db: Db, at: Date): Promise<void> {
     .where(eq(whatsappMonthUsage.month, monthKey(at)))
 }
 
-/** This month's count against the cap, plus the messages the cap skipped and the ones that failed. */
+/** This month's count against the cap, the messages the cap skipped, the ones that failed, and the verification codes sent (outside the cap). */
 export async function monthlyUsage(
   db: Db,
   at: Date,
-): Promise<{ month: string; sent: number; cap: number; skippedCap: number; failed: number }> {
+): Promise<{ month: string; sent: number; cap: number; skippedCap: number; failed: number; codes: number }> {
   const month = monthKey(at)
   const { start, end } = monthRange(at)
   const [usage] = await db.select({ sent: whatsappMonthUsage.sent }).from(whatsappMonthUsage).where(eq(whatsappMonthUsage.month, month))
@@ -61,12 +61,17 @@ export async function monthlyUsage(
       .where(and(eq(whatsappMessage.status, status), gte(whatsappMessage.createdAt, start), lt(whatsappMessage.createdAt, end)))
     return row?.n ?? 0
   }
+  const [codes] = await db
+    .select({ n: count() })
+    .from(whatsappMessage)
+    .where(and(eq(whatsappMessage.kind, 'verificationCode'), gte(whatsappMessage.createdAt, start), lt(whatsappMessage.createdAt, end)))
   return {
     month,
     sent: usage?.sent ?? 0,
     cap: whatsAppConfig()?.cap ?? DEFAULT_CAP,
     skippedCap: await byStatus('skipped_cap'),
     failed: await byStatus('failed'),
+    codes: codes?.n ?? 0,
   }
 }
 

@@ -111,7 +111,7 @@ describe('resolveMcpCaller', () => {
       const lecturer = await makeUser(db, { role: 'lecturer', emailVerified: false })
       const { key } = await auth.api.createApiKey({ body: { name: 'early', userId: lecturer.id } })
       setConfigForTests({ requireEmailVerification: true })
-      await expectForbidden(await resolveMcpCaller(mcpRequest(key), deps), 'Verify your email address in Clasync first')
+      await expectForbidden(await resolveMcpCaller(mcpRequest(key), deps), 'Verify your Clasync account first')
     })
   })
 

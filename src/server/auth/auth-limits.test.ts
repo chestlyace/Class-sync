@@ -34,7 +34,7 @@ async function until(check: () => boolean) {
   for (let i = 0; i < 50 && !check(); i++) await new Promise((r) => setTimeout(r, 20))
 }
 
-describe('auth: verification lockout', () => {
+describe('auth: verification links', () => {
   const original = config.requireEmailVerification
   let auth: ReturnType<typeof createAuth>
 
@@ -49,8 +49,12 @@ describe('auth: verification lockout', () => {
   })
 
   it('sends a verification link that stays valid for 7 days (students may open it days later)', async () => {
-    const signUp = await post(auth, '/sign-up/email', { name: 'Late', email: 'late@example.com', password: PASSWORD, role: 'student' })
+    const email = 'late@example.com'
+    const signUp = await post(auth, '/sign-up/email', { name: 'Late', email, password: PASSWORD, role: 'student' })
     expect(signUp.status).toBe(200)
+    // Sign-up sends nothing by itself; the link is asked for (the verify banner's resend button).
+    expect(sent).toEqual([])
+    expect((await post(auth, '/send-verification-email', { email, callbackURL: '/dashboard' })).status).toBe(200)
     await until(() => bodies.length >= 1)
     const text = await render(bodies[0]!, { plainText: true })
     const token = /verify-email\?token=([\w-]+\.[\w-]+\.[\w-]+)/.exec(text)?.[1]
@@ -59,18 +63,16 @@ describe('auth: verification lockout', () => {
     expect(payload.exp - payload.iat).toBe(7 * 24 * 60 * 60)
   })
 
-  it('sends a fresh verification link when an unverified user tries to sign in', async () => {
+  it('lets an unverified user sign in (limited session) without sending a verification email', async () => {
     const email = 'unverified@example.com'
     const signUp = await post(auth, '/sign-up/email', { name: 'Una', email, password: PASSWORD, role: 'student' })
     expect(signUp.status).toBe(200)
-    await until(() => sent.length >= 1)
-    expect(sent).toEqual([{ to: email, subject: expect.any(String) }])
 
     const signIn = await post(auth, '/sign-in/email', { email, password: PASSWORD })
-    expect(signIn.status).toBe(403)
-    expect(((await signIn.json()) as { code: string }).code).toBe('EMAIL_NOT_VERIFIED')
-    await until(() => sent.length >= 2)
-    expect(sent.map((m) => m.to)).toEqual([email, email])
+    expect(signIn.status).toBe(200)
+    expect(signIn.headers.getSetCookie().join(';')).toContain('session_token')
+    await new Promise((r) => setTimeout(r, 100))
+    expect(sent).toEqual([])
   })
 })
 

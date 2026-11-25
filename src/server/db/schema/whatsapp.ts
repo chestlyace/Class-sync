@@ -7,6 +7,8 @@ export const WHATSAPP_KINDS = [
   'resultsReleased',
   'assignmentPublished',
   'classSoonLecturer',
+  // A sign-up, sign-in or password-reset code. Not an alert: it never counts toward the monthly cap.
+  'verificationCode',
 ] as const
 export type WhatsAppKind = (typeof WHATSAPP_KINDS)[number]
 

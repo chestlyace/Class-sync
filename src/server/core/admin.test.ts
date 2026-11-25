@@ -29,6 +29,11 @@ describe('isAdmin', () => {
     expect(isAdmin({ email: 'a@x.com', emailVerified: false }, { ADMIN_EMAILS: 'a@x.com' })).toBe(false)
   })
 
+  it('is false for an admin email that only a WhatsApp number verified (emailVerified means the email is proven)', () => {
+    const user = { email: 'a@x.com', emailVerified: false, phoneNumberVerified: true }
+    expect(isAdmin(user, { ADMIN_EMAILS: 'a@x.com' })).toBe(false)
+  })
+
   it('is false for an email that is not on the list', () => {
     expect(isAdmin({ email: 'someone@x.com', emailVerified: true }, { ADMIN_EMAILS: 'a@x.com' })).toBe(false)
   })

@@ -14,6 +14,7 @@ export async function makeUser(db: Db, overrides: Partial<SessionUser> = {}): Pr
     role: 'lecturer',
     locale: 'en',
     emailVerified: true,
+    phoneNumberVerified: false,
     ...overrides,
   }
   await db.insert(user).values(u)

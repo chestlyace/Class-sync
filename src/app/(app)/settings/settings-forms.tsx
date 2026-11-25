@@ -223,14 +223,18 @@ export function SchoolLocationButton({ schoolId }: { schoolId: string }) {
 export function GoogleSignInMethod({
   googleAccountId,
   hasPassword,
+  emailVerified,
   error = null,
 }: {
   /** The Google account row's id; null when Google isn't connected. */
   googleAccountId: string | null
   hasPassword: boolean
+  /** Google can be connected only once the account's email is confirmed (the server refuses otherwise). */
+  emailVerified: boolean
   error?: string | null
 }) {
   const connected = googleAccountId !== null
+  const canConnect = !connected && emailVerified
   const t = useTranslations('settings.signInMethods')
   const tRoot = useTranslations()
   const router = useRouter()
@@ -284,19 +288,19 @@ export function GoogleSignInMethod({
           <span className="font-semibold">{t('google')}</span>
           <span className="text-sm text-muted-foreground">{connected ? t('connected') : t('notConnected')}</span>
         </div>
-        {!connected ? (
+        {canConnect && (
           <Button type="button" variant="outline" onClick={connect} pending={pending}>
             {pending ? t('connecting') : t('connect')}
           </Button>
-        ) : (
-          hasPassword && (
-            <Button type="button" variant="ghost" onClick={disconnect} pending={pending}>
-              {pending ? t('disconnecting') : t('disconnect')}
-            </Button>
-          )
+        )}
+        {connected && hasPassword && (
+          <Button type="button" variant="ghost" onClick={disconnect} pending={pending}>
+            {pending ? t('disconnecting') : t('disconnect')}
+          </Button>
         )}
       </div>
-      {!connected && <p className="text-[13px] text-muted-foreground">{t('connectHint')}</p>}
+      {canConnect && <p className="text-[13px] text-muted-foreground">{t('connectHint')}</p>}
+      {!connected && !emailVerified && <p className="text-[13px] text-muted-foreground">{t('confirmEmailFirst')}</p>}
       {connected && !hasPassword && <p className="text-[13px] text-muted-foreground">{t('onlyMethod')}</p>}
       {message && (
         <p role="alert" className="text-sm text-destructive">

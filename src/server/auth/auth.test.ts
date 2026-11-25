@@ -1,10 +1,19 @@
 import { eq } from 'drizzle-orm'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { config, setConfigForTests } from '@/server/core/config'
 import type { Db } from '@/server/db'
 import { session, user } from '@/server/db/schema'
 import { createTestDb } from '@/test/db'
+import { authorizeToConsent, authRequest, cookiesOf, registerClient, runOAuthFlow } from '@/test/mcp-oauth'
 import { createAuth } from './auth'
+
+// Count emails instead of sending (or logging) them.
+const sent = vi.hoisted(() => [] as { to: string }[])
+vi.mock('@/server/email/send', () => ({
+  sendEmail: vi.fn(async (args: { to: string }) => {
+    sent.push({ to: args.to })
+  }),
+}))
 
 const BASE = 'http://localhost:3000'
 
@@ -75,6 +84,17 @@ describe('auth: user updates', () => {
     const row = await dbUser()
     expect(row.locale).toBe('fr')
     expect(row.name).toBe('Stu Dent')
+  })
+
+  it('refuses to set or remove the WhatsApp number through /update-user', async () => {
+    await db.update(user).set({ phoneNumber: '+237677005501', phoneNumberVerified: true }).where(eq(user.id, userId))
+    const removal = await post('/update-user', { phoneNumber: null })
+    expect(removal.status).toBe(400)
+    expect(((await removal.json()) as { code?: string }).code).toBe('PHONE_NUMBER_CANNOT_BE_UPDATED')
+    expect((await post('/update-user', { phoneNumberVerified: false })).status).toBe(400)
+    expect((await post('/update-user', { phoneNumber: '+237677005502' })).status).toBe(400)
+    expect(await dbUser()).toMatchObject({ phoneNumber: '+237677005501', phoneNumberVerified: true })
+    await db.update(user).set({ phoneNumber: null, phoneNumberVerified: false }).where(eq(user.id, userId))
   })
 
   it('refuses a sign-up whose name carries a link, with its own error code', async () => {
@@ -165,5 +185,118 @@ describe('auth: suspension', () => {
     await db.update(user).set({ suspendedAt: null }).where(eq(user.id, userId))
     const res = await post('/sign-in/email', credentials)
     expect(res.status).toBe(200)
+  })
+})
+
+describe('auth: an account is verified by its email or its WhatsApp number', () => {
+  const original = config.requireEmailVerification
+  const PASSWORD = 'correct-horse-9'
+  let db: Db
+  let auth: ReturnType<typeof createAuth>
+
+  function post(path: string, body: unknown, cookie?: string) {
+    return auth.handler(authRequest(`/api/auth${path}`, { body, cookie }))
+  }
+
+  async function signUp(email: string, role: 'lecturer' | 'student' = 'lecturer') {
+    return post('/sign-up/email', { name: 'Newcomer', email, password: PASSWORD, role, locale: 'en' })
+  }
+
+  async function userByEmail(email: string) {
+    const [row] = await db.select().from(user).where(eq(user.email, email))
+    return row
+  }
+
+  beforeAll(async () => {
+    setConfigForTests({ requireEmailVerification: true })
+    db = await createTestDb()
+    auth = createAuth(db, { baseURL: BASE, secret: 'test-secret-test-secret-test-secret-123', nextCookies: false })
+  })
+  afterAll(() => setConfigForTests({ requireEmailVerification: original }))
+  beforeEach(() => {
+    sent.length = 0
+  })
+
+  it('answers a sign-up with 200, no session and no email of its own', async () => {
+    const res = await signUp('fresh@example.com')
+    expect(res.status).toBe(200)
+    expect(cookiesOf(res)).not.toContain('session_token')
+    const row = await userByEmail('fresh@example.com')
+    expect(row.emailVerified).toBe(false)
+    expect(row.phoneNumberVerified).toBe(false)
+    expect(await db.select().from(session).where(eq(session.userId, row.id))).toEqual([])
+    await new Promise((r) => setTimeout(r, 50))
+    expect(sent).toEqual([])
+  })
+
+  it('answers a sign-up with an address already in use in the same way (nothing leaks which addresses exist)', async () => {
+    const first = await signUp('taken@example.com')
+    const second = await signUp('taken@example.com', 'student')
+    expect(second.status).toBe(200)
+    expect(cookiesOf(second)).not.toContain('session_token')
+    const shape = async (res: Response) => {
+      const json = (await res.json()) as { token: unknown; user: Record<string, unknown> }
+      return { token: json.token, userKeys: Object.keys(json.user).sort() }
+    }
+    expect(await shape(second)).toEqual(await shape(first))
+    // The first account is untouched: still one row, still a lecturer.
+    const rows = await db.select().from(user).where(eq(user.email, 'taken@example.com'))
+    expect(rows).toHaveLength(1)
+    expect(rows[0].role).toBe('lecturer')
+  })
+
+  it('lets an unverified account sign in with a limited session, and sends no email', async () => {
+    await signUp('limited@example.com')
+    const row = await userByEmail('limited@example.com')
+    const res = await post('/sign-in/email', { email: 'limited@example.com', password: PASSWORD })
+    expect(res.status).toBe(200)
+    expect(cookiesOf(res)).toContain('session_token')
+    expect(await db.select().from(session).where(eq(session.userId, row.id))).toHaveLength(1)
+    await new Promise((r) => setTimeout(r, 50))
+    expect(sent).toEqual([])
+    // Still unverified: the session does not make the account verified.
+    expect((await userByEmail('limited@example.com')).emailVerified).toBe(false)
+  })
+
+  it('says in the sign-in answer whether the account is verified, by email or by WhatsApp (sign-up reads it)', async () => {
+    const verifiedOf = async (res: Response) => {
+      const { user: u } = (await res.json()) as { user: { emailVerified?: unknown; phoneNumberVerified?: unknown } }
+      return { emailVerified: u.emailVerified, phoneNumberVerified: u.phoneNumberVerified }
+    }
+    await signUp('answer-pending@example.com')
+    expect(await verifiedOf(await post('/sign-in/email', { email: 'answer-pending@example.com', password: PASSWORD }))).toEqual({
+      emailVerified: false,
+      phoneNumberVerified: false,
+    })
+    await signUp('answer-wa@example.com')
+    await db.update(user).set({ phoneNumber: '+237677005601', phoneNumberVerified: true }).where(eq(user.email, 'answer-wa@example.com'))
+    expect(await verifiedOf(await post('/sign-in/email', { email: 'answer-wa@example.com', password: PASSWORD }))).toEqual({
+      emailVerified: false,
+      phoneNumberVerified: true,
+    })
+  })
+
+  it('still refuses a wrong password', async () => {
+    await signUp('wrong@example.com')
+    const res = await post('/sign-in/email', { email: 'wrong@example.com', password: 'not-the-password-1' })
+    expect(res.status).toBe(401)
+    expect(cookiesOf(res)).not.toContain('session_token')
+  })
+
+  it('lets a lecturer verified only by WhatsApp allow an assistant, and refuses an unverified one', async () => {
+    const clientId = await registerClient(auth)
+
+    await signUp('wa-lecturer@example.com')
+    const verified = await userByEmail('wa-lecturer@example.com')
+    await db.update(user).set({ phoneNumberVerified: true }).where(eq(user.id, verified.id))
+    const verifiedCookie = cookiesOf(await post('/sign-in/email', { email: 'wa-lecturer@example.com', password: PASSWORD }))
+    const { tokens } = await runOAuthFlow(auth, { clientId, cookie: verifiedCookie })
+    expect(tokens.access_token).toBeTruthy()
+
+    await signUp('plain-lecturer@example.com')
+    const plainCookie = cookiesOf(await post('/sign-in/email', { email: 'plain-lecturer@example.com', password: PASSWORD }))
+    const query = await authorizeToConsent(auth, { clientId, cookie: plainCookie })
+    const allow = await post('/oauth2/consent', { accept: true, oauth_query: query }, plainCookie)
+    expect(allow.status).toBe(403)
   })
 })

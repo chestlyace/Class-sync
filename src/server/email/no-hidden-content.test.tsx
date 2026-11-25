@@ -9,6 +9,7 @@ import { BroadcastEmail } from './templates/broadcast'
 import { ClassJoinedEmail } from './templates/class-joined'
 import { GradesReleasedEmail } from './templates/grades-released'
 import { ColleagueJoinedClassEmail, LecturerJoinedClassEmail } from './templates/lecturer-joined-class'
+import { PasswordChangedWhatsAppEmail } from './templates/password-changed-whatsapp'
 import { ResetPasswordEmail } from './templates/reset-password'
 import { TestHandedInEmail } from './templates/test-handed-in'
 import { TestResultsReleasedEmail } from './templates/test-results-released'
@@ -31,6 +32,7 @@ const names = { className: 'CS L3', schoolName: 'University of Buea' }
 const emails: Array<[string, (locale: Locale) => ReactElement]> = [
   ['verify', (l) => <VerifyEmail url={url} locale={l} />],
   ['resetPassword', (l) => <ResetPasswordEmail url={url} locale={l} />],
+  ['passwordChangedWhatsApp', (l) => <PasswordChangedWhatsAppEmail lastDigits="47" url={url} support="support@clasync.online" locale={l} />],
   ['assignmentPublished', (l) => <AssignmentPublishedEmail studentName="Ada" {...course} assignmentTitle="Lab" dueAt={at} timeZone={tz} url={url} locale={l} />],
   ['assignmentReminder', (l) => <AssignmentReminderEmail studentName="Ada" {...course} assignmentTitle="Lab" dueAt={at} timeZone={tz} url={url} locale={l} />],
   ['assignmentSubmitted', (l) => <AssignmentSubmittedEmail studentName="Ada" {...course} assignmentTitle="Lab" submittedAt={at} isLate timeZone={tz} url={url} locale={l} />],
