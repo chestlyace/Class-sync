@@ -351,7 +351,7 @@
   },
   "errors": {
     "UNAUTHENTICATED": "Please sign in to continue.",
-    "EMAIL_UNVERIFIED": "Please verify your email address to continue.",
+    "EMAIL_UNVERIFIED": "Verify your Clasync account first.",
     "FORBIDDEN": "You don't have permission to do that.",
     "NOT_FOUND": "We couldn't find what you were looking for.",
     "VALIDATION": "Some of the information you entered isn't valid.",
@@ -1250,7 +1250,7 @@
       "checkedIn": "Checked in",
       "alreadyCheckedIn": "You're already checked in",
       "forbidden": "You're not on this course's list, so you can't check in here.",
-      "emailUnverified": "Verify your email address before checking in.",
+      "emailUnverified": "Verify your Clasync account before checking in.",
       "refusal": {
         "closed": "This check-in has closed.",
         "too_many_attempts": "Too many wrong codes for this check-in. Ask your lecturer to mark you present.",

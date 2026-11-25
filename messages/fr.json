@@ -351,7 +351,7 @@
   },
   "errors": {
     "UNAUTHENTICATED": "Veuillez vous connecter pour continuer.",
-    "EMAIL_UNVERIFIED": "Veuillez vérifier votre adresse e-mail pour continuer.",
+    "EMAIL_UNVERIFIED": "Vérifiez d'abord votre compte Clasync.",
     "FORBIDDEN": "Vous n'avez pas l'autorisation d'effectuer cette action.",
     "NOT_FOUND": "Nous n'avons pas trouvé ce que vous cherchez.",
     "VALIDATION": "Certaines informations saisies ne sont pas valides.",
@@ -1250,7 +1250,7 @@
       "checkedIn": "Pointé",
       "alreadyCheckedIn": "Vous avez déjà pointé",
       "forbidden": "Vous n'êtes pas sur la liste de ce cours, vous ne pouvez donc pas pointer ici.",
-      "emailUnverified": "Vérifiez votre adresse e-mail avant de pointer.",
+      "emailUnverified": "Vérifiez votre compte Clasync avant de pointer.",
       "refusal": {
         "closed": "Ce pointage est fermé.",
         "too_many_attempts": "Trop de codes erronés pour ce pointage. Demandez à votre enseignant de vous marquer présent.",

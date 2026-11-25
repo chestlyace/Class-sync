@@ -214,22 +214,27 @@ function guardUserUpdate(ctx: Parameters<Parameters<typeof createAuthMiddleware>
 }
 
 /**
- * The plugin's send callback for sign-up verification and password reset. Language: the account that holds
- * the number, else the visitor's language cookie, else English.
+ * The plugin's send callback for sign-up verification and password reset. Language: for a code a signed-in
+ * account asked for (sign-up, Settings), that account's; for a reset, the account that has proven the number;
+ * else the visitor's language cookie, else English.
  */
 async function deliverPhoneCode(database: Db, data: { phoneNumber: string; code: string }, ctx?: GenericEndpointContext): Promise<void> {
   // Signing in with a number that is not proven yet must stay silent: it is not a request for a code.
   if (ctx?.path === SIGN_IN_PHONE_PATH) return
-  const [holder] = await database
-    .select({ locale: schema.user.locale })
-    .from(schema.user)
-    .where(eq(schema.user.phoneNumber, data.phoneNumber))
-  const locale = resolveLocale({ userLocale: holder?.locale, cookie: ctx?.getCookie(LOCALE_COOKIE) })
   // The account that asked, as the before hook claimed the limits for it (never looked up again here).
   const userId =
     ctx?.path === SEND_OTP_PATH
       ? ((ctx.request && codeRequesters.get(ctx.request)) ?? (ctx.context.session as { user?: { id?: string } } | null)?.user?.id ?? null)
       : null
+  const [owner] = await database
+    .select({ locale: schema.user.locale })
+    .from(schema.user)
+    .where(
+      userId
+        ? eq(schema.user.id, userId)
+        : and(eq(schema.user.phoneNumber, data.phoneNumber), eq(schema.user.phoneNumberVerified, true)),
+    )
+  const locale = resolveLocale({ userLocale: owner?.locale, cookie: ctx?.getCookie(LOCALE_COOKIE) })
   await sendVerificationCode(database, { phone: data.phoneNumber, code: data.code, locale, userId })
 }
 

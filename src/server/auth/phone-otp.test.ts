@@ -464,14 +464,16 @@ describe('auth: WhatsApp code routes', () => {
     expect(await db.select().from(rateLimit).where(like(rateLimit.key, '%+237677000011%'))).toEqual([])
   })
 
-  it('uses the visitor language cookie when no account holds the number', async () => {
+  it("writes a code the signed-in account asked for in that account's language, not the cookie's", async () => {
+    await db.update(user).set({ locale: 'fr' }).where(eq(user.id, userId))
     const res = await post(
       '/phone-number/send-otp',
       { phoneNumber: '+237677000007' },
-      { signedIn: true, headers: { cookie: `${cookie}; NEXT_LOCALE=fr` } },
+      { signedIn: true, headers: { cookie: `${cookie}; NEXT_LOCALE=en` } },
     )
     expect(res.status).toBe(200)
     await vi.waitFor(() => expect(sent).toHaveLength(1))
     expect(sent[0].msg.language).toBe('fr')
+    await db.update(user).set({ locale: 'en' }).where(eq(user.id, userId))
   })
 })

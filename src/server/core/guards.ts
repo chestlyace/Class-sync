@@ -19,7 +19,7 @@ export function isVerificationPending(user: Pick<SessionUser, 'emailVerified' | 
 
 export function requireVerified(ctx: Ctx): void {
   if (isVerificationPending(ctx.user)) {
-    throw new AppError('EMAIL_UNVERIFIED', 'Email address is not verified')
+    throw new AppError('EMAIL_UNVERIFIED', 'Verify your Clasync account first')
   }
 }
 

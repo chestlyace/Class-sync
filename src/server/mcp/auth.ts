@@ -198,7 +198,7 @@ export async function resolveMcpCaller(req: Request, deps?: McpAuthDeps): Promis
     emailVerified: row.emailVerified,
     phoneNumberVerified: row.phoneNumberVerified,
   }
-  if (isVerificationPending(sessionUser)) return jsonRpcError(403, 'Verify your email address in Clasync first')
+  if (isVerificationPending(sessionUser)) return jsonRpcError(403, 'Verify your Clasync account first')
 
   return { ctx: { db, user: sessionUser }, scopes: verified.scopes, clientId: verified.clientId }
 }

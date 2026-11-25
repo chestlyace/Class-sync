@@ -21,6 +21,20 @@ describe('toE164', () => {
     expect(toE164('+33612345678')).toBe('+33612345678')
   })
 
+  it('adds the + to a Cameroonian mobile number typed with 237 but without it', () => {
+    expect(toE164('237677123456')).toBe('+237677123456')
+    expect(toE164('237 677 12 34 56')).toBe('+237677123456')
+    // Only a mobile number (6 after 237) is read this way; other digits without + stay refused.
+    expect(toE164('237277123456')).toBeNull()
+    expect(toE164('33612345678')).toBeNull()
+  })
+
+  it('refuses a country code that starts with 0', () => {
+    expect(toE164('+0237677123456')).toBeNull()
+    expect(toE164('000237677123456')).toBeNull()
+    expect(toE164('+01234567')).toBeNull()
+  })
+
   it('refuses text that is not a phone number', () => {
     expect(toE164('12')).toBeNull()
     expect(toE164('abc')).toBeNull()
