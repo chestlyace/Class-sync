@@ -105,7 +105,7 @@
       "or": "or",
       "orEmail": "or with your email",
       "noAccount": "There is no Clasync account for this Google account yet. Create one: choose whether you are a lecturer or a student, then continue with Google.",
-      "notLinked": "An account with this email already exists. Sign in with your password, then connect Google in Settings.",
+      "notLinked": "An account with this email already exists, but its email address isn't confirmed yet, so Google can't sign in to it. Sign in with your password and we'll email you a confirmation link, or use Forgot password? to choose a new password, which confirms the address too. After that, Continue with Google works.",
       "linkedElsewhere": "This Google account already signs in to another Clasync account.",
       "cancelled": "Google sign-in was cancelled.",
       "failed": "Signing in with Google didn't work. Try again."
