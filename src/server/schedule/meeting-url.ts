@@ -1,6 +1,6 @@
 import { AppError } from '@/server/core/errors'
 
-/** Lecturers paste Google Meet links; Clasync never generates them (that needs Google Calendar OAuth). */
+/** Validates and normalises Google Meet links, whether pasted by a lecturer or returned by Calendar. */
 export const MEETING_HOST = 'meet.google.com'
 export const MEETING_URL_MAX = 2048
 

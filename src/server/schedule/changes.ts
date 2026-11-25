@@ -188,7 +188,7 @@ export async function cancelClass(ctx: Ctx, occurrenceKey: string, makeUp?: Make
 /**
  * Moves one future class online by reusing the cancel-with-make-up flow: the old date is cancelled and
  * replaced by an extra at the same time, with either a pasted link or a generated one. Returns the replacement's
- * occurrence key so the caller can leave the cancelled class page. A string input keeps the paste-only form working.
+ * occurrence key so the caller can leave the cancelled class page. A string input keeps older paste-only callers working.
  */
 export async function moveClassOnline(
   ctx: Ctx,
