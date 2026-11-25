@@ -1040,7 +1040,8 @@
       "disconnect": "Disconnect",
       "disconnecting": "Disconnecting…",
       "onlyMethod": "Google is how you sign in, so it can't be disconnected.",
-      "connectHint": "Connect it to sign in with one tap. It can be a Google account with a different email address."
+      "connectHint": "Connect it to sign in with one tap. It can be a Google account with a different email address.",
+      "confirmEmailFirst": "Confirm your email address first: then you can connect Google here."
     },
     "password": {
       "title": "Password",

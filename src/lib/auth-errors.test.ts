@@ -24,6 +24,13 @@ describe('authErrorKey', () => {
     expect(authErrorKey('INVALID_EMAIL_OR_PASSWORD', 401)).toBe('auth.errors.invalidCredentials')
   })
 
+  it('maps EMAIL_NOT_VERIFIED_FOR_LINK to "confirm your email first", in both languages', () => {
+    const key = authErrorKey('EMAIL_NOT_VERIFIED_FOR_LINK')
+    expect(key).toBe('settings.signInMethods.confirmEmailFirst')
+    expect(typeof lookup(key)).toBe('string')
+    expect(typeof lookup(key, fr)).toBe('string')
+  })
+
   it('maps ACCOUNT_SUSPENDED to the suspended-account message, in both languages', () => {
     expect(authErrorKey('ACCOUNT_SUSPENDED')).toBe('auth.errors.accountSuspended')
     expect(lookup('auth.errors.accountSuspended')).toBe('This account is suspended.')

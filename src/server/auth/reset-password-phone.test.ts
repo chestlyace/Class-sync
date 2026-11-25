@@ -5,7 +5,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { CLIENT_IP_HEADER } from '@/lib/client-ip'
 import { config, setConfigForTests } from '@/server/core/config'
 import type { Db } from '@/server/db'
-import { session, user, verification, whatsappMessage } from '@/server/db/schema'
+import { account as accountTable, session, user, verification, whatsappLink, whatsappMessage } from '@/server/db/schema'
 import { emailSubject } from '@/server/email/templates/verify-email'
 import { setWhatsAppProviderForTests } from '@/server/whatsapp/provider'
 import { createTestDb } from '@/test/db'
@@ -143,6 +143,21 @@ describe('resetPasswordByWhatsAppAndSignIn', () => {
     expect(sent).toEqual([])
     expect(await canSignIn(email, NEW_PASSWORD)).toBe(true)
     expect(await canSignIn(email, OLD_PASSWORD)).toBe(false)
+  })
+
+  it('keeps a linked Google account, the number and the alert link: only an email reset takes those away', async () => {
+    const { id, phone } = await account()
+    await db.insert(accountTable).values({ id: `acc-google-${id}`, accountId: `g-${id}`, providerId: 'google', userId: id, createdAt: new Date(), updatedAt: new Date() })
+    await db.insert(whatsappLink).values({ userId: id, phone })
+    const code = await issuedCode(phone)
+
+    expect(await resetPasswordByWhatsAppAndSignIn(auth, { phone, code, newPassword: NEW_PASSWORD, headers: headers() })).toEqual({ status: 'signed-in' })
+
+    const logins = await db.select().from(accountTable).where(eq(accountTable.userId, id))
+    expect(logins.map((a) => a.providerId).sort()).toEqual(['credential', 'google'])
+    const [row] = await db.select().from(user).where(eq(user.id, id))
+    expect(row).toMatchObject({ phoneNumber: phone, phoneNumberVerified: true, emailVerified: false })
+    expect(await db.select().from(whatsappLink).where(eq(whatsappLink.userId, id))).toHaveLength(1)
   })
 
   it('takes the number and the code the way people type them', async () => {

@@ -3,7 +3,7 @@ import { cimd } from '@better-auth/cimd'
 import { fetchClientMetadataResource } from '@better-auth/cimd/node'
 import { mcp } from '@better-auth/mcp'
 import { betterAuth, type GenericEndpointContext } from 'better-auth'
-import { and, eq, gte, like, ne } from 'drizzle-orm'
+import { and, eq, gte, inArray, like, ne } from 'drizzle-orm'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { APIError, createAuthMiddleware, getOAuthState, getSessionFromCtx } from 'better-auth/api'
 import { nextCookies } from 'better-auth/next-js'
@@ -68,6 +68,7 @@ const PHONE_CODE_LIMITED_MESSAGE = 'Too many codes requested. Please wait before
 const SEND_OTP_PATH = '/phone-number/send-otp'
 const RESET_OTP_PATH = '/phone-number/request-password-reset'
 const SIGN_IN_PHONE_PATH = '/sign-in/phone-number'
+const LINK_SOCIAL_PATH = '/link-social'
 
 /**
  * The account that claimed a code in the before hook, for the send callback that runs later in the background
@@ -185,6 +186,21 @@ async function guardPhoneSignIn(
 }
 
 /**
+ * Runs before `/link-social` (connecting Google from Settings, which may use a Google account with another
+ * address). Refused while the account's email is not verified: an unverified account may have been
+ * registered by someone else under the owner's address, and a login they linked would outlast the owner's
+ * recovery of the account. Read from the database, not the session's copy. No session: the route refuses.
+ */
+async function guardLinkSocial(database: Db, ctx: Parameters<Parameters<typeof createAuthMiddleware>[0]>[0]): Promise<void> {
+  const session = await getSessionFromCtx(ctx)
+  if (!session) return
+  const [row] = await database.select({ emailVerified: schema.user.emailVerified }).from(schema.user).where(eq(schema.user.id, session.user.id))
+  if (!row?.emailVerified) {
+    throw new APIError('FORBIDDEN', { message: 'Confirm your email address before connecting Google', code: 'EMAIL_NOT_VERIFIED_FOR_LINK' })
+  }
+}
+
+/**
  * The plugin's send callback for sign-up verification and password reset. Language: the account that holds
  * the number, else the visitor's language cookie, else English.
  */
@@ -275,6 +291,44 @@ async function withdrawResetLink(database: Db, token: string): Promise<void> {
   await database.delete(schema.verification).where(eq(schema.verification.identifier, `reset-password:${token}`))
 }
 
+/**
+ * The emailed reset link was opened for an account whose email was not verified yet: this proves the
+ * address, and whoever registered the account with it before (a squatter, say) may have added their own
+ * ways back in from the limited session an unverified account gets. In one transaction, everything that
+ * is not the password goes: Google and any other linked login (the `credential` row, just reset, stays),
+ * the WhatsApp sign-in number with its pending codes, the alert link and unused JOIN codes, personal access
+ * tokens, assistant (OAuth) tokens and consents, and push subscriptions. Then the email is marked verified.
+ * Sessions were already ended by the reset (`revokeSessionsOnPasswordReset`). The real owner can add any of
+ * these again from Settings. Never run for a WhatsApp reset, nor when the email was already verified.
+ */
+async function claimAccountByEmailReset(database: Db, user: { id: string; phoneNumber?: string | null }): Promise<void> {
+  // Read from the database, not the callback's copy: the number to clear codes for is the stored one.
+  await database.transaction(async (tx) => {
+    const [row] = await tx
+      .select({ phoneNumber: schema.user.phoneNumber })
+      .from(schema.user)
+      .where(eq(schema.user.id, user.id))
+      .for('update')
+    const phones = [...new Set([row?.phoneNumber, user.phoneNumber].filter((p): p is string => typeof p === 'string' && p !== ''))]
+    await tx.delete(schema.account).where(and(eq(schema.account.userId, user.id), ne(schema.account.providerId, 'credential')))
+    await tx.delete(schema.whatsappLink).where(eq(schema.whatsappLink.userId, user.id))
+    await tx.delete(schema.whatsappConnectCode).where(eq(schema.whatsappConnectCode.userId, user.id))
+    await tx.delete(schema.apikey).where(eq(schema.apikey.referenceId, user.id))
+    await tx.delete(schema.oauthAccessToken).where(eq(schema.oauthAccessToken.userId, user.id))
+    await tx.delete(schema.oauthRefreshToken).where(eq(schema.oauthRefreshToken.userId, user.id))
+    await tx.delete(schema.oauthConsent).where(eq(schema.oauthConsent.userId, user.id))
+    await tx.delete(schema.pushSubscription).where(eq(schema.pushSubscription.userId, user.id))
+    if (phones.length > 0) {
+      const identifiers = phones.flatMap((p) => [`phone-number-otp-${p}`, `phone-number-reset-${p}`])
+      await tx.delete(schema.verification).where(inArray(schema.verification.identifier, identifiers))
+    }
+    await tx
+      .update(schema.user)
+      .set({ phoneNumber: null, phoneNumberVerified: false, emailVerified: true, updatedAt: now() })
+      .where(eq(schema.user.id, user.id))
+  })
+}
+
 export function createAuth(database: Db, options: CreateAuthOptions = {}) {
   const origin = resolveAppOrigin(options.baseURL)
   const google = options.google === undefined ? googleCredentials() : options.google
@@ -340,6 +394,7 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
       before: createAuthMiddleware(async (ctx) => {
         if (ctx.path === SEND_OTP_PATH || ctx.path === RESET_OTP_PATH) return guardCodeRequest(database, ctx)
         if (ctx.path === SIGN_IN_PHONE_PATH) return guardPhoneSignIn(database, ctx)
+        if (ctx.path === LINK_SOCIAL_PATH) return guardLinkSocial(database, ctx)
         if (ctx.path !== '/oauth2/consent' || (ctx.body as { accept?: unknown } | undefined)?.accept !== true) return
         const session = await getSessionFromCtx(ctx)
         const u = session?.user as { role?: unknown; emailVerified?: boolean; phoneNumberVerified?: boolean } | undefined
@@ -410,13 +465,15 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
       // It tells the owner by email instead (when that email is verified), so a reset through a
       // reassigned SIM does not go unnoticed. Here, not in the reset service, so a direct call to the
       // plugin's route cannot skip the notice.
+      // An email reset of an account whose email was never verified also takes away every other way in
+      // that someone could have added before the owner arrived (`claimAccountByEmailReset`).
       onPasswordReset: async ({ user }, request) => {
         if (isPhoneReset(request)) {
           await sendPasswordChangedNotice(user)
           return
         }
         if (user.emailVerified) return
-        await database.update(schema.user).set({ emailVerified: true, updatedAt: now() }).where(eq(schema.user.id, user.id))
+        await claimAccountByEmailReset(database, user)
       },
     },
     socialProviders: google
@@ -442,7 +499,8 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
         // provider: it reports verified emails anyway, and trusting it would not lift this rule.
         requireLocalEmailVerified: true,
         // Linking from Settings (signed in) may use a Google account with another address, e.g. a
-        // personal Gmail for an account made with a school email.
+        // personal Gmail for an account made with a school email. Only once the account's email is
+        // verified (`guardLinkSocial`).
         allowDifferentEmails: true,
       },
     },

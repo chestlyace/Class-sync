@@ -362,7 +362,12 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
             <p className="text-sm text-muted-foreground">{t('signInMethods.description')}</p>
           </div>
           <Panel>
-            <GoogleSignInMethod googleAccountId={signIn.googleAccountId} hasPassword={signIn.password} error={googleError} />
+            <GoogleSignInMethod
+              googleAccountId={signIn.googleAccountId}
+              hasPassword={signIn.password}
+              emailVerified={phoneState.emailVerified}
+              error={googleError}
+            />
           </Panel>
         </section>
       )}

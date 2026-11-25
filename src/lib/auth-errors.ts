@@ -16,6 +16,8 @@ const AUTH_ERROR_KEYS: Record<string, string> = {
   SESSION_NOT_FRESH: 'auth.errors.signInAgain',
   SESSION_EXPIRED: 'auth.errors.signInAgain',
   INVALID_NAME: 'auth.errors.invalidName',
+  // Connecting Google from Settings waits for a confirmed email.
+  EMAIL_NOT_VERIFIED_FOR_LINK: 'settings.signInMethods.confirmEmailFirst',
   VALIDATION: 'errors.VALIDATION',
   VALIDATION_ERROR: 'errors.VALIDATION',
 }

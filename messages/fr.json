@@ -1040,7 +1040,8 @@
       "disconnect": "Dissocier",
       "disconnecting": "Dissociation…",
       "onlyMethod": "Vous vous connectez avec Google : il ne peut pas être dissocié.",
-      "connectHint": "Associez-le pour vous connecter en un clic. Le compte Google peut avoir une autre adresse e-mail."
+      "connectHint": "Associez-le pour vous connecter en un clic. Le compte Google peut avoir une autre adresse e-mail.",
+      "confirmEmailFirst": "Confirmez d'abord votre adresse e-mail : vous pourrez ensuite associer Google ici."
     },
     "password": {
       "title": "Mot de passe",
