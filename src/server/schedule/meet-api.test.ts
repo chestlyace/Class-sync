@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { AppError } from '@/server/core/errors'
 import { MEET_SCOPES as scopesFromLib } from '@/lib/google-meet-scopes'
 import { MEET_SCOPES, MeetPermissionError, createMeetSpace } from './meet-api'
 
@@ -64,6 +65,18 @@ describe('createMeetSpace', () => {
     await expect(createMeetSpace('tok', fetchImpl)).rejects.toBeInstanceOf(MeetPermissionError)
   })
 
+  it('throws a plain Error, not MeetPermissionError, when the Meet API is not enabled', async () => {
+    const { fetchImpl } = fake(
+      json(403, { error: { status: 'PERMISSION_DENIED', details: [{ reason: 'SERVICE_DISABLED' }] } }),
+    )
+    const error = await createMeetSpace('secret-token', fetchImpl).catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(Error)
+    expect(error).not.toBeInstanceOf(MeetPermissionError)
+    expect((error as Error).message).toContain('403')
+    expect((error as Error).message).toContain('SERVICE_DISABLED')
+    expect((error as Error).message).not.toContain('secret-token')
+  })
+
   it('throws a plain Error on 500 without leaking the token', async () => {
     const { fetchImpl } = fake(json(500, { error: { status: 'INTERNAL' } }))
     const error = await createMeetSpace('secret-token', fetchImpl).catch((e: unknown) => e)
@@ -75,7 +88,10 @@ describe('createMeetSpace', () => {
 
   it('rejects a non-Meet meetingUri', async () => {
     const { fetchImpl } = fake(json(200, { ...space, meetingUri: 'https://evil.example/x' }))
-    await expect(createMeetSpace('tok', fetchImpl)).rejects.toThrow()
+    const error = await createMeetSpace('tok', fetchImpl).catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(Error)
+    expect(error).not.toBeInstanceOf(AppError)
+    expect((error as Error).message).toBe('Google returned a non-Meet address')
   })
 
   it('rejects a response with missing fields', async () => {

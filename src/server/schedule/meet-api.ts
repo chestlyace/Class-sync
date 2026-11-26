@@ -51,6 +51,8 @@ async function post(accessToken: string, body: object, fetchImpl: typeof fetch):
 function isPermissionFailure(res: Response, err: GoogleError): boolean {
   if (res.status === 401) return true
   if (res.status !== 403) return false
+  // Meet API not enabled in the Cloud project: a setup problem, not something the lecturer can fix by reconnecting.
+  if (err.reasons.includes('SERVICE_DISABLED')) return false
   return err.status === 'PERMISSION_DENIED' || err.reasons.some((r) => /SCOPE|PERMISSION/i.test(r))
 }
 
@@ -73,14 +75,20 @@ export async function createMeetSpace(accessToken: string, fetchImpl: typeof fet
     if (isPermissionFailure(res, err)) {
       throw new MeetPermissionError(`Google Meet refused the request (${res.status})`)
     }
-    throw new Error(`Google Meet API error (${res.status})`)
+    const reason = err.reasons.includes('SERVICE_DISABLED') ? ' SERVICE_DISABLED' : ''
+    throw new Error(`Google Meet API error (${res.status})${reason}`)
   }
 
   const data = (await res.json()) as { name?: unknown; meetingUri?: unknown; meetingCode?: unknown }
   if (typeof data.name !== 'string' || typeof data.meetingUri !== 'string' || typeof data.meetingCode !== 'string') {
     throw new Error('Google Meet API returned an incomplete space')
   }
-  const meetingUrl = parseMeetingUrl(data.meetingUri)
-  if (!meetingUrl) throw new Error('Google Meet API returned an incomplete space')
+  let meetingUrl: string | null
+  try {
+    meetingUrl = parseMeetingUrl(data.meetingUri)
+  } catch {
+    throw new Error('Google returned a non-Meet address')
+  }
+  if (!meetingUrl) throw new Error('Google returned a non-Meet address')
   return { spaceName: data.name, meetingUrl, meetingCode: data.meetingCode, knockingConfirmed }
 }
