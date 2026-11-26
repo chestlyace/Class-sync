@@ -6,11 +6,11 @@ import { PageHeader, Panel } from '@/components/page-header'
 import { buttonVariants } from '@/components/ui/button'
 import { getSessionUser } from '@/server/auth/session'
 import { listMyClasses } from '@/server/classes/service'
+import { newCourseClassroom } from '@/server/schedule/classroom'
 import { config } from '@/server/core/config'
 import { isVerificationPending } from '@/server/core/guards'
 import { now } from '@/server/core/clock'
 import { addDays, localDateOf } from '@/server/lib/local-time'
-import { isMeetGenerationConfigured } from '@/server/schedule/google-meet'
 import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
 import { loadPage } from '../../load-page'
 import { weekdayName } from '../../schedule/schedule-format'
@@ -27,10 +27,13 @@ export default async function NewCoursePage({ searchParams }: PageProps<'/course
   if (user.role !== 'lecturer') return <ErrorState code="FORBIDDEN" />
   const t = await getTranslations()
   const { classId } = await searchParams
-  const classes = await loadPage((ctx) => listMyClasses(ctx))
-  if (!classes.ok) return <ErrorState code={classes.code} />
+  const view = await loadPage(async (ctx) => ({
+    classes: await listMyClasses(ctx),
+    classroom: await newCourseClassroom(ctx),
+  }))
+  if (!view.ok) return <ErrorState code={view.code} />
 
-  const options = classes.data.map((c) => ({ id: c.id, label: `${c.name} · ${c.academicYear} · ${c.schoolName}` }))
+  const options = view.data.classes.map((c) => ({ id: c.id, label: `${c.name} · ${c.academicYear} · ${c.schoolName}` }))
   const defaultClassId = typeof classId === 'string' && options.some((o) => o.id === classId) ? classId : ''
   const rawLocale = await getLocale()
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
@@ -56,7 +59,7 @@ export default async function NewCoursePage({ searchParams }: PageProps<'/course
             classes={options}
             defaultClassId={defaultClassId}
             weekdays={weekdays}
-            autoMeetAvailable={isMeetGenerationConfigured()}
+            classroom={view.data.classroom}
             firstSlotDefaults={firstSlotDefaults}
           />
         )}

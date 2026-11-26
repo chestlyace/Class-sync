@@ -10,12 +10,13 @@ import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import { listLecturerCourses, type CourseSummary } from '@/server/courses/service'
 import { addDays, localDateOf, weekStartOf } from '@/server/lib/local-time'
-import { isMeetGenerationConfigured } from '@/server/schedule/google-meet'
+import { HIDDEN_CLASSROOM, type ClassroomOption } from '@/lib/classroom-option'
+import { classroomOptions } from '@/server/schedule/classroom'
 import { listSlots } from '@/server/schedule/timetable'
 import { lecturerWeek, needsAnswer, type WeekRow } from '@/server/schedule/views'
 import type { Sitting } from '@/server/schedule/occurrences'
 import { loadPage } from '../load-page'
-import { MakeUpButton, type CourseOption } from './make-up-form'
+import { MakeUpButton, type Classrooms, type CourseOption } from './make-up-form'
 import { RowBadge } from './row-badge'
 import { NeedsAnswerList, RowActions, type NeedsAnswerItem } from './schedule-controls'
 import { parseWeekParam } from './schedule-form'
@@ -27,6 +28,7 @@ type ScheduleView = {
   answers: { sitting: Sitting; courseTitle: string }[]
   /** False only when the week is empty and no course has a weekly class yet. */
   hasSlots: boolean
+  classrooms: Classrooms
 }
 
 export async function generateMetadata() {
@@ -50,11 +52,11 @@ export default async function SchedulePage({ searchParams }: PageProps<'/schedul
       const slots = await Promise.all(courses.map((c) => listSlots(ctx, c.id)))
       hasSlots = slots.some((s) => s.length > 0)
     }
-    return { courses, rows, answers, hasSlots }
+    const classrooms = await classroomOptions(ctx, courses.map((c) => c.id))
+    return { courses, rows, answers, hasSlots, classrooms }
   })
   if (!view.ok) return <ErrorState code={view.code} />
-  const { courses, rows, answers, hasSlots } = view.data
-  const autoMeetAvailable = isMeetGenerationConfigured()
+  const { courses, rows, answers, hasSlots, classrooms } = view.data
 
   const currentWeek = weekStartOf(today)
   const range = formatWeekRange(weekStart, addDays(weekStart, 6), locale)
@@ -100,7 +102,7 @@ export default async function SchedulePage({ searchParams }: PageProps<'/schedul
         description={t('description')}
         actions={
           courses.length > 0 ? (
-            <MakeUpButton courses={courseOptions} today={today} autoMeetAvailable={autoMeetAvailable} />
+            <MakeUpButton courses={courseOptions} today={today} classrooms={classrooms} />
           ) : undefined
         }
       />
@@ -157,7 +159,7 @@ export default async function SchedulePage({ searchParams }: PageProps<'/schedul
                       locale={locale}
                       at={at}
                       span={span}
-                      autoMeetAvailable={autoMeetAvailable}
+                      classroom={classrooms[row.occurrence.courseId] ?? HIDDEN_CLASSROOM}
                     />
                   ))}
                 </ul>
@@ -191,7 +193,7 @@ export default async function SchedulePage({ searchParams }: PageProps<'/schedul
         )}
       </section>
 
-      <NeedsAnswerList items={items} autoMeetAvailable={autoMeetAvailable} />
+      <NeedsAnswerList items={items} classrooms={classrooms} />
     </>
   )
 }
@@ -212,13 +214,13 @@ function ClassRow({
   locale,
   at,
   span,
-  autoMeetAvailable,
+  classroom,
 }: {
   row: WeekRow
   locale: Locale
   at: Date
   span: (from: Date, to: Date) => string
-  autoMeetAvailable: boolean
+  classroom: ClassroomOption
 }) {
   const { occurrence: occ } = row
   const time = span(occ.startsAt, occ.endsAt)
@@ -251,7 +253,7 @@ function ClassRow({
           end: formatTime(occ.endsAt, config.timeZone),
           room: occ.room ?? '',
         }}
-        autoMeetAvailable={autoMeetAvailable}
+        classroom={classroom}
       />
     </li>
   )

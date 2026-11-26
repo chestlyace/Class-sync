@@ -16,6 +16,7 @@ const ERROR_REASONS: Record<
   | 'invalidMeetingUrl'
   | 'onlineAndCampus'
   | 'alreadyOnline'
+  | 'noClassroom'
 > = {
   outside_class_time: 'outsideClassTime',
   no_campus_location: 'noCampusLocation',
@@ -26,6 +27,7 @@ const ERROR_REASONS: Record<
   invalid_meeting_url: 'invalidMeetingUrl',
   online_and_campus: 'onlineAndCampus',
   already_online: 'alreadyOnline',
+  no_classroom: 'noClassroom',
 }
 
 /** A failed schedule action; the service's known `reason`s get their own message. */

@@ -2,6 +2,7 @@
 
 import { Pencil, Plus, Save, Trash2, TriangleAlert, X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { useSearchParams } from 'next/navigation'
 import { useActionState, useRef, useState } from 'react'
 import { isInvalidField } from '@/components/action-error'
 import { ConfirmAction } from '@/components/confirm-action'
@@ -13,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/native-select'
 import type { ActionResult } from '@/lib/action-result'
 import { submitWith } from '@/lib/form-submit'
+import type { ClassroomOption } from '@/lib/classroom-option'
 import type { SlotOverlap } from '@/server/schedule/timetable'
 import { createSlotAction, removeSlotAction, updateSlotAction, type SlotSaved } from '../../../schedule/actions'
 import { OnlineFields } from '../../../schedule/online-fields'
@@ -42,7 +44,7 @@ function SlotForm({
   initial,
   hasCampusLocation,
   weekdays,
-  autoMeetAvailable,
+  classroom,
   onSaved,
   onCancel,
 }: {
@@ -51,16 +53,25 @@ function SlotForm({
   hasCampusLocation: boolean
   /** Monday first: index 0 is weekday 1. */
   weekdays: string[]
-  autoMeetAvailable: boolean
+  classroom: ClassroomOption
   onSaved: (saved: SlotSaved) => void
   onCancel?: () => void
 }) {
   const t = useTranslations('schedule.timetable')
   const tCommon = useTranslations('common')
   const formRef = useRef<HTMLFormElement>(null)
-  const [online, setOnline] = useState(initial.meetingUrl !== '' || initial.autoMeet)
+  // Back from Google to finish the classroom: the add form opens online, so "Finish creating the classroom" shows.
+  const backFromGoogle = useSearchParams().get('classroom') === 'google'
+  const [online, setOnline] = useState(
+    initial.meetingUrl !== '' ||
+      initial.autoMeet ||
+      (target.kind === 'create' && backFromGoogle && classroom.state === 'missing'),
+  )
   const [meetingUrl, setMeetingUrl] = useState(initial.meetingUrl)
-  const [autoMeet, setAutoMeet] = useState(initial.autoMeet)
+  // A slot not yet online has no choice of link source: null lets the form pick the classroom when it is ready.
+  const [autoMeet, setAutoMeet] = useState<boolean | null>(
+    initial.autoMeet ? true : initial.meetingUrl !== '' ? false : null,
+  )
   const [campus, setCampus] = useState(initial.requireOnCampus)
   const [state, dispatch, pending] = useActionState(async (_prev: ActionResult<SlotSaved> | null, data: FormData) => {
     const result =
@@ -72,7 +83,7 @@ function SlotForm({
         formRef.current?.reset()
         setOnline(false)
         setMeetingUrl('')
-        setAutoMeet(false)
+        setAutoMeet(null)
         setCampus(false)
       }
       onSaved(result.data)
@@ -178,7 +189,7 @@ function SlotForm({
           setAutoMeet={setAutoMeet}
           meetingUrl={meetingUrl}
           setMeetingUrl={setMeetingUrl}
-          autoMeetAvailable={autoMeetAvailable}
+          classroom={classroom}
         />
         <label
           htmlFor={id('campus')}
@@ -273,14 +284,14 @@ export function TimetableEditor({
   defaults,
   hasCampusLocation,
   weekdays,
-  autoMeetAvailable,
+  classroom,
 }: {
   courseId: string
   slots: SlotListItem[]
   defaults: SlotFormValues
   hasCampusLocation: boolean
   weekdays: string[]
-  autoMeetAvailable: boolean
+  classroom: ClassroomOption
 }) {
   const t = useTranslations('schedule.timetable')
   // Held here, not in the row: an edit can replace the slot (and its row) with a new one.
@@ -343,7 +354,7 @@ export function TimetableEditor({
                         initial={slot}
                         hasCampusLocation={hasCampusLocation}
                         weekdays={weekdays}
-                        autoMeetAvailable={autoMeetAvailable}
+                        classroom={classroom}
                         onSaved={(saved) => {
                           setEditing(null)
                           setNotice(saved)
@@ -370,7 +381,7 @@ export function TimetableEditor({
             initial={defaults}
             hasCampusLocation={hasCampusLocation}
             weekdays={weekdays}
-            autoMeetAvailable={autoMeetAvailable}
+            classroom={classroom}
             onSaved={setNotice}
           />
         </Panel>

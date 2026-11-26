@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { asc, eq } from 'drizzle-orm'
 import { setNowForTests } from '@/server/core/clock'
 import { config } from '@/server/core/config'
@@ -12,6 +12,7 @@ import { instantAt } from '@/server/lib/local-time'
 import { setPushClientForTests } from '@/server/push/send'
 import { createTestDb } from '@/test/db'
 import { setupCourse } from '@/test/marking-fixture'
+import { seedClassroom } from '@/test/classroom-fixture'
 import { addMakeUp, answerSitting, cancelClass, moveClassOnline, undoCancel, type MakeUpInput } from './changes'
 import { setScheduleQueueForTests, type NoticeMessage } from './queue'
 
@@ -511,13 +512,68 @@ describe('date changes', () => {
     await expect(moveClassOnline(fx.lecturer, key, url)).rejects.toMatchObject({ code: 'VALIDATION' })
   })
 
-  it('can move a class online with a generated link instead of a pasted one', async () => {
-    const slot = await seedSlot()
-    const newKey = await moveClassOnline(fx.lecturer, `slot:${slot.id}:${MONDAY}`, { autoMeet: true })
+  describe('classes that use the course classroom', () => {
+    beforeEach(() => {
+      vi.stubEnv('MEET_CLASSROOM', 'everyone')
+      vi.stubEnv('ADMIN_EMAILS', '')
+    })
 
-    const [extra] = await db.select().from(classExtra)
-    expect(newKey).toBe(`extra:${extra.id}`)
-    expect(extra).toMatchObject({ meetingUrl: null, autoMeet: true, requireOnCampus: false })
+    afterEach(() => {
+      vi.unstubAllEnvs()
+    })
+
+    it('can move a class online with the classroom instead of a pasted link', async () => {
+      await seedClassroom(db, fx.bio.id, fx.lecturer.user.id)
+      const slot = await seedSlot()
+      const newKey = await moveClassOnline(fx.lecturer, `slot:${slot.id}:${MONDAY}`, { autoMeet: true })
+
+      const [extra] = await db.select().from(classExtra)
+      expect(newKey).toBe(`extra:${extra.id}`)
+      expect(extra).toMatchObject({ meetingUrl: null, autoMeet: true, requireOnCampus: false })
+    })
+
+    it('refuses to move a class online with the classroom when the course has none, and changes nothing', async () => {
+      const slot = await seedSlot()
+      await expect(moveClassOnline(fx.lecturer, `slot:${slot.id}:${MONDAY}`, { autoMeet: true })).rejects.toMatchObject({
+        code: 'VALIDATION',
+        details: { reason: 'no_classroom' },
+      })
+      expect(await db.select().from(classDateStatus)).toEqual([])
+      expect(await db.select().from(classExtra)).toEqual([])
+    })
+
+    it('a make-up with the classroom needs a classroom; with one it is saved', async () => {
+      await expect(addMakeUp(fx.lecturer, fx.bio.id, makeUp({ autoMeet: true }))).rejects.toMatchObject({
+        code: 'VALIDATION',
+        details: { reason: 'no_classroom' },
+      })
+      expect(await db.select().from(classExtra)).toEqual([])
+
+      await seedClassroom(db, fx.bio.id, fx.lecturer.user.id)
+      const occ = await addMakeUp(fx.lecturer, fx.bio.id, makeUp({ autoMeet: true }))
+      expect(occ.online).toBe(true)
+      const [row] = await db.select().from(classExtra)
+      expect(row).toMatchObject({ meetingUrl: null, autoMeet: true })
+    })
+
+    it('cancelling a class with a classroom make-up needs a classroom and leaves the class alone otherwise', async () => {
+      const slot = await seedSlot()
+      const key = `slot:${slot.id}:${MONDAY}`
+      await expect(cancelClass(fx.lecturer, key, makeUp({ autoMeet: true }))).rejects.toMatchObject({
+        code: 'VALIDATION',
+        details: { reason: 'no_classroom' },
+      })
+      expect(await db.select().from(classDateStatus)).toEqual([])
+      expect(await db.select().from(classExtra)).toEqual([])
+    })
+
+    it('a make-up with the classroom is refused while the switch is off', async () => {
+      await seedClassroom(db, fx.bio.id, fx.lecturer.user.id)
+      vi.stubEnv('MEET_CLASSROOM', 'off')
+      await expect(addMakeUp(fx.lecturer, fx.bio.id, makeUp({ autoMeet: true }))).rejects.toMatchObject({
+        code: 'FORBIDDEN',
+      })
+    })
   })
 
   it('opens the sitting the online replacement joins, not the replacement key', async () => {

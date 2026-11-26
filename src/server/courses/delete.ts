@@ -7,7 +7,6 @@ import {
   assignmentAttachment,
   attendanceSession,
   classExtra,
-  classMeeting,
   classSlot,
   course,
   courseTest,
@@ -147,7 +146,7 @@ export async function deleteCoursesInTx(tx: Db, courseIds: string[]): Promise<st
           )
           .returning({ fileId: resource.fileId })
 
-  // Join and cached-meeting rows have no class FK: their keys point at slots and extras, so remove them by those ids.
+  // Join rows have no class FK: their keys point at slots and extras, so remove them by those ids.
   const [slots, extras] = await Promise.all([
     tx.select({ id: classSlot.id }).from(classSlot).where(inArray(classSlot.courseId, courseIds)),
     tx.select({ id: classExtra.id }).from(classExtra).where(inArray(classExtra.courseId, courseIds)),
@@ -157,11 +156,6 @@ export async function deleteCoursesInTx(tx: Db, courseIds: string[]): Promise<st
     ...extras.map((e) => eq(onlineClassJoin.occurrenceKey, `extra:${e.id}`)),
   )
   if (joins) await tx.delete(onlineClassJoin).where(joins)
-  const meetings = or(
-    ...slots.map((s) => like(classMeeting.occurrenceKey, `slot:${s.id}:%`)),
-    ...extras.map((e) => eq(classMeeting.occurrenceKey, `extra:${e.id}`)),
-  )
-  if (meetings) await tx.delete(classMeeting).where(meetings)
 
   await tx.delete(course).where(inArray(course.id, courseIds))
 

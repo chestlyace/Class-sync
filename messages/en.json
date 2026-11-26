@@ -348,7 +348,9 @@
       "deleteTitle": "Delete course",
       "deleteBody": "The course disappears for you and every student, with its attendance, assignments, tests, marks and notes. This can't be undone.",
       "delete": "Delete course",
-      "deleting": "Deleting…"
+      "deleting": "Deleting…",
+      "classroom": "Classroom",
+      "classroomCreated": "Created {date}"
     }
   },
   "errors": {
@@ -3169,7 +3171,8 @@
       "tests": "During a test: when you leave the test page and for how long, so your lecturer can see it.",
       "location": "At an attendance check-in only: your position at that moment, to confirm you are at the school. Clasync does not follow your location at any other time.",
       "signIns": "When you sign in: the IP address and browser of that session, to keep your account secure.",
-      "whatsapp": "If you connect WhatsApp or verify with it: your WhatsApp number, to send you your class alerts and, if you choose, to verify your account, sign you in and help you recover it."
+      "whatsapp": "If you connect WhatsApp or verify with it: your WhatsApp number, to send you your class alerts and, if you choose, to verify your account, sign you in and help you recover it.",
+    "meet": "If you are a lecturer and create a classroom for a course: the address, code and ID of the Google Meet room, and the keys Google gives Clasync to create it, stored encrypted."
     },
     "access": {
       "title": "Who can see it",
@@ -3190,7 +3193,8 @@
       "ai": "When a lecturer asks for suggested marks on a test, the written answers and their question are sent to Amazon Bedrock in the European Union, without the student's name, matricule or email. The answers are not used to train AI models. The lecturer decides every mark.",
       "aiAssignments": "When a lecturer asks Clasync to suggest marks for an assignment, the student's answer and files are sent to Amazon Bedrock in the European Union to produce a suggestion. Clasync does not add the student's name, matricule or email; anything written in the work itself is sent as it is. The work is not used to train AI models. The lecturer decides every mark.",
       "google": "Google, only if you choose Continue with Google.",
-      "whatsapp": "If you connect WhatsApp or verify with it, your alerts and codes are sent through Amazon Web Services (AWS) and Meta (WhatsApp), which see your number and the message."
+      "whatsapp": "If you connect WhatsApp or verify with it, your alerts and codes are sent through Amazon Web Services (AWS) and Meta (WhatsApp), which see your number and the message.",
+    "meet": "Google Meet, only if you are a lecturer and create a classroom for a course. You let Clasync create Meet rooms in your Google account, and you stay the host. Clasync can only create rooms. It cannot see your calendar, your mail, your files or your other meetings. Clasync's use of information received from Google APIs adheres to the Google API Services User Data Policy, including the Limited Use requirements."
     },
     "assistants": {
       "title": "AI assistants connected by lecturers",
@@ -3207,7 +3211,8 @@
       "announcements": "You can stop announcement emails with the link at the bottom of each one, or with the switch in Settings. Emails about your account, such as verification and password reset, continue.",
       "delete": "To get a copy of your data or have your account deleted, write to <email>{address}</email>. Deleting an account deletes its data with it.",
       "keep": "Clasync keeps your data while your account exists.",
-      "whatsapp": "To stop WhatsApp alerts, send STOP on WhatsApp or tap Disconnect in Settings. You can also remove the number you use to sign in from Settings, once your email is verified."
+      "whatsapp": "To stop WhatsApp alerts, send STOP on WhatsApp or tap Disconnect in Settings. You can also remove the number you use to sign in from Settings, once your email is verified.",
+    "meet": "You can take back the Meet permission at any time in your Google account's security settings. Clasync then stops creating rooms for you, and you can paste a Meet link for each class instead."
     },
     "changes": {
       "title": "Changes to this page",
@@ -3513,9 +3518,16 @@
     "online": {
       "title": "Online class",
       "hint": "Students join on Google Meet. On-campus check-in is turned off.",
-      "auto": "Generate a Meet link for each class",
-      "autoHint": "Clasync creates a fresh Google Meet link when the class is first needed, then reuses it.",
-      "autoUnavailable": "Automatic links are not set up yet. Paste a Google Meet link instead.",
+      "useClassroom": "Use this course's classroom",
+      "useClassroomHint": "Students join through Clasync. Everyone knocks and you let them in.",
+      "pasteLink": "Paste a Meet link",
+      "createClassroom": "Create the classroom",
+      "finishClassroom": "Finish creating the classroom",
+      "googleNeeded": "Clasync will ask Google for permission to create Meet rooms for you. Nothing else.",
+      "quickAccessTip": "In Meet, turn off Quick access in Host controls so people have to knock.",
+      "classroomLater": "You can add the course's classroom after saving.",
+      "googleRefused": "Google did not allow Clasync to create the classroom. Paste a Meet link now, or add the classroom after saving.",
+      "createFailed": "Google didn't create the room. Try again in a moment.",
       "meetingUrl": "Google Meet link",
       "meetingUrlPlaceholder": "https://meet.google.com/abc-defg-hij"
     },
@@ -3651,7 +3663,8 @@
       "notEnded": "This class has not ended yet.",
       "invalidMeetingUrl": "Enter a Google Meet link, e.g. https://meet.google.com/abc-defg-hij.",
       "onlineAndCampus": "An online class cannot also require students on campus.",
-      "alreadyOnline": "This class is already online."
+      "alreadyOnline": "This class is already online.",
+      "noClassroom": "Create the course's classroom first, or paste a Meet link."
     }
   },
   "removal": {

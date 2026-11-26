@@ -20,11 +20,15 @@ import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/native-select'
 import type { ActionResult } from '@/lib/action-result'
 import { submitWith } from '@/lib/form-submit'
+import { HIDDEN_CLASSROOM, type ClassroomOption } from '@/lib/classroom-option'
 import { addMakeUpAction } from './actions'
 import { OnlineFields } from './online-fields'
 import { ScheduleError } from './schedule-error'
 
 export type CourseOption = { id: string; title: string; className: string; schoolName: string }
+
+/** Each course's classroom option, by course id; a course not listed has none to offer. */
+export type Classrooms = Record<string, ClassroomOption>
 
 /** Prefilled values of the make-up fields: a date ("YYYY-MM-DD") and times ("HH:MM"). */
 export type MakeUpDefaults = { date: string; start: string; end: string; room: string }
@@ -34,19 +38,19 @@ export function MakeUpFields({
   idPrefix,
   defaults,
   state,
-  autoMeetAvailable,
+  classroom,
 }: {
   idPrefix: string
   defaults: MakeUpDefaults
   state: ActionResult<unknown> | null
-  autoMeetAvailable: boolean
+  classroom: ClassroomOption
 }) {
   const t = useTranslations('schedule.makeUp')
   const tCommon = useTranslations('common')
   const invalid = (field: string) => isInvalidField(state, field) || undefined
   const [online, setOnline] = useState(false)
   const [meetingUrl, setMeetingUrl] = useState('')
-  const [autoMeet, setAutoMeet] = useState(false)
+  const [autoMeet, setAutoMeet] = useState<boolean | null>(null)
   const [campus, setCampus] = useState(false)
   return (
     <FieldGroup className="gap-4">
@@ -107,7 +111,7 @@ export function MakeUpFields({
         setAutoMeet={setAutoMeet}
         meetingUrl={meetingUrl}
         setMeetingUrl={setMeetingUrl}
-        autoMeetAvailable={autoMeetAvailable}
+        classroom={classroom}
       />
       <label
         htmlFor={`${idPrefix}-campus`}
@@ -140,14 +144,14 @@ function MakeUpForm({
   courseId,
   replaces,
   defaults,
-  autoMeetAvailable,
+  classrooms,
   onDone,
 }: {
   courses: CourseOption[]
   courseId?: string
   replaces?: string
   defaults: MakeUpDefaults
-  autoMeetAvailable: boolean
+  classrooms: Classrooms
   onDone: () => void
 }) {
   const t = useTranslations('schedule.makeUp')
@@ -158,6 +162,8 @@ function MakeUpForm({
     if (result.ok) onDone()
     return result
   }, null)
+  // The classroom choice follows the course the make-up is for.
+  const [chosenCourse, setChosenCourse] = useState(courseId ?? courses[0]?.id ?? '')
 
   return (
     <form onSubmit={submitWith(dispatch)} noValidate className="flex flex-col gap-4">
@@ -167,7 +173,13 @@ function MakeUpForm({
       ) : (
         <Field>
           <FieldLabel htmlFor="make-up-course">{t('course')}</FieldLabel>
-          <NativeSelect id="make-up-course" name="courseId" required defaultValue={courses[0]?.id}>
+          <NativeSelect
+            id="make-up-course"
+            name="courseId"
+            required
+            value={chosenCourse}
+            onChange={(e) => setChosenCourse(e.target.value)}
+          >
             {courses.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.title} · {c.className} · {c.schoolName}
@@ -176,7 +188,12 @@ function MakeUpForm({
           </NativeSelect>
         </Field>
       )}
-      <MakeUpFields idPrefix="make-up" defaults={defaults} state={state} autoMeetAvailable={autoMeetAvailable} />
+      <MakeUpFields
+        idPrefix="make-up"
+        defaults={defaults}
+        state={state}
+        classroom={classrooms[chosenCourse] ?? HIDDEN_CLASSROOM}
+      />
       <ScheduleError state={state} />
       <DialogFooter>
         <DialogClose asChild>
@@ -201,7 +218,7 @@ export function MakeUpDialog({
   replaces,
   replacesLabel,
   defaults,
-  autoMeetAvailable,
+  classrooms,
   trigger,
 }: {
   open: boolean
@@ -212,7 +229,7 @@ export function MakeUpDialog({
   /** "Replaces Networks of Mon 3 Nov." */
   replacesLabel?: string
   defaults: MakeUpDefaults
-  autoMeetAvailable: boolean
+  classrooms: Classrooms
   /** The button that opens the dialog; focus returns to it on close. */
   trigger?: React.ReactNode
 }) {
@@ -232,7 +249,7 @@ export function MakeUpDialog({
             courseId={courseId}
             replaces={replaces}
             defaults={defaults}
-            autoMeetAvailable={autoMeetAvailable}
+            classrooms={classrooms}
             onDone={() => onOpenChange(false)}
           />
         ) : (
@@ -247,11 +264,11 @@ export function MakeUpDialog({
 export function MakeUpButton({
   courses,
   today,
-  autoMeetAvailable,
+  classrooms,
 }: {
   courses: CourseOption[]
   today: string
-  autoMeetAvailable: boolean
+  classrooms: Classrooms
 }) {
   const t = useTranslations('schedule.makeUp')
   const [open, setOpen] = useState(false)
@@ -261,7 +278,7 @@ export function MakeUpButton({
       onOpenChange={setOpen}
       courses={courses}
       defaults={{ date: today, start: '', end: '', room: '' }}
-      autoMeetAvailable={autoMeetAvailable}
+      classrooms={classrooms}
       trigger={
         <Button type="button">
           <CalendarPlus aria-hidden="true" data-icon="inline-start" />

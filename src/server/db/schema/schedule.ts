@@ -34,7 +34,7 @@ export const classSlot = pgTable(
     requireOnCampus: boolean('require_on_campus').notNull().default(false),
     /** A pasted Google Meet link. Non-null means the class is online (it may still have a room too). */
     meetingUrl: text('meeting_url'),
-    /** Generate a fresh Google Meet link for each occurrence on first need, then cache it. */
+    /** Uses the course's Meet classroom (`course_classroom`) instead of a pasted link. */
     autoMeet: boolean('auto_meet').notNull().default(false),
     startsOn: date('starts_on', { mode: 'string' }).notNull(),
     endsOn: date('ends_on', { mode: 'string' }).notNull(),
@@ -94,7 +94,7 @@ export const classExtra = pgTable(
     requireOnCampus: boolean('require_on_campus').notNull().default(false),
     /** A pasted Google Meet link. Non-null means the class is online (it may still have a room too). */
     meetingUrl: text('meeting_url'),
-    /** Generate a Google Meet link for this one-off class on first need, then cache it. */
+    /** Uses the course's Meet classroom (`course_classroom`) instead of a pasted link. */
     autoMeet: boolean('auto_meet').notNull().default(false),
     replacesSlotId: text('replaces_slot_id').references(() => classSlot.id, { onDelete: 'set null' }),
     replacesDate: date('replaces_date', { mode: 'string' }),
@@ -146,16 +146,27 @@ export const onlineClassJoin = pgTable(
 )
 
 /**
- * A Google Meet link generated for one dated class. Occurrence keys are not rows, so the link is cached here and
- * cleaned up with its slot/extra by key. The Calendar event is owned by the platform's service account.
+ * The one Google Meet "classroom" of a course, created through the lecturer's own Google account so the lecturer is
+ * the host. Every class of the course with `auto_meet` uses this link. `google_account_id` is the Better Auth
+ * `account.id` that created the space; it is not a foreign key so unlinking Google never deletes the classroom.
  */
-export const classMeeting = pgTable('class_meeting', {
-  occurrenceKey: text('occurrence_key').primaryKey(),
+export const courseClassroom = pgTable('course_classroom', {
+  courseId: text('course_id')
+    .primaryKey()
+    .references(() => course.id, { onDelete: 'cascade' }),
+  /** The Meet API space name, e.g. `spaces/abc123`. */
+  spaceName: text('space_name').notNull(),
   meetingUrl: text('meeting_url').notNull(),
-  calendarEventId: text('calendar_event_id').notNull(),
-  lecturerEmail: text('lecturer_email'),
+  meetingCode: text('meeting_code').notNull(),
+  googleAccountId: text('google_account_id').notNull(),
+  /** Whether the space was switched to host-managed (knocking) entry. */
+  knockingConfirmed: boolean('knocking_confirmed').notNull(),
+  createdBy: text('created_by')
+    .notNull()
+    .references(() => user.id),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
+export type CourseClassroom = typeof courseClassroom.$inferSelect
 
 /** Per-user notification switches. No row means everything is on. */
 export const notificationPreference = pgTable('notification_preference', {

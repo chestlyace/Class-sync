@@ -13,7 +13,6 @@ import {
 } from '@/server/courses/service'
 import { createSession, openWindow } from '@/server/attendance/sessions'
 import { addDays, localDateOf } from '@/server/lib/local-time'
-import { ensureGeneratedMeetingUrl } from './meetings'
 import { buildSittings, parseOccurrenceKey, type Occurrence, type Sitting } from './occurrences'
 import { JOIN_LEAD_MS } from './join-window'
 import {
@@ -241,7 +240,7 @@ export async function getClassSitting(
   const { sitting, course } = await requireOwnedSitting(ctx, sittingKey)
   const urls = await meetingUrlsFor(ctx.db, sitting.occurrences)
   const online = sitting.occurrences.find((o) => o.online) ?? null
-  const meetingUrl = online ? urls.get(online.key) ?? (await ensureGeneratedMeetingUrl(ctx, online)) : null
+  const meetingUrl = online ? urls.get(online.key) ?? null : null
   const future = now()
   const movable = sitting.occurrences.find(
     (o) => !o.online && o.status === null && o.startsAt.getTime() > future.getTime(),

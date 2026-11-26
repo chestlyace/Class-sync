@@ -9,8 +9,6 @@ import { requireCourseOwner } from '@/server/courses/service'
 import { addDays, instantAt, isoWeekday, localDateOf } from '@/server/lib/local-time'
 import { pushClassModeChanged, pushTimetableChanged } from '@/server/push/course-events'
 import { getSchool } from '@/server/schools/service'
-import { cachedMeetingKeysForSlot, deleteCachedMeetings } from './meetings'
-import { parseOccurrenceKey } from './occurrences'
 import {
   assertOnlineRules,
   isDate,
@@ -18,6 +16,7 @@ import {
   type ParsedSlot,
   type SlotInput,
 } from './slot-input'
+import { assertClassroomUsable } from './classroom'
 import { enqueueCourseDay } from './notices'
 
 export { assertOnlineRules, isDate, MAX_TERM_DAYS, type SlotInput } from './slot-input'
@@ -161,6 +160,7 @@ export async function createSlot(
   const data = parseSlotInput(input)
   assertOnlineRules(data)
   await requireCampusLocation(ctx, owned.schoolId, data)
+  if (data.autoMeet) await assertClassroomUsable(ctx, courseId)
 
   const [row] = await ctx.db
     .insert(classSlot)
@@ -180,6 +180,8 @@ export async function updateSlot(
   const data = parseSlotInput(input)
   assertOnlineRules(data)
   await requireCampusLocation(ctx, owned.schoolId, data)
+  // Only a new choice needs the switch: a class already using the classroom stays editable while it is off.
+  if (data.autoMeet && !old.autoMeet) await assertClassroomUsable(ctx, old.courseId)
 
   const todayDate = today()
   const hasPast = old.startsOn < todayDate
@@ -204,13 +206,6 @@ export async function updateSlot(
     // Edit in place. Dated statuses survive only on the same weekday and inside the new term.
     const row = await ctx.db.transaction(async (tx) => {
       const [updated] = await tx.update(classSlot).set(data).where(eq(classSlot.id, old.id)).returning()
-      if ((old.autoMeet || data.autoMeet) && (scheduleChanged || data.autoMeet !== old.autoMeet)) {
-        const staleKeys = (await cachedMeetingKeysForSlot(tx, old.id)).filter((key) => {
-          const parsed = parseOccurrenceKey(key)
-          return parsed?.kind === 'slot' && parsed.date >= todayDate
-        })
-        await deleteCachedMeetings(tx, staleKeys)
-      }
       const stale = await tx.select().from(classDateStatus).where(eq(classDateStatus.slotId, old.id))
       const drop = stale
         .filter((s) => !sameWeekday || s.date < data.startsOn || s.date > data.endsOn)
@@ -246,14 +241,6 @@ export async function updateSlot(
       .update(classSlot)
       .set({ endsOn: old.endsOn < yesterday ? old.endsOn : yesterday })
       .where(eq(classSlot.id, old.id))
-    // Future dates move to a new slot key; their cached links must follow the new schedule.
-    if (old.autoMeet || data.autoMeet) {
-      const movedKeys = (await cachedMeetingKeysForSlot(tx, old.id)).filter((key) => {
-        const parsed = parseOccurrenceKey(key)
-        return parsed?.kind === 'slot' && parsed.date >= newStart
-      })
-      await deleteCachedMeetings(tx, movedKeys)
-    }
     const [created] = await tx
       .insert(classSlot)
       .values({ ...data, startsOn: newStart, courseId: old.courseId, createdBy: ctx.user.id })
@@ -323,16 +310,10 @@ export async function removeSlot(ctx: Ctx, slotId: string): Promise<void> {
       await tx
         .delete(classDateStatus)
         .where(and(eq(classDateStatus.slotId, slot.id), gte(classDateStatus.date, todayDate)))
-      const staleKeys = (await cachedMeetingKeysForSlot(tx, slot.id)).filter((key) => {
-        const parsed = parseOccurrenceKey(key)
-        return parsed?.kind === 'slot' && parsed.date >= todayDate
-      })
-      await deleteCachedMeetings(tx, staleKeys)
     })
   } else {
     await ctx.db.transaction(async (tx) => {
       await tx.delete(classSlot).where(eq(classSlot.id, slot.id))
-      await deleteCachedMeetings(tx, await cachedMeetingKeysForSlot(tx, slot.id))
     })
   }
   await afterWrite(ctx, slot.courseId, { timetable: true })

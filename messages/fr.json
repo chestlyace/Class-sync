@@ -348,7 +348,9 @@
       "deleteTitle": "Supprimer le cours",
       "deleteBody": "Le cours disparaît pour vous et pour tous les étudiants, avec ses présences, devoirs, tests, notes et notes de cours. Cette action est définitive.",
       "delete": "Supprimer le cours",
-      "deleting": "Suppression…"
+      "deleting": "Suppression…",
+      "classroom": "Salle de cours",
+      "classroomCreated": "Créée le {date}"
     }
   },
   "errors": {
@@ -3169,7 +3171,8 @@
       "tests": "Pendant un test : quand vous quittez la page du test et pendant combien de temps, pour que votre enseignant le voie.",
       "location": "Lors d'un pointage de présence uniquement : votre position à ce moment-là, pour confirmer que vous êtes à l'école. Clasync ne suit pas votre position le reste du temps.",
       "signIns": "Quand vous vous connectez : l'adresse IP et le navigateur de cette session, pour protéger votre compte.",
-      "whatsapp": "Si vous connectez WhatsApp ou vérifiez votre compte avec : votre numéro WhatsApp, pour vous envoyer vos alertes de classe et, si vous le choisissez, vérifier votre compte, vous connecter et vous aider à le récupérer."
+      "whatsapp": "Si vous connectez WhatsApp ou vérifiez votre compte avec : votre numéro WhatsApp, pour vous envoyer vos alertes de classe et, si vous le choisissez, vérifier votre compte, vous connecter et vous aider à le récupérer.",
+    "meet": "Si vous êtes enseignant et créez une salle de classe pour un cours : l'adresse, le code et l'identifiant de la salle Google Meet, ainsi que les clés que Google donne à Clasync pour la créer, conservées chiffrées."
     },
     "access": {
       "title": "Qui peut les voir",
@@ -3190,7 +3193,8 @@
       "ai": "Quand un enseignant demande des notes suggérées pour un test, les réponses rédigées et leur question sont envoyées à Amazon Bedrock dans l'Union européenne, sans le nom, le matricule ni l'e-mail de l'étudiant. Les réponses ne servent pas à entraîner des modèles d'IA. L'enseignant décide de chaque note.",
       "aiAssignments": "Quand un enseignant demande à Clasync de suggérer des notes pour un devoir, la réponse et les fichiers de l'étudiant sont envoyés à Amazon Bedrock, dans l'Union européenne, pour produire une suggestion. Clasync n'ajoute ni le nom, ni le matricule, ni l'e-mail de l'étudiant ; tout ce qui est écrit dans le travail lui-même est envoyé tel quel. Le travail ne sert pas à entraîner des modèles d'IA. L'enseignant décide de chaque note.",
       "google": "Google, uniquement si vous choisissez Continuer avec Google.",
-      "whatsapp": "Si vous connectez WhatsApp ou vérifiez votre compte avec, vos alertes et vos codes passent par Amazon Web Services (AWS) et Meta (WhatsApp), qui voient votre numéro et le message."
+      "whatsapp": "Si vous connectez WhatsApp ou vérifiez votre compte avec, vos alertes et vos codes passent par Amazon Web Services (AWS) et Meta (WhatsApp), qui voient votre numéro et le message.",
+    "meet": "Google Meet, uniquement si vous êtes enseignant et créez une salle de classe pour un cours. Vous autorisez Clasync à créer des salles Meet dans votre compte Google, et vous restez l'hôte. Clasync peut seulement créer des salles : il ne voit ni votre agenda, ni vos e-mails, ni vos fichiers, ni vos autres réunions. Clasync's use of information received from Google APIs adheres to the Google API Services User Data Policy, including the Limited Use requirements (l'utilisation par Clasync des informations reçues des API Google respecte la politique des services d'API de Google sur les données des utilisateurs, y compris les exigences d'utilisation limitée)."
     },
     "assistants": {
       "title": "Les assistants IA connectés par les enseignants",
@@ -3207,7 +3211,8 @@
       "announcements": "Vous pouvez ne plus recevoir les annonces par e-mail grâce au lien en bas de chacune ou à l'interrupteur dans les Paramètres. Les e-mails concernant votre compte, comme la vérification et la réinitialisation du mot de passe, continuent.",
       "delete": "Pour obtenir une copie de vos données ou faire supprimer votre compte, écrivez à <email>{address}</email>. La suppression d'un compte supprime aussi ses données.",
       "keep": "Clasync conserve vos données tant que votre compte existe.",
-      "whatsapp": "Pour arrêter les alertes WhatsApp, envoyez STOP sur WhatsApp ou touchez Déconnecter dans les Paramètres. Vous pouvez aussi supprimer le numéro de connexion dans les Paramètres, une fois votre e-mail vérifié."
+      "whatsapp": "Pour arrêter les alertes WhatsApp, envoyez STOP sur WhatsApp ou touchez Déconnecter dans les Paramètres. Vous pouvez aussi supprimer le numéro de connexion dans les Paramètres, une fois votre e-mail vérifié.",
+    "meet": "Vous pouvez retirer à tout moment l'autorisation Meet dans les paramètres de sécurité de votre compte Google. Clasync cesse alors de créer des salles pour vous, et vous pouvez coller un lien Meet pour chaque cours à la place."
     },
     "changes": {
       "title": "Modifications de cette page",
@@ -3513,9 +3518,16 @@
     "online": {
       "title": "Cours en ligne",
       "hint": "Les étudiants rejoignent sur Google Meet. La présence sur le campus est désactivée.",
-      "auto": "Générer un lien Meet pour chaque cours",
-      "autoHint": "Clasync crée un nouveau lien Google Meet dès le premier besoin, puis le réutilise.",
-      "autoUnavailable": "Les liens automatiques ne sont pas encore configurés. Collez un lien Google Meet.",
+      "useClassroom": "Utiliser la salle du cours",
+      "useClassroomHint": "Les étudiants rejoignent via Clasync. Chacun demande à entrer et vous l’admettez.",
+      "pasteLink": "Coller un lien Meet",
+      "createClassroom": "Créer la salle",
+      "finishClassroom": "Terminer la création de la salle",
+      "googleNeeded": "Clasync va demander à Google l’autorisation de créer des salles Meet pour vous. Rien d’autre.",
+      "quickAccessTip": "Dans Meet, désactivez l’accès rapide dans les commandes de l’organisateur pour que chacun doive demander à entrer.",
+      "classroomLater": "Vous pourrez ajouter la salle du cours après l’enregistrement.",
+      "googleRefused": "Google n’a pas autorisé Clasync à créer la salle. Collez un lien Meet maintenant, ou ajoutez la salle après l’enregistrement.",
+      "createFailed": "Google n’a pas créé la salle. Réessayez dans un instant.",
       "meetingUrl": "Lien Google Meet",
       "meetingUrlPlaceholder": "https://meet.google.com/abc-defg-hij"
     },
@@ -3651,7 +3663,8 @@
       "notEnded": "Ce cours n’est pas encore terminé.",
       "invalidMeetingUrl": "Saisissez un lien Google Meet, par ex. https://meet.google.com/abc-defg-hij.",
       "onlineAndCampus": "Un cours en ligne ne peut pas aussi exiger la présence sur le campus.",
-      "alreadyOnline": "Ce cours est déjà en ligne."
+      "alreadyOnline": "Ce cours est déjà en ligne.",
+      "noClassroom": "Créez d’abord la salle du cours, ou collez un lien Meet."
     }
   },
   "removal": {

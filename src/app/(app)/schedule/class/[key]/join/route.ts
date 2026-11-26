@@ -35,12 +35,8 @@ export async function GET(
     if (err instanceof AppError && err.code === 'NOT_FOUND') {
       return new Response(null, { status: 404, headers })
     }
-    // A generated link cannot be created until the platform's Google credentials are installed.
-    if (
-      err instanceof AppError &&
-      err.code === 'VALIDATION' &&
-      err.details?.reason === 'meet_generation_unavailable'
-    ) {
+    // The class uses the course classroom, but the course has none yet.
+    if (err instanceof AppError && err.code === 'VALIDATION' && err.details?.reason === 'classroom_missing') {
       return new Response(null, {
         status: 303,
         headers: { ...headers, Location: '/dashboard?join=unavailable' },

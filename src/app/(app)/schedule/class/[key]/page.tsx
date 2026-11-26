@@ -8,7 +8,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
 import { cn } from '@/lib/utils'
 import { config } from '@/server/core/config'
-import { isMeetGenerationConfigured } from '@/server/schedule/google-meet'
+import { classroomOption } from '@/server/schedule/classroom'
 import { getClassSitting } from '@/server/schedule/views'
 import { loadPage } from '../../../load-page'
 import { MoveOnlineButton } from '../../move-online-form'
@@ -37,9 +37,12 @@ export default async function ClassPage({ params }: PageProps<'/schedule/class/[
   const t = await getTranslations('schedule.classPage')
   const rawLocale = await getLocale()
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
-  const view = await loadPage((ctx) => getClassSitting(ctx, sittingKey)) // FORBIDDEN unless my class
+  const view = await loadPage(async (ctx) => {
+    const found = await getClassSitting(ctx, sittingKey) // FORBIDDEN unless my class
+    return { ...found, classroom: await classroomOption(ctx, found.course.id) }
+  })
   if (!view.ok) return <ErrorState code={view.code} />
-  const { sitting, course, room, sessionId, meetingUrl, movableOccurrence } = view.data
+  const { sitting, course, room, sessionId, meetingUrl, movableOccurrence, classroom } = view.data
   const time = `${formatTime(sitting.startsAt, config.timeZone)}–${formatTime(sitting.endsAt, config.timeZone)}`
 
   return (
@@ -88,7 +91,7 @@ export default async function ClassPage({ params }: PageProps<'/schedule/class/[
             <MoveOnlineButton
               occurrenceKey={movableOccurrence.key}
               when={`${formatDay(sitting.date, locale, 'medium')} · ${time}`}
-              autoMeetAvailable={isMeetGenerationConfigured()}
+              classroom={classroom}
             />
           )}
         </div>

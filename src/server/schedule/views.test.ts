@@ -9,6 +9,7 @@ import { instantAt } from '@/server/lib/local-time'
 import { createSchool } from '@/server/schools/service'
 import { createTestDb } from '@/test/db'
 import { setupCourse } from '@/test/marking-fixture'
+import { CLASSROOM_URL, seedClassroom } from '@/test/classroom-fixture'
 import { getClassSitting, lecturerWeek, needsAnswer, startClassAttendance, studentWeek } from './views'
 
 const tz = config.timeZone
@@ -207,6 +208,28 @@ describe('weeks', () => {
     expect((await studentWeek(fx.alice, MONDAY))[0].joinWindow).toBeNull()
     // The meeting URL never appears in week data.
     expect(JSON.stringify(await studentWeek(fx.alice, MONDAY))).not.toContain('meet.google.com')
+  })
+
+  it('shows the lecturer the course classroom link for a classroom class, and nothing while there is none', async () => {
+    const slot = await seedSlot(fx.bio.id, { meetingUrl: null, autoMeet: true })
+    const sittingKey = `slot:${slot.id}:${MONDAY}`
+
+    const without = await getClassSitting(fx.lecturer, sittingKey)
+    expect(without.meetingUrl).toBeNull()
+    expect(without.onlineOccurrenceKey).toBe(sittingKey)
+
+    await seedClassroom(db, fx.bio.id, fx.lecturer.user.id)
+    const withRoom = await getClassSitting(fx.lecturer, sittingKey)
+    expect(withRoom.meetingUrl).toBe(CLASSROOM_URL)
+    // Students never receive the link through week data.
+    expect(JSON.stringify(await studentWeek(fx.alice, MONDAY))).not.toContain('meet.google.com')
+  })
+
+  it('a pasted link wins over the classroom on the lecturer page', async () => {
+    const pasted = 'https://meet.google.com/abc-defg-hij'
+    const slot = await seedSlot(fx.bio.id, { meetingUrl: pasted, autoMeet: true })
+    await seedClassroom(db, fx.bio.id, fx.lecturer.user.id)
+    expect((await getClassSitting(fx.lecturer, `slot:${slot.id}:${MONDAY}`)).meetingUrl).toBe(pasted)
   })
 
   it('a mixed sitting starts check-in without the campus rule', async () => {

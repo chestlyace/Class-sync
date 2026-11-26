@@ -6,9 +6,9 @@ import {
   attendanceWindow,
   classDateStatus,
   classExtra,
-  classMeeting,
   classSlot,
   course,
+  courseClassroom,
 } from '@/server/db/schema'
 import { addDays, instantAt, localDateOf } from '@/server/lib/local-time'
 import {
@@ -143,13 +143,20 @@ export async function sittingsWithAttendance(db: Db, sittings: Sitting[]): Promi
 }
 
 /**
- * The occurrence behind a key, its pasted URL (if any) and the course's owner. This is only for server-side
- * gating; generation happens after the caller checks who is asking. `Occurrence` never carries a URL into pages.
+ * The occurrence behind a key, its pasted URL (if any), the course classroom's URL (if the course has one) and the
+ * course's owner. This is only for server-side gating; the caller checks who is asking before using either URL.
+ * `Occurrence` never carries a URL into pages.
  */
 export async function loadOnlineOccurrence(
   db: Db,
   key: string,
-): Promise<{ occurrence: Occurrence; courseId: string; lecturerId: string; meetingUrl: string | null } | null> {
+): Promise<{
+  occurrence: Occurrence
+  courseId: string
+  lecturerId: string
+  meetingUrl: string | null
+  classroomUrl: string | null
+} | null> {
   const parsed = parseOccurrenceKey(key)
   if (!parsed) return null
 
@@ -180,42 +187,49 @@ export async function loadOnlineOccurrence(
   if (!owned) return null
   const occurrence = (await loadOccurrences(db, [courseId], date, date)).find((o) => o.key === key)
   if (!occurrence?.online) return null
-  return { occurrence, courseId, lecturerId: owned.lecturerId, meetingUrl }
+  const [classroom] = await db
+    .select({ meetingUrl: courseClassroom.meetingUrl })
+    .from(courseClassroom)
+    .where(eq(courseClassroom.courseId, courseId))
+  return { occurrence, courseId, lecturerId: owned.lecturerId, meetingUrl, classroomUrl: classroom?.meetingUrl ?? null }
 }
 
-/** Occurrence key → meeting URL, for the course owner's class page only. Includes cached generated links. */
+/**
+ * Occurrence key → meeting URL, for the course owner's class page only. A pasted link wins; an occurrence that
+ * uses the course classroom (`autoMeet`) gets the classroom's URL, or no entry while the course has none.
+ */
 export async function meetingUrlsFor(db: Db, occurrences: Occurrence[]): Promise<Map<string, string>> {
   const urls = new Map<string, string>()
   const slotIds = [...new Set(occurrences.flatMap((o) => (o.source.kind === 'slot' ? [o.source.slotId] : [])))]
   const extraIds = occurrences.flatMap((o) => (o.source.kind === 'extra' ? [o.source.extraId] : []))
-  const [slots, extras, generated] = await Promise.all([
+  const [slots, extras] = await Promise.all([
     slotIds.length === 0
       ? []
       : db
-          .select({ id: classSlot.id, meetingUrl: classSlot.meetingUrl })
+          .select({ id: classSlot.id, courseId: classSlot.courseId, meetingUrl: classSlot.meetingUrl, autoMeet: classSlot.autoMeet })
           .from(classSlot)
           .where(inArray(classSlot.id, slotIds)),
     extraIds.length === 0
       ? []
       : db
-          .select({ id: classExtra.id, meetingUrl: classExtra.meetingUrl })
+          .select({ id: classExtra.id, courseId: classExtra.courseId, meetingUrl: classExtra.meetingUrl, autoMeet: classExtra.autoMeet })
           .from(classExtra)
           .where(inArray(classExtra.id, extraIds)),
-    occurrences.length === 0
-      ? []
-      : db
-          .select({ key: classMeeting.occurrenceKey, meetingUrl: classMeeting.meetingUrl })
-          .from(classMeeting)
-          .where(
-            inArray(
-              classMeeting.occurrenceKey,
-              occurrences.map((o) => o.key),
-            ),
-          ),
   ])
-  const bySlot = new Map(slots.map((s) => [s.id, s.meetingUrl]))
-  const byExtra = new Map(extras.map((e) => [e.id, e.meetingUrl]))
-  for (const row of generated) urls.set(row.key, row.meetingUrl)
+  const needsClassroom = [...slots, ...extras].some((r) => r.meetingUrl === null && r.autoMeet)
+  const courseIds = [...new Set(occurrences.map((o) => o.courseId))]
+  const classrooms =
+    !needsClassroom || courseIds.length === 0
+      ? []
+      : await db
+          .select({ courseId: courseClassroom.courseId, meetingUrl: courseClassroom.meetingUrl })
+          .from(courseClassroom)
+          .where(inArray(courseClassroom.courseId, courseIds))
+  const classroomOf = new Map(classrooms.map((c) => [c.courseId, c.meetingUrl]))
+  const urlOf = (r: { courseId: string; meetingUrl: string | null; autoMeet: boolean }) =>
+    r.meetingUrl ?? (r.autoMeet ? (classroomOf.get(r.courseId) ?? null) : null)
+  const bySlot = new Map(slots.map((s) => [s.id, urlOf(s)]))
+  const byExtra = new Map(extras.map((e) => [e.id, urlOf(e)]))
   for (const o of occurrences) {
     const url = o.source.kind === 'slot' ? bySlot.get(o.source.slotId) : byExtra.get(o.source.extraId)
     if (url) urls.set(o.key, url)

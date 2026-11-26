@@ -14,6 +14,7 @@ import {
   classSlot,
   classStudent,
   course,
+  courseClassroom,
   courseTest,
   courseTopic,
   file,
@@ -183,6 +184,15 @@ describe('deleteCourse', () => {
         createdBy: lecturer.user.id,
       })
       .returning()
+    await db.insert(courseClassroom).values({
+      courseId,
+      spaceName: 'spaces/abc123',
+      meetingUrl: 'https://meet.google.com/abc-defg-hij',
+      meetingCode: 'abc-defg-hij',
+      googleAccountId: 'google-account-1',
+      knockingConfirmed: true,
+      createdBy: lecturer.user.id,
+    })
     await db.insert(onlineClassJoin).values([
       {
         occurrenceKey: `slot:${slot.id}:2026-11-16`,
@@ -209,6 +219,7 @@ describe('deleteCourse', () => {
 
     expect(await db.select().from(course).where(eq(course.id, algo.id))).toEqual([])
     expect(await db.select().from(onlineClassJoin)).toEqual([])
+    expect(await db.select().from(courseClassroom)).toEqual([])
     for (const table of [courseTopic, revisionGroup, courseTest, assignment, attendanceSession, classSlot]) {
       expect(await db.select().from(table).where(eq(table.courseId, algo.id))).toEqual([])
     }

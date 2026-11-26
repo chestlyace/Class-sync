@@ -4,11 +4,23 @@ import { setNowForTests } from '@/server/core/clock'
 import { config, setConfigForTests } from '@/server/core/config'
 import type { Ctx } from '@/server/core/context'
 import type { Db } from '@/server/db'
-import { class_, classLecturer, classSlot, classStudent, course, courseRosterAdjustment, school } from '@/server/db/schema'
+import {
+  class_,
+  classLecturer,
+  classSlot,
+  classStudent,
+  course,
+  courseClassroom,
+  courseRosterAdjustment,
+  school,
+} from '@/server/db/schema'
+import { googleMeetAccess, googleMeetAccessToken } from '@/server/auth/google-meet-access'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
 import { createSchool } from '@/server/schools/service'
 import { setScheduleQueueForTests } from '@/server/schedule/queue'
+import { setMeetSpaceMakerForTests } from '@/server/schedule/classroom'
+import { MeetPermissionError, type MeetSpace } from '@/server/schedule/meet-api'
 import {
   createClass,
   joinClassAsLecturer,
@@ -34,6 +46,14 @@ vi.mock('@/server/push/send', () => ({
   queuePush: vi.fn(async () => {}),
 }))
 
+vi.mock('@/server/auth/google-meet-access', () => ({
+  googleMeetAccess: vi.fn(),
+  googleMeetAccessToken: vi.fn(),
+}))
+
+const accessMock = vi.mocked(googleMeetAccess)
+const tokenMock = vi.mocked(googleMeetAccessToken)
+
 describe('courses service', () => {
   let db: Db
   const original = config.requireEmailVerification
@@ -43,6 +63,11 @@ describe('courses service', () => {
   })
   afterEach(async () => {
     setConfigForTests({ requireEmailVerification: original })
+    vi.unstubAllEnvs()
+    setMeetSpaceMakerForTests(null)
+    accessMock.mockReset()
+    tokenMock.mockReset()
+    await db.delete(courseClassroom)
     await db.delete(courseRosterAdjustment)
     await db.delete(course)
     await db.delete(classStudent)
@@ -119,26 +144,51 @@ describe('courses service', () => {
     }
   })
 
+  const classroomSlot = {
+    weekday: 1,
+    startMinute: 8 * 60,
+    endMinute: 10 * 60,
+    room: 'B2',
+    requireOnCampus: false,
+    meetingUrl: null,
+    autoMeet: true,
+    startsOn: '2026-11-01',
+    endsOn: '2026-12-31',
+  }
+
+  /** Switch on, Google granted, and a stubbed Meet call that hands back one fixed room. */
+  function allowClassroom() {
+    vi.stubEnv('MEET_CLASSROOM', 'everyone')
+    vi.stubEnv('ADMIN_EMAILS', '')
+    accessMock.mockResolvedValue({ accountId: 'acc-1', granted: true })
+    tokenMock.mockResolvedValue('token-1')
+    const maker = vi.fn(
+      async (): Promise<MeetSpace> => ({
+        spaceName: 'spaces/new',
+        meetingUrl: 'https://meet.google.com/new-room-abc',
+        meetingCode: 'new-room-abc',
+        knockingConfirmed: true,
+      }),
+    )
+    setMeetSpaceMakerForTests(maker)
+    return maker
+  }
+
+  async function courseCount(classId: string) {
+    return (await db.select({ id: course.id }).from(course).where(eq(course.classId, classId))).length
+  }
+
   it('createCourse can add the first online weekly slot in the same submit', async () => {
     setNowForTests(() => new Date('2026-11-16T07:00:00Z'))
     setScheduleQueueForTests({ send: vi.fn(async () => {}) })
     try {
       const { lecturer, cls } = await setup()
+      const maker = allowClassroom()
       const made = await createCourse(lecturer, {
         classId: cls.id,
         title: 'Networks',
         semester: 1,
-        firstSlot: {
-          weekday: 1,
-          startMinute: 8 * 60,
-          endMinute: 10 * 60,
-          room: 'B2',
-          requireOnCampus: false,
-          meetingUrl: null,
-          autoMeet: true,
-          startsOn: '2026-11-01',
-          endsOn: '2026-12-31',
-        },
+        firstSlot: classroomSlot,
       })
       const slots = await db.select().from(classSlot).where(eq(classSlot.courseId, made.id))
       expect(slots).toHaveLength(1)
@@ -149,6 +199,17 @@ describe('courses service', () => {
         room: 'B2',
         meetingUrl: null,
         autoMeet: true,
+      })
+      expect(maker).toHaveBeenCalledTimes(1)
+      const rooms = await db.select().from(courseClassroom).where(eq(courseClassroom.courseId, made.id))
+      expect(rooms).toHaveLength(1)
+      expect(rooms[0]).toMatchObject({
+        spaceName: 'spaces/new',
+        meetingUrl: 'https://meet.google.com/new-room-abc',
+        meetingCode: 'new-room-abc',
+        googleAccountId: 'acc-1',
+        knockingConfirmed: true,
+        createdBy: lecturer.user.id,
       })
 
       await expect(
@@ -172,6 +233,79 @@ describe('courses service', () => {
       setScheduleQueueForTests(null)
       setNowForTests(null)
     }
+  })
+
+  it('createCourse with a pasted-link first slot makes no classroom and never calls Google', async () => {
+    setScheduleQueueForTests({ send: vi.fn(async () => {}) })
+    try {
+      const { lecturer, cls } = await setup()
+      const maker = allowClassroom()
+      const made = await createCourse(lecturer, {
+        classId: cls.id,
+        title: 'Pasted link',
+        semester: 1,
+        firstSlot: { ...classroomSlot, autoMeet: false, meetingUrl: 'https://meet.google.com/abc-defg-hij' },
+      })
+      const slots = await db.select().from(classSlot).where(eq(classSlot.courseId, made.id))
+      expect(slots[0]).toMatchObject({ autoMeet: false, meetingUrl: 'https://meet.google.com/abc-defg-hij' })
+      expect(maker).not.toHaveBeenCalled()
+      expect(accessMock).not.toHaveBeenCalled()
+      expect(await db.select().from(courseClassroom).where(eq(courseClassroom.courseId, made.id))).toHaveLength(0)
+    } finally {
+      setScheduleQueueForTests(null)
+    }
+  })
+
+  it('createCourse saves nothing when Google fails while making the classroom', async () => {
+    const { lecturer, cls } = await setup()
+    const before = await courseCount(cls.id)
+    allowClassroom()
+    setMeetSpaceMakerForTests(async () => {
+      throw new Error('Meet is down')
+    })
+    await expect(
+      createCourse(lecturer, { classId: cls.id, title: 'Never saved', semester: 1, firstSlot: classroomSlot }),
+    ).rejects.toThrow('Meet is down')
+    expect(await courseCount(cls.id)).toBe(before)
+    expect(await db.select().from(courseClassroom)).toHaveLength(0)
+  })
+
+  it('createCourse asks for the Google permission and saves nothing when it is missing', async () => {
+    const { lecturer, cls } = await setup()
+    const before = await courseCount(cls.id)
+    const maker = allowClassroom()
+    accessMock.mockResolvedValue({ accountId: 'acc-1', granted: false })
+    await expect(
+      createCourse(lecturer, { classId: cls.id, title: 'No permission', semester: 1, firstSlot: classroomSlot }),
+    ).rejects.toMatchObject({ code: 'VALIDATION', details: { reason: 'google_permission_needed' } })
+    expect(maker).not.toHaveBeenCalled()
+    expect(await courseCount(cls.id)).toBe(before)
+  })
+
+  it('createCourse asks for the Google permission when Google refuses the token', async () => {
+    const { lecturer, cls } = await setup()
+    const before = await courseCount(cls.id)
+    allowClassroom()
+    setMeetSpaceMakerForTests(async () => {
+      throw new MeetPermissionError('revoked')
+    })
+    await expect(
+      createCourse(lecturer, { classId: cls.id, title: 'Revoked', semester: 1, firstSlot: classroomSlot }),
+    ).rejects.toMatchObject({ code: 'VALIDATION', details: { reason: 'google_permission_needed' } })
+    expect(await courseCount(cls.id)).toBe(before)
+  })
+
+  it('createCourse refuses a classroom first slot while the switch is off, before any Google call', async () => {
+    const { lecturer, cls } = await setup()
+    const before = await courseCount(cls.id)
+    const maker = allowClassroom()
+    vi.stubEnv('MEET_CLASSROOM', 'off')
+    await expect(
+      createCourse(lecturer, { classId: cls.id, title: 'Switch off', semester: 1, firstSlot: classroomSlot }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    expect(accessMock).not.toHaveBeenCalled()
+    expect(maker).not.toHaveBeenCalled()
+    expect(await courseCount(cls.id)).toBe(before)
   })
 
   it('createCourse requires a verified email', async () => {

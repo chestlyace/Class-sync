@@ -8,7 +8,7 @@ import { getSessionUser } from '@/server/auth/session'
 const PRIVACY_CONTACT = 'chestlyace@clasync.online'
 
 /** Change along with the text: shown as "Last updated". */
-const UPDATED = new Date('2026-11-25T12:00:00Z')
+const UPDATED = new Date('2026-11-26T12:00:00Z')
 
 export async function generateMetadata() {
   const t = await getTranslations('privacy')
@@ -17,12 +17,12 @@ export async function generateMetadata() {
 
 /** The policy's sections, in order: message keys under `privacy.<key>`. */
 const sections = [
-  { key: 'collect', items: ['account', 'google', 'classes', 'tests', 'location', 'signIns', 'whatsapp'] },
+  { key: 'collect', items: ['account', 'google', 'classes', 'tests', 'location', 'signIns', 'whatsapp', 'meet'] },
   { key: 'access', items: ['lecturers', 'you', 'admins', 'sold'] },
-  { key: 'services', intro: true, items: ['hosting', 'database', 'email', 'announcements', 'errors', 'push', 'whatsapp', 'ai', 'aiAssignments', 'google'] },
+  { key: 'services', intro: true, items: ['hosting', 'database', 'email', 'announcements', 'errors', 'push', 'whatsapp', 'ai', 'aiAssignments', 'google', 'meet'] },
   { key: 'assistants', items: ['body'] },
   { key: 'cookies', items: ['body'] },
-  { key: 'rights', items: ['edit', 'google', 'whatsapp', 'announcements', 'delete', 'keep'] },
+  { key: 'rights', items: ['edit', 'google', 'whatsapp', 'meet', 'announcements', 'delete', 'keep'] },
   { key: 'changes', items: ['body'] },
 ] as const
 
