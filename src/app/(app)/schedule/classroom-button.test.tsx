@@ -57,6 +57,32 @@ describe('pressClassroomButton', () => {
     expect(args.errorCallbackURL).toBe('/schedule?week=2026-11-23&classroom=google')
   })
 
+  it('just back from Google and still without the permission, explains instead of going round again', async () => {
+    createMock.mockResolvedValue({ ok: true, data: { kind: 'needsGoogle' } })
+    expect(await pressClassroomButton('c-1', page('classroom=google'))).toEqual({
+      kind: 'message',
+      key: 'schedule.online.googleStillMissing',
+    })
+    expect(linkMock).not.toHaveBeenCalled()
+  })
+
+  it('goes to Google again when the lecturer presses once more after that message', async () => {
+    createMock.mockResolvedValue({ ok: true, data: { kind: 'needsGoogle' } })
+    linkMock.mockResolvedValue({ data: null, error: null } as never)
+    expect(await pressClassroomButton('c-1', page('classroom=google'), { againToGoogle: true })).toEqual({
+      kind: 'toGoogle',
+    })
+    expect(linkMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('a failed round trip (Google sent an error back) goes to Google again on the next press', async () => {
+    createMock.mockResolvedValue({ ok: true, data: { kind: 'needsGoogle' } })
+    linkMock.mockResolvedValue({ data: null, error: null } as never)
+    expect(await pressClassroomButton('c-1', page('classroom=google&error=access_denied'))).toEqual({
+      kind: 'toGoogle',
+    })
+  })
+
   it('shows the auth error when Google linking is refused, for example an unconfirmed email', async () => {
     createMock.mockResolvedValue({ ok: true, data: { kind: 'needsGoogle' } })
     linkMock.mockResolvedValue({

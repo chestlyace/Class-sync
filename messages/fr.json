@@ -3523,6 +3523,7 @@
       "pasteLink": "Coller un lien Meet",
       "createClassroom": "Créer la salle",
       "finishClassroom": "Terminer la création de la salle",
+      "googleStillMissing": "Google n'a pas donné à Clasync l'autorisation de créer des salles Meet. Appuyez de nouveau sur le bouton et, sur l'écran de Google, cochez les deux cases Google Meet.",
       "googleNeeded": "Clasync va demander à Google l’autorisation de créer des salles Meet pour vous. Rien d’autre.",
       "quickAccessTip": "Dans Meet, désactivez l’accès rapide dans les commandes de l’organisateur pour que chacun doive demander à entrer.",
       "classroomLater": "Vous pourrez ajouter la salle du cours après l’enregistrement.",

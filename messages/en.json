@@ -3523,6 +3523,7 @@
       "pasteLink": "Paste a Meet link",
       "createClassroom": "Create the classroom",
       "finishClassroom": "Finish creating the classroom",
+      "googleStillMissing": "Google didn't give Clasync permission to create Meet rooms. Press the button again and, on Google's screen, tick both Google Meet boxes.",
       "googleNeeded": "Clasync will ask Google for permission to create Meet rooms for you. Nothing else.",
       "quickAccessTip": "In Meet, turn off Quick access in Host controls so people have to knock.",
       "classroomLater": "You can add the course's classroom after saving.",

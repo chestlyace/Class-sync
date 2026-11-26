@@ -15,7 +15,10 @@ export type MeetSpace = {
   knockingConfirmed: boolean
 }
 
-/** Google refused the token: 401, or 403 for missing scopes or permission. The lecturer must reconnect Google. */
+/**
+ * Google refused the lecturer's token itself: 401, or 403 because the token lacks the Meet scopes. Only these mean
+ * "connect Google again". Any other refusal is thrown as a plain Error: asking for permission again can't fix it.
+ */
 export class MeetPermissionError extends Error {
   constructor(message: string) {
     super(message)
@@ -23,19 +26,23 @@ export class MeetPermissionError extends Error {
   }
 }
 
-type GoogleError = { status: string | null; reasons: string[] }
+type GoogleError = { status: string | null; reasons: string[]; message: string | null }
 
 async function readError(res: Response): Promise<GoogleError> {
   try {
     const body: unknown = await res.json()
-    const error = (body as { error?: { status?: unknown; details?: unknown } } | null)?.error
+    const error = (body as { error?: { status?: unknown; details?: unknown; message?: unknown } } | null)?.error
     const details = Array.isArray(error?.details) ? error.details : []
     const reasons = details
       .map((d) => (d as { reason?: unknown } | null)?.reason)
       .filter((r): r is string => typeof r === 'string')
-    return { status: typeof error?.status === 'string' ? error.status : null, reasons }
+    return {
+      status: typeof error?.status === 'string' ? error.status : null,
+      reasons,
+      message: typeof error?.message === 'string' ? error.message.slice(0, 300) : null,
+    }
   } catch {
-    return { status: null, reasons: [] }
+    return { status: null, reasons: [], message: null }
   }
 }
 
@@ -48,12 +55,32 @@ async function post(accessToken: string, body: object, fetchImpl: typeof fetch):
   })
 }
 
+/** Google's own reason, so every refusal reaches Sentry with enough to act on. Never the token. */
+function logRefusal(step: 'restricted' | 'plain', res: Response, err: GoogleError): void {
+  console.error('[meet] Google Meet refused spaces.create', {
+    step,
+    httpStatus: res.status,
+    status: err.status,
+    reasons: err.reasons,
+    message: err.message,
+  })
+}
+
+const isServiceDisabled = (err: GoogleError) => err.reasons.includes('SERVICE_DISABLED')
+const isScopeProblem = (err: GoogleError) => err.reasons.some((r) => /SCOPE/i.test(r))
+
 function isPermissionFailure(res: Response, err: GoogleError): boolean {
   if (res.status === 401) return true
-  if (res.status !== 403) return false
-  // Meet API not enabled in the Cloud project: a setup problem, not something the lecturer can fix by reconnecting.
-  if (err.reasons.includes('SERVICE_DISABLED')) return false
-  return err.status === 'PERMISSION_DENIED' || err.reasons.some((r) => /SCOPE|PERMISSION/i.test(r))
+  return res.status === 403 && isScopeProblem(err)
+}
+
+/**
+ * The first request (with RESTRICTED access) may be refused because of that setting alone: a 400, or a 403 that
+ * is neither "API not enabled" nor a token-scope problem. Then it is worth one try without the setting.
+ */
+function worthRetryingWithoutConfig(res: Response, err: GoogleError): boolean {
+  if (res.status === 400) return err.status === 'INVALID_ARGUMENT' || err.status === 'FAILED_PRECONDITION'
+  return res.status === 403 && !isServiceDisabled(err) && !isScopeProblem(err)
 }
 
 /**
@@ -65,17 +92,21 @@ export async function createMeetSpace(accessToken: string, fetchImpl: typeof fet
   let res = await post(accessToken, { config: { accessType: 'RESTRICTED' } }, fetchImpl)
   let err: GoogleError | null = res.ok ? null : await readError(res)
 
-  if (err && res.status === 400 && (err.status === 'INVALID_ARGUMENT' || err.status === 'FAILED_PRECONDITION')) {
-    knockingConfirmed = false
-    res = await post(accessToken, {}, fetchImpl)
-    err = res.ok ? null : await readError(res)
+  if (err) {
+    logRefusal('restricted', res, err)
+    if (worthRetryingWithoutConfig(res, err)) {
+      knockingConfirmed = false
+      res = await post(accessToken, {}, fetchImpl)
+      err = res.ok ? null : await readError(res)
+      if (err) logRefusal('plain', res, err)
+    }
   }
 
   if (err) {
     if (isPermissionFailure(res, err)) {
-      throw new MeetPermissionError(`Google Meet refused the request (${res.status})`)
+      throw new MeetPermissionError(`Google Meet refused the token (${res.status})`)
     }
-    const reason = err.reasons.includes('SERVICE_DISABLED') ? ' SERVICE_DISABLED' : ''
+    const reason = isServiceDisabled(err) ? ' SERVICE_DISABLED' : err.status ? ` ${err.status}` : ''
     throw new Error(`Google Meet API error (${res.status})${reason}`)
   }
 

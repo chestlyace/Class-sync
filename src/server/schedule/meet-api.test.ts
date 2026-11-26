@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppError } from '@/server/core/errors'
 import { MEET_SCOPES as scopesFromLib } from '@/lib/google-meet-scopes'
 import { MEET_SCOPES, MeetPermissionError, createMeetSpace } from './meet-api'
@@ -24,6 +24,14 @@ function fake(...responses: Response[]) {
 }
 
 describe('createMeetSpace', () => {
+  let logged: ReturnType<typeof vi.spyOn>
+  beforeEach(() => {
+    logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+  afterEach(() => {
+    logged.mockRestore()
+  })
+
   it('creates a restricted space', async () => {
     const { fetchImpl, calls } = fake(json(200, space))
     const result = await createMeetSpace('tok', fetchImpl)
@@ -60,9 +68,45 @@ describe('createMeetSpace', () => {
     await expect(createMeetSpace('tok', fetchImpl)).rejects.toBeInstanceOf(MeetPermissionError)
   })
 
-  it('throws MeetPermissionError on 403 PERMISSION_DENIED', async () => {
-    const { fetchImpl } = fake(json(403, { error: { status: 'PERMISSION_DENIED' } }))
+  it('throws MeetPermissionError when the token lacks the Meet scopes, without retrying', async () => {
+    const { fetchImpl, calls } = fake(
+      json(403, { error: { status: 'PERMISSION_DENIED', details: [{ reason: 'ACCESS_TOKEN_SCOPE_INSUFFICIENT' }] } }),
+    )
     await expect(createMeetSpace('tok', fetchImpl)).rejects.toBeInstanceOf(MeetPermissionError)
+    expect(calls).toHaveLength(1)
+  })
+
+  it('retries without config when RESTRICTED gets a plain 403', async () => {
+    const { fetchImpl, calls } = fake(json(403, { error: { status: 'PERMISSION_DENIED' } }), json(200, space))
+    const result = await createMeetSpace('tok', fetchImpl)
+    expect(result.knockingConfirmed).toBe(false)
+    expect(calls).toHaveLength(2)
+    expect(calls[1].init.body).toBe('{}')
+  })
+
+  it('throws a plain Error, not MeetPermissionError, when Google keeps refusing with 403', async () => {
+    const denied = { error: { status: 'PERMISSION_DENIED', message: 'The caller does not have permission' } }
+    const { fetchImpl, calls } = fake(json(403, denied), json(403, denied))
+    const error = await createMeetSpace('secret-token', fetchImpl).catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(Error)
+    expect(error).not.toBeInstanceOf(MeetPermissionError)
+    expect((error as Error).message).toBe('Google Meet API error (403) PERMISSION_DENIED')
+    expect(calls).toHaveLength(2)
+  })
+
+  it('logs every refusal with Google\'s reason and never the token', async () => {
+    const denied = { error: { status: 'PERMISSION_DENIED', message: 'The caller does not have permission' } }
+    const { fetchImpl } = fake(json(403, denied), json(403, denied))
+    await createMeetSpace('secret-token', fetchImpl).catch(() => {})
+    expect(logged).toHaveBeenCalledTimes(2)
+    expect(logged).toHaveBeenCalledWith('[meet] Google Meet refused spaces.create', {
+      step: 'restricted',
+      httpStatus: 403,
+      status: 'PERMISSION_DENIED',
+      reasons: [],
+      message: 'The caller does not have permission',
+    })
+    expect(JSON.stringify(logged.mock.calls)).not.toContain('secret-token')
   })
 
   it('throws a plain Error, not MeetPermissionError, when the Meet API is not enabled', async () => {
