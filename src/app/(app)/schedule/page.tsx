@@ -10,7 +10,8 @@ import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import { listLecturerCourses, type CourseSummary } from '@/server/courses/service'
 import { addDays, localDateOf, weekStartOf } from '@/server/lib/local-time'
-import { classroomOptions, type ClassroomOption } from '@/server/schedule/classroom'
+import { HIDDEN_CLASSROOM, type ClassroomOption } from '@/lib/classroom-option'
+import { classroomOptions } from '@/server/schedule/classroom'
 import { listSlots } from '@/server/schedule/timetable'
 import { lecturerWeek, needsAnswer, type WeekRow } from '@/server/schedule/views'
 import type { Sitting } from '@/server/schedule/occurrences'
@@ -158,7 +159,7 @@ export default async function SchedulePage({ searchParams }: PageProps<'/schedul
                       locale={locale}
                       at={at}
                       span={span}
-                      classroom={classrooms[row.occurrence.courseId] ?? HIDDEN}
+                      classroom={classrooms[row.occurrence.courseId] ?? HIDDEN_CLASSROOM}
                     />
                   ))}
                 </ul>
@@ -196,8 +197,6 @@ export default async function SchedulePage({ searchParams }: PageProps<'/schedul
     </>
   )
 }
-
-const HIDDEN: ClassroomOption = { state: 'hidden' }
 
 /** Rows arrive sorted by start time; days keep that order. */
 function groupByDay(rows: WeekRow[]): [string, WeekRow[]][] {

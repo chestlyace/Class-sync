@@ -1,11 +1,12 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import { useSearchParams } from 'next/navigation'
 import { isInvalidField } from '@/components/action-error'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import type { ActionResult } from '@/lib/action-result'
-import type { ClassroomOption } from '@/server/schedule/classroom'
+import type { ClassroomOption } from '@/lib/classroom-option'
 import { ClassroomButton } from './classroom-button'
 
 /**
@@ -37,7 +38,10 @@ export function OnlineFields({
   state: ActionResult<unknown> | null
   online: boolean
   setOnline: (value: boolean) => void
-  /** The classroom is chosen; null until the lecturer picks, which means the classroom when it is ready. */
+  /**
+   * The classroom is chosen. Null until the lecturer picks: the classroom when it is ready (or made on save), or
+   * when they are back from Google to finish creating it; otherwise the pasted link.
+   */
   autoMeet: boolean | null
   setAutoMeet: (value: boolean) => void
   meetingUrl: string
@@ -51,8 +55,11 @@ export function OnlineFields({
 }) {
   const t = useTranslations('schedule.online')
   const invalid = (field: string) => isInvalidField(state, field) || undefined
+  const backFromGoogle = useSearchParams().get('classroom') === 'google'
   const offered = classroom.state !== 'hidden'
-  const useClassroom = offered && (autoMeet ?? (classroom.state === 'ready' || classroom.state === 'onSave'))
+  const classroomByDefault =
+    classroom.state === 'ready' || classroom.state === 'onSave' || (classroom.state === 'missing' && backFromGoogle)
+  const useClassroom = offered && (autoMeet ?? classroomByDefault)
 
   const linkField = (
     <Field data-invalid={invalid('meetingUrl')}>

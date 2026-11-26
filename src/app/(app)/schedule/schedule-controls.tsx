@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import type { ActionResult } from '@/lib/action-result'
 import { submitWith } from '@/lib/form-submit'
-import type { ClassroomOption } from '@/server/schedule/classroom'
+import type { ClassroomOption } from '@/lib/classroom-option'
 import { answerSittingAction, cancelClassAction, startClassAttendanceAction, undoCancelAction } from './actions'
 import { MakeUpDialog, MakeUpFields, type Classrooms, type MakeUpDefaults } from './make-up-form'
 import { ScheduleError } from './schedule-error'

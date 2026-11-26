@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dialog'
 import type { ActionResult } from '@/lib/action-result'
 import { submitWith } from '@/lib/form-submit'
-import type { ClassroomOption } from '@/server/schedule/classroom'
+import type { ClassroomOption } from '@/lib/classroom-option'
 import { moveOnlineAction } from './actions'
 import { OnlineFields } from './online-fields'
 import { ScheduleError } from './schedule-error'

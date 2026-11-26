@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/native-select'
 import type { ActionResult } from '@/lib/action-result'
 import { submitWith } from '@/lib/form-submit'
-import type { ClassroomOption } from '@/server/schedule/classroom'
+import { HIDDEN_CLASSROOM, type ClassroomOption } from '@/lib/classroom-option'
 import { addMakeUpAction } from './actions'
 import { OnlineFields } from './online-fields'
 import { ScheduleError } from './schedule-error'
@@ -29,8 +29,6 @@ export type CourseOption = { id: string; title: string; className: string; schoo
 
 /** Each course's classroom option, by course id; a course not listed has none to offer. */
 export type Classrooms = Record<string, ClassroomOption>
-
-const HIDDEN: ClassroomOption = { state: 'hidden' }
 
 /** Prefilled values of the make-up fields: a date ("YYYY-MM-DD") and times ("HH:MM"). */
 export type MakeUpDefaults = { date: string; start: string; end: string; room: string }
@@ -194,7 +192,7 @@ function MakeUpForm({
         idPrefix="make-up"
         defaults={defaults}
         state={state}
-        classroom={classrooms[chosenCourse] ?? HIDDEN}
+        classroom={classrooms[chosenCourse] ?? HIDDEN_CLASSROOM}
       />
       <ScheduleError state={state} />
       <DialogFooter>

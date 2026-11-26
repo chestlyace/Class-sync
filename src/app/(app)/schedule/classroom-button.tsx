@@ -22,6 +22,50 @@ function pageUrl(pathname: string, search: URLSearchParams, extra: Record<string
   return query ? `${pathname}?${query}` : pathname
 }
 
+/** What a press led to. `message` is a key from the root of messages/*.json. */
+export type ClassroomPress =
+  | { kind: 'refreshed' }
+  | { kind: 'toGoogle' }
+  | { kind: 'failed'; result: ActionResult<unknown> }
+  | { kind: 'message'; key: string }
+
+/**
+ * One press of "Create the classroom": `ready` refreshes the page; `needsGoogle` sends the browser to Google for the
+ * Meet permission, coming back (success or error) with `?classroom=google`.
+ */
+export async function pressClassroomButton(
+  courseId: string,
+  page: { pathname: string; search: URLSearchParams; refresh: () => void },
+): Promise<ClassroomPress> {
+  let result: Awaited<ReturnType<typeof createClassroomAction>>
+  try {
+    result = await createClassroomAction(courseId)
+  } catch {
+    // An outage on Google's side is thrown by the action, not returned.
+    return { kind: 'message', key: 'schedule.online.createFailed' }
+  }
+  if (!result.ok) return { kind: 'failed', result }
+  if (result.data.kind === 'ready') {
+    page.refresh()
+    return { kind: 'refreshed' }
+  }
+  try {
+    const back = pageUrl(page.pathname, page.search, { classroom: 'google' })
+    const { error } = await authClient.linkSocial({
+      provider: 'google',
+      scopes: [...MEET_SCOPES],
+      additionalParams: { ...MEET_LINK_PARAMS },
+      callbackURL: back,
+      // Better Auth adds `&error=…`; `classroom=google` marks it as this round trip's.
+      errorCallbackURL: back,
+    })
+    if (error) return { kind: 'message', key: authErrorKey(error.code, error.status) }
+    return { kind: 'toGoogle' }
+  } catch {
+    return { kind: 'message', key: 'common.genericError' }
+  }
+}
+
 /**
  * "Create the classroom" for a course that has none. When Google has not yet allowed Clasync to make Meet rooms,
  * the press goes to Google first and comes back with `?classroom=google`; the button then reads "Finish creating
@@ -34,48 +78,22 @@ export function ClassroomButton({ courseId, googleGranted }: { courseId: string;
   const pathname = usePathname()
   const search = useSearchParams()
   const returning = search.get('classroom') === 'google'
+  // Only an error from this round trip (marked by `classroom=google`) is Google's.
+  const googleError = returning ? googleErrorKey(search.get('error')) : null
   const [pending, startTransition] = useTransition()
   // Set once the browser is on its way to Google: the button stays busy until the page goes.
   const [leaving, setLeaving] = useState(false)
   const [failed, setFailed] = useState<ActionResult<unknown> | null>(null)
-  const [message, setMessage] = useState<string | null>(() => {
-    const key = googleErrorKey(search.get('error'))
-    return key ? tRoot(key) : null
-  })
+  const [message, setMessage] = useState<string | null>(() => (googleError ? tRoot(googleError) : null))
 
   function create() {
     setFailed(null)
     setMessage(null)
     startTransition(async () => {
-      let result: Awaited<ReturnType<typeof createClassroomAction>>
-      try {
-        result = await createClassroomAction(courseId)
-      } catch {
-        setMessage(t('createFailed'))
-        return
-      }
-      if (!result.ok) {
-        setFailed(result)
-        return
-      }
-      if (result.data.kind === 'ready') {
-        router.refresh()
-        return
-      }
-      try {
-        const { error } = await authClient.linkSocial({
-          provider: 'google',
-          scopes: [...MEET_SCOPES],
-          additionalParams: { ...MEET_LINK_PARAMS },
-          callbackURL: pageUrl(pathname, search, { classroom: 'google' }),
-          // Better Auth adds `?error=…` (or `&error=…`) to this address.
-          errorCallbackURL: pageUrl(pathname, search),
-        })
-        if (error) setMessage(tRoot(authErrorKey(error.code, error.status)))
-        else setLeaving(true)
-      } catch {
-        setMessage(tRoot('common.genericError'))
-      }
+      const outcome = await pressClassroomButton(courseId, { pathname, search, refresh: () => router.refresh() })
+      if (outcome.kind === 'failed') setFailed(outcome.result)
+      else if (outcome.kind === 'message') setMessage(tRoot(outcome.key))
+      else if (outcome.kind === 'toGoogle') setLeaving(true)
     })
   }
 
@@ -83,7 +101,7 @@ export function ClassroomButton({ courseId, googleGranted }: { courseId: string;
     <div className="flex flex-col items-start gap-2">
       <Button type="button" variant="outline" pending={pending || leaving} onClick={create}>
         <Video aria-hidden="true" data-icon="inline-start" />
-        {returning ? t('finishClassroom') : t('createClassroom')}
+        {returning && !googleError ? t('finishClassroom') : t('createClassroom')}
       </Button>
       {!googleGranted && !returning && <p className="text-sm text-muted-foreground">{t('googleNeeded')}</p>}
       {message && <FieldError>{message}</FieldError>}

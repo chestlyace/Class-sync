@@ -2,6 +2,7 @@
 
 import { Pencil, Plus, Save, Trash2, TriangleAlert, X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { useSearchParams } from 'next/navigation'
 import { useActionState, useRef, useState } from 'react'
 import { isInvalidField } from '@/components/action-error'
 import { ConfirmAction } from '@/components/confirm-action'
@@ -13,7 +14,7 @@ import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/native-select'
 import type { ActionResult } from '@/lib/action-result'
 import { submitWith } from '@/lib/form-submit'
-import type { ClassroomOption } from '@/server/schedule/classroom'
+import type { ClassroomOption } from '@/lib/classroom-option'
 import type { SlotOverlap } from '@/server/schedule/timetable'
 import { createSlotAction, removeSlotAction, updateSlotAction, type SlotSaved } from '../../../schedule/actions'
 import { OnlineFields } from '../../../schedule/online-fields'
@@ -59,7 +60,13 @@ function SlotForm({
   const t = useTranslations('schedule.timetable')
   const tCommon = useTranslations('common')
   const formRef = useRef<HTMLFormElement>(null)
-  const [online, setOnline] = useState(initial.meetingUrl !== '' || initial.autoMeet)
+  // Back from Google to finish the classroom: the add form opens online, so "Finish creating the classroom" shows.
+  const backFromGoogle = useSearchParams().get('classroom') === 'google'
+  const [online, setOnline] = useState(
+    initial.meetingUrl !== '' ||
+      initial.autoMeet ||
+      (target.kind === 'create' && backFromGoogle && classroom.state === 'missing'),
+  )
   const [meetingUrl, setMeetingUrl] = useState(initial.meetingUrl)
   // A slot not yet online has no choice of link source: null lets the form pick the classroom when it is ready.
   const [autoMeet, setAutoMeet] = useState<boolean | null>(

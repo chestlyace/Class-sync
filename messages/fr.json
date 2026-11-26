@@ -3523,6 +3523,7 @@
       "googleNeeded": "Clasync va demander à Google l’autorisation de créer des salles Meet pour vous. Rien d’autre.",
       "quickAccessTip": "Dans Meet, désactivez l’accès rapide dans les commandes de l’organisateur pour que chacun doive demander à entrer.",
       "classroomLater": "Vous pourrez ajouter la salle du cours après l’enregistrement.",
+      "googleRefused": "Google n’a pas autorisé Clasync à créer la salle. Collez un lien Meet maintenant, ou ajoutez la salle après l’enregistrement.",
       "createFailed": "Google n’a pas créé la salle. Réessayez dans un instant.",
       "meetingUrl": "Lien Google Meet",
       "meetingUrlPlaceholder": "https://meet.google.com/abc-defg-hij"

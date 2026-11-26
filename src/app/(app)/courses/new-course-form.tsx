@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/native-select'
+import type { ActionResult } from '@/lib/action-result'
 import { submitWith } from '@/lib/form-submit'
 import { OnlineFields } from '../schedule/online-fields'
 import { createCourseAction } from './actions'
@@ -31,11 +32,15 @@ export function NewCourseForm({
   const tSlot = useTranslations('schedule.timetable')
   const tCommon = useTranslations('common')
   const tOnline = useTranslations('schedule.online')
-  const [state, dispatch, pending] = useActionState(createCourseAction, null)
-  const invalid = (field: string) => isInvalidField(state, field) || undefined
   const [online, setOnline] = useState(false)
   const [autoMeet, setAutoMeet] = useState<boolean | null>(null)
-  // Google refused when the course was saved: the lecturer connects it again after saving, from the course.
+  const [state, dispatch, pending] = useActionState(async (prev: ActionResult<never> | null, data: FormData) => {
+    const result = await createCourseAction(prev, data)
+    // Google refused to make the room: switch to a pasted link so the lecturer can save now.
+    if (!result.ok && result.details?.reason === 'google_permission_needed') setAutoMeet(false)
+    return result
+  }, null)
+  const invalid = (field: string) => isInvalidField(state, field) || undefined
   const googleNeeded = state?.ok === false && state.details?.reason === 'google_permission_needed'
   const [meetingUrl, setMeetingUrl] = useState('')
 
@@ -175,7 +180,7 @@ export function NewCourseForm({
         )}
         {googleNeeded ? (
           <FieldError>
-            {tOnline('googleNeeded')} {tOnline('classroomLater')}
+            {tOnline('googleRefused')}
           </FieldError>
         ) : (
           <ActionError state={state} />

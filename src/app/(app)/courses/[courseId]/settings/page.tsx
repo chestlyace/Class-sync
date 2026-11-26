@@ -11,7 +11,9 @@ import { config } from '@/server/core/config'
 import { getCourseDeletionImpact } from '@/server/courses/delete'
 import { requireCourseOwner } from '@/server/courses/service'
 import { localDateOf } from '@/server/lib/local-time'
-import { classroomOption, getClassroom } from '@/server/schedule/classroom'
+import { googleMeetAccess } from '@/server/auth/google-meet-access'
+import { getClassroom } from '@/server/schedule/classroom'
+import { canUseClassroom } from '@/server/schedule/classroom-switch'
 import { loadPage } from '../../../load-page'
 import { ClassroomButton } from '../../../schedule/classroom-button'
 import { formatDay } from '../../../schedule/schedule-format'
@@ -31,16 +33,21 @@ export default async function CourseSettingsPage({ params }: PageProps<'/courses
   // Owner only: a colleague sharing the class and the course's students get FORBIDDEN.
   const view = await loadPage(async (ctx) => {
     const course = await requireCourseOwner(ctx, courseId)
-    const option = await classroomOption(ctx, courseId)
+    // The Classroom panel: hidden unless the switch allows it; Google is only asked about when there is no room.
+    const showClassroom = canUseClassroom(ctx.user)
+    const classroom = showClassroom ? await getClassroom(ctx.db, courseId) : null
+    const googleGranted =
+      showClassroom && !classroom ? ((await googleMeetAccess(ctx.db, ctx.user.id))?.granted ?? false) : false
     return {
       course,
       impact: await getCourseDeletionImpact(ctx, courseId),
-      option,
-      classroom: option.state === 'ready' ? await getClassroom(ctx.db, courseId) : null,
+      showClassroom,
+      classroom,
+      googleGranted,
     }
   })
   if (!view.ok) return <ErrorState code={view.code} />
-  const { course, impact, option, classroom } = view.data
+  const { course, impact, showClassroom, classroom, googleGranted } = view.data
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
@@ -53,7 +60,7 @@ export default async function CourseSettingsPage({ params }: PageProps<'/courses
         <SectionHeading>{t('courses.settings.editTitle')}</SectionHeading>
         <EditCourseForm course={course} />
       </Panel>
-      {option.state !== 'hidden' && (
+      {showClassroom && (
         <Panel className="flex flex-col gap-5">
           <SectionHeading>{t('courses.settings.classroom')}</SectionHeading>
           {classroom ? (
@@ -86,12 +93,10 @@ export default async function CourseSettingsPage({ params }: PageProps<'/courses
               )}
             </div>
           ) : (
-            option.state === 'missing' && (
-              <div className="flex flex-col gap-3">
-                <p className="text-sm text-muted-foreground">{t('schedule.online.useClassroomHint')}</p>
-                <ClassroomButton courseId={course.id} googleGranted={option.googleGranted} />
-              </div>
-            )
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-muted-foreground">{t('schedule.online.useClassroomHint')}</p>
+              <ClassroomButton courseId={course.id} googleGranted={googleGranted} />
+            </div>
           )}
         </Panel>
       )}

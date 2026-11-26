@@ -3523,6 +3523,7 @@
       "googleNeeded": "Clasync will ask Google for permission to create Meet rooms for you. Nothing else.",
       "quickAccessTip": "In Meet, turn off Quick access in Host controls so people have to knock.",
       "classroomLater": "You can add the course's classroom after saving.",
+      "googleRefused": "Google did not allow Clasync to create the classroom. Paste a Meet link now, or add the classroom after saving.",
       "createFailed": "Google didn't create the room. Try again in a moment.",
       "meetingUrl": "Google Meet link",
       "meetingUrlPlaceholder": "https://meet.google.com/abc-defg-hij"

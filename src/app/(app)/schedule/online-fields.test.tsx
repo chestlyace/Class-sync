@@ -101,11 +101,24 @@ describe('OnlineFields', () => {
     expect(has(notGranted, t.googleNeeded)).toBe(true)
   })
 
-  it('missing, back from Google: the button reads "Finish creating the classroom"', () => {
+  it('missing, back from Google: the classroom is chosen and the button reads "Finish creating the classroom"', () => {
     search = new URLSearchParams('classroom=google')
-    const html = render({ state: 'missing', courseId: 'c-1', googleGranted: true }, { autoMeet: true })
+    const html = render({ state: 'missing', courseId: 'c-1', googleGranted: true })
+    expect(inputTag(html, 'f-use-classroom')).toContain('checked')
     expect(has(html, t.finishClassroom)).toBe(true)
     expect(has(html, t.createClassroom)).toBe(false)
+  })
+
+  it("only an error marked classroom=google is shown as Google's", () => {
+    const missing = { state: 'missing', courseId: 'c-1', googleGranted: false } as const
+    search = new URLSearchParams('error=access_denied')
+    expect(has(render(missing, { autoMeet: true }), en.auth.google.cancelled)).toBe(false)
+
+    search = new URLSearchParams('classroom=google&error=access_denied')
+    const html = render(missing, { autoMeet: true })
+    expect(has(html, en.auth.google.cancelled)).toBe(true)
+    // The round trip failed: the button offers to start again.
+    expect(has(html, t.createClassroom)).toBe(true)
   })
 
   it('course creation: the classroom made on save is chosen by default, with no button', () => {

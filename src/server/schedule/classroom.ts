@@ -1,4 +1,5 @@
 import { eq, inArray } from 'drizzle-orm'
+import { HIDDEN_CLASSROOM, type ClassroomOption } from '@/lib/classroom-option'
 import { googleMeetAccess, googleMeetAccessToken } from '@/server/auth/google-meet-access'
 import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
@@ -16,14 +17,7 @@ export type Classroom = {
   createdAt: Date
 }
 
-/**
- * What a lecturer's online-class form can offer for a course's classroom: nothing (switch off), the classroom ready to
- * use, or a "Create the classroom" button. `googleGranted` says whether Google already allows Clasync to make rooms.
- */
-export type ClassroomOption =
-  | { state: 'hidden' }
-  | { state: 'ready'; courseId: string; knockingConfirmed: boolean }
-  | { state: 'missing'; courseId: string; googleGranted: boolean }
+export type { ClassroomOption } from '@/lib/classroom-option'
 
 export type CreateClassroomResult = { kind: 'ready'; classroom: Classroom } | { kind: 'needsGoogle' }
 
@@ -53,7 +47,7 @@ export async function getClassroom(db: Db, courseId: string): Promise<Classroom 
 export async function classroomOptions(ctx: Ctx, courseIds: string[]): Promise<Record<string, ClassroomOption>> {
   const options: Record<string, ClassroomOption> = {}
   if (!canUseClassroom(ctx.user) || courseIds.length === 0) {
-    for (const id of courseIds) options[id] = { state: 'hidden' }
+    for (const id of courseIds) options[id] = HIDDEN_CLASSROOM
     return options
   }
   const rows = await ctx.db
@@ -75,7 +69,7 @@ export async function classroomOptions(ctx: Ctx, courseIds: string[]): Promise<R
 
 /** One course's classroom option (see `classroomOptions`). */
 export async function classroomOption(ctx: Ctx, courseId: string): Promise<ClassroomOption> {
-  return (await classroomOptions(ctx, [courseId]))[courseId] ?? { state: 'hidden' }
+  return (await classroomOptions(ctx, [courseId]))[courseId] ?? HIDDEN_CLASSROOM
 }
 
 /**
