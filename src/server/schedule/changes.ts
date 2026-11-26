@@ -8,6 +8,7 @@ import { requireCourseOwner } from '@/server/courses/service'
 import { isUniqueViolation } from '@/server/lib/db-errors'
 import { instantAt, localDateOf, localMinuteOf } from '@/server/lib/local-time'
 import { pushClassCancelled, pushClassMakeUp, pushClassMoved, pushClassReinstated } from '@/server/push/course-events'
+import { assertClassroomUsable } from './classroom'
 import { enqueueCourseDay } from './notices'
 import { buildSittings, parseOccurrenceKey, type Occurrence } from './occurrences'
 import { loadOccurrences, loadSittingByKey } from './queries'
@@ -137,6 +138,9 @@ export async function cancelClass(ctx: Ctx, occurrenceKey: string, makeUp?: Make
     throw new AppError('VALIDATION', 'A class can only move to a time that has not ended', { fields: ['date'] })
   }
   if (data) await requireCampusLocation(ctx, owned.schoolId, data)
+  // A make-up is always a new class, so choosing the classroom for it is always a new choice (this also covers
+  // moveClassOnline, which cancels through here).
+  if (data?.autoMeet) await assertClassroomUsable(ctx, occ.courseId)
 
   const slotId = slotIdOf(occ)
   const extraId = occ.source.kind === 'extra' ? occ.source.extraId : null
@@ -187,7 +191,7 @@ export async function cancelClass(ctx: Ctx, occurrenceKey: string, makeUp?: Make
 
 /**
  * Moves one future class online by reusing the cancel-with-make-up flow: the old date is cancelled and
- * replaced by an extra at the same time, with either a pasted link or a generated one. Returns the replacement's
+ * replaced by an extra at the same time, with either a pasted link or the course classroom. Returns the replacement's
  * occurrence key so the caller can leave the cancelled class page. A string input keeps older paste-only callers working.
  */
 export async function moveClassOnline(
@@ -255,6 +259,7 @@ export async function addMakeUp(
   const owned = await requireCourseOwner(ctx, courseId)
   const data = parseMakeUpInput(input)
   await requireCampusLocation(ctx, owned.schoolId, data)
+  if (data.autoMeet) await assertClassroomUsable(ctx, courseId)
 
   let replaces: { slotId: string | null; date: string } | null = null
   if (data.replaces !== undefined) {

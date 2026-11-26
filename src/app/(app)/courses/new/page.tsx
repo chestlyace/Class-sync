@@ -10,7 +10,6 @@ import { config } from '@/server/core/config'
 import { isVerificationPending } from '@/server/core/guards'
 import { now } from '@/server/core/clock'
 import { addDays, localDateOf } from '@/server/lib/local-time'
-import { isMeetGenerationConfigured } from '@/server/schedule/google-meet'
 import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
 import { loadPage } from '../../load-page'
 import { weekdayName } from '../../schedule/schedule-format'
@@ -56,7 +55,7 @@ export default async function NewCoursePage({ searchParams }: PageProps<'/course
             classes={options}
             defaultClassId={defaultClassId}
             weekdays={weekdays}
-            autoMeetAvailable={isMeetGenerationConfigured()}
+            autoMeetAvailable={false}
             firstSlotDefaults={firstSlotDefaults}
           />
         )}

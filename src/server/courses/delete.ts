@@ -146,7 +146,7 @@ export async function deleteCoursesInTx(tx: Db, courseIds: string[]): Promise<st
           )
           .returning({ fileId: resource.fileId })
 
-  // Join and cached-meeting rows have no class FK: their keys point at slots and extras, so remove them by those ids.
+  // Join rows have no class FK: their keys point at slots and extras, so remove them by those ids.
   const [slots, extras] = await Promise.all([
     tx.select({ id: classSlot.id }).from(classSlot).where(inArray(classSlot.courseId, courseIds)),
     tx.select({ id: classExtra.id }).from(classExtra).where(inArray(classExtra.courseId, courseIds)),

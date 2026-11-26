@@ -16,6 +16,7 @@ import {
   type ParsedSlot,
   type SlotInput,
 } from './slot-input'
+import { assertClassroomUsable } from './classroom'
 import { enqueueCourseDay } from './notices'
 
 export { assertOnlineRules, isDate, MAX_TERM_DAYS, type SlotInput } from './slot-input'
@@ -159,6 +160,7 @@ export async function createSlot(
   const data = parseSlotInput(input)
   assertOnlineRules(data)
   await requireCampusLocation(ctx, owned.schoolId, data)
+  if (data.autoMeet) await assertClassroomUsable(ctx, courseId)
 
   const [row] = await ctx.db
     .insert(classSlot)
@@ -178,6 +180,8 @@ export async function updateSlot(
   const data = parseSlotInput(input)
   assertOnlineRules(data)
   await requireCampusLocation(ctx, owned.schoolId, data)
+  // Only a new choice needs the switch: a class already using the classroom stays editable while it is off.
+  if (data.autoMeet && !old.autoMeet) await assertClassroomUsable(ctx, old.courseId)
 
   const todayDate = today()
   const hasPast = old.startsOn < todayDate

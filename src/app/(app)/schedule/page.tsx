@@ -10,7 +10,6 @@ import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import { listLecturerCourses, type CourseSummary } from '@/server/courses/service'
 import { addDays, localDateOf, weekStartOf } from '@/server/lib/local-time'
-import { isMeetGenerationConfigured } from '@/server/schedule/google-meet'
 import { listSlots } from '@/server/schedule/timetable'
 import { lecturerWeek, needsAnswer, type WeekRow } from '@/server/schedule/views'
 import type { Sitting } from '@/server/schedule/occurrences'
@@ -54,7 +53,7 @@ export default async function SchedulePage({ searchParams }: PageProps<'/schedul
   })
   if (!view.ok) return <ErrorState code={view.code} />
   const { courses, rows, answers, hasSlots } = view.data
-  const autoMeetAvailable = isMeetGenerationConfigured()
+  const autoMeetAvailable = false
 
   const currentWeek = weekStartOf(today)
   const range = formatWeekRange(weekStart, addDays(weekStart, 6), locale)

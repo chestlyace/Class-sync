@@ -1,11 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { asc, eq } from 'drizzle-orm'
 import { setNowForTests } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import { createClass } from '@/server/classes/service'
 import { createCourse } from '@/server/courses/service'
 import type { Db } from '@/server/db'
-import { classDateStatus, classSlot, onlineClassJoin, pushSubscription } from '@/server/db/schema'
+import { classDateStatus, classSlot, courseClassroom, onlineClassJoin, pushSubscription } from '@/server/db/schema'
 import { setEmailDbForTests } from '@/server/email/db'
 import { setAfterResponseForTests } from '@/server/lib/after-response'
 import { instantAt } from '@/server/lib/local-time'
@@ -62,6 +62,18 @@ async function seedSlot(courseId: string, over: Partial<typeof classSlot.$inferI
   return slot
 }
 
+async function seedClassroom() {
+  await db.insert(courseClassroom).values({
+    courseId: fx.bio.id,
+    spaceName: 'spaces/room',
+    meetingUrl: 'https://meet.google.com/room-room-room',
+    meetingCode: 'room-room-room',
+    googleAccountId: 'acc-1',
+    knockingConfirmed: true,
+    createdBy: fx.lecturer.user.id,
+  })
+}
+
 beforeEach(async () => {
   db = await createTestDb()
   setEmailDbForTests(db)
@@ -93,9 +105,58 @@ afterEach(async () => {
   setEmailDbForTests(null)
   setAfterResponseForTests(null)
   setNowForTests(null)
+  vi.unstubAllEnvs()
 })
 
 describe('timetable service', () => {
+  describe('slots that use the course classroom', () => {
+    beforeEach(() => {
+      vi.stubEnv('MEET_CLASSROOM', 'everyone')
+      vi.stubEnv('ADMIN_EMAILS', '')
+    })
+
+    it('refuses a new classroom slot while the course has no classroom', async () => {
+      await expect(createSlot(fx.lecturer, fx.bio.id, input({ autoMeet: true }))).rejects.toMatchObject({
+        code: 'VALIDATION',
+        details: { reason: 'no_classroom' },
+      })
+      expect(await db.select().from(classSlot)).toEqual([])
+    })
+
+    it('saves a classroom slot once the course has a classroom', async () => {
+      await seedClassroom()
+      const { slot } = await createSlot(fx.lecturer, fx.bio.id, input({ autoMeet: true }))
+      expect(slot).toMatchObject({ meetingUrl: null, autoMeet: true })
+    })
+
+    it('refuses a new classroom slot while the switch is off, even with a classroom', async () => {
+      vi.stubEnv('MEET_CLASSROOM', 'off')
+      await seedClassroom()
+      await expect(createSlot(fx.lecturer, fx.bio.id, input({ autoMeet: true }))).rejects.toMatchObject({
+        code: 'FORBIDDEN',
+      })
+    })
+
+    it('switching a campus slot to the classroom needs a classroom', async () => {
+      const old = await seedSlot(fx.bio.id)
+      await expect(updateSlot(fx.lecturer, old.id, input({ autoMeet: true }))).rejects.toMatchObject({
+        details: { reason: 'no_classroom' },
+      })
+      await seedClassroom()
+      const { slot } = await updateSlot(fx.lecturer, old.id, input({ autoMeet: true }))
+      expect(slot.autoMeet).toBe(true)
+    })
+
+    it('editing the time of a slot that already uses the classroom still works while the switch is off', async () => {
+      await seedClassroom()
+      const old = await seedSlot(fx.bio.id, { meetingUrl: null, autoMeet: true })
+      vi.stubEnv('MEET_CLASSROOM', 'off')
+
+      const { slot } = await updateSlot(fx.lecturer, old.id, input({ autoMeet: true, startMinute: 9 * 60, endMinute: 11 * 60 }))
+      expect(slot).toMatchObject({ autoMeet: true, startMinute: 9 * 60 })
+    })
+  })
+
   it("creates a slot and reports an overlap with another school's course", async () => {
     const other = await createSchool(fx.lecturer, { name: 'Lycee Bilingue', town: 'Douala' })
     const otherClass = await createClass(fx.lecturer, { schoolId: other.id, name: 'Form 5', academicYear: '2026/27' })

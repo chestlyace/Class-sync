@@ -8,7 +8,6 @@ import { buttonVariants } from '@/components/ui/button'
 import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
 import { cn } from '@/lib/utils'
 import { config } from '@/server/core/config'
-import { isMeetGenerationConfigured } from '@/server/schedule/google-meet'
 import { getClassSitting } from '@/server/schedule/views'
 import { loadPage } from '../../../load-page'
 import { MoveOnlineButton } from '../../move-online-form'
@@ -88,7 +87,7 @@ export default async function ClassPage({ params }: PageProps<'/schedule/class/[
             <MoveOnlineButton
               occurrenceKey={movableOccurrence.key}
               when={`${formatDay(sitting.date, locale, 'medium')} · ${time}`}
-              autoMeetAvailable={isMeetGenerationConfigured()}
+              autoMeetAvailable={false}
             />
           )}
         </div>

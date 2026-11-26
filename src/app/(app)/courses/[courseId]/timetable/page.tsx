@@ -9,7 +9,6 @@ import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import { getCourse, type CourseSummary } from '@/server/courses/service'
 import { addDays, localDateOf } from '@/server/lib/local-time'
-import { isMeetGenerationConfigured } from '@/server/schedule/google-meet'
 import { listSlots, type SlotView } from '@/server/schedule/timetable'
 import { getSchool } from '@/server/schools/service'
 import { loadPage } from '../../../load-page'
@@ -105,7 +104,7 @@ export default async function TimetablePage({ params }: PageProps<'/courses/[cou
         defaults={defaults}
         hasCampusLocation={hasCampusLocation}
         weekdays={weekdays}
-        autoMeetAvailable={isMeetGenerationConfigured()}
+        autoMeetAvailable={false}
       />
     </>
   )

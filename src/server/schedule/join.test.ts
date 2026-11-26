@@ -3,13 +3,13 @@ import { eq } from 'drizzle-orm'
 import { setNowForTests } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import type { Db } from '@/server/db'
-import { classDateStatus, classExtra, classSlot, onlineClassJoin } from '@/server/db/schema'
+import { classDateStatus, classExtra, classSlot, courseClassroom, onlineClassJoin } from '@/server/db/schema'
 import { instantAt } from '@/server/lib/local-time'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
 import { setupCourse } from '@/test/marking-fixture'
 import { getSession } from '@/server/attendance/sessions'
-import { setGoogleCalendarForTests, type CalendarClient } from './google-meet'
+import { setMeetSpaceMakerForTests } from './classroom'
 import { joinOnlineClass } from './join'
 import { startClassAttendance } from './views'
 
@@ -53,8 +53,23 @@ beforeEach(async () => {
 
 afterEach(() => {
   setNowForTests(null)
-  setGoogleCalendarForTests(null)
+  setMeetSpaceMakerForTests(null)
+  vi.unstubAllEnvs()
 })
+
+const classroomUrl = 'https://meet.google.com/room-room-room'
+
+async function seedClassroom() {
+  await db.insert(courseClassroom).values({
+    courseId: fx.bio.id,
+    spaceName: 'spaces/room',
+    meetingUrl: classroomUrl,
+    meetingCode: 'room-room-room',
+    googleAccountId: 'acc-1',
+    knockingConfirmed: true,
+    createdBy: fx.lecturer.user.id,
+  })
+}
 
 describe('joinOnlineClass', () => {
   it('lets the owner open their own link without recording a join', async () => {
@@ -117,76 +132,109 @@ describe('joinOnlineClass', () => {
     expect(view.students.find((s) => s.studentId === fx.bob.user.id)).toMatchObject({ joinedOnlineAt: null })
   })
 
-  it('generates an auto Meet link only after the join window opens, then caches it', async () => {
-    const slot = await seedSlot({ meetingUrl: null, autoMeet: true })
-    const generated = 'https://meet.google.com/auto-meet-link'
-    const insert = vi.fn(async (_params: Parameters<CalendarClient['insert']>[0]) => {
-      void _params
-      return { data: { id: 'clasync-event', hangoutLink: generated } }
+  describe('classes that use the course classroom', () => {
+    const maker = vi.fn()
+
+    beforeEach(() => {
+      maker.mockReset()
+      setMeetSpaceMakerForTests(maker)
     })
-    setGoogleCalendarForTests({ insert, get: vi.fn() } as unknown as CalendarClient)
-    const generatedKey = `slot:${slot.id}:${MONDAY}`
 
-    setNowForTests(() => local(7, 44))
-    await expect(joinOnlineClass(fx.alice, generatedKey)).resolves.toEqual({ kind: 'notice', reason: 'notOpen' })
-    expect(insert).not.toHaveBeenCalled()
-
-    setNowForTests(() => local(7, 50))
-    await expect(joinOnlineClass(fx.alice, generatedKey)).resolves.toEqual({ kind: 'redirect', url: generated })
-    expect(insert).toHaveBeenCalledTimes(1)
-
-    setNowForTests(() => local(8, 5))
-    await expect(joinOnlineClass(fx.bob, generatedKey)).resolves.toEqual({ kind: 'redirect', url: generated })
-    expect(insert).toHaveBeenCalledTimes(1)
-  })
-
-  it('never generates a link for an outsider or a cancelled class', async () => {
-    const slot = await seedSlot({ meetingUrl: null, autoMeet: true })
-    const insert = vi.fn(async (_params: Parameters<CalendarClient['insert']>[0]) => {
-      void _params
-      return { data: { id: 'clasync-event', hangoutLink: 'https://meet.google.com/auto-meet-link' } }
+    afterEach(() => {
+      // Joining only reads the stored classroom: Google is never called.
+      expect(maker).not.toHaveBeenCalled()
     })
-    setGoogleCalendarForTests({ insert, get: vi.fn() } as unknown as CalendarClient)
-    const generatedKey = `slot:${slot.id}:${MONDAY}`
-    const outsider = ctxFor(db, await makeUser(db, { role: 'student' }))
 
-    await expect(joinOnlineClass(outsider, generatedKey)).rejects.toMatchObject({ code: 'NOT_FOUND' })
-    await expect(joinOnlineClass(fx.alice, generatedKey)).resolves.toMatchObject({ kind: 'redirect' })
-    expect(insert).toHaveBeenCalledTimes(1)
+    it('sends students and the owner to the classroom link and records the student join', async () => {
+      await seedClassroom()
+      const slot = await seedSlot({ meetingUrl: null, autoMeet: true })
+      const classroomKey = `slot:${slot.id}:${MONDAY}`
 
-    await db.insert(classDateStatus).values({
-      slotId: slot.id,
-      date: MONDAY,
-      status: 'cancelled',
-      setBy: fx.lecturer.user.id,
+      await expect(joinOnlineClass(fx.alice, classroomKey)).resolves.toEqual({ kind: 'redirect', url: classroomUrl })
+      await expect(joinOnlineClass(fx.lecturer, classroomKey)).resolves.toEqual({ kind: 'redirect', url: classroomUrl })
+      const joins = await db.select().from(onlineClassJoin)
+      expect(joins).toHaveLength(1)
+      expect(joins[0]).toMatchObject({ occurrenceKey: classroomKey, studentId: fx.alice.user.id })
     })
-    await expect(joinOnlineClass(fx.carol, generatedKey)).rejects.toMatchObject({ code: 'NOT_FOUND' })
-    expect(insert).toHaveBeenCalledTimes(1)
-  })
 
-  it('can generate the link of a one-off online make-up class too', async () => {
-    const [extra] = await db
-      .insert(classExtra)
-      .values({
-        courseId: fx.bio.id,
-        startsAt: local(8),
-        endsAt: local(10),
-        room: null,
-        requireOnCampus: false,
-        meetingUrl: null,
-        autoMeet: true,
-        createdBy: fx.lecturer.user.id,
+    it('still joins while the classroom switch is off', async () => {
+      vi.stubEnv('MEET_CLASSROOM', 'off')
+      await seedClassroom()
+      const slot = await seedSlot({ meetingUrl: null, autoMeet: true })
+
+      await expect(joinOnlineClass(fx.alice, `slot:${slot.id}:${MONDAY}`)).resolves.toEqual({
+        kind: 'redirect',
+        url: classroomUrl,
       })
-      .returning()
-    const generated = 'https://meet.google.com/make-up-link'
-    const insert = vi.fn(async (_params: Parameters<CalendarClient['insert']>[0]) => {
-      void _params
-      return { data: { id: 'clasync-make-up', hangoutLink: generated } }
     })
-    setGoogleCalendarForTests({ insert, get: vi.fn() } as unknown as CalendarClient)
-    const extraKey = `extra:${extra.id}`
 
-    await expect(joinOnlineClass(fx.alice, extraKey)).resolves.toEqual({ kind: 'redirect', url: generated })
-    expect(insert).toHaveBeenCalledTimes(1)
+    it('throws classroom_missing and records no join when the course has no classroom', async () => {
+      const slot = await seedSlot({ meetingUrl: null, autoMeet: true })
+      const classroomKey = `slot:${slot.id}:${MONDAY}`
+
+      await expect(joinOnlineClass(fx.alice, classroomKey)).rejects.toMatchObject({
+        code: 'VALIDATION',
+        details: { reason: 'classroom_missing' },
+      })
+      await expect(joinOnlineClass(fx.lecturer, classroomKey)).rejects.toMatchObject({
+        details: { reason: 'classroom_missing' },
+      })
+      expect(await db.select().from(onlineClassJoin)).toEqual([])
+    })
+
+    it('does not reveal the missing classroom to an outsider or for a cancelled class', async () => {
+      const slot = await seedSlot({ meetingUrl: null, autoMeet: true })
+      const classroomKey = `slot:${slot.id}:${MONDAY}`
+      const outsider = ctxFor(db, await makeUser(db, { role: 'student' }))
+
+      await expect(joinOnlineClass(outsider, classroomKey)).rejects.toMatchObject({ code: 'NOT_FOUND' })
+      await db.insert(classDateStatus).values({
+        slotId: slot.id,
+        date: MONDAY,
+        status: 'cancelled',
+        setBy: fx.lecturer.user.id,
+      })
+      await expect(joinOnlineClass(fx.carol, classroomKey)).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    })
+
+    it('opens the notice outside the join window before looking for a link', async () => {
+      const slot = await seedSlot({ meetingUrl: null, autoMeet: true })
+      setNowForTests(() => local(7, 44))
+
+      await expect(joinOnlineClass(fx.alice, `slot:${slot.id}:${MONDAY}`)).resolves.toEqual({
+        kind: 'notice',
+        reason: 'notOpen',
+      })
+    })
+
+    it('a pasted link wins over the classroom', async () => {
+      await seedClassroom()
+      // The database allows a pasted link next to autoMeet; the pasted link still wins if both are ever stored.
+      const slot = await seedSlot({ meetingUrl: url, autoMeet: true })
+
+      await expect(joinOnlineClass(fx.alice, `slot:${slot.id}:${MONDAY}`)).resolves.toEqual({ kind: 'redirect', url })
+    })
+
+    it('works for a one-off online make-up class too', async () => {
+      await seedClassroom()
+      const [extra] = await db
+        .insert(classExtra)
+        .values({
+          courseId: fx.bio.id,
+          startsAt: local(8),
+          endsAt: local(10),
+          room: null,
+          requireOnCampus: false,
+          meetingUrl: null,
+          autoMeet: true,
+          createdBy: fx.lecturer.user.id,
+        })
+        .returning()
+
+      await expect(joinOnlineClass(fx.alice, `extra:${extra.id}`)).resolves.toEqual({
+        kind: 'redirect',
+        url: classroomUrl,
+      })
+    })
   })
 })
