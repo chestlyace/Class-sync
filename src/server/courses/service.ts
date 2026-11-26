@@ -6,12 +6,23 @@ import { AppError } from '@/server/core/errors'
 import type { Ctx } from '@/server/core/context'
 import { requireRole } from '@/server/core/guards'
 import type { Db } from '@/server/db'
-import { class_, classSlot, classStudent, course, courseRosterAdjustment, school, user } from '@/server/db/schema'
+import {
+  class_,
+  classSlot,
+  classStudent,
+  course,
+  courseClassroom,
+  courseRosterAdjustment,
+  school,
+  user,
+} from '@/server/db/schema'
 import { isClassLecturer, type RosterEntry } from '@/server/classes/service'
 import { addDays, instantAt, isoWeekday, localDateOf } from '@/server/lib/local-time'
 import { containsPattern } from '@/server/lib/like'
 import { pushClassModeChanged, pushTimetableChanged } from '@/server/push/course-events'
 import { applyDefaultCaTemplate } from '@/server/performance/template-settings'
+import { canUseClassroom } from '@/server/schedule/classroom-switch'
+import { makeMeetSpaceForUser } from '@/server/schedule/classroom'
 import { assertOnlineRules, parseSlotInput, type SlotInput } from '@/server/schedule/slot-input'
 import { enqueueCourseDay } from '@/server/schedule/notices'
 import { courseRosterQuery, isOnCourseRoster as isOnRoster, rosteredCourseIds } from './roster'
@@ -145,6 +156,21 @@ export async function createCourse(ctx: Ctx, input: CreateCourseInput): Promise<
     }
   }
 
+  // A first class that uses the course classroom needs the Meet room first. Google is called before anything is
+  // saved, so a refusal or an outage leaves no half-made course; the room is saved with the course below.
+  let classroom: Exclude<Awaited<ReturnType<typeof makeMeetSpaceForUser>>, { needsGoogle: true }> | null = null
+  if (slot?.autoMeet) {
+    if (!canUseClassroom(ctx.user)) throw new AppError('FORBIDDEN', 'Classrooms are not available for this account')
+    const made = await makeMeetSpaceForUser(ctx)
+    if ('needsGoogle' in made) {
+      throw new AppError('VALIDATION', 'Connect Google to create the classroom', {
+        fields: ['autoMeet'],
+        reason: 'google_permission_needed',
+      })
+    }
+    classroom = made
+  }
+
   // Course and first class commit together: a valid course is never left without the slot the form promised.
   const courseId = await ctx.db.transaction(async (tx) => {
     const [created] = await tx
@@ -161,6 +187,17 @@ export async function createCourse(ctx: Ctx, input: CreateCourseInput): Promise<
     await applyDefaultCaTemplate(tx, ctx.user, created.id)
     if (slot) {
       await tx.insert(classSlot).values({ ...slot, courseId: created.id, createdBy: ctx.user.id })
+    }
+    if (classroom) {
+      await tx.insert(courseClassroom).values({
+        courseId: created.id,
+        spaceName: classroom.space.spaceName,
+        meetingUrl: classroom.space.meetingUrl,
+        meetingCode: classroom.space.meetingCode,
+        googleAccountId: classroom.accountId,
+        knockingConfirmed: classroom.space.knockingConfirmed,
+        createdBy: ctx.user.id,
+      })
     }
     return created.id
   })
