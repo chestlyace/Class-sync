@@ -9,13 +9,16 @@ import {
   attendanceSession,
   attendanceWindow,
   class_,
+  classExtra,
   classLecturer,
   classSlot,
   classStudent,
   course,
+  courseClassroom,
   courseTest,
   courseTopic,
   file,
+  onlineClassJoin,
   participationEvent,
   resource,
   resourcePlacement,
@@ -59,6 +62,7 @@ describe('deleteCourse', () => {
     removed.length = 0
   })
   afterEach(async () => {
+    await db.delete(onlineClassJoin)
     await db.delete(revisionGroup)
     await db.delete(resource)
     await db.delete(file)
@@ -158,15 +162,51 @@ describe('deleteCourse', () => {
       .returning()
     await db.insert(attendanceCheckIn).values({ windowId: window.id, studentId: student.user.id })
 
-    await db.insert(classSlot).values({
+    const [slot] = await db
+      .insert(classSlot)
+      .values({
+        courseId,
+        weekday: 1,
+        startMinute: 480,
+        endMinute: 600,
+        startsOn: '2026-09-01',
+        endsOn: '2027-06-30',
+        createdBy: lecturer.user.id,
+      })
+      .returning()
+    const [extra] = await db
+      .insert(classExtra)
+      .values({
+        courseId,
+        startsAt: new Date('2026-11-18T08:00:00Z'),
+        endsAt: new Date('2026-11-18T10:00:00Z'),
+        meetingUrl: 'https://meet.google.com/abc-defg-hij',
+        createdBy: lecturer.user.id,
+      })
+      .returning()
+    await db.insert(courseClassroom).values({
       courseId,
-      weekday: 1,
-      startMinute: 480,
-      endMinute: 600,
-      startsOn: '2026-09-01',
-      endsOn: '2027-06-30',
+      spaceName: 'spaces/abc123',
+      meetingUrl: 'https://meet.google.com/abc-defg-hij',
+      meetingCode: 'abc-defg-hij',
+      googleAccountId: 'google-account-1',
+      knockingConfirmed: true,
       createdBy: lecturer.user.id,
     })
+    await db.insert(onlineClassJoin).values([
+      {
+        occurrenceKey: `slot:${slot.id}:2026-11-16`,
+        studentId: student.user.id,
+        firstJoinedAt: new Date(),
+        lastJoinedAt: new Date(),
+      },
+      {
+        occurrenceKey: `extra:${extra.id}`,
+        studentId: student.user.id,
+        firstJoinedAt: new Date(),
+        lastJoinedAt: new Date(),
+      },
+    ])
 
     return { files: [resourceFile, brief, answerFile], resourceIds: [note.id, fileRes.id] }
   }
@@ -178,6 +218,8 @@ describe('deleteCourse', () => {
     await deleteCourse(lecturer, algo.id, '  algorithms ')
 
     expect(await db.select().from(course).where(eq(course.id, algo.id))).toEqual([])
+    expect(await db.select().from(onlineClassJoin)).toEqual([])
+    expect(await db.select().from(courseClassroom)).toEqual([])
     for (const table of [courseTopic, revisionGroup, courseTest, assignment, attendanceSession, classSlot]) {
       expect(await db.select().from(table).where(eq(table.courseId, algo.id))).toEqual([])
     }

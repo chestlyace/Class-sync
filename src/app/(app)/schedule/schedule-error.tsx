@@ -7,7 +7,16 @@ import type { ActionResult } from '@/lib/action-result'
 
 const ERROR_REASONS: Record<
   string,
-  'outsideClassTime' | 'noCampusLocation' | 'notFuture' | 'alreadySet' | 'notCancelled' | 'notEnded'
+  | 'outsideClassTime'
+  | 'noCampusLocation'
+  | 'notFuture'
+  | 'alreadySet'
+  | 'notCancelled'
+  | 'notEnded'
+  | 'invalidMeetingUrl'
+  | 'onlineAndCampus'
+  | 'alreadyOnline'
+  | 'noClassroom'
 > = {
   outside_class_time: 'outsideClassTime',
   no_campus_location: 'noCampusLocation',
@@ -15,6 +24,10 @@ const ERROR_REASONS: Record<
   already_set: 'alreadySet',
   not_cancelled: 'notCancelled',
   not_ended: 'notEnded',
+  invalid_meeting_url: 'invalidMeetingUrl',
+  online_and_campus: 'onlineAndCampus',
+  already_online: 'alreadyOnline',
+  no_classroom: 'noClassroom',
 }
 
 /** A failed schedule action; the service's known `reason`s get their own message. */

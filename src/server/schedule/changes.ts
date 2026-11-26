@@ -1,5 +1,4 @@
 import { and, eq, isNull } from 'drizzle-orm'
-import { z } from 'zod'
 import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import type { Ctx } from '@/server/core/context'
@@ -7,59 +6,17 @@ import { AppError } from '@/server/core/errors'
 import { classDateStatus, classExtra, classSlot } from '@/server/db/schema'
 import { requireCourseOwner } from '@/server/courses/service'
 import { isUniqueViolation } from '@/server/lib/db-errors'
-import { addDays, instantAt, localDateOf } from '@/server/lib/local-time'
+import { instantAt, localDateOf, localMinuteOf } from '@/server/lib/local-time'
 import { pushClassCancelled, pushClassMakeUp, pushClassMoved, pushClassReinstated } from '@/server/push/course-events'
+import { assertClassroomUsable } from './classroom'
 import { enqueueCourseDay } from './notices'
-import { parseOccurrenceKey, type Occurrence } from './occurrences'
+import { buildSittings, parseOccurrenceKey, type Occurrence } from './occurrences'
 import { loadOccurrences, loadSittingByKey } from './queries'
 import { requireCampusLocation } from './timetable'
 
-export type MakeUpInput = {
-  date: string
-  startMinute: number
-  endMinute: number
-  room: string | null
-  requireOnCampus: boolean
-}
+import { parseMakeUpInput, parseOnlineFields, type MakeUpInput, type ParsedMakeUp } from './slot-input'
 
-const isDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && addDays(value, 0) === value
-const minute = z.number().int().min(0).max(1440)
-
-const makeUpSchema = z
-  .object({
-    date: z.string().refine(isDate, 'Invalid date'),
-    startMinute: minute,
-    endMinute: minute,
-    // Empty means "no room".
-    room: z
-      .string()
-      .trim()
-      .max(60)
-      .nullish()
-      .transform((r) => r || null),
-    requireOnCampus: z.boolean(),
-    replaces: z.string().optional(),
-  })
-  .superRefine((value, ctx) => {
-    if (value.startMinute >= value.endMinute) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['endMinute'],
-        message: 'A class must end after it starts',
-      })
-    }
-  })
-
-type ParsedMakeUp = z.output<typeof makeUpSchema>
-
-function parseMakeUp(input: unknown): ParsedMakeUp {
-  const result = makeUpSchema.safeParse(input)
-  if (!result.success) {
-    const fields = [...new Set(result.error.issues.map((i) => i.path.join('.')))]
-    throw new AppError('VALIDATION', 'Invalid input', { fields })
-  }
-  return result.data
-}
+export { type MakeUpInput } from './slot-input'
 
 function forbidden(): never {
   throw new AppError('FORBIDDEN', 'Only the lecturer of this course can do this')
@@ -139,6 +96,8 @@ function extraValues(
     endsAt: instantAt(data.date, data.endMinute, config.timeZone),
     room: data.room,
     requireOnCampus: data.requireOnCampus,
+    meetingUrl: data.meetingUrl,
+    autoMeet: data.autoMeet,
     replacesSlotId: replaces?.slotId ?? null,
     replacesDate: replaces?.date ?? null,
     createdBy: ctx.user.id,
@@ -151,6 +110,15 @@ async function loadExtraOccurrence(ctx: Ctx, courseId: string, date: string, ext
   return occ
 }
 
+/** The key of the sitting an occurrence now belongs to, which is not always the occurrence's own key. */
+async function sittingKeyOf(ctx: Ctx, courseId: string, date: string, occurrenceKey: string): Promise<string> {
+  const sitting = buildSittings(await loadOccurrences(ctx.db, [courseId], date, date)).find((s) =>
+    s.occurrences.some((o) => o.key === occurrenceKey),
+  )
+  if (!sitting) throw new Error(`The sitting for ${occurrenceKey} could not be loaded`)
+  return sitting.key
+}
+
 /** The slot an occurrence belongs to; null for an extra. */
 const slotIdOf = (occ: Occurrence) => (occ.source.kind === 'slot' ? occ.source.slotId : null)
 
@@ -158,18 +126,21 @@ const slotIdOf = (occ: Occurrence) => (occ.source.kind === 'slot' ? occ.source.s
  * Cancels a future class. With `makeUp`, the cancelled class and its replacement are saved together and the
  * roster hears one "moved" notification instead of a cancellation and a make-up.
  */
-export async function cancelClass(ctx: Ctx, occurrenceKey: string, makeUp?: MakeUpInput): Promise<void> {
+export async function cancelClass(ctx: Ctx, occurrenceKey: string, makeUp?: MakeUpInput): Promise<string | null> {
   const { occ, owned } = await requireOwnedOccurrence(ctx, occurrenceKey)
   if (!isFuture(occ))
     throw new AppError('VALIDATION', 'Only a class that has not started can be cancelled', { reason: 'not_future' })
   const alreadySet = () =>
     new AppError('VALIDATION', 'This class is already cancelled or answered', { reason: 'already_set' })
   if (occ.status !== null) throw alreadySet()
-  const data = makeUp ? parseMakeUp(makeUp) : null
+  const data = makeUp ? parseMakeUpInput(makeUp) : null
   if (data && instantAt(data.date, data.endMinute, config.timeZone).getTime() <= now().getTime()) {
     throw new AppError('VALIDATION', 'A class can only move to a time that has not ended', { fields: ['date'] })
   }
   if (data) await requireCampusLocation(ctx, owned.schoolId, data)
+  // A make-up is always a new class, so choosing the classroom for it is always a new choice (this also covers
+  // moveClassOnline, which cancels through here).
+  if (data?.autoMeet) await assertClassroomUsable(ctx, occ.courseId)
 
   const slotId = slotIdOf(occ)
   const extraId = occ.source.kind === 'extra' ? occ.source.extraId : null
@@ -215,6 +186,46 @@ export async function cancelClass(ctx: Ctx, occurrenceKey: string, makeUp?: Make
       await pushClassCancelled(ctx.db, occ)
     }
   })
+  return created?.id ?? null
+}
+
+/**
+ * Moves one future class online by reusing the cancel-with-make-up flow: the old date is cancelled and
+ * replaced by an extra at the same time, with either a pasted link or the course classroom. Returns the replacement's
+ * occurrence key so the caller can leave the cancelled class page. A string input keeps older paste-only callers working.
+ */
+export async function moveClassOnline(
+  ctx: Ctx,
+  occurrenceKey: string,
+  online: string | { meetingUrl?: string | null; autoMeet?: boolean },
+): Promise<string> {
+  const mode =
+    typeof online === 'string'
+      ? { meetingUrl: online, autoMeet: false, requireOnCampus: false }
+      : { ...online, requireOnCampus: false }
+  const { meetingUrl, autoMeet } = parseOnlineFields(mode)
+  if (meetingUrl === null && !autoMeet) {
+    throw new AppError('VALIDATION', 'A Google Meet link is required', { fields: ['meetingUrl'] })
+  }
+  const { occ } = await requireOwnedOccurrence(ctx, occurrenceKey)
+  if (occ.online) {
+    throw new AppError('VALIDATION', 'This class is already online', { reason: 'already_online' })
+  }
+  const startMinute = localMinuteOf(occ.startsAt, config.timeZone)
+  const endsOnNextDay = localDateOf(occ.endsAt, config.timeZone) > occ.date
+  const endMinute = endsOnNextDay ? 1440 : localMinuteOf(occ.endsAt, config.timeZone)
+  const extraId = await cancelClass(ctx, occurrenceKey, {
+    date: occ.date,
+    startMinute,
+    endMinute,
+    room: occ.room,
+    requireOnCampus: false,
+    meetingUrl,
+    autoMeet,
+  })
+  if (!extraId) throw new Error(`The online replacement for ${occurrenceKey} could not be created`)
+  // A back-to-back sitting starts with an earlier class, so the extra's own key may not open the page.
+  return sittingKeyOf(ctx, occ.courseId, occ.date, `extra:${extraId}`)
 }
 
 /** Brings a cancelled future class back and tells the roster it is back on. */
@@ -246,8 +257,9 @@ export async function addMakeUp(
   input: MakeUpInput & { replaces?: string },
 ): Promise<Occurrence> {
   const owned = await requireCourseOwner(ctx, courseId)
-  const data = parseMakeUp(input)
+  const data = parseMakeUpInput(input)
   await requireCampusLocation(ctx, owned.schoolId, data)
+  if (data.autoMeet) await assertClassroomUsable(ctx, courseId)
 
   let replaces: { slotId: string | null; date: string } | null = null
   if (data.replaces !== undefined) {

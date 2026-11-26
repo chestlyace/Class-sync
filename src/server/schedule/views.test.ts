@@ -9,6 +9,7 @@ import { instantAt } from '@/server/lib/local-time'
 import { createSchool } from '@/server/schools/service'
 import { createTestDb } from '@/test/db'
 import { setupCourse } from '@/test/marking-fixture'
+import { CLASSROOM_URL, seedClassroom } from '@/test/classroom-fixture'
 import { getClassSitting, lecturerWeek, needsAnswer, startClassAttendance, studentWeek } from './views'
 
 const tz = config.timeZone
@@ -183,6 +184,72 @@ describe('weeks', () => {
       courseTitle: 'Cell biology',
       canOpenCheckIn: false,
     })
+  })
+
+  it('marks online classes and opens the student join button only in the join window', async () => {
+    const online = await seedSlot(fx.bio.id, { meetingUrl: 'https://meet.google.com/abc-defg-hij' })
+
+    setNowForTests(() => local(7, 44))
+    expect((await studentWeek(fx.alice, MONDAY))[0]).toMatchObject({ joinWindow: 'upcoming' })
+    setNowForTests(() => local(7, 45))
+    const open = (await studentWeek(fx.alice, MONDAY))[0]
+    expect(open).toMatchObject({ joinWindow: 'open' })
+    expect(open.occurrence.online).toBe(true)
+    setNowForTests(() => local(10, 1))
+    expect((await studentWeek(fx.alice, MONDAY))[0].joinWindow).toBeNull()
+
+    await db.insert(classDateStatus).values({
+      slotId: online.id,
+      date: MONDAY,
+      status: 'cancelled',
+      setBy: fx.lecturer.user.id,
+    })
+    setNowForTests(() => local(8, 0))
+    expect((await studentWeek(fx.alice, MONDAY))[0].joinWindow).toBeNull()
+    // The meeting URL never appears in week data.
+    expect(JSON.stringify(await studentWeek(fx.alice, MONDAY))).not.toContain('meet.google.com')
+  })
+
+  it('shows the lecturer the course classroom link for a classroom class, and nothing while there is none', async () => {
+    const slot = await seedSlot(fx.bio.id, { meetingUrl: null, autoMeet: true })
+    const sittingKey = `slot:${slot.id}:${MONDAY}`
+
+    const without = await getClassSitting(fx.lecturer, sittingKey)
+    expect(without.meetingUrl).toBeNull()
+    expect(without.onlineOccurrenceKey).toBe(sittingKey)
+
+    await seedClassroom(db, fx.bio.id, fx.lecturer.user.id)
+    const withRoom = await getClassSitting(fx.lecturer, sittingKey)
+    expect(withRoom.meetingUrl).toBe(CLASSROOM_URL)
+    // Students never receive the link through week data.
+    expect(JSON.stringify(await studentWeek(fx.alice, MONDAY))).not.toContain('meet.google.com')
+  })
+
+  it('a pasted link wins over the classroom on the lecturer page', async () => {
+    const pasted = 'https://meet.google.com/abc-defg-hij'
+    const slot = await seedSlot(fx.bio.id, { meetingUrl: pasted, autoMeet: true })
+    await seedClassroom(db, fx.bio.id, fx.lecturer.user.id)
+    expect((await getClassSitting(fx.lecturer, `slot:${slot.id}:${MONDAY}`)).meetingUrl).toBe(pasted)
+  })
+
+  it('a mixed sitting starts check-in without the campus rule', async () => {
+    const slot = await seedSlot(fx.bio.id, { requireOnCampus: true })
+    await db.insert(classExtra).values({
+      courseId: fx.bio.id,
+      startsAt: local(10, 15),
+      endsAt: local(10, 45),
+      room: null,
+      meetingUrl: 'https://meet.google.com/abc-defg-hij',
+      createdBy: fx.lecturer.user.id,
+    })
+    setNowForTests(() => local(8, 5))
+
+    // The fixture's school has no campus location, so the old "first occurrence" rule would have thrown.
+    await expect(startClassAttendance(fx.lecturer, `slot:${slot.id}:${MONDAY}`)).resolves.toMatchObject({
+      courseId: fx.bio.id,
+    })
+    const [session] = await db.select().from(attendanceSession)
+    expect(session.requireOnCampus).toBe(false)
   })
 })
 

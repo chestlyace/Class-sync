@@ -14,7 +14,14 @@ import {
 import { createSession, openWindow } from '@/server/attendance/sessions'
 import { addDays, localDateOf } from '@/server/lib/local-time'
 import { buildSittings, parseOccurrenceKey, type Occurrence, type Sitting } from './occurrences'
-import { ATTENDANCE_LEAD_MS, loadOccurrences, loadSittingByKey, sittingsWithAttendance } from './queries'
+import { JOIN_LEAD_MS } from './join-window'
+import {
+  ATTENDANCE_LEAD_MS,
+  loadOccurrences,
+  loadSittingByKey,
+  meetingUrlsFor,
+  sittingsWithAttendance,
+} from './queries'
 
 export type WeekRow = {
   occurrence: Occurrence
@@ -26,6 +33,8 @@ export type WeekRow = {
   badge: 'cancelled' | 'makeUp' | 'missed' | null
   replacesDate: string | null
   canOpenCheckIn: boolean
+  /** Student-only: 'open' inside the join window, 'upcoming' before it, null when there is no Join button. */
+  joinWindow: 'open' | 'upcoming' | null
 }
 
 /** A sitting that ended this long ago or less still asks the lecturer whether it was taught. */
@@ -55,6 +64,8 @@ async function weekOf(ctx: Ctx, courses: CourseSummary[], weekStart: string, lec
     .map((occurrence) => {
       const course = byId.get(occurrence.courseId)!
       const sitting = sittingOf.get(occurrence.key) ?? null
+      const joinable = !lecturer && occurrence.online && occurrence.status === null
+      const joinFrom = occurrence.startsAt.getTime() - JOIN_LEAD_MS
       return {
         occurrence,
         courseTitle: course.title,
@@ -69,6 +80,7 @@ async function weekOf(ctx: Ctx, courses: CourseSummary[], weekStart: string, lec
           occurrence.status !== 'missed' &&
           at >= sitting.startsAt.getTime() - ATTENDANCE_LEAD_MS &&
           at <= sitting.endsAt.getTime(),
+        joinWindow: !joinable || at > occurrence.endsAt.getTime() ? null : at >= joinFrom ? 'open' : 'upcoming',
       }
     })
 }
@@ -219,13 +231,30 @@ export async function getClassSitting(
   course: CourseSummary
   room: string | null
   sessionId: string | null
+  /** The first online class's link; only the course owner's page ever receives it. */
+  meetingUrl: string | null
+  onlineOccurrenceKey: string | null
+  /** The first upcoming in-person class of this sitting, for "Move online". */
+  movableOccurrence: { key: string; startsAt: Date; endsAt: Date; room: string | null } | null
 }> {
   const { sitting, course } = await requireOwnedSitting(ctx, sittingKey)
+  const urls = await meetingUrlsFor(ctx.db, sitting.occurrences)
+  const online = sitting.occurrences.find((o) => o.online) ?? null
+  const meetingUrl = online ? urls.get(online.key) ?? null : null
+  const future = now()
+  const movable = sitting.occurrences.find(
+    (o) => !o.online && o.status === null && o.startsAt.getTime() > future.getTime(),
+  )
   return {
     sitting,
     course,
     room: sitting.occurrences[0].room,
     sessionId: await sittingSessionId(ctx, sitting),
+    meetingUrl,
+    onlineOccurrenceKey: online?.key ?? null,
+    movableOccurrence: movable
+      ? { key: movable.key, startsAt: movable.startsAt, endsAt: movable.endsAt, room: movable.room }
+      : null,
   }
 }
 
@@ -246,7 +275,8 @@ export async function startClassAttendance(
     throw new AppError('VALIDATION', 'Check-in can only be opened around class time', { reason: 'outside_class_time' })
   }
   const session = await createSession(ctx, sitting.courseId, {
-    requireOnCampus: sitting.occurrences[0].requireOnCampus,
+    // A mixed sitting has students at home: never force the campus rule for the whole session.
+    requireOnCampus: sitting.online ? false : sitting.occurrences[0].requireOnCampus,
   })
   try {
     await openWindow(ctx, session.id, 'start')

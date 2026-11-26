@@ -9,13 +9,19 @@ import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import { getCourse, type CourseSummary } from '@/server/courses/service'
 import { addDays, localDateOf } from '@/server/lib/local-time'
+import { classroomOption, type ClassroomOption } from '@/server/schedule/classroom'
 import { listSlots, type SlotView } from '@/server/schedule/timetable'
 import { getSchool } from '@/server/schools/service'
 import { loadPage } from '../../../load-page'
 import { formatDay, minutesToTime, weekdayName } from '../../../schedule/schedule-format'
 import { TimetableEditor, type SlotFormValues, type SlotListItem } from './timetable-form'
 
-type TimetableView = { course: CourseSummary; slots: SlotView[]; hasCampusLocation: boolean }
+type TimetableView = {
+  course: CourseSummary
+  slots: SlotView[]
+  hasCampusLocation: boolean
+  classroom: ClassroomOption
+}
 
 /** A new slot's term when the course has none to copy. */
 const DEFAULT_TERM_DAYS = 120
@@ -46,10 +52,15 @@ export default async function TimetablePage({ params }: PageProps<'/courses/[cou
     const slots = await listSlots(ctx, courseId) // FORBIDDEN unless I teach this course
     const course = await getCourse(ctx, courseId)
     const school = await getSchool(ctx, course.schoolId)
-    return { course, slots, hasCampusLocation: school.latitude !== null && school.longitude !== null }
+    return {
+      course,
+      slots,
+      hasCampusLocation: school.latitude !== null && school.longitude !== null,
+      classroom: await classroomOption(ctx, courseId),
+    }
   })
   if (!view.ok) return <ErrorState code={view.code} />
-  const { course, slots, hasCampusLocation } = view.data
+  const { course, slots, hasCampusLocation, classroom } = view.data
   const today = localDateOf(now(), config.timeZone)
 
   const weekdays = [1, 2, 3, 4, 5, 6, 7].map((d) => weekdayName(d, locale))
@@ -60,6 +71,8 @@ export default async function TimetablePage({ params }: PageProps<'/courses/[cou
     end: minutesToTime(s.endMinute),
     room: s.room ?? '',
     requireOnCampus: s.requireOnCampus,
+    meetingUrl: s.meetingUrl ?? '',
+    autoMeet: s.autoMeet,
     startsOn: s.startsOn,
     endsOn: s.endsOn,
     dayLabel: weekdays[s.weekday - 1],
@@ -71,6 +84,8 @@ export default async function TimetablePage({ params }: PageProps<'/courses/[cou
     end: '',
     room: '',
     requireOnCampus: false,
+    meetingUrl: '',
+    autoMeet: false,
     ...defaultTerm(slots, today),
   }
   const courseHref = `/courses/${encodeURIComponent(course.id)}`
@@ -100,6 +115,7 @@ export default async function TimetablePage({ params }: PageProps<'/courses/[cou
         defaults={defaults}
         hasCampusLocation={hasCampusLocation}
         weekdays={weekdays}
+        classroom={classroom}
       />
     </>
   )

@@ -17,8 +17,9 @@ import {
 } from '@/components/ui/dialog'
 import type { ActionResult } from '@/lib/action-result'
 import { submitWith } from '@/lib/form-submit'
+import type { ClassroomOption } from '@/lib/classroom-option'
 import { answerSittingAction, cancelClassAction, startClassAttendanceAction, undoCancelAction } from './actions'
-import { MakeUpDialog, MakeUpFields, type MakeUpDefaults } from './make-up-form'
+import { MakeUpDialog, MakeUpFields, type Classrooms, type MakeUpDefaults } from './make-up-form'
 import { ScheduleError } from './schedule-error'
 
 /**
@@ -77,10 +78,12 @@ function UndoCancelButton({ occurrenceKey, label }: { occurrenceKey: string; lab
 function CancelForm({
   occurrenceKey,
   makeUpDefaults,
+  classroom,
   onDone,
 }: {
   occurrenceKey: string
   makeUpDefaults: MakeUpDefaults
+  classroom: ClassroomOption
   onDone: () => void
 }) {
   const t = useTranslations('schedule.cancel')
@@ -109,7 +112,9 @@ function CancelForm({
           </span>
         </span>
       </label>
-      {withMakeUp && <MakeUpFields idPrefix="cancel" defaults={makeUpDefaults} state={state} />}
+      {withMakeUp && (
+        <MakeUpFields idPrefix="cancel" defaults={makeUpDefaults} state={state} classroom={classroom} />
+      )}
       <ScheduleError state={state} />
       <DialogFooter>
         <DialogClose asChild>
@@ -131,11 +136,13 @@ function CantMakeItButton({
   courseTitle,
   when,
   makeUpDefaults,
+  classroom,
 }: {
   occurrenceKey: string
   courseTitle: string
   when: string
   makeUpDefaults: MakeUpDefaults
+  classroom: ClassroomOption
 }) {
   const t = useTranslations('schedule')
   const tCommon = useTranslations('common')
@@ -158,7 +165,12 @@ function CantMakeItButton({
           <DialogTitle>{t('cancel.title')}</DialogTitle>
           <DialogDescription>{t('cancel.body', { course: courseTitle, when })}</DialogDescription>
         </DialogHeader>
-        <CancelForm occurrenceKey={occurrenceKey} makeUpDefaults={makeUpDefaults} onDone={() => setOpen(false)} />
+        <CancelForm
+          occurrenceKey={occurrenceKey}
+          makeUpDefaults={makeUpDefaults}
+          classroom={classroom}
+          onDone={() => setOpen(false)}
+        />
       </DialogContent>
     </Dialog>
   )
@@ -174,6 +186,7 @@ export function RowActions({
   courseTitle,
   when,
   makeUpDefaults,
+  classroom,
 }: {
   occurrenceKey: string
   sittingKey: string | null
@@ -184,6 +197,7 @@ export function RowActions({
   /** "Mon 10 Nov · 08:00–10:00" */
   when: string
   makeUpDefaults: MakeUpDefaults
+  classroom: ClassroomOption
 }) {
   const showCheckIn = canOpenCheckIn && sittingKey !== null
   if (!showCheckIn && !canCancel && !canUndo) return null
@@ -196,6 +210,7 @@ export function RowActions({
           courseTitle={courseTitle}
           when={when}
           makeUpDefaults={makeUpDefaults}
+          classroom={classroom}
         />
       )}
       {canUndo && <UndoCancelButton occurrenceKey={occurrenceKey} label={`${courseTitle}, ${when}`} />}
@@ -274,7 +289,13 @@ function NeedsAnswerRow({ item, onMissed }: { item: NeedsAnswerItem; onMissed: (
  * "Needs your answer". It stays mounted when the list empties, so the make-up dialog opened by
  * "Missed · reschedule" survives the refresh that removes the answered row.
  */
-export function NeedsAnswerList({ items }: { items: NeedsAnswerItem[] }) {
+export function NeedsAnswerList({
+  items,
+  classrooms,
+}: {
+  items: NeedsAnswerItem[]
+  classrooms: Classrooms
+}) {
   const t = useTranslations('schedule.needsAnswer')
   const [reschedule, setReschedule] = useState<NeedsAnswerItem | null>(null)
   return (
@@ -301,6 +322,7 @@ export function NeedsAnswerList({ items }: { items: NeedsAnswerItem[] }) {
           replaces={reschedule.sittingKey}
           replacesLabel={reschedule.replacesLabel}
           defaults={reschedule.makeUpDefaults}
+          classrooms={classrooms}
         />
       )}
     </>

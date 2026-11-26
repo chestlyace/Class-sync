@@ -10,11 +10,13 @@ import { now } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import { listLecturerCourses, type CourseSummary } from '@/server/courses/service'
 import { addDays, localDateOf, weekStartOf } from '@/server/lib/local-time'
+import { HIDDEN_CLASSROOM, type ClassroomOption } from '@/lib/classroom-option'
+import { classroomOptions } from '@/server/schedule/classroom'
 import { listSlots } from '@/server/schedule/timetable'
 import { lecturerWeek, needsAnswer, type WeekRow } from '@/server/schedule/views'
 import type { Sitting } from '@/server/schedule/occurrences'
 import { loadPage } from '../load-page'
-import { MakeUpButton, type CourseOption } from './make-up-form'
+import { MakeUpButton, type Classrooms, type CourseOption } from './make-up-form'
 import { RowBadge } from './row-badge'
 import { NeedsAnswerList, RowActions, type NeedsAnswerItem } from './schedule-controls'
 import { parseWeekParam } from './schedule-form'
@@ -26,6 +28,7 @@ type ScheduleView = {
   answers: { sitting: Sitting; courseTitle: string }[]
   /** False only when the week is empty and no course has a weekly class yet. */
   hasSlots: boolean
+  classrooms: Classrooms
 }
 
 export async function generateMetadata() {
@@ -49,10 +52,11 @@ export default async function SchedulePage({ searchParams }: PageProps<'/schedul
       const slots = await Promise.all(courses.map((c) => listSlots(ctx, c.id)))
       hasSlots = slots.some((s) => s.length > 0)
     }
-    return { courses, rows, answers, hasSlots }
+    const classrooms = await classroomOptions(ctx, courses.map((c) => c.id))
+    return { courses, rows, answers, hasSlots, classrooms }
   })
   if (!view.ok) return <ErrorState code={view.code} />
-  const { courses, rows, answers, hasSlots } = view.data
+  const { courses, rows, answers, hasSlots, classrooms } = view.data
 
   const currentWeek = weekStartOf(today)
   const range = formatWeekRange(weekStart, addDays(weekStart, 6), locale)
@@ -96,7 +100,11 @@ export default async function SchedulePage({ searchParams }: PageProps<'/schedul
         eyebrow={t('eyebrow')}
         title={t('title')}
         description={t('description')}
-        actions={courses.length > 0 ? <MakeUpButton courses={courseOptions} today={today} /> : undefined}
+        actions={
+          courses.length > 0 ? (
+            <MakeUpButton courses={courseOptions} today={today} classrooms={classrooms} />
+          ) : undefined
+        }
       />
 
       <section aria-labelledby="schedule-week" className="flex flex-col gap-4">
@@ -145,7 +153,14 @@ export default async function SchedulePage({ searchParams }: PageProps<'/schedul
                 </h3>
                 <ul className="flex min-w-0 flex-1 flex-col gap-4">
                   {dayRows.map((row) => (
-                    <ClassRow key={row.occurrence.key} row={row} locale={locale} at={at} span={span} />
+                    <ClassRow
+                      key={row.occurrence.key}
+                      row={row}
+                      locale={locale}
+                      at={at}
+                      span={span}
+                      classroom={classrooms[row.occurrence.courseId] ?? HIDDEN_CLASSROOM}
+                    />
                   ))}
                 </ul>
               </li>
@@ -178,7 +193,7 @@ export default async function SchedulePage({ searchParams }: PageProps<'/schedul
         )}
       </section>
 
-      <NeedsAnswerList items={items} />
+      <NeedsAnswerList items={items} classrooms={classrooms} />
     </>
   )
 }
@@ -199,11 +214,13 @@ function ClassRow({
   locale,
   at,
   span,
+  classroom,
 }: {
   row: WeekRow
   locale: Locale
   at: Date
   span: (from: Date, to: Date) => string
+  classroom: ClassroomOption
 }) {
   const { occurrence: occ } = row
   const time = span(occ.startsAt, occ.endsAt)
@@ -218,7 +235,7 @@ function ClassRow({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="font-mono text-sm tabular-nums">{time}</span>
           <span className="font-medium">{row.courseTitle}</span>
-          {row.badge && <RowBadge badge={row.badge} replacesDate={row.replacesDate} locale={locale} />}
+          <RowBadge badge={row.badge} replacesDate={row.replacesDate} online={occ.online} locale={locale} />
         </div>
         <span className="text-sm text-muted-foreground">{details.join(' · ')}</span>
       </div>
@@ -236,6 +253,7 @@ function ClassRow({
           end: formatTime(occ.endsAt, config.timeZone),
           room: occ.room ?? '',
         }}
+        classroom={classroom}
       />
     </li>
   )

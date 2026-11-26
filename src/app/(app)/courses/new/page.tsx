@@ -1,13 +1,19 @@
 import { Plus } from 'lucide-react'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
 import { PageHeader, Panel } from '@/components/page-header'
 import { buttonVariants } from '@/components/ui/button'
 import { getSessionUser } from '@/server/auth/session'
 import { listMyClasses } from '@/server/classes/service'
+import { newCourseClassroom } from '@/server/schedule/classroom'
+import { config } from '@/server/core/config'
 import { isVerificationPending } from '@/server/core/guards'
+import { now } from '@/server/core/clock'
+import { addDays, localDateOf } from '@/server/lib/local-time'
+import { DEFAULT_LOCALE, isLocale } from '@/i18n/locale'
 import { loadPage } from '../../load-page'
+import { weekdayName } from '../../schedule/schedule-format'
 import { NewCourseForm } from '../new-course-form'
 
 export async function generateMetadata() {
@@ -21,11 +27,20 @@ export default async function NewCoursePage({ searchParams }: PageProps<'/course
   if (user.role !== 'lecturer') return <ErrorState code="FORBIDDEN" />
   const t = await getTranslations()
   const { classId } = await searchParams
-  const classes = await loadPage((ctx) => listMyClasses(ctx))
-  if (!classes.ok) return <ErrorState code={classes.code} />
+  const view = await loadPage(async (ctx) => ({
+    classes: await listMyClasses(ctx),
+    classroom: await newCourseClassroom(ctx),
+  }))
+  if (!view.ok) return <ErrorState code={view.code} />
 
-  const options = classes.data.map((c) => ({ id: c.id, label: `${c.name} · ${c.academicYear} · ${c.schoolName}` }))
+  const options = view.data.classes.map((c) => ({ id: c.id, label: `${c.name} · ${c.academicYear} · ${c.schoolName}` }))
   const defaultClassId = typeof classId === 'string' && options.some((o) => o.id === classId) ? classId : ''
+  const rawLocale = await getLocale()
+  const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
+  const weekdays = [1, 2, 3, 4, 5, 6, 7].map((d) => weekdayName(d, locale))
+  const today = localDateOf(now(), config.timeZone)
+  // Same default term as the timetable's first slot: a full term from today.
+  const firstSlotDefaults = { startsOn: today, endsOn: addDays(today, 120) }
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
@@ -40,7 +55,13 @@ export default async function NewCoursePage({ searchParams }: PageProps<'/course
             </Link>
           </div>
         ) : (
-          <NewCourseForm classes={options} defaultClassId={defaultClassId} />
+          <NewCourseForm
+            classes={options}
+            defaultClassId={defaultClassId}
+            weekdays={weekdays}
+            classroom={view.data.classroom}
+            firstSlotDefaults={firstSlotDefaults}
+          />
         )}
       </Panel>
     </div>

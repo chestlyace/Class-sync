@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, isNull } from 'drizzle-orm'
+import { and, desc, eq, gt, inArray, isNull } from 'drizzle-orm'
 import { AppError } from '@/server/core/errors'
 import { now } from '@/server/core/clock'
 import type { Ctx } from '@/server/core/context'
@@ -10,6 +10,7 @@ import {
   attendanceSession,
   attendanceWindow,
   course,
+  onlineClassJoin,
   OVERRIDE_STATUSES,
   WINDOW_KINDS,
 } from '@/server/db/schema'
@@ -17,6 +18,7 @@ import { courseRosterQuery } from '@/server/courses/roster'
 import { isOnCourseRoster, requireCourseOwner, type CourseSummary } from '@/server/courses/service'
 import { getSchool } from '@/server/schools/service'
 import { isUniqueViolation } from '@/server/lib/db-errors'
+import { sittingsForSession } from '@/server/schedule/queries'
 import { pushWindowOpened } from '@/server/push/course-events'
 import { queueWhatsApp, WHATSAPP_FALLBACK_DELAY_MS } from '@/server/whatsapp/trigger'
 import { currentCode, newWindowSecret } from './code'
@@ -172,23 +174,48 @@ export async function getSession(
 ): Promise<{
   session: SessionSummary
   course: CourseSummary
-  students: ({ studentId: string; name: string; matricule: string | null } & StudentSessionState)[]
+  /** True when the session matches at least one online class; only then is the join column shown. */
+  joinedOnline: boolean
+  students: ({
+    studentId: string
+    name: string
+    matricule: string | null
+    /** First time this student pressed Join for a class of the matched sitting (only for online sittings). */
+    joinedOnlineAt?: Date | null
+  } & StudentSessionState)[]
 }> {
   const { session, course: owned } = await requireOwnedSession(ctx, sessionId)
   const at = now()
   const roster = await courseRosterQuery(ctx.db, { courseId: session.courseId })
-  const [windows, matrix] = await Promise.all([
+  const [windows, matrix, sittings] = await Promise.all([
     sessionWindows(ctx.db, session.id, at),
     loadStatusMatrixForRoster(ctx.db, session.courseId, roster, { sessionId: session.id }),
+    sittingsForSession(ctx.db, session.id),
   ])
+  const keys = [...new Set(sittings.filter((s) => s.online).flatMap((s) => s.occurrences.map((o) => o.key)))]
+  const studentIds = roster.map((r) => r.studentId)
+  const joins =
+    keys.length > 0 && studentIds.length > 0
+      ? await ctx.db
+          .select({ studentId: onlineClassJoin.studentId, firstJoinedAt: onlineClassJoin.firstJoinedAt })
+          .from(onlineClassJoin)
+          .where(and(inArray(onlineClassJoin.occurrenceKey, keys), inArray(onlineClassJoin.studentId, studentIds)))
+      : []
+  const firstJoin = new Map<string, Date>()
+  for (const row of joins) {
+    const earlier = firstJoin.get(row.studentId)
+    if (!earlier || row.firstJoinedAt.getTime() < earlier.getTime()) firstJoin.set(row.studentId, row.firstJoinedAt)
+  }
   const states = matrix.get(session.id) ?? new Map<string, StudentSessionState>()
   return {
     session: toSummary(session, windows),
     course: owned,
+    joinedOnline: keys.length > 0,
     students: roster.map(({ studentId, name, matricule }) => ({
       studentId,
       name,
       matricule,
+      ...(keys.length > 0 ? { joinedOnlineAt: firstJoin.get(studentId) ?? null } : {}),
       ...(states.get(studentId) ?? { checkedStart: false, checkedEnd: false, override: null, status: null }),
     })),
   }

@@ -32,6 +32,10 @@ export const classSlot = pgTable(
     endMinute: smallint('end_minute').notNull(),
     room: text('room'),
     requireOnCampus: boolean('require_on_campus').notNull().default(false),
+    /** A pasted Google Meet link. Non-null means the class is online (it may still have a room too). */
+    meetingUrl: text('meeting_url'),
+    /** Uses the course's Meet classroom (`course_classroom`) instead of a pasted link. */
+    autoMeet: boolean('auto_meet').notNull().default(false),
     startsOn: date('starts_on', { mode: 'string' }).notNull(),
     endsOn: date('ends_on', { mode: 'string' }).notNull(),
     createdBy: text('created_by')
@@ -47,6 +51,10 @@ export const classSlot = pgTable(
       sql`${t.startMinute} >= 0 and ${t.startMinute} < ${t.endMinute} and ${t.endMinute} <= 1440`,
     ),
     check('class_slot_dates_check', sql`${t.endsOn} >= ${t.startsOn}`),
+    check(
+      'class_slot_online_campus_check',
+      sql`(${t.meetingUrl} is null and ${t.autoMeet} = false) or ${t.requireOnCampus} = false`,
+    ),
   ],
 )
 
@@ -84,6 +92,10 @@ export const classExtra = pgTable(
     endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
     room: text('room'),
     requireOnCampus: boolean('require_on_campus').notNull().default(false),
+    /** A pasted Google Meet link. Non-null means the class is online (it may still have a room too). */
+    meetingUrl: text('meeting_url'),
+    /** Uses the course's Meet classroom (`course_classroom`) instead of a pasted link. */
+    autoMeet: boolean('auto_meet').notNull().default(false),
     replacesSlotId: text('replaces_slot_id').references(() => classSlot.id, { onDelete: 'set null' }),
     replacesDate: date('replaces_date', { mode: 'string' }),
     status: text('status', { enum: CLASS_STATUSES }),
@@ -98,6 +110,10 @@ export const classExtra = pgTable(
     // A slot implies a date. A date alone stays as history once the slot is deleted (FK sets the slot to null).
     check('class_extra_replaces_check', sql`${t.replacesSlotId} is null or ${t.replacesDate} is not null`),
     check('class_extra_status_check', sql`${t.status} is null or ${t.status} in ('cancelled', 'missed', 'taught')`),
+    check(
+      'class_extra_online_campus_check',
+      sql`(${t.meetingUrl} is null and ${t.autoMeet} = false) or ${t.requireOnCampus} = false`,
+    ),
   ],
 )
 
@@ -111,6 +127,46 @@ export const classNotice = pgTable(
   },
   (t) => [primaryKey({ columns: [t.occurrenceKey, t.kind] })],
 )
+
+/** A student's first and last tap on a Google Meet Join button. Occurrence keys are not rows, so there is no class FK. */
+export const onlineClassJoin = pgTable(
+  'online_class_join',
+  {
+    occurrenceKey: text('occurrence_key').notNull(),
+    studentId: text('student_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    firstJoinedAt: timestamp('first_joined_at', { withTimezone: true }).notNull(),
+    lastJoinedAt: timestamp('last_joined_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.occurrenceKey, t.studentId] }),
+    index('online_class_join_student_id_idx').on(t.studentId),
+  ],
+)
+
+/**
+ * The one Google Meet "classroom" of a course, created through the lecturer's own Google account so the lecturer is
+ * the host. Every class of the course with `auto_meet` uses this link. `google_account_id` is the Better Auth
+ * `account.id` that created the space; it is not a foreign key so unlinking Google never deletes the classroom.
+ */
+export const courseClassroom = pgTable('course_classroom', {
+  courseId: text('course_id')
+    .primaryKey()
+    .references(() => course.id, { onDelete: 'cascade' }),
+  /** The Meet API space name, e.g. `spaces/abc123`. */
+  spaceName: text('space_name').notNull(),
+  meetingUrl: text('meeting_url').notNull(),
+  meetingCode: text('meeting_code').notNull(),
+  googleAccountId: text('google_account_id').notNull(),
+  /** Whether the space was switched to host-managed (knocking) entry. */
+  knockingConfirmed: boolean('knocking_confirmed').notNull(),
+  createdBy: text('created_by')
+    .notNull()
+    .references(() => user.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+export type CourseClassroom = typeof courseClassroom.$inferSelect
 
 /** Per-user notification switches. No row means everything is on. */
 export const notificationPreference = pgTable('notification_preference', {
