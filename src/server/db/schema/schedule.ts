@@ -34,7 +34,7 @@ export const classSlot = pgTable(
     requireOnCampus: boolean('require_on_campus').notNull().default(false),
     /** A pasted Google Meet link. Non-null means the class is online (it may still have a room too). */
     meetingUrl: text('meeting_url'),
-    /** Generate a fresh Google Meet link for each occurrence on first need, then cache it. */
+    /** Uses the course's Meet classroom (`course_classroom`) instead of a pasted link. */
     autoMeet: boolean('auto_meet').notNull().default(false),
     startsOn: date('starts_on', { mode: 'string' }).notNull(),
     endsOn: date('ends_on', { mode: 'string' }).notNull(),
@@ -94,7 +94,7 @@ export const classExtra = pgTable(
     requireOnCampus: boolean('require_on_campus').notNull().default(false),
     /** A pasted Google Meet link. Non-null means the class is online (it may still have a room too). */
     meetingUrl: text('meeting_url'),
-    /** Generate a Google Meet link for this one-off class on first need, then cache it. */
+    /** Uses the course's Meet classroom (`course_classroom`) instead of a pasted link. */
     autoMeet: boolean('auto_meet').notNull().default(false),
     replacesSlotId: text('replaces_slot_id').references(() => classSlot.id, { onDelete: 'set null' }),
     replacesDate: date('replaces_date', { mode: 'string' }),

@@ -15,7 +15,7 @@ export type Occurrence = {
   endsAt: Date
   room: string | null
   requireOnCampus: boolean
-  /** True when the slot or extra has a pasted link or generates one. The URL never reaches student-facing code. */
+  /** True when the slot or extra has a pasted link or uses the course's Meet classroom. The URL never reaches student-facing code. */
   online: boolean
   /** True when each occurrence gets its own Google Meet link on first need. */
   autoMeet: boolean

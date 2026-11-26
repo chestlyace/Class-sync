@@ -3,11 +3,12 @@ import { eq } from 'drizzle-orm'
 import { setNowForTests } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import type { Db } from '@/server/db'
-import { classDateStatus, classExtra, classSlot, courseClassroom, onlineClassJoin } from '@/server/db/schema'
+import { classDateStatus, classExtra, classSlot, onlineClassJoin } from '@/server/db/schema'
 import { instantAt } from '@/server/lib/local-time'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
 import { setupCourse } from '@/test/marking-fixture'
+import { CLASSROOM_URL, seedClassroom } from '@/test/classroom-fixture'
 import { getSession } from '@/server/attendance/sessions'
 import { setMeetSpaceMakerForTests } from './classroom'
 import { joinOnlineClass } from './join'
@@ -56,20 +57,6 @@ afterEach(() => {
   setMeetSpaceMakerForTests(null)
   vi.unstubAllEnvs()
 })
-
-const classroomUrl = 'https://meet.google.com/room-room-room'
-
-async function seedClassroom() {
-  await db.insert(courseClassroom).values({
-    courseId: fx.bio.id,
-    spaceName: 'spaces/room',
-    meetingUrl: classroomUrl,
-    meetingCode: 'room-room-room',
-    googleAccountId: 'acc-1',
-    knockingConfirmed: true,
-    createdBy: fx.lecturer.user.id,
-  })
-}
 
 describe('joinOnlineClass', () => {
   it('lets the owner open their own link without recording a join', async () => {
@@ -146,12 +133,12 @@ describe('joinOnlineClass', () => {
     })
 
     it('sends students and the owner to the classroom link and records the student join', async () => {
-      await seedClassroom()
+      await seedClassroom(db, fx.bio.id, fx.lecturer.user.id)
       const slot = await seedSlot({ meetingUrl: null, autoMeet: true })
       const classroomKey = `slot:${slot.id}:${MONDAY}`
 
-      await expect(joinOnlineClass(fx.alice, classroomKey)).resolves.toEqual({ kind: 'redirect', url: classroomUrl })
-      await expect(joinOnlineClass(fx.lecturer, classroomKey)).resolves.toEqual({ kind: 'redirect', url: classroomUrl })
+      await expect(joinOnlineClass(fx.alice, classroomKey)).resolves.toEqual({ kind: 'redirect', url: CLASSROOM_URL })
+      await expect(joinOnlineClass(fx.lecturer, classroomKey)).resolves.toEqual({ kind: 'redirect', url: CLASSROOM_URL })
       const joins = await db.select().from(onlineClassJoin)
       expect(joins).toHaveLength(1)
       expect(joins[0]).toMatchObject({ occurrenceKey: classroomKey, studentId: fx.alice.user.id })
@@ -159,12 +146,12 @@ describe('joinOnlineClass', () => {
 
     it('still joins while the classroom switch is off', async () => {
       vi.stubEnv('MEET_CLASSROOM', 'off')
-      await seedClassroom()
+      await seedClassroom(db, fx.bio.id, fx.lecturer.user.id)
       const slot = await seedSlot({ meetingUrl: null, autoMeet: true })
 
       await expect(joinOnlineClass(fx.alice, `slot:${slot.id}:${MONDAY}`)).resolves.toEqual({
         kind: 'redirect',
-        url: classroomUrl,
+        url: CLASSROOM_URL,
       })
     })
 
@@ -208,7 +195,7 @@ describe('joinOnlineClass', () => {
     })
 
     it('a pasted link wins over the classroom', async () => {
-      await seedClassroom()
+      await seedClassroom(db, fx.bio.id, fx.lecturer.user.id)
       // The database allows a pasted link next to autoMeet; the pasted link still wins if both are ever stored.
       const slot = await seedSlot({ meetingUrl: url, autoMeet: true })
 
@@ -216,7 +203,7 @@ describe('joinOnlineClass', () => {
     })
 
     it('works for a one-off online make-up class too', async () => {
-      await seedClassroom()
+      await seedClassroom(db, fx.bio.id, fx.lecturer.user.id)
       const [extra] = await db
         .insert(classExtra)
         .values({
@@ -233,7 +220,7 @@ describe('joinOnlineClass', () => {
 
       await expect(joinOnlineClass(fx.alice, `extra:${extra.id}`)).resolves.toEqual({
         kind: 'redirect',
-        url: classroomUrl,
+        url: CLASSROOM_URL,
       })
     })
   })

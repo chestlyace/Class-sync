@@ -5,7 +5,7 @@ import { config } from '@/server/core/config'
 import { createClass } from '@/server/classes/service'
 import { createCourse } from '@/server/courses/service'
 import type { Db } from '@/server/db'
-import { classDateStatus, classSlot, courseClassroom, onlineClassJoin, pushSubscription } from '@/server/db/schema'
+import { classDateStatus, classSlot, onlineClassJoin, pushSubscription } from '@/server/db/schema'
 import { setEmailDbForTests } from '@/server/email/db'
 import { setAfterResponseForTests } from '@/server/lib/after-response'
 import { instantAt } from '@/server/lib/local-time'
@@ -13,6 +13,7 @@ import { setPushClientForTests } from '@/server/push/send'
 import { createSchool } from '@/server/schools/service'
 import { createTestDb } from '@/test/db'
 import { setupCourse } from '@/test/marking-fixture'
+import { seedClassroom } from '@/test/classroom-fixture'
 import { createSlot, listSlots, removeSlot, updateSlot, type SlotInput } from './timetable'
 import { setScheduleQueueForTests, type NoticeMessage } from './queue'
 
@@ -60,18 +61,6 @@ async function seedSlot(courseId: string, over: Partial<typeof classSlot.$inferI
     })
     .returning()
   return slot
-}
-
-async function seedClassroom() {
-  await db.insert(courseClassroom).values({
-    courseId: fx.bio.id,
-    spaceName: 'spaces/room',
-    meetingUrl: 'https://meet.google.com/room-room-room',
-    meetingCode: 'room-room-room',
-    googleAccountId: 'acc-1',
-    knockingConfirmed: true,
-    createdBy: fx.lecturer.user.id,
-  })
 }
 
 beforeEach(async () => {
@@ -124,14 +113,14 @@ describe('timetable service', () => {
     })
 
     it('saves a classroom slot once the course has a classroom', async () => {
-      await seedClassroom()
+      await seedClassroom(db, fx.bio.id, fx.lecturer.user.id)
       const { slot } = await createSlot(fx.lecturer, fx.bio.id, input({ autoMeet: true }))
       expect(slot).toMatchObject({ meetingUrl: null, autoMeet: true })
     })
 
     it('refuses a new classroom slot while the switch is off, even with a classroom', async () => {
       vi.stubEnv('MEET_CLASSROOM', 'off')
-      await seedClassroom()
+      await seedClassroom(db, fx.bio.id, fx.lecturer.user.id)
       await expect(createSlot(fx.lecturer, fx.bio.id, input({ autoMeet: true }))).rejects.toMatchObject({
         code: 'FORBIDDEN',
       })
@@ -142,13 +131,13 @@ describe('timetable service', () => {
       await expect(updateSlot(fx.lecturer, old.id, input({ autoMeet: true }))).rejects.toMatchObject({
         details: { reason: 'no_classroom' },
       })
-      await seedClassroom()
+      await seedClassroom(db, fx.bio.id, fx.lecturer.user.id)
       const { slot } = await updateSlot(fx.lecturer, old.id, input({ autoMeet: true }))
       expect(slot.autoMeet).toBe(true)
     })
 
     it('editing the time of a slot that already uses the classroom still works while the switch is off', async () => {
-      await seedClassroom()
+      await seedClassroom(db, fx.bio.id, fx.lecturer.user.id)
       const old = await seedSlot(fx.bio.id, { meetingUrl: null, autoMeet: true })
       vi.stubEnv('MEET_CLASSROOM', 'off')
 

@@ -4,18 +4,12 @@ import { config } from '@/server/core/config'
 import { createClass } from '@/server/classes/service'
 import { createCourse } from '@/server/courses/service'
 import type { Db } from '@/server/db'
-import {
-  attendanceSession,
-  attendanceWindow,
-  classDateStatus,
-  classExtra,
-  classSlot,
-  courseClassroom,
-} from '@/server/db/schema'
+import { attendanceSession, attendanceWindow, classDateStatus, classExtra, classSlot } from '@/server/db/schema'
 import { instantAt } from '@/server/lib/local-time'
 import { createSchool } from '@/server/schools/service'
 import { createTestDb } from '@/test/db'
 import { setupCourse } from '@/test/marking-fixture'
+import { CLASSROOM_URL, seedClassroom } from '@/test/classroom-fixture'
 import { getClassSitting, lecturerWeek, needsAnswer, startClassAttendance, studentWeek } from './views'
 
 const tz = config.timeZone
@@ -224,33 +218,17 @@ describe('weeks', () => {
     expect(without.meetingUrl).toBeNull()
     expect(without.onlineOccurrenceKey).toBe(sittingKey)
 
-    await db.insert(courseClassroom).values({
-      courseId: fx.bio.id,
-      spaceName: 'spaces/room',
-      meetingUrl: 'https://meet.google.com/room-room-room',
-      meetingCode: 'room-room-room',
-      googleAccountId: 'acc-1',
-      knockingConfirmed: true,
-      createdBy: fx.lecturer.user.id,
-    })
+    await seedClassroom(db, fx.bio.id, fx.lecturer.user.id)
     const withRoom = await getClassSitting(fx.lecturer, sittingKey)
-    expect(withRoom.meetingUrl).toBe('https://meet.google.com/room-room-room')
+    expect(withRoom.meetingUrl).toBe(CLASSROOM_URL)
     // Students never receive the link through week data.
     expect(JSON.stringify(await studentWeek(fx.alice, MONDAY))).not.toContain('meet.google.com')
   })
 
   it('a pasted link wins over the classroom on the lecturer page', async () => {
     const pasted = 'https://meet.google.com/abc-defg-hij'
-    const slot = await seedSlot(fx.bio.id, { meetingUrl: pasted })
-    await db.insert(courseClassroom).values({
-      courseId: fx.bio.id,
-      spaceName: 'spaces/room',
-      meetingUrl: 'https://meet.google.com/room-room-room',
-      meetingCode: 'room-room-room',
-      googleAccountId: 'acc-1',
-      knockingConfirmed: true,
-      createdBy: fx.lecturer.user.id,
-    })
+    const slot = await seedSlot(fx.bio.id, { meetingUrl: pasted, autoMeet: true })
+    await seedClassroom(db, fx.bio.id, fx.lecturer.user.id)
     expect((await getClassSitting(fx.lecturer, `slot:${slot.id}:${MONDAY}`)).meetingUrl).toBe(pasted)
   })
 

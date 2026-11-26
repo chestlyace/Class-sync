@@ -5,13 +5,14 @@ import { config } from '@/server/core/config'
 import { createClass } from '@/server/classes/service'
 import { createCourse } from '@/server/courses/service'
 import type { Db } from '@/server/db'
-import { classDateStatus, classExtra, classSlot, courseClassroom, pushSubscription } from '@/server/db/schema'
+import { classDateStatus, classExtra, classSlot, pushSubscription } from '@/server/db/schema'
 import { setEmailDbForTests } from '@/server/email/db'
 import { setAfterResponseForTests } from '@/server/lib/after-response'
 import { instantAt } from '@/server/lib/local-time'
 import { setPushClientForTests } from '@/server/push/send'
 import { createTestDb } from '@/test/db'
 import { setupCourse } from '@/test/marking-fixture'
+import { seedClassroom } from '@/test/classroom-fixture'
 import { addMakeUp, answerSitting, cancelClass, moveClassOnline, undoCancel, type MakeUpInput } from './changes'
 import { setScheduleQueueForTests, type NoticeMessage } from './queue'
 
@@ -521,20 +522,8 @@ describe('date changes', () => {
       vi.unstubAllEnvs()
     })
 
-    async function seedClassroom() {
-      await db.insert(courseClassroom).values({
-        courseId: fx.bio.id,
-        spaceName: 'spaces/room',
-        meetingUrl: 'https://meet.google.com/room-room-room',
-        meetingCode: 'room-room-room',
-        googleAccountId: 'acc-1',
-        knockingConfirmed: true,
-        createdBy: fx.lecturer.user.id,
-      })
-    }
-
     it('can move a class online with the classroom instead of a pasted link', async () => {
-      await seedClassroom()
+      await seedClassroom(db, fx.bio.id, fx.lecturer.user.id)
       const slot = await seedSlot()
       const newKey = await moveClassOnline(fx.lecturer, `slot:${slot.id}:${MONDAY}`, { autoMeet: true })
 
@@ -560,7 +549,7 @@ describe('date changes', () => {
       })
       expect(await db.select().from(classExtra)).toEqual([])
 
-      await seedClassroom()
+      await seedClassroom(db, fx.bio.id, fx.lecturer.user.id)
       const occ = await addMakeUp(fx.lecturer, fx.bio.id, makeUp({ autoMeet: true }))
       expect(occ.online).toBe(true)
       const [row] = await db.select().from(classExtra)
@@ -571,13 +560,15 @@ describe('date changes', () => {
       const slot = await seedSlot()
       const key = `slot:${slot.id}:${MONDAY}`
       await expect(cancelClass(fx.lecturer, key, makeUp({ autoMeet: true }))).rejects.toMatchObject({
+        code: 'VALIDATION',
         details: { reason: 'no_classroom' },
       })
       expect(await db.select().from(classDateStatus)).toEqual([])
+      expect(await db.select().from(classExtra)).toEqual([])
     })
 
     it('a make-up with the classroom is refused while the switch is off', async () => {
-      await seedClassroom()
+      await seedClassroom(db, fx.bio.id, fx.lecturer.user.id)
       vi.stubEnv('MEET_CLASSROOM', 'off')
       await expect(addMakeUp(fx.lecturer, fx.bio.id, makeUp({ autoMeet: true }))).rejects.toMatchObject({
         code: 'FORBIDDEN',

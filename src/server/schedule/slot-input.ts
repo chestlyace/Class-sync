@@ -9,9 +9,9 @@ export type SlotInput = {
   endMinute: number
   room: string | null
   requireOnCampus: boolean
-  /** A pasted Google Meet URL, or null when the class is in person or generates its link. */
+  /** A pasted Google Meet URL, or null when the class is in person or uses the course's Meet classroom. */
   meetingUrl: string | null
-  /** Generate one link per dated occurrence on first need. Mutually exclusive with `meetingUrl`. */
+  /** Uses the course's Meet classroom. Mutually exclusive with `meetingUrl`. */
   autoMeet?: boolean
   startsOn: string
   endsOn: string
@@ -100,8 +100,8 @@ function invalid(issues: { path: readonly PropertyKey[] }[]): never {
 }
 
 /**
- * The two online modes are exclusive: a slot either carries a pasted Meet URL or asks Google for a fresh one per
- * occurrence. Either way it cannot require students on campus.
+ * The two online modes are exclusive: a slot either carries a pasted Meet URL or uses the course's Meet classroom.
+ * Either way it cannot require students on campus.
  */
 export function parseOnlineFields(input: {
   meetingUrl?: string | null
