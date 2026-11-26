@@ -348,7 +348,9 @@
       "deleteTitle": "Supprimer le cours",
       "deleteBody": "Le cours disparaît pour vous et pour tous les étudiants, avec ses présences, devoirs, tests, notes et notes de cours. Cette action est définitive.",
       "delete": "Supprimer le cours",
-      "deleting": "Suppression…"
+      "deleting": "Suppression…",
+      "classroom": "Salle de cours",
+      "classroomCreated": "Créée le {date}"
     }
   },
   "errors": {
@@ -3513,9 +3515,15 @@
     "online": {
       "title": "Cours en ligne",
       "hint": "Les étudiants rejoignent sur Google Meet. La présence sur le campus est désactivée.",
-      "auto": "Générer un lien Meet pour chaque cours",
-      "autoHint": "Clasync crée un nouveau lien Google Meet dès le premier besoin, puis le réutilise.",
-      "autoUnavailable": "Les liens automatiques ne sont pas encore configurés. Collez un lien Google Meet.",
+      "useClassroom": "Utiliser la salle du cours",
+      "useClassroomHint": "Les étudiants rejoignent via Clasync. Chacun demande à entrer et vous l’admettez.",
+      "pasteLink": "Coller un lien Meet",
+      "createClassroom": "Créer la salle",
+      "finishClassroom": "Terminer la création de la salle",
+      "googleNeeded": "Clasync va demander à Google l’autorisation de créer des salles Meet pour vous. Rien d’autre.",
+      "quickAccessTip": "Dans Meet, désactivez l’accès rapide dans les commandes de l’organisateur pour que chacun doive demander à entrer.",
+      "classroomLater": "Vous pourrez ajouter la salle du cours après l’enregistrement.",
+      "createFailed": "Google n’a pas créé la salle. Réessayez dans un instant.",
       "meetingUrl": "Lien Google Meet",
       "meetingUrlPlaceholder": "https://meet.google.com/abc-defg-hij"
     },
@@ -3651,7 +3659,8 @@
       "notEnded": "Ce cours n’est pas encore terminé.",
       "invalidMeetingUrl": "Saisissez un lien Google Meet, par ex. https://meet.google.com/abc-defg-hij.",
       "onlineAndCampus": "Un cours en ligne ne peut pas aussi exiger la présence sur le campus.",
-      "alreadyOnline": "Ce cours est déjà en ligne."
+      "alreadyOnline": "Ce cours est déjà en ligne.",
+      "noClassroom": "Créez d’abord la salle du cours, ou collez un lien Meet."
     }
   },
   "removal": {

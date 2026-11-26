@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl'
 import { useActionState, useState } from 'react'
 import { ActionError, isInvalidField } from '@/components/action-error'
 import { Button } from '@/components/ui/button'
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/native-select'
 import { submitWith } from '@/lib/form-submit'
@@ -17,22 +17,26 @@ export function NewCourseForm({
   classes,
   defaultClassId,
   weekdays,
-  autoMeetAvailable,
+  classroom,
   firstSlotDefaults,
 }: {
   classes: ClassOption[]
   defaultClassId: string
   weekdays: string[]
-  autoMeetAvailable: boolean
+  /** `offer`: the first online class can use a classroom made on save; `later`: say it can be added afterwards. */
+  classroom: { offer: boolean; later: boolean }
   firstSlotDefaults: { startsOn: string; endsOn: string }
 }) {
   const t = useTranslations('courses.new')
   const tSlot = useTranslations('schedule.timetable')
   const tCommon = useTranslations('common')
+  const tOnline = useTranslations('schedule.online')
   const [state, dispatch, pending] = useActionState(createCourseAction, null)
   const invalid = (field: string) => isInvalidField(state, field) || undefined
   const [online, setOnline] = useState(false)
-  const [autoMeet, setAutoMeet] = useState(false)
+  const [autoMeet, setAutoMeet] = useState<boolean | null>(null)
+  // Google refused when the course was saved: the lecturer connects it again after saving, from the course.
+  const googleNeeded = state?.ok === false && state.details?.reason === 'google_permission_needed'
   const [meetingUrl, setMeetingUrl] = useState('')
 
   return (
@@ -97,10 +101,11 @@ export function NewCourseForm({
           setAutoMeet={setAutoMeet}
           meetingUrl={meetingUrl}
           setMeetingUrl={setMeetingUrl}
-          autoMeetAvailable={autoMeetAvailable}
+          classroom={classroom.offer ? { state: 'onSave' } : { state: 'hidden' }}
           title={t('firstSlot')}
           hint={t('firstSlotHint')}
         />
+        {online && classroom.later && <FieldDescription className="-mt-2">{tOnline('classroomLater')}</FieldDescription>}
         {online && (
           <>
             <div className="grid gap-5 sm:grid-cols-3">
@@ -168,7 +173,13 @@ export function NewCourseForm({
             </FieldDescription>
           </>
         )}
-        <ActionError state={state} />
+        {googleNeeded ? (
+          <FieldError>
+            {tOnline('googleNeeded')} {tOnline('classroomLater')}
+          </FieldError>
+        ) : (
+          <ActionError state={state} />
+        )}
       </FieldGroup>
       <Button type="submit" size="lg" pending={pending} className="self-start">
         {pending ? t('submitting') : t('submit')}

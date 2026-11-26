@@ -348,7 +348,9 @@
       "deleteTitle": "Delete course",
       "deleteBody": "The course disappears for you and every student, with its attendance, assignments, tests, marks and notes. This can't be undone.",
       "delete": "Delete course",
-      "deleting": "Deleting…"
+      "deleting": "Deleting…",
+      "classroom": "Classroom",
+      "classroomCreated": "Created {date}"
     }
   },
   "errors": {
@@ -3513,9 +3515,15 @@
     "online": {
       "title": "Online class",
       "hint": "Students join on Google Meet. On-campus check-in is turned off.",
-      "auto": "Generate a Meet link for each class",
-      "autoHint": "Clasync creates a fresh Google Meet link when the class is first needed, then reuses it.",
-      "autoUnavailable": "Automatic links are not set up yet. Paste a Google Meet link instead.",
+      "useClassroom": "Use this course's classroom",
+      "useClassroomHint": "Students join through Clasync. Everyone knocks and you let them in.",
+      "pasteLink": "Paste a Meet link",
+      "createClassroom": "Create the classroom",
+      "finishClassroom": "Finish creating the classroom",
+      "googleNeeded": "Clasync will ask Google for permission to create Meet rooms for you. Nothing else.",
+      "quickAccessTip": "In Meet, turn off Quick access in Host controls so people have to knock.",
+      "classroomLater": "You can add the course's classroom after saving.",
+      "createFailed": "Google didn't create the room. Try again in a moment.",
       "meetingUrl": "Google Meet link",
       "meetingUrlPlaceholder": "https://meet.google.com/abc-defg-hij"
     },
@@ -3651,7 +3659,8 @@
       "notEnded": "This class has not ended yet.",
       "invalidMeetingUrl": "Enter a Google Meet link, e.g. https://meet.google.com/abc-defg-hij.",
       "onlineAndCampus": "An online class cannot also require students on campus.",
-      "alreadyOnline": "This class is already online."
+      "alreadyOnline": "This class is already online.",
+      "noClassroom": "Create the course's classroom first, or paste a Meet link."
     }
   },
   "removal": {

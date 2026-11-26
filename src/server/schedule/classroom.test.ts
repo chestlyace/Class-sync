@@ -11,8 +11,11 @@ import { googleMeetAccess, googleMeetAccessToken } from '@/server/auth/google-me
 import {
   assertClassroomUsable,
   type Classroom,
+  classroomOption,
+  classroomOptions,
   createClassroom,
   getClassroom,
+  newCourseClassroom,
   setMeetSpaceMakerForTests,
 } from './classroom'
 import { MeetPermissionError, type MeetSpace } from './meet-api'
@@ -216,6 +219,45 @@ describe('course classroom', () => {
       await createClassroom(owner, courseId)
       vi.stubEnv('MEET_CLASSROOM', 'off')
       await expect(assertClassroomUsable(owner, courseId)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    })
+  })
+
+  describe('classroom options for the forms', () => {
+    it('are hidden when the switch is off, without reading Google', async () => {
+      const { owner, courseId } = await setup()
+      vi.stubEnv('MEET_CLASSROOM', 'off')
+      expect(await classroomOption(owner, courseId)).toEqual({ state: 'hidden' })
+      expect(await newCourseClassroom(owner)).toEqual({ offer: false, later: false })
+      expect(accessMock).not.toHaveBeenCalled()
+    })
+
+    it('say missing with the Google grant, then ready once the classroom exists', async () => {
+      const { owner, courseId } = await setup()
+      expect(await classroomOption(owner, courseId)).toEqual({ state: 'missing', courseId, googleGranted: true })
+      accessMock.mockResolvedValue({ accountId: 'acc-1', granted: false })
+      expect(await classroomOption(owner, courseId)).toEqual({ state: 'missing', courseId, googleGranted: false })
+      accessMock.mockResolvedValue({ accountId: 'acc-1', granted: true })
+      await createClassroom(owner, courseId)
+      expect(await classroomOption(owner, courseId)).toEqual({ state: 'ready', courseId, knockingConfirmed: true })
+      expect(maker).toHaveBeenCalledTimes(1)
+    })
+
+    it('give each course its own option', async () => {
+      const { owner, courseId } = await setup()
+      const [cls] = await db.select({ id: class_.id }).from(class_)
+      const other = await createCourse(owner, { classId: cls.id, title: 'Networks', semester: 1 })
+      await createClassroom(owner, courseId)
+      expect(await classroomOptions(owner, [courseId, other.id])).toEqual({
+        [courseId]: { state: 'ready', courseId, knockingConfirmed: true },
+        [other.id]: { state: 'missing', courseId: other.id, googleGranted: true },
+      })
+    })
+
+    it('offer the classroom at course creation only when Google already allows it', async () => {
+      const { owner } = await setup()
+      expect(await newCourseClassroom(owner)).toEqual({ offer: true, later: false })
+      accessMock.mockResolvedValue(null)
+      expect(await newCourseClassroom(owner)).toEqual({ offer: false, later: true })
     })
   })
 })

@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { googleMeetAccess, googleMeetAccessToken } from '@/server/auth/google-meet-access'
 import type { Ctx } from '@/server/core/context'
 import { AppError } from '@/server/core/errors'
@@ -15,6 +15,15 @@ export type Classroom = {
   knockingConfirmed: boolean
   createdAt: Date
 }
+
+/**
+ * What a lecturer's online-class form can offer for a course's classroom: nothing (switch off), the classroom ready to
+ * use, or a "Create the classroom" button. `googleGranted` says whether Google already allows Clasync to make rooms.
+ */
+export type ClassroomOption =
+  | { state: 'hidden' }
+  | { state: 'ready'; courseId: string; knockingConfirmed: boolean }
+  | { state: 'missing'; courseId: string; googleGranted: boolean }
 
 export type CreateClassroomResult = { kind: 'ready'; classroom: Classroom } | { kind: 'needsGoogle' }
 
@@ -38,6 +47,45 @@ export async function getClassroom(db: Db, courseId: string): Promise<Classroom 
     .from(courseClassroom)
     .where(eq(courseClassroom.courseId, courseId))
   return row ?? null
+}
+
+/** The classroom option of each course, for the signed-in lecturer's forms. Reads only: never calls Google. */
+export async function classroomOptions(ctx: Ctx, courseIds: string[]): Promise<Record<string, ClassroomOption>> {
+  const options: Record<string, ClassroomOption> = {}
+  if (!canUseClassroom(ctx.user) || courseIds.length === 0) {
+    for (const id of courseIds) options[id] = { state: 'hidden' }
+    return options
+  }
+  const rows = await ctx.db
+    .select({ courseId: courseClassroom.courseId, knockingConfirmed: courseClassroom.knockingConfirmed })
+    .from(courseClassroom)
+    .where(inArray(courseClassroom.courseId, courseIds))
+  const ready = new Map(rows.map((r) => [r.courseId, r.knockingConfirmed]))
+  const googleGranted =
+    courseIds.some((id) => !ready.has(id)) && ((await googleMeetAccess(ctx.db, ctx.user.id))?.granted ?? false)
+  for (const courseId of courseIds) {
+    const knockingConfirmed = ready.get(courseId)
+    options[courseId] =
+      knockingConfirmed === undefined
+        ? { state: 'missing', courseId, googleGranted }
+        : { state: 'ready', courseId, knockingConfirmed }
+  }
+  return options
+}
+
+/** One course's classroom option (see `classroomOptions`). */
+export async function classroomOption(ctx: Ctx, courseId: string): Promise<ClassroomOption> {
+  return (await classroomOptions(ctx, [courseId]))[courseId] ?? { state: 'hidden' }
+}
+
+/**
+ * The new-course form: the first online class can use a classroom made on save only when Google already allows it
+ * (`offer`); otherwise, with the switch on, the form says the classroom can be added after saving (`later`).
+ */
+export async function newCourseClassroom(ctx: Ctx): Promise<{ offer: boolean; later: boolean }> {
+  if (!canUseClassroom(ctx.user)) return { offer: false, later: false }
+  const granted = (await googleMeetAccess(ctx.db, ctx.user.id))?.granted ?? false
+  return { offer: granted, later: !granted }
 }
 
 /**

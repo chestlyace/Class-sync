@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog'
 import type { ActionResult } from '@/lib/action-result'
 import { submitWith } from '@/lib/form-submit'
+import type { ClassroomOption } from '@/server/schedule/classroom'
 import { moveOnlineAction } from './actions'
 import { OnlineFields } from './online-fields'
 import { ScheduleError } from './schedule-error'
@@ -27,16 +28,16 @@ import { ScheduleError } from './schedule-error'
 export function MoveOnlineButton({
   occurrenceKey,
   when,
-  autoMeetAvailable,
+  classroom,
 }: {
   occurrenceKey: string
   when: string
-  autoMeetAvailable: boolean
+  classroom: ClassroomOption
 }) {
   const t = useTranslations('schedule.classPage')
   const tCommon = useTranslations('common')
   const [open, setOpen] = useState(false)
-  const [autoMeet, setAutoMeet] = useState(false)
+  const [autoMeet, setAutoMeet] = useState<boolean | null>(null)
   const [meetingUrl, setMeetingUrl] = useState('')
   const [state, dispatch, pending] = useActionState(
     async (_prev: ActionResult<never> | null, data: FormData) => moveOnlineAction(occurrenceKey, data),
@@ -66,7 +67,7 @@ export function MoveOnlineButton({
             setAutoMeet={setAutoMeet}
             meetingUrl={meetingUrl}
             setMeetingUrl={setMeetingUrl}
-            autoMeetAvailable={autoMeetAvailable}
+            classroom={classroom}
             alwaysOnline
           />
           <ScheduleError state={state} />
