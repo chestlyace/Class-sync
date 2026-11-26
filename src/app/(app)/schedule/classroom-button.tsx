@@ -31,11 +31,14 @@ export type ClassroomPress =
 
 /**
  * One press of "Create the classroom": `ready` refreshes the page; `needsGoogle` sends the browser to Google for the
- * Meet permission, coming back (success or error) with `?classroom=google`.
+ * Meet permission, coming back (success or error) with `?classroom=google`. Just back from Google and still without
+ * the permission (the lecturer left the Meet boxes unticked), it explains instead of going round again, unless
+ * `againToGoogle` says the lecturer has read that and pressed once more.
  */
 export async function pressClassroomButton(
   courseId: string,
   page: { pathname: string; search: URLSearchParams; refresh: () => void },
+  options: { againToGoogle?: boolean } = {},
 ): Promise<ClassroomPress> {
   let result: Awaited<ReturnType<typeof createClassroomAction>>
   try {
@@ -49,6 +52,8 @@ export async function pressClassroomButton(
     page.refresh()
     return { kind: 'refreshed' }
   }
+  const justBack = page.search.get('classroom') === 'google' && !page.search.get('error')
+  if (justBack && !options.againToGoogle) return { kind: 'message', key: 'schedule.online.googleStillMissing' }
   try {
     const back = pageUrl(page.pathname, page.search, { classroom: 'google' })
     const { error } = await authClient.linkSocial({
@@ -85,14 +90,23 @@ export function ClassroomButton({ courseId, googleGranted }: { courseId: string;
   const [leaving, setLeaving] = useState(false)
   const [failed, setFailed] = useState<ActionResult<unknown> | null>(null)
   const [message, setMessage] = useState<string | null>(() => (googleError ? tRoot(googleError) : null))
+  // Set after "Google didn't give the permission": the next press goes to Google again.
+  const [againToGoogle, setAgainToGoogle] = useState(false)
 
   function create() {
     setFailed(null)
     setMessage(null)
     startTransition(async () => {
-      const outcome = await pressClassroomButton(courseId, { pathname, search, refresh: () => router.refresh() })
+      const outcome = await pressClassroomButton(
+        courseId,
+        { pathname, search, refresh: () => router.refresh() },
+        { againToGoogle },
+      )
       if (outcome.kind === 'failed') setFailed(outcome.result)
-      else if (outcome.kind === 'message') setMessage(tRoot(outcome.key))
+      else if (outcome.kind === 'message') {
+        setMessage(tRoot(outcome.key))
+        if (outcome.key === 'schedule.online.googleStillMissing') setAgainToGoogle(true)
+      }
       else if (outcome.kind === 'toGoogle') setLeaving(true)
     })
   }
@@ -101,7 +115,7 @@ export function ClassroomButton({ courseId, googleGranted }: { courseId: string;
     <div className="flex flex-col items-start gap-2">
       <Button type="button" variant="outline" pending={pending || leaving} onClick={create}>
         <Video aria-hidden="true" data-icon="inline-start" />
-        {returning && !googleError ? t('finishClassroom') : t('createClassroom')}
+        {returning && !googleError && !againToGoogle ? t('finishClassroom') : t('createClassroom')}
       </Button>
       {!googleGranted && !returning && <p className="text-sm text-muted-foreground">{t('googleNeeded')}</p>}
       {message && <FieldError>{message}</FieldError>}

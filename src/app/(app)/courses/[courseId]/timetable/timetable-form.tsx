@@ -3,7 +3,7 @@
 import { Pencil, Plus, Save, Trash2, TriangleAlert, X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useSearchParams } from 'next/navigation'
-import { useActionState, useRef, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { isInvalidField } from '@/components/action-error'
 import { ConfirmAction } from '@/components/confirm-action'
 import { Panel, SectionHeading } from '@/components/page-header'
@@ -91,6 +91,11 @@ function SlotForm({
     return result
   }, null)
   const invalid = (field: string) => isInvalidField(state, field) || undefined
+  // A refused save marks fields that may be scrolled out of view (the page reloads after Google, emptying the
+  // times): move to the first one so the lecturer sees what to fix, not just the message under the form.
+  useEffect(() => {
+    if (state && !state.ok) formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+  }, [state])
   const id = (name: string) => `${target.kind === 'create' ? 'new-slot' : `slot-${target.slotId}`}-${name}`
 
   return (
