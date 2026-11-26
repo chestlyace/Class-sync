@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { setNowForTests } from '@/server/core/clock'
 import { config } from '@/server/core/config'
 import type { Db } from '@/server/db'
-import { classDateStatus, classExtra, classMeeting, classSlot, onlineClassJoin } from '@/server/db/schema'
+import { classDateStatus, classExtra, classSlot, onlineClassJoin } from '@/server/db/schema'
 import { instantAt } from '@/server/lib/local-time'
 import { createTestDb } from '@/test/db'
 import { ctxFor, makeUser } from '@/test/factories'
@@ -134,9 +134,6 @@ describe('joinOnlineClass', () => {
     setNowForTests(() => local(7, 50))
     await expect(joinOnlineClass(fx.alice, generatedKey)).resolves.toEqual({ kind: 'redirect', url: generated })
     expect(insert).toHaveBeenCalledTimes(1)
-    expect(await db.select().from(classMeeting)).toMatchObject([
-      { occurrenceKey: generatedKey, meetingUrl: generated, calendarEventId: 'clasync-event' },
-    ])
 
     setNowForTests(() => local(8, 5))
     await expect(joinOnlineClass(fx.bob, generatedKey)).resolves.toEqual({ kind: 'redirect', url: generated })
@@ -191,8 +188,5 @@ describe('joinOnlineClass', () => {
 
     await expect(joinOnlineClass(fx.alice, extraKey)).resolves.toEqual({ kind: 'redirect', url: generated })
     expect(insert).toHaveBeenCalledTimes(1)
-    expect(await db.select().from(classMeeting)).toMatchObject([
-      { occurrenceKey: extraKey, meetingUrl: generated, calendarEventId: 'clasync-make-up' },
-    ])
   })
 })

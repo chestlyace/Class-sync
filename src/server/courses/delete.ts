@@ -7,7 +7,6 @@ import {
   assignmentAttachment,
   attendanceSession,
   classExtra,
-  classMeeting,
   classSlot,
   course,
   courseTest,
@@ -157,11 +156,6 @@ export async function deleteCoursesInTx(tx: Db, courseIds: string[]): Promise<st
     ...extras.map((e) => eq(onlineClassJoin.occurrenceKey, `extra:${e.id}`)),
   )
   if (joins) await tx.delete(onlineClassJoin).where(joins)
-  const meetings = or(
-    ...slots.map((s) => like(classMeeting.occurrenceKey, `slot:${s.id}:%`)),
-    ...extras.map((e) => eq(classMeeting.occurrenceKey, `extra:${e.id}`)),
-  )
-  if (meetings) await tx.delete(classMeeting).where(meetings)
 
   await tx.delete(course).where(inArray(course.id, courseIds))
 

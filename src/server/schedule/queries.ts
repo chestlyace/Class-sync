@@ -6,7 +6,6 @@ import {
   attendanceWindow,
   classDateStatus,
   classExtra,
-  classMeeting,
   classSlot,
   course,
 } from '@/server/db/schema'
@@ -188,7 +187,7 @@ export async function meetingUrlsFor(db: Db, occurrences: Occurrence[]): Promise
   const urls = new Map<string, string>()
   const slotIds = [...new Set(occurrences.flatMap((o) => (o.source.kind === 'slot' ? [o.source.slotId] : [])))]
   const extraIds = occurrences.flatMap((o) => (o.source.kind === 'extra' ? [o.source.extraId] : []))
-  const [slots, extras, generated] = await Promise.all([
+  const [slots, extras] = await Promise.all([
     slotIds.length === 0
       ? []
       : db
@@ -201,21 +200,9 @@ export async function meetingUrlsFor(db: Db, occurrences: Occurrence[]): Promise
           .select({ id: classExtra.id, meetingUrl: classExtra.meetingUrl })
           .from(classExtra)
           .where(inArray(classExtra.id, extraIds)),
-    occurrences.length === 0
-      ? []
-      : db
-          .select({ key: classMeeting.occurrenceKey, meetingUrl: classMeeting.meetingUrl })
-          .from(classMeeting)
-          .where(
-            inArray(
-              classMeeting.occurrenceKey,
-              occurrences.map((o) => o.key),
-            ),
-          ),
   ])
   const bySlot = new Map(slots.map((s) => [s.id, s.meetingUrl]))
   const byExtra = new Map(extras.map((e) => [e.id, e.meetingUrl]))
-  for (const row of generated) urls.set(row.key, row.meetingUrl)
   for (const o of occurrences) {
     const url = o.source.kind === 'slot' ? bySlot.get(o.source.slotId) : byExtra.get(o.source.extraId)
     if (url) urls.set(o.key, url)
