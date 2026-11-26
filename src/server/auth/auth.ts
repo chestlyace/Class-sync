@@ -516,6 +516,10 @@ export function createAuth(database: Db, options: CreateAuthOptions = {}) {
         }
       : {},
     account: {
+      // Google access and refresh tokens (kept for the Meet API) are stored encrypted with the auth secret.
+      // Rows written before this option stay readable: Better Auth's `isLikelyEncrypted` check passes a
+      // plain token through unchanged, and the next refresh or re-link writes it encrypted.
+      encryptOAuthTokens: true,
       accountLinking: {
         // Signing in with Google under the email of an existing account joins that account, but
         // only once its email is verified: otherwise someone could register another person's
