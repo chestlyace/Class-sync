@@ -46,7 +46,8 @@ export async function googleMeetAccessToken(userId: string, accountId: string): 
   try {
     const result = await getAuth().api.getAccessToken({ body: { accountId, userId } })
     token = result.accessToken
-  } catch {
+  } catch (error) {
+    console.error('[meet] could not get a Google access token', error)
     throw new MeetPermissionError('Google did not give an access token')
   }
   if (!token) throw new MeetPermissionError('Google did not give an access token')
