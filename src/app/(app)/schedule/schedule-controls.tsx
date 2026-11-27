@@ -160,7 +160,7 @@ function CantMakeItButton({
           {t('row.cantMakeIt')}
         </Button>
       </DialogTrigger>
-      <DialogContent closeLabel={tCommon('close')} className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md">
+      <DialogContent closeLabel={tCommon('close')} className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t('cancel.title')}</DialogTitle>
           <DialogDescription>{t('cancel.body', { course: courseTitle, when })}</DialogDescription>

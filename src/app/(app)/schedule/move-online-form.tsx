@@ -52,7 +52,7 @@ export function MoveOnlineButton({
           {t('moveOnline')}
         </Button>
       </DialogTrigger>
-      <DialogContent closeLabel={tCommon('close')} className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md">
+      <DialogContent closeLabel={tCommon('close')} className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t('moveOnlineTitle')}</DialogTitle>
           <DialogDescription>{t('moveOnlineBody', { when })}</DialogDescription>

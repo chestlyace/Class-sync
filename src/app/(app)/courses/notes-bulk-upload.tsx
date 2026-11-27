@@ -52,7 +52,7 @@ export function BulkUploadDialog({ courseId, topicId }: { courseId: string; topi
           {t('open')}
         </Button>
       </DialogTrigger>
-      <DialogContent closeLabel={tCommon('close')}>
+      <DialogContent closeLabel={tCommon('close')} className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{t('title')}</DialogTitle>
           <DialogDescription>{t('body')}</DialogDescription>
