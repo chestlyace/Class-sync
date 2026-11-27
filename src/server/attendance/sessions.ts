@@ -1,4 +1,5 @@
 import { and, desc, eq, gt, inArray, isNull } from 'drizzle-orm'
+import { isCourseDelegate } from '@/server/classes/delegates'
 import { AppError } from '@/server/core/errors'
 import { now } from '@/server/core/clock'
 import type { Ctx } from '@/server/core/context'
@@ -12,10 +13,11 @@ import {
   course,
   onlineClassJoin,
   OVERRIDE_STATUSES,
+  user,
   WINDOW_KINDS,
 } from '@/server/db/schema'
 import { courseRosterQuery } from '@/server/courses/roster'
-import { isOnCourseRoster, requireCourseOwner, type CourseSummary } from '@/server/courses/service'
+import { getCourse, isOnCourseRoster, requireCourseOwner, type CourseSummary } from '@/server/courses/service'
 import { getSchool } from '@/server/schools/service'
 import { isUniqueViolation } from '@/server/lib/db-errors'
 import { sittingsForSession } from '@/server/schedule/queries'
@@ -24,7 +26,7 @@ import { queueWhatsApp, WHATSAPP_FALLBACK_DELAY_MS } from '@/server/whatsapp/tri
 import { currentCode, newWindowSecret } from './code'
 import { checkInLinkPath, signCheckInLink } from './link'
 import { loadStatusMatrixForRoster, type StudentSessionState } from './matrix'
-import { isSessionOver, WINDOW_MAX_MINUTES } from './rules'
+import { isSessionOver, SESSION_MAX_HOURS, WINDOW_MAX_MINUTES } from './rules'
 import type { OverrideStatus } from './status'
 
 export type { StudentSessionState } from './matrix'
@@ -63,6 +65,48 @@ function forbidden(): never {
   throw new AppError('FORBIDDEN', 'Only the lecturer of this course can do this')
 }
 
+/** Who runs a course's attendance: its lecturer, or a delegate of its class (a student). */
+export type Runner = { course: CourseSummary; delegate: boolean }
+
+/**
+ * The course's lecturer, or a delegate of its class (see `isCourseDelegate`): both may start
+ * sessions and open or close check-ins. Anyone else is FORBIDDEN.
+ */
+export async function requireAttendanceRunner(ctx: Ctx, courseId: string): Promise<Runner> {
+  if (ctx.user.role === 'lecturer') return { course: await requireCourseOwner(ctx, courseId), delegate: false }
+  requireRole(ctx, 'student')
+  const course = await getCourse(ctx, courseId) // FORBIDDEN unless on the roster
+  if (!(await isCourseDelegate(ctx.db, ctx.user.id, courseId))) forbidden()
+  return { course, delegate: true }
+}
+
+/**
+ * A session the caller may run: the lecturer's, any; a delegate's, only while it isn't over
+ * (12 h), so a delegate can't browse past attendance by id. Missing is FORBIDDEN too.
+ */
+async function requireRunnableSession(ctx: Ctx, sessionId: string): Promise<{ session: SessionRow } & Runner> {
+  requireRole(ctx, ctx.user.role) // a verified email first, before anything is looked up
+  const [session] = await ctx.db.select().from(attendanceSession).where(eq(attendanceSession.id, sessionId))
+  if (!session) forbidden()
+  const runner = await requireAttendanceRunner(ctx, session.courseId)
+  if (runner.delegate && isSessionOver(session.createdAt, now())) forbidden()
+  return { session, ...runner }
+}
+
+/** A window of a session the caller may run (see `requireRunnableSession`). */
+async function requireRunnableWindow(ctx: Ctx, windowId: string): Promise<{ window: WindowRow; session: SessionRow }> {
+  requireRole(ctx, ctx.user.role) // a verified email first, before anything is looked up
+  const [row] = await ctx.db
+    .select({ window: attendanceWindow, session: attendanceSession })
+    .from(attendanceWindow)
+    .innerJoin(attendanceSession, eq(attendanceSession.id, attendanceWindow.sessionId))
+    .where(eq(attendanceWindow.id, windowId))
+  if (!row) forbidden()
+  const runner = await requireAttendanceRunner(ctx, row.session.courseId)
+  if (runner.delegate && isSessionOver(row.session.createdAt, now())) forbidden()
+  return row
+}
+
 function invalid(field: string, message: string): never {
   throw new AppError('VALIDATION', message, { fields: [field] })
 }
@@ -88,19 +132,6 @@ async function requireOwnedSession(ctx: Ctx, sessionId: string): Promise<{ sessi
   const [session] = await ctx.db.select().from(attendanceSession).where(eq(attendanceSession.id, sessionId))
   if (!session) forbidden()
   return { session, course: await requireCourseOwner(ctx, session.courseId) }
-}
-
-/** Owner-only lookup of a window; nonexistent is FORBIDDEN too. */
-async function requireOwnedWindow(ctx: Ctx, windowId: string): Promise<{ window: WindowRow; session: SessionRow }> {
-  requireRole(ctx, 'lecturer')
-  const [row] = await ctx.db
-    .select({ window: attendanceWindow, session: attendanceSession })
-    .from(attendanceWindow)
-    .innerJoin(attendanceSession, eq(attendanceSession.id, attendanceWindow.sessionId))
-    .where(eq(attendanceWindow.id, windowId))
-  if (!row) forbidden()
-  await requireCourseOwner(ctx, row.session.courseId)
-  return row
 }
 
 async function sessionWindows(db: Db, sessionId: string, at: Date): Promise<WindowState[]> {
@@ -153,7 +184,7 @@ export async function createSession(
   courseId: string,
   input: { requireOnCampus: boolean },
 ): Promise<SessionSummary> {
-  const owned = await requireCourseOwner(ctx, courseId)
+  const { course: owned } = await requireAttendanceRunner(ctx, courseId)
   if (typeof input?.requireOnCampus !== 'boolean') invalid('requireOnCampus', 'Invalid input')
   if (input.requireOnCampus) {
     const sch = await getSchool(ctx, owned.schoolId)
@@ -183,14 +214,19 @@ export async function getSession(
     /** First time this student pressed Join for a class of the matched sitting (only for online sittings). */
     joinedOnlineAt?: Date | null
   } & StudentSessionState)[]
+  /** The lecturer may correct statuses and delete the session; a delegate only runs it. */
+  canManage: boolean
+  /** Who started it, when it wasn't the course's lecturer (a delegate). */
+  startedBy: string | null
 }> {
-  const { session, course: owned } = await requireOwnedSession(ctx, sessionId)
+  const { session, course: owned, delegate } = await requireRunnableSession(ctx, sessionId)
   const at = now()
   const roster = await courseRosterQuery(ctx.db, { courseId: session.courseId })
-  const [windows, matrix, sittings] = await Promise.all([
+  const [windows, matrix, sittings, [starter]] = await Promise.all([
     sessionWindows(ctx.db, session.id, at),
     loadStatusMatrixForRoster(ctx.db, session.courseId, roster, { sessionId: session.id }),
     sittingsForSession(ctx.db, session.id),
+    ctx.db.select({ name: user.name, role: user.role }).from(user).where(eq(user.id, session.createdBy)),
   ])
   const keys = [...new Set(sittings.filter((s) => s.online).flatMap((s) => s.occurrences.map((o) => o.key)))]
   const studentIds = roster.map((r) => r.studentId)
@@ -218,11 +254,34 @@ export async function getSession(
       ...(keys.length > 0 ? { joinedOnlineAt: firstJoin.get(studentId) ?? null } : {}),
       ...(states.get(studentId) ?? { checkedStart: false, checkedEnd: false, override: null, status: null }),
     })),
+    canManage: !delegate,
+    // Only lecturers and delegates can start one: a student starter is a delegate.
+    startedBy: starter?.role === 'student' ? starter.name : null,
   }
 }
 
+/**
+ * The course's sessions that aren't over yet (12 h), newest first: what a delegate can still
+ * run. Lecturer or delegate.
+ */
+export async function listCurrentSessions(ctx: Ctx, courseId: string): Promise<SessionSummary[]> {
+  await requireAttendanceRunner(ctx, courseId)
+  const at = now()
+  const rows = await ctx.db
+    .select()
+    .from(attendanceSession)
+    .where(
+      and(
+        eq(attendanceSession.courseId, courseId),
+        gt(attendanceSession.createdAt, new Date(at.getTime() - SESSION_MAX_HOURS * 3_600_000)),
+      ),
+    )
+    .orderBy(desc(attendanceSession.createdAt))
+  return Promise.all(rows.map(async (r) => toSummary(r, await sessionWindows(ctx.db, r.id, at))))
+}
+
 export async function openWindow(ctx: Ctx, sessionId: string, kind: WindowKind): Promise<LiveWindow> {
-  const { session } = await requireOwnedSession(ctx, sessionId)
+  const { session } = await requireRunnableSession(ctx, sessionId)
   if (!(WINDOW_KINDS as readonly string[]).includes(kind)) invalid('kind', 'Invalid window kind')
   const at = now()
   if (isSessionOver(session.createdAt, at)) {
@@ -291,7 +350,7 @@ export async function openWindow(ctx: Ctx, sessionId: string, kind: WindowKind):
 
 /** Idempotent; once a window has closed by itself it keeps its natural close time. */
 export async function closeWindow(ctx: Ctx, windowId: string): Promise<void> {
-  await requireOwnedWindow(ctx, windowId)
+  await requireRunnableWindow(ctx, windowId)
   const at = now()
   await ctx.db
     .update(attendanceWindow)
@@ -306,7 +365,7 @@ export async function closeWindow(ctx: Ctx, windowId: string): Promise<void> {
 }
 
 export async function getLiveWindow(ctx: Ctx, windowId: string): Promise<LiveWindow> {
-  const { window, session } = await requireOwnedWindow(ctx, windowId)
+  const { window, session } = await requireRunnableWindow(ctx, windowId)
   return liveWindow(ctx.db, window, session.courseId, now())
 }
 
@@ -315,7 +374,7 @@ export async function getLiveWindow(ctx: Ctx, windowId: string): Promise<LiveWin
  * the window has closed: a link is only worth sharing while it can be used.
  */
 export async function getCheckInLink(ctx: Ctx, windowId: string): Promise<string | null> {
-  const { window } = await requireOwnedWindow(ctx, windowId)
+  const { window } = await requireRunnableWindow(ctx, windowId)
   return windowState(window, now()).open ? checkInLinkPath(signCheckInLink(window.id)) : null
 }
 

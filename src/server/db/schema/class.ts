@@ -67,3 +67,26 @@ export const classStudent = pgTable(
     check('class_student_status_check', sql`${t.status} in ('active', 'removed')`),
   ],
 )
+
+/**
+ * A class delegate: a student of the class, appointed by one of its lecturers, who can run
+ * attendance sessions for every course of the class (start a session, open and close the
+ * check-ins). At most two per class (the service checks). Their rights hold only while they are
+ * an active student of the class.
+ */
+export const classDelegate = pgTable(
+  'class_delegate',
+  {
+    classId: text('class_id')
+      .notNull()
+      .references(() => class_.id, { onDelete: 'cascade' }),
+    studentId: text('student_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    appointedBy: text('appointed_by')
+      .notNull()
+      .references(() => user.id),
+    appointedAt: timestamp('appointed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.classId, t.studentId] }), index('class_delegate_student_id_idx').on(t.studentId)],
+)

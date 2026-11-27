@@ -225,6 +225,13 @@
       "when": 1795758974270,
       "tag": "0031_skip_guides_for_existing_users",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1795795491081,
+      "tag": "0032_class_delegate",
+      "breakpoints": true
     }
   ]
 }

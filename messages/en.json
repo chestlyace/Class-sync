@@ -265,7 +265,18 @@
       "copyStudentLink": "Copy student link",
       "copyLecturerLink": "Copy lecturer link",
       "copyStudentLinkTitle": "Copy the link students open to join this class",
-      "copyLecturerLinkTitle": "Copy the link colleagues open to teach in this class"
+      "copyLecturerLinkTitle": "Copy the link colleagues open to teach in this class",
+      "delegates": {
+        "hint": "Class delegates (up to {max}) can take attendance for every course of this class, in your place or alongside you.",
+        "current": "Delegates now: {names}.",
+        "badge": "Delegate",
+        "make": "Make delegate",
+        "remove": "Remove as delegate",
+        "makeLabel": "Make {name} a class delegate",
+        "removeLabel": "{name} is a class delegate: remove",
+        "full": "This class already has 2 delegates. Remove one first.",
+        "studentTitle": "{count, plural, one {Your class delegate} other {Your class delegates}}"
+      }
     },
     "settings": {
       "link": "Settings",
@@ -1387,7 +1398,17 @@
       },
       "sessionOver": "This session is over: it started more than {hours} hours ago. Start a new session to take attendance.",
       "checkMark": "{label}: {state}",
-      "statusOverridden": "{status} (set by you)"
+      "statusOverridden": "{status} (set by you)",
+      "startedByDelegate": "Started by {name} (delegate)"
+    },
+    "delegate": {
+      "eyebrow": "Attendance · Delegate",
+      "intro": "As a class delegate you can start a session and open its check-ins, so your classmates can check in. Corrections and past attendance stay with your lecturer.",
+      "currentTitle": "Today's sessions",
+      "noCurrent": "No session yet today. Start one when class begins.",
+      "checkInOpen": "Check-in open",
+      "open": "Open",
+      "takeAttendance": "Take attendance"
     }
   },
   "assignments": {
