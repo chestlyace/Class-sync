@@ -238,7 +238,7 @@ export function MakeUpDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent closeLabel={tCommon('close')} className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md">
+      <DialogContent closeLabel={tCommon('close')} className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t('title')}</DialogTitle>
           <DialogDescription>{replacesLabel ?? t('description')}</DialogDescription>
