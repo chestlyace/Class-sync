@@ -2,6 +2,7 @@ import { ArrowLeft, Download, Hand, Info } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { ErrorState } from '@/components/error-state'
+import { IdempotentDownloadLink } from '@/components/idempotent-download-link'
 import { PageHeader, Panel, SectionHeading } from '@/components/page-header'
 import { buttonVariants } from '@/components/ui/button'
 import { getCourse, listLecturerCourses, type CourseSummary } from '@/server/courses/service'
@@ -60,11 +61,16 @@ export default async function CoursePerformancePage({ params }: PageProps<'/cour
               <Hand aria-hidden="true" data-icon="inline-start" />
               {t('participationLink')}
             </Link>
-            {/* A file download, not a page: a plain link, so the router doesn't prefetch it. */}
-            <a href={`${courseHref}/performance/export`} download data-tour="ca-export" className={buttonVariants({ variant: 'outline' })}>
+            {/* A file download, not a page: a plain link, so the router doesn't prefetch it. Repeat taps are ignored. */}
+            <IdempotentDownloadLink
+              href={`${courseHref}/performance/export`}
+              download
+              data-tour="ca-export"
+              className={buttonVariants({ variant: 'outline' })}
+            >
               <Download aria-hidden="true" data-icon="inline-start" />
               {t('export')}
-            </a>
+            </IdempotentDownloadLink>
             <Link href={courseHref} className={buttonVariants({ variant: 'outline' })}>
               <ArrowLeft aria-hidden="true" data-icon="inline-start" />
               {course.title}

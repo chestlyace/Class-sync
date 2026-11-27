@@ -174,6 +174,7 @@
     "join": "Join",
     "newClass": "New class",
     "main": "Main navigation",
+    "back": "Back",
     "account": "Signed in as {name}",
     "settings": "Profile and settings"
   },

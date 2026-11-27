@@ -1,4 +1,5 @@
 import { Download, FileText, Image as ImageIcon } from 'lucide-react'
+import { IdempotentDownloadLink } from '@/components/idempotent-download-link'
 import { formatFileSize } from '@/lib/file-size'
 import type { FileInfo } from '@/server/files/service'
 
@@ -21,7 +22,7 @@ export function FileList({
         const Icon = f.mimeType.startsWith('image/') ? ImageIcon : FileText
         return (
           <li key={f.id}>
-            <a
+            <IdempotentDownloadLink
               href={`/api/files/${encodeURIComponent(f.id)}`}
               target="_blank"
               rel="noopener"
@@ -32,7 +33,7 @@ export function FileList({
               <span className="min-w-0 flex-1 truncate text-sm font-medium">{f.name}</span>
               <span className="shrink-0 font-mono text-xs text-muted-foreground">{formatFileSize(f.sizeBytes, locale)}</span>
               <Download aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-            </a>
+            </IdempotentDownloadLink>
           </li>
         )
       })}

@@ -218,6 +218,13 @@
       "when": 1795661528381,
       "tag": "0030_meet_classroom",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1795758974270,
+      "tag": "0031_skip_guides_for_existing_users",
+      "breakpoints": true
     }
   ]
 }

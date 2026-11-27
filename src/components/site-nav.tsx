@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
+import { BackLink } from '@/components/back-link'
 import { Logo } from '@/components/logo'
 import { buttonVariants } from '@/components/ui/button'
 import { initials } from '@/lib/person-name'
@@ -35,7 +36,12 @@ export async function SiteNav({ user, sections }: { user: SessionUser | null; se
               {t('nav.staging')}
             </span>
           )}
-          {user && <TopNavLinks role={user.role} />}
+          {user && (
+            <>
+              <BackLink />
+              <TopNavLinks role={user.role} />
+            </>
+          )}
           {!user && sections && (
             <ul
               aria-label={t('landing.nav.sections')}
